@@ -1,0 +1,3 @@
+# Per-test timeout is configured centrally for local and CI runs.
+[profile.default]
+slow-timeout = { period = "30s", terminate-after = 2 }

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <style>
+      :root {
+        --accent: #8be9fd;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      /**
+       * @param {string} theme The selected theme name.
+       * @returns {{theme: string}}
+       */
+      const payload = { theme: "Dracula", nested: true };
+      console.log(JSON.stringify(payload, null, 2));
+    </script>
+  </body>
+</html>

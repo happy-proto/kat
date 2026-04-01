@@ -1,0 +1,4 @@
+FROM alpine:3.21
+
+CMD ["./bin/server", "--config", "/etc/app.toml", "APP_ENV=prod", "${PORT}"]
+ENTRYPOINT ["python", "-m", "pkg.cli", "--root", "/workspace"]

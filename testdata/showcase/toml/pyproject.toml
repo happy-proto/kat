@@ -1,0 +1,8 @@
+[project]
+name = "kat"
+version = "0.1.0"
+description = "Showcase file for TOML rendering"
+
+[tool.kat.preview]
+theme = "Dracula"
+enabled = true

@@ -1,0 +1,29 @@
+title: Kat Showcase
+theme: Dracula
+mode: showcase
+enabled: true
+
+palette:
+  accent: "#ff79c6"
+  foreground: "#f8f8f2"
+  background: "#282a36"
+
+features:
+  markdown_frontmatter: true
+  embedded_languages:
+    - rust
+    - python
+    - json
+
+anchors:
+  defaults: &defaults
+    line_numbers: false
+    color_mode: truecolor
+
+profiles:
+  terminal:
+    <<: *defaults
+    shell: zsh
+  ci:
+    <<: *defaults
+    color_mode: ansi

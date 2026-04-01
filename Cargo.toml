@@ -1,0 +1,25 @@
+[package]
+name = "kat"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "kat"
+path = "src/main.rs"
+
+[dependencies]
+anstyle = "1.0.14"
+anyhow = "1.0.102"
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "1.1.0"
+tree-sitter = "0.26.7"
+tree-sitter-highlight = "0.26.7"
+tree-sitter-language = "0.1.7"
+
+[build-dependencies]
+blake3 = "1.8.3"
+cc = "1.2.57"
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "1.1.0"
+tree-sitter-generate = "0.26.7"
+walkdir = "2.5.0"

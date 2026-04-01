@@ -1,0 +1,13 @@
+:root {
+  --accent: #8be9fd;
+}
+
+.panel {
+  color: var(--accent);
+}
+
+@media (min-width: 720px) {
+  .panel {
+    display: grid;
+  }
+}

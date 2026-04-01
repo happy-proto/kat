@@ -1,0 +1,7 @@
+FROM alpine:3.21
+
+SHELL ["zsh", "-lc"]
+RUN source ~/.zshrc
+
+SHELL ["fish", "-lc"]
+RUN set theme Dracula

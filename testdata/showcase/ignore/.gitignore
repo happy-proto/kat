@@ -1,0 +1,5 @@
+# ignore build output
+target/
+dist/
+!dist/keep.txt
+**/*.log

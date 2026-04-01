@@ -1,0 +1,17 @@
+[package]
+name = "kat"
+"display-name" = "Kat"
+published = true
+released_at = 2026-03-26T18:00:00Z
+
+[tool.kat.preview]
+theme = "Dracula"
+escaped = "line\nsecond"
+authors = ["DCjanus", "kat"]
+meta = { enabled = true, mode = "showcase" }
+
+[[tool.kat.targets]]
+triple = "aarch64-apple-darwin"
+
+[[tool.kat.targets]]
+triple = "x86_64-unknown-linux-gnu"

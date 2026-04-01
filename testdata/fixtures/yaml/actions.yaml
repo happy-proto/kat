@@ -1,0 +1,22 @@
+---
+name: CI
+on:
+  workflow_dispatch:
+
+jobs:
+  script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const payload = { ok: true };
+            console.log(payload);
+
+defaults: &defaults
+  theme: Dracula
+  enabled: true
+
+profile:
+  <<: *defaults
+  accent: !color "#ff79c6"

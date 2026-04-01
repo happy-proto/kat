@@ -1,0 +1,7 @@
+FROM --platform=$BUILDPLATFORM alpine:3.21 AS builder
+
+HEALTHCHECK --interval=5s --timeout=3s CMD printf '%s\n' "ok"
+
+RUN --mount=type=cache,target=$CACHE_DIR,from=${CACHE_STAGE},readonly,uid=1000,sharing=locked,env=APP_ENV,id=cache-${TARGETARCH} printf '%s\n' "cached"
+
+COPY --from=builder src/ /app/

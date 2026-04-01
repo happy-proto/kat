@@ -1,0 +1,5 @@
+FROM alpine:3.21
+
+RUN --mount=type=secret,id=api-key,target=/run/secrets/api,env=API_KEY,required printf '%s\n' "secret"
+RUN --mount=type=ssh,id=default,target=/tmp/agent printf '%s\n' "ssh"
+RUN --mount=type=bind,src=./hack,target=/work,readonly printf '%s\n' "bind"

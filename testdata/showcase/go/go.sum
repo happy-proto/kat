@@ -1,0 +1,7 @@
+github.com/charmbracelet/lipgloss v1.0.0 h1:oEvdqNwz1El+hUEE3Zr9Lk0lU5M4R2x8wL2wZQ4t3n4=
+github.com/charmbracelet/lipgloss v1.0.0/go.mod h1:VQ0M4J1pJQeVj0Q3NQq1g6Y5fJ8j6P2n0Qb5lN2x4tw=
+github.com/muesli/termenv v0.15.2 h1:Y8oQ6mP4fD9nA5vL2tQ7bW3xN1cK4rS6pJ8zM0eH2uA=
+github.com/muesli/termenv v0.15.2/go.mod h1:N8lJ2vS4aQ0yP6mD1wE3rT5uB7cK9xZ2fH4nM6qR8sU=
+golang.org/x/tools v0.31.0-0.20250301010101-1a2b3c4d5e6f h1:N4k1E7aM2fL0nQb0kV5yB7mE5nM8sYwY0b5X8b4s1Q0=
+golang.org/x/tools v0.31.0-0.20250301010101-1a2b3c4d5e6f/go.mod h1:Q0v2E3kN8mP7rA4fD0xY2bN5rV4wC7lK1tP6qM3nZ8Q=
+gopkg.in/yaml.v3 v3.0.1+incompatible h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=

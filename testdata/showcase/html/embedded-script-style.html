@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>kat showcase</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --accent: #8be9fd;
+      }
+
+      body {
+        background: #282a36;
+        color: #f8f8f2;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      /**
+       * Build a small payload for the embedded-script showcase.
+       *
+       * This JSDoc block is here to demonstrate nested highlighting for:
+       * - tags like `@param` and `@returns`
+       * - inline code such as `payload.theme`
+       * - Markdown-like list items inside comments
+       *
+       * @param {string} theme The selected theme name.
+       * @param {boolean} nested Whether nested highlighting is enabled.
+       * @returns {{theme: string, nested: boolean, renderer: string}}
+       */
+      function createPayload(theme, nested) {
+        return { theme, nested, renderer: "tree-sitter" };
+      }
+
+      const payload = createPayload("Dracula", true);
+      console.log(JSON.stringify(payload, null, 2));
+    </script>
+  </body>
+</html>

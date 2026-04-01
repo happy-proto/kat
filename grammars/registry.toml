@@ -1,0 +1,688 @@
+[[grammar]]
+name = "json"
+library_name = "tree-sitter-json"
+extensions = ["json", "jsonc"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = ["-Wno-unused-but-set-variable"]
+highlight_names = [
+  "boolean",
+  "comment",
+  "constant.builtin",
+  "number",
+  "property.json_key",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+]
+
+[[grammar]]
+name = "ignore"
+library_name = "tree-sitter-ignore"
+extensions = ["gitignore", "dockerignore", "npmignore", "ignore"]
+filenames = [".gitignore", ".dockerignore", ".npmignore", ".ignore"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "keyword.operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "string.regex",
+]
+
+[[grammar]]
+name = "dockerfile"
+library_name = "tree-sitter-dockerfile"
+extensions = ["dockerfile"]
+filenames = ["Dockerfile", "Containerfile"]
+filename_prefixes = ["Dockerfile.", "Containerfile."]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "keyword",
+  "none",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "bash"
+library_name = "tree-sitter-bash"
+extensions = ["sh", "bash"]
+filenames = [".bashrc", ".bash_profile", ".bash_login", ".profile", ".bash_logout", ".bash_aliases", ".bash_functions", ".envrc"]
+filename_prefixes = []
+shebang_substrings = ["bash", "sh"]
+extra_c_flags = ["-Wno-unused-value"]
+highlight_names = [
+  "comment",
+  "constant",
+  "embedded",
+  "function",
+  "keyword",
+  "keyword.control",
+  "keyword.directive",
+  "keyword.operator",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.regex",
+  "variable",
+  "variable.parameter",
+  "variable.special",
+]
+
+[[grammar]]
+name = "fish"
+library_name = "tree-sitter-fish"
+extensions = ["fish"]
+filenames = ["config.fish", "fishfile"]
+filename_prefixes = []
+shebang_substrings = ["fish"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "function",
+  "function.builtin",
+  "keyword",
+  "keyword.control",
+  "keyword.directive",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "string.regex",
+  "variable",
+  "variable.special",
+]
+
+[[grammar]]
+name = "zsh"
+library_name = "tree-sitter-zsh"
+extensions = ["zsh", "zsh-theme"]
+filenames = [".zshrc", ".zprofile", ".zlogin", ".zlogout", ".zshenv", ".zsh_aliases", ".zsh_functions", ".zshrc.local", ".zprofile.local", ".zlogin.local"]
+filename_prefixes = []
+shebang_substrings = ["zsh"]
+extra_c_flags = ["-Wno-unused-value", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-unused-variable"]
+highlight_names = [
+  "comment",
+  "constant",
+  "embedded",
+  "function",
+  "function.builtin",
+  "keyword",
+  "keyword.control",
+  "keyword.directive",
+  "keyword.operator",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.regex",
+  "variable",
+  "variable.special",
+]
+
+[[grammar]]
+name = "toml"
+library_name = "tree-sitter-toml"
+extensions = ["toml"]
+filenames = ["Cargo.toml", "Cargo.lock", "uv.lock"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "datetime",
+  "number",
+  "operator",
+  "property.toml",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+]
+
+[[grammar]]
+name = "yaml"
+library_name = "tree-sitter-yaml"
+extensions = ["yaml", "yml"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = ["-Wno-unused-but-set-variable"]
+highlight_names = [
+  "boolean",
+  "comment",
+  "constant.builtin",
+  "keyword.directive",
+  "number",
+  "property.yaml",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "type",
+  "yaml.alias",
+]
+
+[[grammar]]
+name = "hcl"
+library_name = "tree-sitter-hcl"
+extensions = ["hcl", "nomad"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "constant.builtin.boolean",
+  "constant.numeric",
+  "function.method",
+  "keyword",
+  "keyword.control.conditional",
+  "keyword.control.repeat",
+  "none",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.other.member",
+]
+
+[[grammar]]
+name = "rust"
+library_name = "tree-sitter-rust"
+extensions = ["rs"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "comment.doc",
+  "constant",
+  "function",
+  "function.definition",
+  "function.method",
+  "function.special",
+  "function.special.definition",
+  "keyword",
+  "keyword.control",
+  "lifetime",
+  "none",
+  "number",
+  "operator",
+  "property",
+  "punctuation.special",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "type.interface",
+  "variable",
+  "variable.parameter",
+  "variable.special",
+]
+
+[[grammar]]
+name = "python"
+library_name = "tree-sitter-python"
+extensions = ["py"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute.builtin",
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "embedded",
+  "function",
+  "function.builtin",
+  "function.call",
+  "function.decorator",
+  "function.decorator.call",
+  "function.definition",
+  "function.kwargs",
+  "function.method",
+  "function.method.constructor",
+  "function.method.call",
+  "keyword",
+  "keyword.definition",
+  "keyword.operator",
+  "none",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "property",
+  "string",
+  "string.doc",
+  "string.escape",
+  "type",
+  "type.class",
+  "type.class.call",
+  "type.class.definition",
+  "type.class.inheritance",
+  "type.builtin",
+  "variable",
+  "variable.parameter",
+  "variable.special",
+]
+
+[[grammar]]
+name = "go"
+library_name = "tree-sitter-go"
+extensions = ["go"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "function.builtin",
+  "function.call",
+  "function.definition",
+  "function.method",
+  "function.method.call",
+  "keyword.control",
+  "keyword.declaration",
+  "keyword.directive",
+  "namespace",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "gomod"
+library_name = "tree-sitter-gomod"
+extensions = []
+filenames = ["go.mod"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "string.special",
+  "text.uri",
+]
+
+[[grammar]]
+name = "gowork"
+library_name = "tree-sitter-gowork"
+extensions = []
+filenames = ["go.work"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "operator",
+  "punctuation.bracket",
+  "string",
+  "string.escape",
+  "string.special",
+  "text.uri",
+]
+
+[[grammar]]
+name = "gosum"
+library_name = "tree-sitter-gosum"
+extensions = []
+filenames = ["go.sum"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "keyword",
+  "number",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+  "text.uri",
+]
+
+[[grammar]]
+name = "sql"
+library_name = "tree-sitter-sql"
+extensions = ["sql", "psql", "pgsql", "postgresql", "mysql", "mariadb", "sqlite", "sqlite3"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "conditional",
+  "field",
+  "float",
+  "function.call",
+  "keyword",
+  "keyword.operator",
+  "number",
+  "operator",
+  "parameter",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "storageclass",
+  "string",
+  "type",
+  "type.builtin",
+  "type.qualifier",
+  "variable",
+]
+
+[[grammar]]
+name = "html"
+library_name = "tree-sitter-html"
+extensions = ["html", "htm"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "punctuation.bracket",
+  "string",
+  "string.special",
+  "tag",
+  "tag.error",
+]
+
+[[grammar]]
+name = "css"
+library_name = "tree-sitter-css"
+extensions = ["css"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = ["-Wno-unused-parameter"]
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant.builtin",
+  "function",
+  "keyword",
+  "keyword.operator",
+  "namespace",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "selector.class",
+  "selector.id",
+  "selector.pseudo",
+  "string",
+  "string.special",
+  "tag",
+  "type",
+  "type.unit",
+  "variable",
+]
+
+[[grammar]]
+name = "javascript"
+library_name = "tree-sitter-javascript"
+extensions = ["js", "mjs", "cjs", "jsx"]
+filenames = []
+shebang_substrings = ["node", "nodejs", "deno", "bun"]
+extra_c_flags = ["-Wno-unused-parameter"]
+highlight_names = [
+  "attribute",
+  "attribute.jsx",
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "embedded",
+  "function",
+  "function.builtin",
+  "function.call",
+  "function.definition",
+  "function.method",
+  "keyword",
+  "keyword.control",
+  "keyword.declaration",
+  "keyword.import",
+  "keyword.operator.regex",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.bracket.jsx",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.regex",
+  "tag",
+  "tag.jsx",
+  "type",
+  "type.class.call",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+  "variable.special",
+]
+
+[[grammar]]
+name = "graphql"
+library_name = "tree-sitter-graphql"
+extensions = ["graphql", "gql", "graphqls"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "function.call",
+  "function.definition",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "type.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "regex"
+library_name = "tree-sitter-regex"
+extensions = []
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "invalid.illegal.regex",
+  "keyword.operator.regex",
+  "label.regex",
+  "number.quantifier.regex",
+  "operator.regex",
+  "punctuation.bracket.regex",
+  "punctuation.delimiter.regex",
+  "string.escape.regex",
+  "string.regex",
+  "type.builtin",
+]
+
+[[grammar]]
+name = "jsdoc"
+library_name = "tree-sitter-jsdoc"
+extensions = []
+filenames = []
+shebang_substrings = []
+extra_c_flags = ["-Wno-unused-parameter"]
+highlight_names = [
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "keyword",
+  "keyword.jsdoc",
+  "string",
+  "string.special",
+  "text.uri",
+  "type",
+  "type.jsdoc",
+  "variable.jsdoc",
+]
+
+[[grammar]]
+name = "userscript_metadata"
+library_name = "tree-sitter-userscript-metadata"
+extensions = []
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant.builtin",
+  "function.builtin",
+  "keyword.directive",
+  "number",
+  "property.userscript",
+  "punctuation.special",
+  "string",
+  "string.regex",
+  "text.uri",
+  "variable",
+]
+
+[[grammar]]
+name = "markdown"
+library_name = "tree-sitter-markdown"
+extensions = ["md", "markdown"]
+filenames = ["README.md"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "none",
+  "punctuation.delimiter",
+  "punctuation.delimiter.markdown",
+  "punctuation.list.markdown",
+  "punctuation.rule.markdown",
+  "punctuation.special",
+  "string.escape",
+  "text",
+  "text.literal",
+  "text.literal.block",
+  "text.quote",
+  "text.reference",
+  "text.title",
+  "text.uri",
+]
+
+[[grammar]]
+name = "markdown_inline"
+library_name = "tree-sitter-markdown-inline"
+extensions = []
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "punctuation.delimiter",
+  "punctuation.delimiter.markdown",
+  "string.escape",
+  "text",
+  "text.emphasis",
+  "text.literal",
+  "text.literal.inline",
+  "text.reference",
+  "text.strikethrough",
+  "text.strong",
+  "text.uri",
+]
+
+[[grammar]]
+name = "just"
+library_name = "tree-sitter-just"
+extensions = ["just"]
+filenames = ["justfile", "Justfile", "JUSTFILE"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant.builtin",
+  "function",
+  "function.call",
+  "keyword",
+  "keyword.conditional",
+  "keyword.directive",
+  "keyword.import",
+  "module",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "variable",
+  "variable.parameter",
+]

@@ -1,0 +1,9 @@
+title: Kat
+theme: Dracula
+enabled: true
+palette:
+  accent: "#ff79c6"
+  foreground: "#f8f8f2"
+features:
+  markdown_frontmatter: true
+  nested_highlighting: true

@@ -1,0 +1,7 @@
+FROM alpine:3.21
+
+CMD ["python", "-m", "app"]
+ENTRYPOINT ["sh", "-lc", "echo hi"]
+CMD ["./bin/server", "--config", "/etc/app.toml"]
+SHELL ["zsh", "-lc"]
+VOLUME ["/data", "/cache"]

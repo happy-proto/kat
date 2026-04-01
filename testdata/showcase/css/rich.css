@@ -1,0 +1,21 @@
+@supports (display: grid) {
+  #app > .panel:hover::before {
+    content: "Preview";
+    margin: 1.5rem;
+    color: var(--accent) !important;
+  }
+}
+
+svg|a[data-kind="hero"] {
+  stroke: #ff79c6;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

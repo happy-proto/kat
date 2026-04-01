@@ -1,0 +1,8 @@
+FROM alpine:3.21
+
+HEALTHCHECK --interval=5s CMD printf '%s\n' "ok"
+
+RUN <<'SH'
+source /etc/profile
+printf '%s\n' "$HOME"
+SH

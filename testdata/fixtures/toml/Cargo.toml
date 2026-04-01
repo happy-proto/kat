@@ -1,0 +1,4 @@
+[package]
+name = "kat"
+version = "0.1.0"
+enabled = true

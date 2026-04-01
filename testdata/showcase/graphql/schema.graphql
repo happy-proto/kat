@@ -1,0 +1,35 @@
+"""Theme query schema used by kat showcase fixtures."""
+schema {
+  query: Query
+}
+
+directive @client on FIELD
+
+type Query {
+  theme(slug: ID!): Theme
+  themes(limit: Int = 20): [Theme!]!
+}
+
+type Theme implements Node {
+  id: ID!
+  name: String!
+  enabled: Boolean!
+  palette: [String!]!
+}
+
+interface Node {
+  id: ID!
+}
+
+fragment ThemeCard on Theme {
+  id
+  name
+  palette
+}
+
+query ThemeDashboard($slug: ID!, $withPalette: Boolean = true) {
+  theme(slug: $slug) @client {
+    ...ThemeCard
+    palette @include(if: $withPalette)
+  }
+}

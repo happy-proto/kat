@@ -1,0 +1,11 @@
+{
+  "theme": "Dracula",
+  "enabled": true,
+  "disabled": false,
+  "nullable": null,
+  "accent": "#ff79c6",
+  "message": "line\\nsecond",
+  "nested": {
+    "items": [1, 2, 3]
+  }
+}

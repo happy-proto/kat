@@ -1,0 +1,8 @@
+go 1.24.0
+
+use (
+	.
+	../shared/theme-kit
+)
+
+replace github.com/dcjanus/theme-kit => ../shared/theme-kit

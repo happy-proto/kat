@@ -1,0 +1,12 @@
+go 1.24.0
+
+use (
+	.
+	../shared/theme-kit
+	../tools/fixture-gen
+)
+
+replace (
+	github.com/dcjanus/theme-kit => ../shared/theme-kit
+	golang.org/x/tools v0.31.0 => ../forks/tools
+)

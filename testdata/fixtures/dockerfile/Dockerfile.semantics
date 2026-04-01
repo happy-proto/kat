@@ -1,0 +1,8 @@
+FROM alpine:3.21
+
+ARG APP_HOME=/app
+ENV APP_HOME=/app
+LABEL org.opencontainers.image.source="https://example.com/repo"
+WORKDIR /app
+EXPOSE 8080/tcp
+COPY --from=builder src/ /app/

@@ -1,0 +1,6 @@
+{
+  "theme": "Dracula",
+  "accent": "#8BE9FD",
+  "enabled": true,
+  "languages": ["json", "bash", "toml", "rust", "python", "just"]
+}

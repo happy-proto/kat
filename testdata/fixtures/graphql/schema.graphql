@@ -1,0 +1,25 @@
+schema {
+  query: Query
+}
+
+type Query {
+  theme(slug: ID!): Theme
+}
+
+type Theme {
+  id: ID!
+  name: String!
+  tags: [String!]!
+}
+
+fragment ThemeFields on Theme {
+  id
+  name
+  tags
+}
+
+query ThemeBySlug($slug: ID!) {
+  theme(slug: $slug) {
+    ...ThemeFields
+  }
+}
