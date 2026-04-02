@@ -116,20 +116,21 @@ jobs:
           set -euo pipefail
 
           stats_path="${RUNNER_TEMP}/sccache-stats.txt"
+          stats_json_path="${RUNNER_TEMP}/sccache-stats.json"
           "${SCCACHE_PATH}" --show-stats | tee "${stats_path}"
+          "${SCCACHE_PATH}" --show-stats --stats-format=json > "${stats_json_path}"
 
-          requests_executed=$(awk -F'  +' '/^Compile requests[[:space:]]+/ {print $2}' "${stats_path}")
-          requests_executed=${requests_executed:-unknown}
-          cache_hits=$(awk -F'  +' '/^Cache hits[[:space:]]+/ {print $2}' "${stats_path}")
-          cache_hits=${cache_hits:-unknown}
-          cache_misses=$(awk -F'  +' '/^Cache misses[[:space:]]+/ {print $2}' "${stats_path}")
-          cache_misses=${cache_misses:-unknown}
-          hit_rate=$(awk -F'  +' '/^Cache hits rate[[:space:]]+/ {print $2}' "${stats_path}")
-          hit_rate=${hit_rate:-unknown}
-          non_cacheable=$(awk -F'  +' '/^Non-cacheable compilations[[:space:]]+/ {print $2}' "${stats_path}")
-          non_cacheable=${non_cacheable:-unknown}
-          cache_timeouts=$(awk -F'  +' '/^Cache timeouts[[:space:]]+/ {print $2}' "${stats_path}")
-          cache_timeouts=${cache_timeouts:-unknown}
+          requests_executed=$(jq -r '.stats.requests_executed' "${stats_json_path}")
+          cache_hits=$(jq -r '(.stats.cache_hits.counts | to_entries | map(.value) | add) // 0' "${stats_json_path}")
+          cache_misses=$(jq -r '(.stats.cache_misses.counts | to_entries | map(.value) | add) // 0' "${stats_json_path}")
+          non_cacheable=$(jq -r '.stats.non_cacheable_compilations' "${stats_json_path}")
+          cache_timeouts=$(jq -r '.stats.cache_timeouts' "${stats_json_path}")
+
+          if (( requests_executed > 0 )); then
+            hit_rate=$(awk -v hits="${cache_hits}" -v requests="${requests_executed}" 'BEGIN { printf "%.2f %%", (hits / requests) * 100 }')
+          else
+            hit_rate="0.00 %"
+          fi
 
           sccache_status="Warm cache activity detected."
           if [[ "${requests_executed}" == "0" ]]; then
