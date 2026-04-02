@@ -17,3 +17,9 @@
 - 路线图：[docs/roadmap.md](docs/roadmap.md)
 - 仓库维护约定：[docs/maintenance.md](docs/maintenance.md)
 - 测试样例约定：[docs/test-assets.md](docs/test-assets.md)
+
+开发调试：
+
+- 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
+- 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
+- `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果

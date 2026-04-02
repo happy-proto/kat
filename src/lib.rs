@@ -1,5 +1,6 @@
 mod grammar_registry;
 mod language_runtime;
+mod semantic_overlays;
 mod sql_dialect;
 mod theme;
 
@@ -11,6 +12,11 @@ use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
 use crate::grammar_registry::grammar;
 use crate::language_runtime::{global_highlight_name, runtime};
+use crate::semantic_overlays::{
+    debug_named_language_tree as debug_language_tree_impl,
+    debug_semantics as debug_semantics_impl,
+    semantic_capture_spans,
+};
 use crate::sql_dialect::resolve_sql_runtime;
 use crate::theme::{Theme, TokenStyle};
 
@@ -41,6 +47,10 @@ enum SupportedLanguage {
 
 pub fn render(source_path: Option<&Path>, source: &str) -> Result<String> {
     render_with_theme(source_path, source, &Theme::detect())
+}
+
+pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
+    detect_language(source_path, source).map(supported_language_name)
 }
 
 fn render_with_theme(source_path: Option<&Path>, source: &str, theme: &Theme) -> Result<String> {
@@ -165,6 +175,45 @@ pub fn highlight_markdown(source: &str) -> Result<String> {
     highlight_named_language("markdown", source, &Theme::detect())
 }
 
+pub fn debug_named_language_tree(language_name: &str, source: &str) -> Result<String> {
+    debug_language_tree_impl(language_name, source)
+}
+
+pub fn debug_semantics(language_name: &str, source: &str) -> Result<String> {
+    debug_semantics_impl(language_name, source)
+}
+
+pub fn debug_shell_semantics(language_name: &str, source: &str) -> Result<String> {
+    debug_semantics(language_name, source)
+}
+
+fn supported_language_name(language: SupportedLanguage) -> &'static str {
+    match language {
+        SupportedLanguage::Bash => "bash",
+        SupportedLanguage::Css => "css",
+        SupportedLanguage::Dockerfile => "dockerfile",
+        SupportedLanguage::Fish => "fish",
+        SupportedLanguage::Go => "go",
+        SupportedLanguage::GoMod => "gomod",
+        SupportedLanguage::GoSum => "gosum",
+        SupportedLanguage::GoWork => "gowork",
+        SupportedLanguage::Graphql => "graphql",
+        SupportedLanguage::Hcl => "hcl",
+        SupportedLanguage::Html => "html",
+        SupportedLanguage::Ignore => "ignore",
+        SupportedLanguage::JavaScript => "javascript",
+        SupportedLanguage::Just => "just",
+        SupportedLanguage::Json => "json",
+        SupportedLanguage::Markdown => "markdown",
+        SupportedLanguage::Python => "python",
+        SupportedLanguage::Sql => "sql",
+        SupportedLanguage::Rust => "rust",
+        SupportedLanguage::Toml => "toml",
+        SupportedLanguage::Yaml => "yaml",
+        SupportedLanguage::Zsh => "zsh",
+    }
+}
+
 fn highlight_named_language(language_name: &str, source: &str, theme: &Theme) -> Result<String> {
     highlight_named_language_with_path(language_name, None, source, theme)
 }
@@ -200,6 +249,7 @@ fn highlight_named_language_spans(
         .context("failed to highlight source")?;
 
     let mut spans = collect_styled_spans(source, events, theme)?;
+    spans = overlay_semantic_captures(resolved_language_name, source, spans, theme)?;
     let nested_regions =
         collect_top_level_injection_regions(resolved_language_name, source, theme)?;
 
@@ -208,6 +258,38 @@ fn highlight_named_language_spans(
     }
 
     Ok(spans)
+}
+
+fn overlay_semantic_captures(
+    language_name: &str,
+    source: &str,
+    parent_spans: Vec<StyledSpan>,
+    theme: &Theme,
+) -> Result<Vec<StyledSpan>> {
+    let invalid_style = theme.token_style_for("invalid.illegal.regex", "");
+    let overlays = semantic_capture_spans(language_name, source)?
+        .into_iter()
+        .filter_map(|span| {
+            let text = &source[span.range.clone()];
+            theme.token_style_for(span.capture, text).map(|overlay_style| {
+                let style = match (
+                    style_covering_span(&parent_spans, span.range.start, span.range.end),
+                    invalid_style,
+                ) {
+                    (Some(parent_style), Some(invalid_style)) if parent_style == invalid_style => {
+                        Some(parent_style.merge(overlay_style))
+                    }
+                    _ => Some(overlay_style),
+                };
+                StyledSpan {
+                    range: span.range,
+                    style,
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(overlay_style_spans(parent_spans, overlays))
 }
 
 fn collect_styled_spans<'a>(
@@ -1374,6 +1456,45 @@ fn overlay_nested_region(parent_spans: Vec<StyledSpan>, region: &NestedRegion) -
     result
 }
 
+fn overlay_style_spans(parent_spans: Vec<StyledSpan>, overlay_spans: Vec<StyledSpan>) -> Vec<StyledSpan> {
+    if overlay_spans.is_empty() {
+        return parent_spans;
+    }
+
+    let source_len = parent_spans.last().map_or(0, |span| span.range.end);
+    let mut boundaries = vec![0, source_len];
+
+    for span in &parent_spans {
+        boundaries.push(span.range.start);
+        boundaries.push(span.range.end);
+    }
+
+    for span in &overlay_spans {
+        boundaries.push(span.range.start);
+        boundaries.push(span.range.end);
+    }
+
+    boundaries.sort_unstable();
+    boundaries.dedup();
+
+    let mut result = Vec::new();
+
+    for window in boundaries.windows(2) {
+        let start = window[0];
+        let end = window[1];
+        if start == end {
+            continue;
+        }
+
+        let style = style_covering_span(&overlay_spans, start, end)
+            .or_else(|| style_covering_span(&parent_spans, start, end));
+        push_span(&mut result, start..end, style);
+    }
+
+    result
+}
+
+
 fn point_in_ranges(point: usize, ranges: &[Range<usize>]) -> bool {
     ranges
         .iter()
@@ -1410,7 +1531,10 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use super::{SupportedLanguage, detect_language, highlight_named_language, render_with_theme};
+    use super::{
+        SupportedLanguage, debug_semantics, detect_language, highlight_named_language,
+        render_with_theme,
+    };
     use crate::{
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
@@ -1898,8 +2022,8 @@ mod tests {
             "expected injected Python boolean styling for True"
         );
         assert!(
-            rendered.contains("\x1b[38;2;80;250;123msource"),
-            "expected injected Bash command styling for source"
+            rendered.contains("\x1b[38;2;139;233;253msource"),
+            "expected injected Bash builtin styling for source"
         );
         assert!(
             rendered.contains("\x1b[3m\x1b[38;2;189;147;249mconsole"),
@@ -1915,14 +2039,14 @@ mod tests {
         let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
             .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
 
-        let zsh_source_count = rendered.matches("\x1b[38;2;241;250;140msource").count();
+        let zsh_source_count = rendered.matches("\x1b[38;2;139;233;253msource").count();
         assert!(
             zsh_source_count >= 2,
             "expected global zsh shell setting to route both recipe bodies and external commands into zsh runtime"
         );
         assert!(
-            rendered.matches("\x1b[38;2;241;250;140mprintf").count() >= 2,
-            "expected zsh global shell setting to keep zsh command styling across recipe bodies and external commands"
+            rendered.matches("\x1b[38;2;139;233;253mprintf").count() >= 2,
+            "expected zsh global shell setting to keep zsh builtin styling across recipe bodies and external commands"
         );
         assert!(
             rendered.contains("\x1b[38;2;139;233;253msource"),
@@ -2038,6 +2162,58 @@ mod tests {
             fish_rendered.contains("\x1b[38;2;189;147;249m--argument-names"),
             "expected fish option styling"
         );
+        assert!(
+            fish_rendered.contains("\x1b[38;2;139;233;253memit"),
+            "expected fish emit builtin styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[38;2;139;233;253mfunctions"),
+            "expected fish functions builtin styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[38;2;139;233;253mtype"),
+            "expected fish type builtin styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;80;250;123mcurrent-filename"),
+            "expected fish status subcommand directive styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[38;2;255;85;85mDra*"),
+            "expected fish case glob pattern styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;255;184;108mnew_theme"),
+            "expected fish function argument names styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;255;184;108mTHEME_NAME"),
+            "expected fish function handler target styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;80;250;123mreplace"),
+            "expected fish string subcommand directive styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;189;147;249m$argv"),
+            "expected fish argv special variable styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;189;147;249m$status"),
+            "expected fish status special variable styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;189;147;249m$fish_pid"),
+            "expected fish fish_pid special variable styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[3m\x1b[38;2;189;147;249m$last_pid"),
+            "expected fish last_pid special variable styling"
+        );
+        assert!(
+            fish_rendered.contains("\x1b[38;2;255;121;198m.."),
+            "expected fish list range operator styling"
+        );
 
         let zsh_path = fixture_path("zsh/rich.zsh");
         let zsh_source = read_file(&zsh_path);
@@ -2048,7 +2224,7 @@ mod tests {
             "expected zsh shebang directive styling"
         );
         assert!(
-            zsh_rendered.contains("\x1b[38;2;241;250;140memulate"),
+            zsh_rendered.contains("\x1b[38;2;139;233;253memulate"),
             "expected zsh builtin command styling"
         );
         assert!(
@@ -2060,10 +2236,31 @@ mod tests {
             "expected zsh setopt option-name styling"
         );
         assert!(
-            zsh_rendered.contains("\x1b[38;2;241;250;140msource"),
+            zsh_rendered.contains("\x1b[38;2;139;233;253msource"),
             "expected zsh source builtin styling"
         );
+        assert!(
+            zsh_rendered.contains("\x1b[38;2;139;233;253mread"),
+            "expected zsh read builtin styling"
+        );
+        assert!(
+            zsh_rendered.contains("\x1b[3m\x1b[38;2;255;184;108mtheme_line"),
+            "expected zsh read target variable styling"
+        );
+        assert!(
+            zsh_rendered.contains("\x1b[38;2;248;248;242m["),
+            "expected zsh subscript bracket styling"
+        );
+        assert!(
+            zsh_rendered.contains("\x1b[3m\x1b[38;2;80;250;123m:l"),
+            "expected zsh expansion modifier styling"
+        );
+        assert!(
+            zsh_rendered.contains("\x1b[3m\x1b[38;2;80;250;123m(I)"),
+            "expected zsh subscript flag styling"
+        );
     }
+
 
     #[test]
     fn html_injections_highlight_script_and_style_content() {
@@ -2112,8 +2309,8 @@ mod tests {
             "expected node heredoc to reuse javascript builtin styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;80;250;123msource"),
-            "expected bash heredoc to reuse bash command styling"
+            rendered.contains("\x1b[38;2;139;233;253msource"),
+            "expected bash heredoc to reuse bash builtin styling"
         );
     }
 
@@ -2219,8 +2416,8 @@ mod tests {
             "expected injected CSS custom property content in Go"
         );
         assert!(
-            go_rendered.contains("\x1b[38;2;80;250;123mprintf"),
-            "expected injected Bash command styling in Go"
+            go_rendered.contains("\x1b[38;2;139;233;253mprintf"),
+            "expected injected Bash builtin styling in Go"
         );
         assert!(
             go_rendered.contains("\x1b[38;2;139;233;253msection"),
@@ -2408,8 +2605,8 @@ mod tests {
             "expected injected Python method styling in nested Just fixture"
         );
         assert!(
-            just_rendered.contains("\x1b[38;2;80;250;123msource"),
-            "expected injected Bash command styling in nested Just fixture"
+            just_rendered.contains("\x1b[38;2;139;233;253msource"),
+            "expected injected Bash builtin styling in nested Just fixture"
         );
 
         let just_heredoc_path = fixture_path("just/heredoc_recipes.just");
@@ -2431,8 +2628,8 @@ mod tests {
             "expected bash heredoc injections inside Justfile to reuse javascript builtin styling"
         );
         assert!(
-            just_heredoc_rendered.contains("\x1b[38;2;80;250;123msource"),
-            "expected bash heredoc injections inside Justfile to reuse bash command styling"
+            just_heredoc_rendered.contains("\x1b[38;2;139;233;253msource"),
+            "expected bash heredoc injections inside Justfile to reuse bash builtin styling"
         );
 
         let js_path = fixture_path("javascript/tagged_templates.js");
@@ -2651,7 +2848,7 @@ mod tests {
             "expected Dockerfile instruction keyword styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;80;250;123mprintf"),
+            rendered.contains("\x1b[38;2;139;233;253mprintf"),
             "expected shell-form RUN/CMD/ENTRYPOINT content to reuse bash builtin styling"
         );
         assert!(
@@ -2673,12 +2870,12 @@ mod tests {
             "expected HEALTHCHECK instruction keyword styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;80;250;123mprintf"),
+            rendered.contains("\x1b[38;2;139;233;253mprintf"),
             "expected HEALTHCHECK CMD shell form to reuse bash builtin styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;80;250;123msource"),
-            "expected Dockerfile heredoc lines to reuse bash command styling"
+            rendered.contains("\x1b[38;2;139;233;253msource"),
+            "expected Dockerfile heredoc lines to reuse bash builtin styling"
         );
         assert!(
             rendered.contains("\x1b[38;2;255;121;198m$"),
@@ -2695,7 +2892,7 @@ mod tests {
             .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
 
         assert!(
-            rendered.contains("\x1b[38;2;241;250;140msource"),
+            rendered.contains("\x1b[38;2;139;233;253msource"),
             "expected SHELL [\"zsh\", ...] to route shell-form RUN into zsh runtime"
         );
         assert!(
@@ -3483,6 +3680,44 @@ mod tests {
     }
 
     #[test]
+    fn regex_semantic_overlay_reports_quantifiers_unicode_and_class_ranges() {
+        let output = debug_semantics(
+            "regex",
+            r"(?im-s:\p{Script=Latin}[a-z0-9-]{2,4})",
+        )
+        .expect("failed to render regex semantic overlay");
+
+        assert!(
+            output.contains("keyword.operator.regex") && output.contains("im"),
+            "expected regex semantic overlay to include inline flag spans: {output}"
+        );
+        assert!(
+            output.contains("operator.regex") && output.contains("\\p"),
+            "expected regex semantic overlay to include unicode property escape spans: {output}"
+        );
+        assert!(
+            output.contains("type.builtin") && output.contains("Script"),
+            "expected regex semantic overlay to include unicode property name spans: {output}"
+        );
+        assert!(
+            output.contains("type.builtin") && output.contains("Latin"),
+            "expected regex semantic overlay to include unicode property value spans: {output}"
+        );
+        assert!(
+            output.contains("number.quantifier.regex") && output.contains("2"),
+            "expected regex semantic overlay to include quantifier number spans: {output}"
+        );
+        assert!(
+            output.contains("punctuation.delimiter") && output.contains(","),
+            "expected regex semantic overlay to include quantifier delimiter spans: {output}"
+        );
+        assert!(
+            output.contains("operator.regex") && output.contains("-"),
+            "expected regex semantic overlay to include class range operator spans: {output}"
+        );
+    }
+
+    #[test]
     fn regex_host_runtimes_flag_unsupported_constructs() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
 
@@ -3829,6 +4064,63 @@ mod tests {
     }
 
     #[test]
+    fn sql_semantic_overlay_reports_dialect_specific_identifiers() {
+        let postgres_output = debug_semantics(
+            "sql_postgres",
+            "CREATE FUNCTION refresh_theme_cache() RETURNS void LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$ BEGIN RETURN; END; $$;\nCREATE INDEX theme_payload_gin ON theme_snapshots USING GIN (payload jsonb_path_ops);",
+        )
+        .expect("failed to render postgres semantic overlay");
+        assert!(
+            postgres_output.contains("type.builtin") && postgres_output.contains("plpgsql"),
+            "expected postgres semantic overlay to include function language spans: {postgres_output}"
+        );
+        assert!(
+            postgres_output.contains("type.builtin") && postgres_output.contains("jsonb_path_ops"),
+            "expected postgres semantic overlay to include opclass spans: {postgres_output}"
+        );
+
+        let mysql_output = debug_semantics(
+            "sql_mysql",
+            "CREATE TABLE theme_snapshots (name VARCHAR(255)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        )
+        .expect("failed to render mysql semantic overlay");
+        assert!(
+            mysql_output.contains("type.builtin") && mysql_output.contains("InnoDB"),
+            "expected mysql semantic overlay to include engine value spans: {mysql_output}"
+        );
+        assert!(
+            mysql_output.contains("type.builtin") && mysql_output.contains("utf8mb4"),
+            "expected mysql semantic overlay to include charset value spans: {mysql_output}"
+        );
+    }
+
+    #[test]
+    fn jsdoc_semantic_overlay_reports_inline_reference_targets() {
+        let output = debug_semantics(
+            "jsdoc",
+            "/**\n * Render {@link ThemePreview#render} and {@link module:theme/preview}.\n */",
+        )
+        .expect("failed to render jsdoc semantic overlay");
+
+        assert!(
+            output.contains("variable.jsdoc") && output.contains("ThemePreview"),
+            "expected jsdoc semantic overlay to include member reference identifiers: {output}"
+        );
+        assert!(
+            output.contains("punctuation.delimiter") && output.contains("#"),
+            "expected jsdoc semantic overlay to include member delimiter spans: {output}"
+        );
+        assert!(
+            output.contains("text.uri") && output.contains("theme"),
+            "expected jsdoc semantic overlay to include path-like inline reference spans: {output}"
+        );
+        assert!(
+            output.contains("punctuation.delimiter") && output.contains("/"),
+            "expected jsdoc semantic overlay to include path delimiter spans: {output}"
+        );
+    }
+
+    #[test]
     fn graphql_runtime_is_reused_by_javascript_and_markdown_hosts() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
 
@@ -4058,12 +4350,36 @@ mod tests {
             "expected Bash special variable styling"
         );
         assert!(
-            rendered.contains("\x1b[3m\x1b[38;2;255;184;108mpipefail"),
-            "expected Bash command argument parameter styling"
+            rendered.contains("\x1b[3m\x1b[38;2;80;250;123mpipefail"),
+            "expected Bash set option styling"
         );
         assert!(
             rendered.contains("\x1b[38;2;241;250;140m$'line\\nsecond'"),
             "expected Bash ANSI-C string styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253mread"),
+            "expected Bash read builtin styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253mdeclare"),
+            "expected Bash declare builtin styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253munset"),
+            "expected Bash unset builtin styling"
+        );
+        assert!(
+            rendered.contains("\x1b[3m\x1b[38;2;255;184;108mtheme_line"),
+            "expected Bash read target variable styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;248;248;242m["),
+            "expected Bash subscript bracket styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;255;184;108m0"),
+            "expected Bash subscript index number styling"
         );
     }
 

@@ -33,6 +33,7 @@
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
 - 嵌套高亮优先依赖 Tree-sitter injection 和共享 runtime 分发，而不是在 renderer 层做宿主特判。
+- 对 shell、Regex、SQL、JSDoc 这类仅靠 highlights query 难以长期稳定表达局部结构语义的语言，允许在基础 capture 之后叠加一层轻量 semantic overlay；这层仍建立在 AST 之上，而不是把特判塞进 renderer。
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
 - SQL 方言、Regex host-aware runtime、Justfile shell dispatch 等能力都建立在这套共享 runtime 模型之上。
 

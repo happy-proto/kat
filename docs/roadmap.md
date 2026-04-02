@@ -15,18 +15,18 @@
 ### SQL
 
 - 继续增强 SQL 方言 detector，补更多内容感知信号和宿主上下文信号。
-- 继续评估“共享 grammar + 方言 overlay”是否还能覆盖主要收益场景。
+- 继续评估“共享 grammar + 方言 semantic overlay”是否还能覆盖主要收益场景。
 - 当共享 grammar 的表达上限明显成为瓶颈时，再评估拆成 per-dialect grammar。
 
 ### Regex
 
-- 继续补 host-aware Regex runtime 的高收益 query 细节。
+- 继续补 host-aware Regex runtime 的高收益 query 细节，并观察哪些结构更适合留在 semantic overlay。
 - 对 AST 没有稳定表达的 token，优先接受 grammar 上限，不往 renderer 塞脆弱特判。
 
 ### Shell
 
-- 继续细化 `fish` query 的 builtin、keyword、flag/option、glob 和 expansion 语义。
-- 继续细化 `zsh` query 的 option、parameter expansion、glob qualifier、arrays 和 arithmetic 场景。
+- 继续沿共享 shell semantic layer 细化 `fish` / `zsh` / `bash` 的 builtin family、argument role、list access 与 expansion 结构语义。
+- 继续细化 `zsh` query 与 semantic layer 的分工，尤其是 option、parameter expansion、glob qualifier、arrays 和 arithmetic 场景。
 - 继续观察 `zsh` grammar 的首次构建成本与增量构建体验。
 
 ### GraphQL
@@ -36,7 +36,7 @@
 ### Python / JavaScript / HTML / CSS / JSDoc
 
 - 这些语言已经脱离占位阶段，但仍有继续精细化空间。
-- `JSDoc` 是否继续深挖，应先确认是 query 问题还是 upstream grammar 表达上限问题。
+- `JSDoc` 已开始用 semantic overlay 补 inline reference target；后续是否继续深挖，应先确认是 query 问题还是 upstream grammar 表达上限问题。
 
 ## 检测与特殊文件
 

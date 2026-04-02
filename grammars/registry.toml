@@ -101,6 +101,8 @@ shebang_substrings = ["fish"]
 extra_c_flags = []
 highlight_names = [
   "comment",
+  "constant",
+  "embedded",
   "function",
   "function.builtin",
   "keyword",
@@ -114,6 +116,7 @@ highlight_names = [
   "string.escape",
   "string.regex",
   "variable",
+  "variable.parameter",
   "variable.special",
 ]
 
