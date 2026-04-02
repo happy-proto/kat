@@ -7,6 +7,10 @@ on:
       - master
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -55,13 +59,14 @@ jobs:
 
           base_url="https://github.com/mozilla/sccache/releases/download/v0.14.0"
           archive_path="${RUNNER_TEMP}/${SCCACHE_ARCHIVE}"
-          extract_dir="${RUNNER_TEMP}/sccache"
+          extract_dir="${RUNNER_TEMP}/sccache-extract"
           curl --fail --location --silent --show-error \
             "${base_url}/${SCCACHE_ARCHIVE}" \
             --output "${archive_path}"
           rm -rf "${extract_dir}"
           mkdir -p "${extract_dir}"
           tar -xzf "${archive_path}" -C "${extract_dir}"
+          rm -f "${RUNNER_TEMP}/sccache"
           install "${extract_dir}"/sccache-*/sccache "${RUNNER_TEMP}/sccache"
           echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
           echo "SCCACHE_PATH=${RUNNER_TEMP}/sccache" >> "${GITHUB_ENV}"
