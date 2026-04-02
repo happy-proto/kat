@@ -28,9 +28,6 @@ jobs:
           - runner: macos-latest
             target: aarch64-apple-darwin
             tier: baseline
-          - runner: macos-13
-            target: x86_64-apple-darwin
-            tier: extended
 
     steps:
       - name: Skip extended targets on pull requests
