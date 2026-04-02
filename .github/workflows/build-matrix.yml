@@ -44,8 +44,6 @@ jobs:
       - name: Set up pnpm
         if: github.event_name != 'pull_request' || matrix.tier == 'baseline'
         uses: pnpm/action-setup@v5
-        with:
-          version: 10
 
       - name: Set up Node.js
         if: github.event_name != 'pull_request' || matrix.tier == 'baseline'
