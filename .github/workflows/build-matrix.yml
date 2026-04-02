@@ -32,10 +32,8 @@ jobs:
         include:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            sccache_archive: sccache-v0.14.0-x86_64-unknown-linux-musl.tar.gz
           - runner: macos-latest
             target: aarch64-apple-darwin
-            sccache_archive: sccache-v0.14.0-aarch64-apple-darwin.tar.gz
 
     steps:
       - name: Checkout repository
@@ -50,26 +48,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - name: Install sccache
-        shell: bash
-        env:
-          SCCACHE_ARCHIVE: ${{ matrix.sccache_archive }}
-        run: |
-          set -euo pipefail
-
-          base_url="https://github.com/mozilla/sccache/releases/download/v0.14.0"
-          archive_path="${RUNNER_TEMP}/${SCCACHE_ARCHIVE}"
-          extract_dir="${RUNNER_TEMP}/sccache-extract"
-          curl --fail --location --silent --show-error \
-            "${base_url}/${SCCACHE_ARCHIVE}" \
-            --output "${archive_path}"
-          rm -rf "${extract_dir}"
-          mkdir -p "${extract_dir}"
-          tar -xzf "${archive_path}" -C "${extract_dir}"
-          rm -f "${RUNNER_TEMP}/sccache"
-          install "${extract_dir}"/sccache-*/sccache "${RUNNER_TEMP}/sccache"
-          echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
-          echo "SCCACHE_PATH=${RUNNER_TEMP}/sccache" >> "${GITHUB_ENV}"
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
