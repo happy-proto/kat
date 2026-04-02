@@ -23,6 +23,11 @@ Included sources:
 - `grammars/zsh/queries/highlights.scm`
 - `grammars/zsh/queries/injections.scm`
 - `grammars/zsh/scanner.c`
+- `grammars/powershell/grammar.js`
+- `grammars/powershell/queries/highlights.scm`
+- `grammars/powershell/scanner.c`
+- `grammars/batch/grammar.js`
+- `grammars/batch/queries/highlights.scm`
 - `grammars/toml/grammar.js`
 - `grammars/toml/queries/highlights.scm`
 - `grammars/toml/scanner.c`
@@ -185,6 +190,21 @@ Upstream projects:
   Revisions: not recorded during the initial import
   License: MIT
   Notes: repository-local adapted query that extends kat's existing shell heredoc injection model to zsh. The exact upstream commits used as the starting point still need a later audit.
+
+- `grammars/powershell/grammar.js`
+- `grammars/powershell/queries/highlights.scm`
+- `grammars/powershell/scanner.c`
+  Source: [airbus-cert/tree-sitter-powershell](https://github.com/airbus-cert/tree-sitter-powershell)
+  Revision: `da65ba3acc93777255781b447f5e7448245df4bf`
+  License: MIT
+  Notes: repository-local copy of the upstream PowerShell grammar, highlights query and scanner source, trimmed to the minimal assets needed for kat's native build.
+
+- `grammars/batch/grammar.js`
+- `grammars/batch/queries/highlights.scm`
+  Source: [wharflab/tree-sitter-batch](https://github.com/wharflab/tree-sitter-batch)
+  Revision: `8694fbc701ff6e35e3711bf39225860d13079906`
+  License: MIT
+  Notes: repository-local copy of the upstream Windows Batch / CMD grammar and highlights query, trimmed to the minimal assets needed for kat's native build.
 
 - `grammars/toml/*`
   Source: [tree-sitter/tree-sitter-toml](https://github.com/tree-sitter/tree-sitter-toml)

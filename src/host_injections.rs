@@ -26,6 +26,7 @@ pub(crate) struct InjectionCandidate {
     pub(crate) is_combined: bool,
     pub(crate) merge_parent_styles: bool,
     pub(crate) decode: InjectionDecode,
+    pub(crate) highlight_github_expressions: bool,
 }
 
 pub(crate) fn collect_injection_candidates(
@@ -128,6 +129,7 @@ fn collect_query_injection_candidates(
                 is_combined: true,
                 merge_parent_styles,
                 decode,
+                highlight_github_expressions: false,
             });
             continue;
         }
@@ -140,6 +142,7 @@ fn collect_query_injection_candidates(
                     is_combined: false,
                     merge_parent_styles,
                     decode,
+                    highlight_github_expressions: false,
                 });
             }
         }
@@ -224,6 +227,7 @@ fn collect_dockerfile_injection_candidates(
                     is_combined: false,
                     merge_parent_styles: false,
                     decode: InjectionDecode::None,
+                    highlight_github_expressions: false,
                 });
             }
         }
@@ -238,68 +242,132 @@ fn collect_github_actions_yaml_injection_candidates(
 ) -> Vec<InjectionCandidate> {
     let mut candidates = Vec::new();
 
-    walk_tree(tree.root_node(), &mut |node| {
-        if node.kind() != "block_mapping" {
-            return;
-        }
-
-        let mut shell_language = None;
-        let mut run_ranges = Vec::new();
-
-        for pair in named_children(node) {
-            if pair.kind() != "block_mapping_pair" {
-                continue;
-            }
-
-            let Some(key) = pair.child_by_field_name("key") else {
-                continue;
-            };
-            let Some(value) = pair.child_by_field_name("value") else {
-                continue;
-            };
-            let Some(key_text) = yaml_scalar_text(key, source) else {
-                continue;
-            };
-
-            match key_text {
-                "shell" => {
-                    shell_language = yaml_scalar_text(value, source)
-                        .and_then(normalize_language_name)
-                        .map(str::to_owned);
-                }
-                "run" => {
-                    if let Some(range) = yaml_injection_content_range(value, source) {
-                        run_ranges.push(range);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        if run_ranges.is_empty() {
-            return;
-        }
-
-        let language_name = shell_language
-            .filter(|shell| runtime(shell).is_some())
-            .unwrap_or_else(|| String::from("bash"));
-
-        if runtime(&language_name).is_none() {
-            return;
-        }
-
-        for range in run_ranges {
-            candidates.push(InjectionCandidate {
-                ranges: vec![range],
-                language_name: language_name.clone(),
-                is_combined: true,
-                merge_parent_styles: false,
-                decode: InjectionDecode::None,
-            });
-        }
-    });
+    walk_github_actions_yaml_node(tree.root_node(), source, None, &mut candidates);
 
     candidates
+}
+
+fn walk_github_actions_yaml_node(
+    node: Node,
+    source: &str,
+    inherited_shell: Option<&str>,
+    candidates: &mut Vec<InjectionCandidate>,
+) {
+    if node.kind() == "block_mapping" {
+        collect_github_actions_yaml_mapping_candidates(node, source, inherited_shell, candidates);
+        return;
+    }
+
+    for child in named_children(node) {
+        walk_github_actions_yaml_node(child, source, inherited_shell, candidates);
+    }
+}
+
+fn collect_github_actions_yaml_mapping_candidates(
+    node: Node,
+    source: &str,
+    inherited_shell: Option<&str>,
+    candidates: &mut Vec<InjectionCandidate>,
+) {
+    let mut explicit_shell = None;
+    let mut default_shell = None;
+    let mut run_ranges = Vec::new();
+    let mut nested_values = Vec::new();
+
+    for pair in named_children(node) {
+        if pair.kind() != "block_mapping_pair" {
+            continue;
+        }
+
+        let Some(key) = pair.child_by_field_name("key") else {
+            continue;
+        };
+        let Some(value) = pair.child_by_field_name("value") else {
+            continue;
+        };
+        let Some(key_text) = yaml_scalar_text(key, source) else {
+            continue;
+        };
+
+        match key_text {
+            "shell" => {
+                explicit_shell = github_actions_shell_language(value, source);
+            }
+            "defaults" => {
+                default_shell = github_actions_defaults_shell(value, source);
+            }
+            "run" => {
+                if let Some(range) = yaml_injection_content_range(value, source) {
+                    run_ranges.push(range);
+                }
+            }
+            _ => {}
+        }
+
+        nested_values.push(value);
+    }
+
+    let inherited_shell = default_shell.as_deref().or(inherited_shell);
+
+    if !run_ranges.is_empty() {
+        let language_name = explicit_shell
+            .as_deref()
+            .or(inherited_shell)
+            .filter(|shell| runtime(shell).is_some())
+            .unwrap_or("bash")
+            .to_owned();
+
+        if runtime(&language_name).is_some() {
+            for range in run_ranges {
+                candidates.push(InjectionCandidate {
+                    ranges: vec![range],
+                    language_name: language_name.clone(),
+                    is_combined: true,
+                    merge_parent_styles: false,
+                    decode: InjectionDecode::None,
+                    highlight_github_expressions: true,
+                });
+            }
+        }
+    }
+
+    for value in nested_values {
+        walk_github_actions_yaml_node(value, source, inherited_shell, candidates);
+    }
+}
+
+fn github_actions_shell_language(node: Node, source: &str) -> Option<String> {
+    yaml_scalar_text(node, source)
+        .and_then(normalize_language_name)
+        .map(str::to_owned)
+}
+
+fn github_actions_defaults_shell(node: Node, source: &str) -> Option<String> {
+    let run = yaml_mapping_value_for_key(node, source, "run")?;
+    let shell = yaml_mapping_value_for_key(run, source, "shell")?;
+    github_actions_shell_language(shell, source)
+}
+
+fn yaml_mapping_value_for_key<'a>(
+    node: Node<'a>,
+    source: &str,
+    key_name: &str,
+) -> Option<Node<'a>> {
+    match node.kind() {
+        "block_node" | "flow_node" => named_children(node)
+            .find_map(|child| yaml_mapping_value_for_key(child, source, key_name)),
+        "block_mapping" | "flow_mapping" => named_children(node).find_map(|pair| {
+            if pair.kind() != "block_mapping_pair" && pair.kind() != "flow_pair" {
+                return None;
+            }
+
+            let key = pair.child_by_field_name("key")?;
+            let value = pair.child_by_field_name("value")?;
+            let key_text = yaml_scalar_text(key, source)?;
+            (key_text == key_name).then_some(value)
+        }),
+        _ => None,
+    }
 }
 
 fn yaml_injection_content_range(node: Node, source: &str) -> Option<Range<usize>> {
@@ -337,15 +405,6 @@ fn yaml_scalar_text<'a>(node: Node, source: &'a str) -> Option<&'a str> {
 
 fn named_children(node: Node) -> impl Iterator<Item = Node> {
     (0..node.named_child_count()).filter_map(move |index| node.named_child(index as u32))
-}
-
-fn walk_tree(node: Node, visit: &mut impl FnMut(Node)) {
-    visit(node);
-
-    let mut cursor = node.walk();
-    for child in node.named_children(&mut cursor) {
-        walk_tree(child, visit);
-    }
 }
 
 fn normalize_ranges(mut ranges: Vec<Range<usize>>) -> Vec<Range<usize>> {

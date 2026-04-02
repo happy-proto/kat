@@ -5,6 +5,7 @@ use tree_sitter::{Node, Parser};
 
 use crate::{
     document_kind::{DocumentKind, DocumentProfile},
+    language_aliases::normalize_language_name,
     language_runtime::runtime,
 };
 
@@ -12,6 +13,20 @@ use crate::{
 pub(crate) struct SemanticCaptureSpan {
     pub range: Range<usize>,
     pub capture: &'static str,
+}
+
+pub(crate) fn github_actions_expression_spans(source: &str) -> Vec<SemanticCaptureSpan> {
+    let mut spans = Vec::new();
+    collect_github_actions_embedded_expression_spans(0..source.len(), source, &mut spans);
+    spans.sort_by(|left, right| {
+        left.range
+            .start
+            .cmp(&right.range.start)
+            .then(left.range.end.cmp(&right.range.end))
+            .then(left.capture.cmp(right.capture))
+    });
+    spans.dedup_by(|left, right| left.range == right.range && left.capture == right.capture);
+    spans
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -288,7 +303,9 @@ fn semantic_capture_spans_for(
     let has_runtime_overlays = matches!(
         language_name,
         "bash"
+            | "batch"
             | "fish"
+            | "powershell"
             | "zsh"
             | "regex"
             | "regex_javascript"
@@ -321,6 +338,14 @@ fn semantic_capture_spans_for(
                 ShellLanguage::Bash => collect_bash_node_spans(node, source, &mut spans),
                 ShellLanguage::Zsh => collect_zsh_node_spans(node, source, &mut spans),
             }
+        }
+
+        if language_name == "powershell" {
+            collect_powershell_node_spans(node, source, &mut spans);
+        }
+
+        if language_name == "batch" {
+            collect_batch_node_spans(node, source, &mut spans);
         }
 
         if is_regex_language(language_name) {
@@ -368,14 +393,24 @@ fn collect_github_actions_node_spans(
         | "double_quote_scalar"
         | "single_quote_scalar"
         | "block_scalar" => {
-            collect_github_actions_expression_spans(node.byte_range(), source, spans)
+            collect_github_actions_embedded_expression_spans(node.byte_range(), source, spans)
         }
-        "block_mapping_pair" => collect_github_actions_uses_spans(node, source, spans),
+        "block_mapping_pair" => collect_github_actions_pair_spans(node, source, spans),
         _ => {}
     }
 }
 
-fn collect_github_actions_expression_spans(
+fn collect_github_actions_pair_spans(
+    node: Node,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    collect_github_actions_uses_spans(node, source, spans);
+    collect_github_actions_bare_if_spans(node, source, spans);
+    collect_github_actions_schema_spans(node, source, spans);
+}
+
+fn collect_github_actions_embedded_expression_spans(
     range: Range<usize>,
     source: &str,
     spans: &mut Vec<SemanticCaptureSpan>,
@@ -409,6 +444,34 @@ fn collect_github_actions_expression_spans(
         );
         offset = end + 2;
     }
+}
+
+fn collect_github_actions_bare_if_spans(
+    node: Node,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let Some(key) = node.child_by_field_name("key") else {
+        return;
+    };
+    let Some(value) = node.child_by_field_name("value") else {
+        return;
+    };
+    let Some(key_text) = yaml_scalar_text(key, source) else {
+        return;
+    };
+    if key_text != "if" {
+        return;
+    }
+
+    let Some((text, range)) = yaml_scalar_with_range(value, source) else {
+        return;
+    };
+    if text.contains("${{") {
+        return;
+    }
+
+    lex_github_actions_expression(text, range.start, spans);
 }
 
 fn lex_github_actions_expression(
@@ -546,24 +609,135 @@ fn collect_github_actions_uses_spans(
         return;
     }
 
+    if text.strip_prefix("docker://").is_some() {
+        let reference_start = range.start + ("docker://".len());
+        push_capture(spans, range.start..reference_start, "punctuation.special");
+        push_capture(spans, reference_start..range.end, "string.special");
+        return;
+    }
+
     let Some((owner, rest)) = text.split_once('/') else {
         return;
     };
-    let Some((repo, reference)) = rest.split_once('@') else {
+    let Some((repo_and_path, reference)) = rest.rsplit_once('@') else {
         return;
     };
+    let (repo, action_path) = repo_and_path
+        .split_once('/')
+        .map_or((repo_and_path, None), |(repo, path)| (repo, Some(path)));
 
     let owner_start = range.start;
     let owner_end = owner_start + owner.len();
     let slash_end = owner_end + 1;
     let repo_end = slash_end + repo.len();
-    let at_end = repo_end + 1;
+    let mut at_start = repo_end;
 
     push_capture(spans, owner_start..owner_end, "type");
     push_capture(spans, owner_end..slash_end, "punctuation.delimiter");
     push_capture(spans, slash_end..repo_end, "function");
-    push_capture(spans, repo_end..at_end, "keyword.operator");
+
+    if let Some(action_path) = action_path {
+        let path_slash_end = repo_end + 1;
+        let path_end = path_slash_end + action_path.len();
+        push_capture(spans, repo_end..path_slash_end, "punctuation.delimiter");
+        push_capture(spans, path_slash_end..path_end, "string.special");
+        at_start = path_end;
+    }
+
+    let at_end = at_start + 1;
+    push_capture(spans, at_start..at_end, "keyword.operator");
     push_capture(spans, at_end..at_end + reference.len(), "string.special");
+}
+
+fn collect_github_actions_schema_spans(
+    node: Node,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let Some(key) = node.child_by_field_name("key") else {
+        return;
+    };
+    let Some(value) = node.child_by_field_name("value") else {
+        return;
+    };
+    let Some(key_text) = yaml_scalar_text(key, source) else {
+        return;
+    };
+    let ancestor_keys = yaml_enclosing_pair_keys(node, source);
+    let ancestor_key = ancestor_keys.first().copied();
+
+    match key_text {
+        "shell" => {
+            if let Some(range) = yaml_scalar_head_token_range(value, source) {
+                let token_text = &source[range.clone()];
+                if normalize_language_name(token_text).is_some_and(|name| runtime(name).is_some()) {
+                    push_capture(spans, range, "type.builtin");
+                }
+            }
+        }
+        "using" if ancestor_key == Some("runs") => {
+            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
+                if matches!(
+                    text,
+                    "composite" | "docker" | "node12" | "node16" | "node20" | "node24"
+                ) {
+                    push_capture(spans, range, "type.builtin");
+                }
+            }
+        }
+        "runs-on" => {
+            collect_github_actions_runner_value_spans(value, source, spans);
+        }
+        "runner" if ancestor_keys.starts_with(&["include", "matrix"]) => {
+            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
+                if is_github_actions_runner_label(text) {
+                    push_capture(spans, range, "type");
+                }
+            }
+        }
+        "cache" if ancestor_key == Some("with") => {
+            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
+                if matches!(text, "pnpm" | "npm" | "yarn") {
+                    push_capture(spans, range, "type.builtin");
+                }
+            }
+        }
+        "if-no-files-found" if ancestor_key == Some("with") => {
+            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
+                if matches!(text, "error" | "warn" | "ignore") {
+                    push_capture(spans, range, "type.builtin");
+                }
+            }
+        }
+        _ if ancestor_key == Some("permissions") => {
+            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
+                if matches!(text, "read" | "write" | "none") {
+                    push_capture(spans, range, "type.builtin");
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn is_github_actions_runner_label(text: &str) -> bool {
+    matches!(
+        text,
+        "ubuntu-latest"
+            | "ubuntu-24.04"
+            | "ubuntu-22.04"
+            | "ubuntu-20.04"
+            | "windows-latest"
+            | "windows-2025"
+            | "windows-2022"
+            | "windows-2019"
+            | "macos-latest"
+            | "macos-15"
+            | "macos-14"
+            | "macos-13"
+            | "linux"
+            | "self-hosted"
+    )
 }
 
 fn github_actions_operator_capture(bytes: &[u8]) -> Option<(&'static str, usize, bool)> {
@@ -583,6 +757,44 @@ fn github_actions_operator_capture(bytes: &[u8]) -> Option<(&'static str, usize,
         (':', _) => Some(("punctuation.special", 1, false)),
         _ => None,
     }
+}
+
+fn collect_github_actions_runner_value_spans(
+    node: Node,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    if let Some((text, range)) = yaml_scalar_with_range(node, source) {
+        if is_github_actions_runner_label(text) {
+            push_capture(spans, range, "type");
+        }
+        return;
+    }
+
+    let mut cursor = node.walk();
+    for child in node.named_children(&mut cursor) {
+        collect_github_actions_runner_value_spans(child, source, spans);
+    }
+}
+
+fn yaml_enclosing_pair_keys<'a>(node: Node<'a>, source: &'a str) -> Vec<&'a str> {
+    let mut cursor = node.parent();
+    let mut keys = Vec::new();
+
+    while let Some(parent) = cursor {
+        if parent.kind() == "block_mapping_pair" {
+            let Some(key) = parent.child_by_field_name("key") else {
+                cursor = parent.parent();
+                continue;
+            };
+            if let Some(key_text) = yaml_scalar_text(key, source) {
+                keys.push(key_text);
+            }
+        }
+        cursor = parent.parent();
+    }
+
+    keys
 }
 
 fn is_identifier_start(ch: char) -> bool {
@@ -618,6 +830,22 @@ fn yaml_scalar_with_range<'a>(node: Node, source: &'a str) -> Option<(&'a str, R
                 .find_map(|child| yaml_scalar_with_range(child, source))
         }
     }
+}
+
+fn yaml_scalar_head_token_range(node: Node, source: &str) -> Option<Range<usize>> {
+    let (_, range) = yaml_scalar_with_range(node, source)?;
+    let raw = &source[range.clone()];
+    let start_offset = raw
+        .char_indices()
+        .find(|(_, ch)| !ch.is_whitespace() && !matches!(ch, '"' | '\''))
+        .map(|(index, _)| index)?;
+    let token = &raw[start_offset..];
+    let end_offset = token
+        .char_indices()
+        .find(|(_, ch)| ch.is_whitespace() || matches!(ch, '"' | '\''))
+        .map(|(index, _)| index)
+        .unwrap_or(token.len());
+    Some(range.start + start_offset..range.start + start_offset + end_offset)
 }
 
 impl ShellLanguage {
@@ -705,6 +933,65 @@ fn collect_zsh_node_spans(node: Node<'_>, source: &str, spans: &mut Vec<Semantic
         "subscript" => collect_zsh_subscript_spans(node, spans),
         "expansion_modifier" | "zsh_array_subscript_flags" | "expansion_flags" => {
             push_capture(spans, node.byte_range(), "keyword.directive")
+        }
+        _ => {}
+    }
+}
+
+fn collect_powershell_node_spans(
+    node: Node<'_>,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    match node.kind() {
+        "command" => {
+            let Some(name_node) = node.child_by_field_name("command_name") else {
+                return;
+            };
+            let Some(name_text) = node_text(name_node, source) else {
+                return;
+            };
+            if is_powershell_builtin_command(name_text) {
+                push_capture(spans, name_node.byte_range(), "function.builtin");
+            }
+        }
+        "function_name" => push_capture(spans, node.byte_range(), "function.definition"),
+        "variable" => {
+            if let Some(name_text) = node_text(node, source) {
+                if is_powershell_special_variable(name_text) {
+                    push_capture(spans, node.byte_range(), "variable.special");
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_batch_node_spans(node: Node<'_>, source: &str, spans: &mut Vec<SemanticCaptureSpan>) {
+    match node.kind() {
+        "cmd" => {
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "command_name" {
+                    if let Some(name_text) = node_text(child, source) {
+                        if is_batch_builtin_command(name_text) {
+                            push_capture(spans, child.byte_range(), "function.builtin");
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        "label" => push_capture(spans, node.byte_range(), "function.special.definition"),
+        "call_stmt" => {
+            if let Some(range) = find_text_range_in_node(node, source, ":") {
+                push_capture(spans, range, "function");
+            }
+        }
+        "goto_stmt" => {
+            if let Some(range) = find_text_range_in_node(node, source, ":eof") {
+                push_capture(spans, range, "keyword.directive");
+            }
         }
         _ => {}
     }
@@ -1256,6 +1543,58 @@ fn looks_like_identifierish(text: &str) -> bool {
         && text
             .chars()
             .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | ':' | '-'))
+}
+
+fn is_powershell_builtin_command(name: &str) -> bool {
+    matches!(
+        name,
+        "Write-Host"
+            | "Write-Output"
+            | "Write-Error"
+            | "Write-Warning"
+            | "Get-Item"
+            | "Get-ChildItem"
+            | "Set-Item"
+            | "Remove-Item"
+            | "Test-Path"
+            | "Join-Path"
+            | "New-Item"
+            | "Invoke-WebRequest"
+            | "Invoke-RestMethod"
+            | "Select-Object"
+            | "Where-Object"
+            | "ForEach-Object"
+            | "Set-StrictMode"
+    )
+}
+
+fn is_powershell_special_variable(name: &str) -> bool {
+    name.starts_with("$env:")
+        || matches!(
+            name,
+            "$PSVersionTable"
+                | "$Error"
+                | "$HOME"
+                | "$PWD"
+                | "$PID"
+                | "$LASTEXITCODE"
+                | "$?"
+                | "$_"
+        )
+}
+
+fn is_batch_builtin_command(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "echo" | "set" | "call" | "goto" | "shift" | "start" | "copy" | "move" | "del" | "dir"
+    )
+}
+
+fn find_text_range_in_node(node: Node<'_>, source: &str, needle: &str) -> Option<Range<usize>> {
+    let range = node.byte_range();
+    let text = source.get(range.clone())?;
+    let offset = text.find(needle)?;
+    Some(range.start + offset..range.start + offset + needle.len())
 }
 
 fn is_fish_special_variable_name(name: &str) -> bool {

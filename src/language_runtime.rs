@@ -33,6 +33,9 @@ const BASH_INJECTIONS_QUERY: &str = include_str!("../grammars/bash/queries/injec
 const FISH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fish/queries/highlights.scm");
 const ZSH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/zsh/queries/highlights.scm");
 const ZSH_INJECTIONS_QUERY: &str = include_str!("../grammars/zsh/queries/injections.scm");
+const POWERSHELL_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/powershell/queries/highlights.scm");
+const BATCH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/batch/queries/highlights.scm");
 const TOML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/toml/queries/highlights.scm");
 const YAML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/yaml/queries/highlights.scm");
 const YAML_INJECTIONS_QUERY: &str = include_str!("../grammars/yaml/queries/injections.scm");
@@ -104,6 +107,8 @@ unsafe extern "C" {
     fn tree_sitter_bash() -> *const ();
     fn tree_sitter_fish() -> *const ();
     fn tree_sitter_zsh() -> *const ();
+    fn tree_sitter_powershell() -> *const ();
+    fn tree_sitter_batch() -> *const ();
     fn tree_sitter_toml() -> *const ();
     fn tree_sitter_yaml() -> *const ();
     fn tree_sitter_hcl() -> *const ();
@@ -134,6 +139,8 @@ const DOCKERFILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitte
 const BASH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_bash) };
 const FISH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_fish) };
 const ZSH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_zsh) };
+const POWERSHELL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_powershell) };
+const BATCH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_batch) };
 const TOML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_toml) };
 const YAML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_yaml) };
 const HCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_hcl) };
@@ -219,6 +226,20 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: ZSH_LANGUAGE,
         highlights_query: ZSH_HIGHLIGHTS_QUERY,
         injections_query: ZSH_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "powershell",
+        language_fn: POWERSHELL_LANGUAGE,
+        highlights_query: POWERSHELL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "batch",
+        language_fn: BATCH_LANGUAGE,
+        highlights_query: BATCH_HIGHLIGHTS_QUERY,
+        injections_query: "",
         locals_query: "",
     },
     StaticLanguageAsset {

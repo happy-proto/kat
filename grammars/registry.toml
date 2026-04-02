@@ -149,6 +149,49 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "powershell"
+library_name = "tree-sitter-powershell"
+extensions = ["ps1", "psm1", "psd1"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = ["powershell", "pwsh"]
+extra_c_flags = ["-Wno-unused-parameter"]
+highlight_names = [
+  "comment",
+  "function",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "batch"
+library_name = "tree-sitter-batch"
+extensions = ["bat", "cmd"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "function",
+  "keyword",
+  "label",
+  "number",
+  "operator",
+  "string",
+  "string.special",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
 name = "toml"
 library_name = "tree-sitter-toml"
 extensions = ["toml"]

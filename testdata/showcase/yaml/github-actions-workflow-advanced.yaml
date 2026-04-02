@@ -1,0 +1,39 @@
+name: Advanced CI
+
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker://ghcr.io/catthehacker/ubuntu:act-latest
+      - uses: actions/setup-node/bin@v6
+      - name: Default Shell Step
+        run: |
+          set -euo pipefail
+          echo "Target ${{ matrix.target }}"
+      - name: Python Template Step
+        shell: python {0}
+        run: |
+          print("${{ github.ref_name }}")
+      - name: PowerShell Step
+        shell: pwsh
+        run: |
+          function Invoke-Preview { Write-Host "Ref $env:GITHUB_REF" }
+          Invoke-Preview
+      - name: Cmd Step
+        shell: cmd
+        run: |
+          @echo off
+          set TARGET=kat
+          echo %TARGET%
+  self_hosted:
+    runs-on: [self-hosted, linux]
+    steps:
+      - run: echo ready

@@ -9,6 +9,9 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         .split(|ch: char| ch.is_whitespace() || matches!(ch, ',' | '{' | '}'))
         .next()
         .unwrap_or(trimmed)
+        .rsplit('/')
+        .next()
+        .unwrap_or(trimmed)
         .trim_matches(|ch| matches!(ch, '{' | '}' | '"' | '\''))
         .trim_end_matches(".exe");
 
@@ -19,6 +22,8 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
     Some(match head {
         "js" | "node" | "nodejs" | "bun" => "javascript",
         "golang" => "go",
+        "powershell" | "pwsh" => "powershell",
+        "cmd" | "bat" | "batch" => "batch",
         "sql:postgres" | "sql-postgres" | "sql_postgres" => "sql_postgres",
         "postgres" | "postgresql" | "pgsql" | "psql" => "sql_postgres",
         "sql:mysql" | "sql-mysql" | "sql_mysql" => "sql_mysql",

@@ -20,7 +20,7 @@ use crate::language_aliases::{normalize_language_name, shebang_interpreter_name}
 use crate::language_runtime::{global_highlight_name, runtime};
 use crate::semantic_overlays::{
     debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
-    semantic_capture_spans,
+    github_actions_expression_spans, semantic_capture_spans,
 };
 use crate::sql_dialect::resolve_sql_runtime;
 use crate::theme::{Theme, TokenStyle};
@@ -29,6 +29,7 @@ use crate::theme::{Theme, TokenStyle};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SupportedLanguage {
     Bash,
+    Batch,
     Css,
     Dockerfile,
     Fish,
@@ -45,6 +46,7 @@ enum SupportedLanguage {
     Json,
     Markdown,
     Proto,
+    Powershell,
     Python,
     Sql,
     Rust,
@@ -68,6 +70,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
     Some(match document_kind.runtime_name() {
         "json" => SupportedLanguage::Json,
         "bash" => SupportedLanguage::Bash,
+        "batch" => SupportedLanguage::Batch,
         "dockerfile" => SupportedLanguage::Dockerfile,
         "fish" => SupportedLanguage::Fish,
         "zsh" => SupportedLanguage::Zsh,
@@ -89,6 +92,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "javascript" => SupportedLanguage::JavaScript,
         "markdown" => SupportedLanguage::Markdown,
         "proto" => SupportedLanguage::Proto,
+        "powershell" => SupportedLanguage::Powershell,
         "just" => SupportedLanguage::Just,
         other => panic!("unsupported test language mapping for {other}"),
     })
@@ -113,6 +117,10 @@ pub fn highlight_bash(source: &str) -> Result<String> {
     highlight_named_language("bash", source, &Theme::detect())
 }
 
+pub fn highlight_batch(source: &str) -> Result<String> {
+    highlight_named_language("batch", source, &Theme::detect())
+}
+
 pub fn highlight_dockerfile(source: &str) -> Result<String> {
     highlight_named_language("dockerfile", source, &Theme::detect())
 }
@@ -127,6 +135,10 @@ pub fn highlight_fish(source: &str) -> Result<String> {
 
 pub fn highlight_zsh(source: &str) -> Result<String> {
     highlight_named_language("zsh", source, &Theme::detect())
+}
+
+pub fn highlight_powershell(source: &str) -> Result<String> {
+    highlight_named_language("powershell", source, &Theme::detect())
 }
 
 pub fn highlight_yaml(source: &str) -> Result<String> {
@@ -241,7 +253,9 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
         "ignore" => DocumentKind::plain("ignore"),
         "dockerfile" => DocumentKind::plain("dockerfile"),
         "bash" => DocumentKind::plain("bash"),
+        "batch" => DocumentKind::plain("batch"),
         "fish" => DocumentKind::plain("fish"),
+        "powershell" => DocumentKind::plain("powershell"),
         "zsh" => DocumentKind::plain("zsh"),
         "toml" => DocumentKind::plain("toml"),
         "yaml" => DocumentKind::plain("yaml"),
@@ -498,6 +512,16 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(DocumentKind::plain("zsh"));
     }
 
+    let powershell = grammar("powershell");
+    if matches_path(powershell, source_path) || matches_shebang(powershell, source) {
+        return Some(DocumentKind::plain("powershell"));
+    }
+
+    let batch = grammar("batch");
+    if matches_path(batch, source_path) {
+        return Some(DocumentKind::plain("batch"));
+    }
+
     let markdown = grammar("markdown");
     if matches_path(markdown, source_path) {
         return Some(DocumentKind::plain("markdown"));
@@ -715,10 +739,10 @@ fn render_injection_candidates(
         rendered.push(NestedRegion {
             source_ranges: candidate.ranges,
             overlays: map_virtual_spans_to_source(
-                &highlight_named_language_spans(
-                    plain_document_kind(normalized),
-                    None,
+                &render_virtual_injection_spans(
+                    normalized,
                     &virtual_source,
+                    candidate.highlight_github_expressions,
                     theme,
                 )?,
                 &source_map,
@@ -728,6 +752,43 @@ fn render_injection_candidates(
     }
 
     Ok(rendered)
+}
+
+fn render_virtual_injection_spans(
+    language_name: &str,
+    source: &str,
+    highlight_github_expressions: bool,
+    theme: &Theme,
+) -> Result<Vec<StyledSpan>> {
+    let mut spans =
+        highlight_named_language_spans(plain_document_kind(language_name), None, source, theme)?;
+
+    if highlight_github_expressions {
+        spans = overlay_github_actions_expression_styles(source, spans, theme);
+    }
+
+    Ok(spans)
+}
+
+fn overlay_github_actions_expression_styles(
+    source: &str,
+    parent_spans: Vec<StyledSpan>,
+    theme: &Theme,
+) -> Vec<StyledSpan> {
+    let overlays = github_actions_expression_spans(source)
+        .into_iter()
+        .filter_map(|span| {
+            let text = &source[span.range.clone()];
+            theme
+                .token_style_for(span.capture, text)
+                .map(|style| StyledSpan {
+                    range: span.range,
+                    style: Some(style),
+                })
+        })
+        .collect();
+
+    overlay_style_spans(parent_spans, overlays)
 }
 
 fn prune_to_top_level_injection_regions(
@@ -1973,6 +2034,21 @@ mod tests {
             ),
             Some(SupportedLanguage::Hcl)
         ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("scripts/profile.ps1")),
+                "Write-Host \"kat\"\n"
+            ),
+            Some(SupportedLanguage::Powershell)
+        ));
+        assert!(matches!(
+            detect_language(None, "#!/usr/bin/env pwsh\nWrite-Host \"kat\"\n"),
+            Some(SupportedLanguage::Powershell)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("scripts/build.cmd")), "@echo off\r\n"),
+            Some(SupportedLanguage::Batch)
+        ));
 
         let workflow_kind = detect_document_kind(
             Some(Path::new(".github/workflows/build.yml")),
@@ -2133,6 +2209,78 @@ mod tests {
         assert!(
             zsh_rendered.contains("\x1b[3m\x1b[38;2;80;250;123m(I)"),
             "expected zsh subscript flag styling"
+        );
+    }
+
+    #[test]
+    fn powershell_and_batch_highlight_shell_specific_constructs() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let powershell_path = fixture_path("powershell/rich.ps1");
+        let powershell_source = read_file(&powershell_path);
+        let powershell_rendered =
+            render_with_theme(Some(powershell_path.as_path()), &powershell_source, &theme)
+                .unwrap_or_else(|error| {
+                    panic!("failed to render {}: {error}", powershell_path.display())
+                });
+        assert!(
+            powershell_rendered.contains("\x1b[38;2;255;121;198mparam"),
+            "expected PowerShell param keyword styling"
+        );
+        assert!(
+            powershell_rendered.contains("\x1b[38;2;139;233;253mstring"),
+            "expected PowerShell type styling"
+        );
+        assert!(
+            powershell_rendered.contains("\x1b[38;2;139;233;253mWrite-Host"),
+            "expected PowerShell builtin command styling"
+        );
+        assert!(
+            powershell_rendered.contains("\x1b[3m\x1b[38;2;189;147;249m$env:GITHUB_REF"),
+            "expected PowerShell environment variables to receive special-variable styling"
+        );
+
+        let batch_path = fixture_path("batch/rich.cmd");
+        let batch_source = read_file(&batch_path);
+        let batch_rendered = render_with_theme(Some(batch_path.as_path()), &batch_source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", batch_path.display()));
+        assert!(
+            batch_rendered.contains("\x1b[38;2;255;121;198m@echo off"),
+            "expected batch echo-off keyword styling"
+        );
+        assert!(
+            batch_rendered.contains("\x1b[38;2;255;121;198mset"),
+            "expected batch set keyword styling"
+        );
+        assert!(
+            batch_rendered.contains("\x1b[38;2;139;233;253mecho"),
+            "expected batch builtin command styling"
+        );
+        assert!(
+            batch_rendered.contains("\x1b[38;2;80;250;123m:build"),
+            "expected batch labels to receive dedicated label styling"
+        );
+        assert!(
+            batch_rendered.contains("\x1b[3m\x1b[38;2;80;250;123m:eof"),
+            "expected batch :eof targets to receive directive styling"
+        );
+    }
+
+    #[test]
+    fn justfile_windows_shells_reuse_batch_and_powershell_runtimes() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("just/windows_shells.just");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[38;2;255;121;198m@echo off"),
+            "expected cmd-backed Justfile recipes to reuse batch highlighting"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253mWrite-Host"),
+            "expected pwsh shebang recipes to reuse PowerShell builtin highlighting"
         );
     }
 
@@ -4415,6 +4563,162 @@ mod tests {
         assert!(
             action_rendered.contains("\x1b[38;2;80;250;123mecho"),
             "expected composite action run step to reuse Bash runtime styling"
+        );
+        assert!(
+            action_rendered.contains("\x1b[3m\x1b[38;2;139;233;253mcomposite"),
+            "expected runs.using values to receive GitHub Actions schema-aware styling"
+        );
+    }
+
+    #[test]
+    fn github_actions_advanced_workflow_inherits_default_shell_and_highlights_nested_expressions() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let workflow_path = fixture_path("yaml/github-actions-workflow-advanced.yaml");
+        let workflow_source = read_file(&workflow_path);
+        let workflow_rendered = render_with_theme(
+            Some(Path::new(".github/workflows/build-matrix.yml")),
+            &workflow_source,
+            &theme,
+        )
+        .unwrap_or_else(|error| panic!("failed to render {}: {error}", workflow_path.display()));
+        let workflow_regions = collect_top_level_injection_regions(
+            yaml_document_kind(Some(Path::new(".github/workflows/build-matrix.yml"))),
+            &workflow_source,
+            &theme,
+        )
+        .expect("expected advanced GitHub Actions workflow injections to resolve");
+
+        assert!(
+            workflow_regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &workflow_source[span.range.clone()] == "set"
+                        && span.style == theme.token_style_for("function.builtin", "set")
+                })
+            }),
+            "expected defaults.run.shell to drive Bash highlighting for run blocks"
+        );
+        assert!(
+            workflow_regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &workflow_source[span.range.clone()] == "print"
+                        && span.style == theme.token_style_for("function.builtin", "print")
+                })
+            }),
+            "expected shell templates like python {{0}} to resolve to the Python runtime"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;255;121;198m&&"),
+            "expected bare if expressions to reuse GitHub Actions operator styling"
+        );
+        assert!(
+            workflow_regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &workflow_source[span.range.clone()] == "${{"
+                        && span.style == theme.token_style_for("punctuation.special", "${{")
+                })
+            }),
+            "expected GitHub Actions expressions inside run blocks to keep workflow punctuation styling"
+        );
+        assert!(
+            workflow_regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &workflow_source[span.range.clone()] == "target"
+                        && span.style == theme.token_style_for("property", "target")
+                })
+            }),
+            "expected nested run-block expressions to highlight GitHub Actions property segments"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;255;121;198mdocker://"),
+            "expected docker uses refs to highlight the docker:// prefix"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;80;250;123msetup-node"),
+            "expected uses refs with subpaths to keep repository highlighting"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;241;250;140mbin"),
+            "expected uses refs with subpaths to highlight the nested action path"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;139;233;253mWrite-Host"),
+            "expected pwsh run blocks to reuse PowerShell builtin highlighting"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;255;121;198m@echo off"),
+            "expected cmd run blocks to reuse batch highlighting"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[3m\x1b[38;2;139;233;253mpwsh"),
+            "expected shell values to receive schema-aware runtime styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[3m\x1b[38;2;139;233;253mcmd"),
+            "expected cmd shell values to receive schema-aware runtime styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;139;233;253mubuntu-latest"),
+            "expected runs-on labels to receive GitHub Actions runner styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;139;233;253mself-hosted"),
+            "expected runs-on array labels to receive GitHub Actions runner styling"
+        );
+    }
+
+    #[test]
+    fn repository_build_matrix_workflow_keeps_github_actions_shell_and_expression_highlighting() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let workflow_path = Path::new(".github/workflows/build-matrix.yml");
+        let workflow_source = read_file(workflow_path);
+        let workflow_rendered = render_with_theme(Some(workflow_path), &workflow_source, &theme)
+            .unwrap_or_else(|error| {
+                panic!("failed to render {}: {error}", workflow_path.display())
+            });
+        let workflow_regions = collect_top_level_injection_regions(
+            yaml_document_kind(Some(workflow_path)),
+            &workflow_source,
+            &theme,
+        )
+        .expect("expected repository build-matrix workflow injections to resolve");
+
+        assert!(
+            workflow_regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &workflow_source[span.range.clone()] == "set"
+                        && span.style == theme.token_style_for("function.builtin", "set")
+                })
+            }),
+            "expected build-matrix workflow run blocks to reuse Bash highlighting"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;255;121;198m||"),
+            "expected build-matrix expressions to reuse GitHub Actions operator styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[3m\x1b[38;2;139;233;253mread"),
+            "expected permissions values to receive schema-aware styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[3m\x1b[38;2;139;233;253mpnpm"),
+            "expected with.cache values to receive schema-aware styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[3m\x1b[38;2;139;233;253merror"),
+            "expected with.if-no-files-found values to receive schema-aware styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;139;233;253mubuntu-latest"),
+            "expected matrix runner labels to receive GitHub Actions runner styling"
+        );
+        assert!(
+            workflow_regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &workflow_source[span.range.clone()] == "${{"
+                        && span.style == theme.token_style_for("punctuation.special", "${{")
+                })
+            }),
+            "expected build-matrix run blocks to keep GitHub Actions expression punctuation"
         );
     }
 
