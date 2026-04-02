@@ -64,6 +64,13 @@ jobs:
           key: ${{ matrix.target }}
           cache-targets: false
 
+      - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .build-cache/tree-sitter-cache
+          key: ${{ format('tree-sitter-build-cache-{0}-{1}-{2}', runner.os, matrix.target, hashFiles('build.rs', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'grammars/**')) }}
+
       - name: Make linker wrapper executable
         run: chmod +x .github/scripts/rust-link-wrapper.sh
 
@@ -73,6 +80,8 @@ jobs:
           TARGET: ${{ matrix.target }}
           KAT_REAL_LINKER: ${{ matrix.linker }}
           KAT_LINK_LOG: ${{ runner.temp }}/rust-link-timings.tsv
+          KAT_BUILD_PROFILE: "1"
+          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/tree-sitter-build-profile.log
           RUSTFLAGS: >-
             -Clinker=${{ github.workspace }}/.github/scripts/rust-link-wrapper.sh
         run: |
@@ -87,6 +96,7 @@ jobs:
           build_start=$(date +%s)
           "${SCCACHE_PATH}" --zero-stats
           : > "${KAT_LINK_LOG}"
+          : > "${KAT_BUILD_PROFILE_LOG}"
           cargo build --timings --release --locked --target "${TARGET}"
           build_end=$(date +%s)
 
@@ -121,7 +131,15 @@ jobs:
             echo "LONGEST_LINK_STATUS=${longest_link_status}"
             echo "LONGEST_LINK_OUTPUT=${longest_link_output}"
             echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
+            echo "TREE_SITTER_BUILD_PROFILE_PATH=${KAT_BUILD_PROFILE_LOG}"
           } >> "${GITHUB_ENV}"
+
+      - name: Save tree-sitter build cache
+        if: always() && steps.tree-sitter-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .build-cache/tree-sitter-cache
+          key: ${{ steps.tree-sitter-cache.outputs.cache-primary-key }}
 
       - name: Publish job summary
         shell: bash
@@ -142,6 +160,7 @@ jobs:
             echo "- Longest linker status: \`${LONGEST_LINK_STATUS}\`"
             echo "- Longest linker output: \`${LONGEST_LINK_OUTPUT}\`"
             echo "- Cargo timings: \`target/cargo-timings/cargo-timing.html\`"
+            echo "- Tree-sitter build profile: \`${TREE_SITTER_BUILD_PROFILE_PATH}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload release artifact
@@ -158,4 +177,5 @@ jobs:
           path: |
             target/cargo-timings/
             ${{ env.LINK_LOG_PATH }}
+            ${{ env.TREE_SITTER_BUILD_PROFILE_PATH }}
           if-no-files-found: error
