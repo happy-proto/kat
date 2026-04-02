@@ -27,7 +27,8 @@
 - `build.rs` 在构建期通过 `tree-sitter-generate` 生成 parser C 源码。
 - 生成出来的 `parser.c` 与 vendored `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
 - 仓库本地 JavaScript 构建依赖统一在根目录管理，构建前先执行 `pnpm install`。
-- Tree-sitter 中间产物缓存到仓库级 `target/tree-sitter-cache/`，以便在不同 Cargo 命令之间复用。
+- Tree-sitter 中间产物缓存到仓库级 `.build-cache/tree-sitter-cache/`，与 Cargo 的 `target/` 产物目录解耦，以便在不同 Cargo 命令之间复用。
+- CI 的编译缓存统一通过 `sccache` 管理；Cargo registry 和编译结果缓存分层处理，不再把 `target/` 作为跨 job 主缓存对象。
 
 ### 运行时模型
 

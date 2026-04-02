@@ -19,6 +19,7 @@ use walkdir::WalkDir;
 
 const PARSER_OPT_LEVEL_NAME: &str = "default";
 const TREE_SITTER_CACHE_VERSION: &str = "v1";
+const TREE_SITTER_CACHE_ROOT_DIR: &str = ".build-cache";
 
 #[derive(Debug, Deserialize)]
 struct GrammarRegistry {
@@ -62,7 +63,7 @@ fn main() {
     let package_json_path = manifest_dir.join("package.json");
     let pnpm_lock_path = manifest_dir.join("pnpm-lock.yaml");
     let shared_cache_root = manifest_dir
-        .join("target")
+        .join(TREE_SITTER_CACHE_ROOT_DIR)
         .join("tree-sitter-cache")
         .join(TREE_SITTER_CACHE_VERSION);
     let profiler = BuildProfiler::from_env();
@@ -315,7 +316,9 @@ impl BuildProfiler {
         let log_path = enabled.then(|| {
             env::var("KAT_BUILD_PROFILE_LOG")
                 .map(PathBuf::from)
-                .unwrap_or_else(|_| PathBuf::from("target/tree-sitter-build-profile.log"))
+                .unwrap_or_else(|_| {
+                    PathBuf::from(TREE_SITTER_CACHE_ROOT_DIR).join("tree-sitter-build-profile.log")
+                })
         });
 
         Self { enabled, log_path }
