@@ -49,7 +49,7 @@ jobs:
           cache: pnpm
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: ./.github/actions/sccache
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -94,52 +94,6 @@ jobs:
             echo "ARTIFACT_SIZE=${artifact_size}"
           } >> "${GITHUB_ENV}"
 
-      - name: Collect sccache stats
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          stats_path="${RUNNER_TEMP}/sccache-stats.txt"
-          stats_json_path="${RUNNER_TEMP}/sccache-stats.json"
-          "${SCCACHE_PATH}" --show-stats | tee "${stats_path}"
-          "${SCCACHE_PATH}" --show-stats --stats-format=json > "${stats_json_path}"
-
-          requests_executed=$(jq -r '.stats.requests_executed' "${stats_json_path}")
-          cache_hits=$(jq -r '(.stats.cache_hits.counts | to_entries | map(.value) | add) // 0' "${stats_json_path}")
-          cache_misses=$(jq -r '(.stats.cache_misses.counts | to_entries | map(.value) | add) // 0' "${stats_json_path}")
-          non_cacheable=$(jq -r '.stats.non_cacheable_compilations' "${stats_json_path}")
-          cache_timeouts=$(jq -r '.stats.cache_timeouts' "${stats_json_path}")
-
-          if (( requests_executed > 0 )); then
-            hit_rate=$(awk -v hits="${cache_hits}" -v requests="${requests_executed}" 'BEGIN { printf "%.2f %%", (hits / requests) * 100 }')
-          else
-            hit_rate="0.00 %"
-          fi
-
-          sccache_status="Warm cache activity detected."
-          if [[ "${requests_executed}" == "0" ]]; then
-            sccache_status="No compile requests reached sccache; verify wrapper configuration."
-          elif [[ "${cache_hits}" == "0" && "${cache_misses}" != "0" ]]; then
-            sccache_status="Cold cache run; requests reached sccache, but no hits were restored."
-          elif [[ "${cache_hits}" == "0" && "${cache_misses}" == "0" ]]; then
-            sccache_status="No cacheable compilations were reported; verify workload shape and compiler wrapping."
-          elif [[ "${cache_timeouts}" != "0" && "${cache_timeouts}" != "unknown" ]]; then
-            sccache_status="Cache activity detected, but timeouts occurred; inspect backend latency."
-          fi
-
-          {
-            echo "SCCACHE_REQUESTS=${requests_executed}"
-            echo "SCCACHE_HITS=${cache_hits}"
-            echo "SCCACHE_MISSES=${cache_misses}"
-            echo "SCCACHE_HIT_RATE=${hit_rate}"
-            echo "SCCACHE_NON_CACHEABLE=${non_cacheable}"
-            echo "SCCACHE_TIMEOUTS=${cache_timeouts}"
-            echo "SCCACHE_STATUS=${sccache_status}"
-            echo 'SCCACHE_STATS<<EOF'
-            cat "${stats_path}"
-            echo 'EOF'
-          } >> "${GITHUB_ENV}"
-
       - name: Publish job summary
         shell: bash
         run: |
@@ -153,24 +107,6 @@ jobs:
             echo "- Total: \`${TOTAL_SECONDS}s\`"
             echo "- Binary: \`${ARTIFACT_PATH}\`"
             echo "- Size: \`${ARTIFACT_SIZE} bytes\`"
-            echo
-            echo "### sccache"
-            echo
-            echo "- Status: ${SCCACHE_STATUS}"
-            echo "- Compile requests: \`${SCCACHE_REQUESTS}\`"
-            echo "- Cache hits: \`${SCCACHE_HITS}\`"
-            echo "- Cache misses: \`${SCCACHE_MISSES}\`"
-            echo "- Hit rate: \`${SCCACHE_HIT_RATE}\`"
-            echo "- Non-cacheable compilations: \`${SCCACHE_NON_CACHEABLE}\`"
-            echo "- Cache timeouts: \`${SCCACHE_TIMEOUTS}\`"
-            echo
-            echo "<details><summary>Raw stats</summary>"
-            echo
-            echo '```text'
-            printf '%s\n' "${SCCACHE_STATS}"
-            echo '```'
-            echo
-            echo "</details>"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload release artifact

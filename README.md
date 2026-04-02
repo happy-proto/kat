@@ -24,3 +24,4 @@
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
 - Tree-sitter 构建中间产物会缓存到仓库级 `.build-cache/tree-sitter-cache/`；CI 编译缓存统一使用 `sccache`
+- 仓库内可复用的 GitHub Actions 默认放在 `.github/actions/`；当前 `sccache` 初始化使用仓库内 action，而不是外部 marketplace action

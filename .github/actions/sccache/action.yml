@@ -1,0 +1,22 @@
+name: "Sccache Setup"
+description: "Set up sccache with GitHub Actions cache integration"
+author: "happy-proto"
+inputs:
+  version:
+    description: "The sccache version to install. If empty, the latest GitHub release is used."
+    required: false
+  token:
+    description: "GitHub token used when querying the latest sccache release."
+    required: false
+    default: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+  disable_annotations:
+    description: "Disable annotation generation in post-run."
+    required: false
+    default: "false"
+runs:
+  using: "node24"
+  main: "setup.cjs"
+  post: "post.cjs"
+branding:
+  icon: "star"
+  color: "orange"
