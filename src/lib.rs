@@ -1,4 +1,7 @@
+mod document_kind;
 mod grammar_registry;
+mod host_injections;
+mod language_aliases;
 mod language_runtime;
 mod semantic_overlays;
 mod sql_dialect;
@@ -7,19 +10,23 @@ mod theme;
 use std::{ops::Range, path::Path};
 
 use anyhow::{Context, Result};
-use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
+use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
+use crate::document_kind::{DocumentKind, yaml_document_kind};
 use crate::grammar_registry::grammar;
+use crate::host_injections::{InjectionCandidate, InjectionDecode, collect_injection_candidates};
+use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
 use crate::semantic_overlays::{
-    debug_named_language_tree as debug_language_tree_impl,
-    debug_semantics as debug_semantics_impl,
+    debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
     semantic_capture_spans,
 };
 use crate::sql_dialect::resolve_sql_runtime;
 use crate::theme::{Theme, TokenStyle};
 
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SupportedLanguage {
     Bash,
     Css,
@@ -37,9 +44,11 @@ enum SupportedLanguage {
     Just,
     Json,
     Markdown,
+    Proto,
     Python,
     Sql,
     Rust,
+    Textproto,
     Toml,
     Yaml,
     Zsh,
@@ -50,39 +59,44 @@ pub fn render(source_path: Option<&Path>, source: &str) -> Result<String> {
 }
 
 pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
-    detect_language(source_path, source).map(supported_language_name)
+    detect_document_kind(source_path, source).map(DocumentKind::runtime_name)
+}
+
+#[cfg(test)]
+fn detect_language(source_path: Option<&Path>, source: &str) -> Option<SupportedLanguage> {
+    let document_kind = detect_document_kind(source_path, source)?;
+    Some(match document_kind.runtime_name() {
+        "json" => SupportedLanguage::Json,
+        "bash" => SupportedLanguage::Bash,
+        "dockerfile" => SupportedLanguage::Dockerfile,
+        "fish" => SupportedLanguage::Fish,
+        "zsh" => SupportedLanguage::Zsh,
+        "toml" => SupportedLanguage::Toml,
+        "yaml" => SupportedLanguage::Yaml,
+        "hcl" => SupportedLanguage::Hcl,
+        "rust" => SupportedLanguage::Rust,
+        "python" => SupportedLanguage::Python,
+        "go" => SupportedLanguage::Go,
+        "gomod" => SupportedLanguage::GoMod,
+        "gowork" => SupportedLanguage::GoWork,
+        "gosum" => SupportedLanguage::GoSum,
+        "graphql" => SupportedLanguage::Graphql,
+        "sql" => SupportedLanguage::Sql,
+        "textproto" => SupportedLanguage::Textproto,
+        "html" => SupportedLanguage::Html,
+        "ignore" => SupportedLanguage::Ignore,
+        "css" => SupportedLanguage::Css,
+        "javascript" => SupportedLanguage::JavaScript,
+        "markdown" => SupportedLanguage::Markdown,
+        "proto" => SupportedLanguage::Proto,
+        "just" => SupportedLanguage::Just,
+        other => panic!("unsupported test language mapping for {other}"),
+    })
 }
 
 fn render_with_theme(source_path: Option<&Path>, source: &str, theme: &Theme) -> Result<String> {
-    match detect_language(source_path, source) {
-        Some(SupportedLanguage::Json) => highlight_named_language("json", source, theme),
-        Some(SupportedLanguage::Bash) => highlight_named_language("bash", source, theme),
-        Some(SupportedLanguage::Dockerfile) => {
-            highlight_named_language("dockerfile", source, theme)
-        }
-        Some(SupportedLanguage::Fish) => highlight_named_language("fish", source, theme),
-        Some(SupportedLanguage::Zsh) => highlight_named_language("zsh", source, theme),
-        Some(SupportedLanguage::Toml) => highlight_named_language("toml", source, theme),
-        Some(SupportedLanguage::Yaml) => highlight_named_language("yaml", source, theme),
-        Some(SupportedLanguage::Hcl) => highlight_named_language("hcl", source, theme),
-        Some(SupportedLanguage::Rust) => highlight_named_language("rust", source, theme),
-        Some(SupportedLanguage::Python) => highlight_named_language("python", source, theme),
-        Some(SupportedLanguage::Go) => highlight_named_language("go", source, theme),
-        Some(SupportedLanguage::GoMod) => highlight_named_language("gomod", source, theme),
-        Some(SupportedLanguage::GoWork) => highlight_named_language("gowork", source, theme),
-        Some(SupportedLanguage::GoSum) => highlight_named_language("gosum", source, theme),
-        Some(SupportedLanguage::Graphql) => highlight_named_language("graphql", source, theme),
-        Some(SupportedLanguage::Sql) => {
-            highlight_named_language_with_path("sql", source_path, source, theme)
-        }
-        Some(SupportedLanguage::Html) => highlight_named_language("html", source, theme),
-        Some(SupportedLanguage::Ignore) => highlight_named_language("ignore", source, theme),
-        Some(SupportedLanguage::Css) => highlight_named_language("css", source, theme),
-        Some(SupportedLanguage::JavaScript) => {
-            highlight_named_language("javascript", source, theme)
-        }
-        Some(SupportedLanguage::Markdown) => highlight_named_language("markdown", source, theme),
-        Some(SupportedLanguage::Just) => highlight_named_language("just", source, theme),
+    match detect_document_kind(source_path, source) {
+        Some(document_kind) => highlight_document(document_kind, source_path, source, theme),
         None => Ok(source.to_owned()),
     }
 }
@@ -167,6 +181,14 @@ pub fn highlight_graphql(source: &str) -> Result<String> {
     highlight_named_language("graphql", source, &Theme::detect())
 }
 
+pub fn highlight_proto(source: &str) -> Result<String> {
+    highlight_named_language("proto", source, &Theme::detect())
+}
+
+pub fn highlight_textproto(source: &str) -> Result<String> {
+    highlight_named_language("textproto", source, &Theme::detect())
+}
+
 pub fn highlight_javascript(source: &str) -> Result<String> {
     highlight_named_language("javascript", source, &Theme::detect())
 }
@@ -187,57 +209,95 @@ pub fn debug_shell_semantics(language_name: &str, source: &str) -> Result<String
     debug_semantics(language_name, source)
 }
 
-fn supported_language_name(language: SupportedLanguage) -> &'static str {
-    match language {
-        SupportedLanguage::Bash => "bash",
-        SupportedLanguage::Css => "css",
-        SupportedLanguage::Dockerfile => "dockerfile",
-        SupportedLanguage::Fish => "fish",
-        SupportedLanguage::Go => "go",
-        SupportedLanguage::GoMod => "gomod",
-        SupportedLanguage::GoSum => "gosum",
-        SupportedLanguage::GoWork => "gowork",
-        SupportedLanguage::Graphql => "graphql",
-        SupportedLanguage::Hcl => "hcl",
-        SupportedLanguage::Html => "html",
-        SupportedLanguage::Ignore => "ignore",
-        SupportedLanguage::JavaScript => "javascript",
-        SupportedLanguage::Just => "just",
-        SupportedLanguage::Json => "json",
-        SupportedLanguage::Markdown => "markdown",
-        SupportedLanguage::Python => "python",
-        SupportedLanguage::Sql => "sql",
-        SupportedLanguage::Rust => "rust",
-        SupportedLanguage::Toml => "toml",
-        SupportedLanguage::Yaml => "yaml",
-        SupportedLanguage::Zsh => "zsh",
-    }
-}
-
-fn highlight_named_language(language_name: &str, source: &str, theme: &Theme) -> Result<String> {
-    highlight_named_language_with_path(language_name, None, source, theme)
-}
-
-fn highlight_named_language_with_path(
-    language_name: &str,
+fn highlight_document(
+    document_kind: DocumentKind,
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
 ) -> Result<String> {
-    let spans = highlight_named_language_spans(language_name, source_path, source, theme)?;
+    if document_kind.runtime_name() == "sql" {
+        return highlight_named_language_with_path(document_kind, source_path, source, theme);
+    }
+
+    highlight_document_kind(document_kind, source_path, source, theme)
+}
+
+fn highlight_named_language(language_name: &str, source: &str, theme: &Theme) -> Result<String> {
+    highlight_document_kind(plain_document_kind(language_name), None, source, theme)
+}
+
+fn highlight_document_kind(
+    document_kind: DocumentKind,
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+) -> Result<String> {
+    highlight_named_language_with_path(document_kind, source_path, source, theme)
+}
+
+fn plain_document_kind(language_name: &str) -> DocumentKind {
+    match language_name {
+        "json" => DocumentKind::plain("json"),
+        "ignore" => DocumentKind::plain("ignore"),
+        "dockerfile" => DocumentKind::plain("dockerfile"),
+        "bash" => DocumentKind::plain("bash"),
+        "fish" => DocumentKind::plain("fish"),
+        "zsh" => DocumentKind::plain("zsh"),
+        "toml" => DocumentKind::plain("toml"),
+        "yaml" => DocumentKind::plain("yaml"),
+        "hcl" => DocumentKind::plain("hcl"),
+        "rust" => DocumentKind::plain("rust"),
+        "python" => DocumentKind::plain("python"),
+        "go" => DocumentKind::plain("go"),
+        "gomod" => DocumentKind::plain("gomod"),
+        "gowork" => DocumentKind::plain("gowork"),
+        "gosum" => DocumentKind::plain("gosum"),
+        "proto" => DocumentKind::plain("proto"),
+        "sql" => DocumentKind::plain("sql"),
+        "sql_postgres" => DocumentKind::plain("sql_postgres"),
+        "sql_mysql" => DocumentKind::plain("sql_mysql"),
+        "sql_sqlite" => DocumentKind::plain("sql_sqlite"),
+        "textproto" => DocumentKind::plain("textproto"),
+        "html" => DocumentKind::plain("html"),
+        "css" => DocumentKind::plain("css"),
+        "javascript" => DocumentKind::plain("javascript"),
+        "graphql" => DocumentKind::plain("graphql"),
+        "regex" => DocumentKind::plain("regex"),
+        "regex_javascript" => DocumentKind::plain("regex_javascript"),
+        "regex_python" => DocumentKind::plain("regex_python"),
+        "regex_rust" => DocumentKind::plain("regex_rust"),
+        "regex_go" => DocumentKind::plain("regex_go"),
+        "regex_posix" => DocumentKind::plain("regex_posix"),
+        "jsdoc" => DocumentKind::plain("jsdoc"),
+        "userscript_metadata" => DocumentKind::plain("userscript_metadata"),
+        "markdown" => DocumentKind::plain("markdown"),
+        "markdown_inline" => DocumentKind::plain("markdown_inline"),
+        "just" => DocumentKind::plain("just"),
+        other => panic!("unsupported runtime name {other}"),
+    }
+}
+
+fn highlight_named_language_with_path(
+    document_kind: DocumentKind,
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+) -> Result<String> {
+    let spans = highlight_named_language_spans(document_kind, source_path, source, theme)?;
     Ok(render_styled_spans(source, &spans, theme))
 }
 
 fn highlight_named_language_spans(
-    language_name: &str,
+    document_kind: DocumentKind,
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
 ) -> Result<Vec<StyledSpan>> {
-    let resolved_language_name =
-        resolve_highlight_language_name(language_name, source_path, source);
-    let language_runtime = runtime(resolved_language_name)
-        .with_context(|| format!("missing language runtime for {resolved_language_name}"))?;
+    let resolved_document_kind =
+        resolve_highlight_document_kind(document_kind, source_path, source);
+    let resolved_runtime_name = resolved_document_kind.runtime_name();
+    let language_runtime = runtime(resolved_runtime_name)
+        .with_context(|| format!("missing language runtime for {resolved_runtime_name}"))?;
     let mut highlighter = Highlighter::new();
     let events = highlighter
         .highlight(
@@ -249,9 +309,9 @@ fn highlight_named_language_spans(
         .context("failed to highlight source")?;
 
     let mut spans = collect_styled_spans(source, events, theme)?;
-    spans = overlay_semantic_captures(resolved_language_name, source, spans, theme)?;
+    spans = overlay_semantic_captures(resolved_document_kind, source, spans, theme)?;
     let nested_regions =
-        collect_top_level_injection_regions(resolved_language_name, source, theme)?;
+        collect_top_level_injection_regions(resolved_document_kind, source, theme)?;
 
     for region in nested_regions {
         spans = overlay_nested_region(spans, &region);
@@ -261,31 +321,35 @@ fn highlight_named_language_spans(
 }
 
 fn overlay_semantic_captures(
-    language_name: &str,
+    document_kind: DocumentKind,
     source: &str,
     parent_spans: Vec<StyledSpan>,
     theme: &Theme,
 ) -> Result<Vec<StyledSpan>> {
     let invalid_style = theme.token_style_for("invalid.illegal.regex", "");
-    let overlays = semantic_capture_spans(language_name, source)?
+    let overlays = semantic_capture_spans(document_kind, source)?
         .into_iter()
         .filter_map(|span| {
             let text = &source[span.range.clone()];
-            theme.token_style_for(span.capture, text).map(|overlay_style| {
-                let style = match (
-                    style_covering_span(&parent_spans, span.range.start, span.range.end),
-                    invalid_style,
-                ) {
-                    (Some(parent_style), Some(invalid_style)) if parent_style == invalid_style => {
-                        Some(parent_style.merge(overlay_style))
+            theme
+                .token_style_for(span.capture, text)
+                .map(|overlay_style| {
+                    let style = match (
+                        style_covering_span(&parent_spans, span.range.start, span.range.end),
+                        invalid_style,
+                    ) {
+                        (Some(parent_style), Some(invalid_style))
+                            if parent_style == invalid_style =>
+                        {
+                            Some(parent_style.merge(overlay_style))
+                        }
+                        _ => Some(overlay_style),
+                    };
+                    StyledSpan {
+                        range: span.range,
+                        style,
                     }
-                    _ => Some(overlay_style),
-                };
-                StyledSpan {
-                    range: span.range,
-                    style,
-                }
-            })
+                })
         })
         .collect::<Vec<_>>();
 
@@ -335,20 +399,20 @@ fn collect_styled_spans<'a>(
     Ok(spans)
 }
 
-fn detect_language(source_path: Option<&Path>, source: &str) -> Option<SupportedLanguage> {
+fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<DocumentKind> {
     let just = grammar("just");
     if matches_path(just, source_path) {
-        return Some(SupportedLanguage::Just);
+        return Some(DocumentKind::plain("just"));
     }
 
     let toml = grammar("toml");
     if matches_path(toml, source_path) {
-        return Some(SupportedLanguage::Toml);
+        return Some(DocumentKind::plain("toml"));
     }
 
     let yaml = grammar("yaml");
     if matches_path(yaml, source_path) {
-        return Some(SupportedLanguage::Yaml);
+        return Some(yaml_document_kind(source_path));
     }
 
     // TODO: Keep HCL as one generic runtime for now. If Terraform/tfvars or
@@ -356,105 +420,115 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
     // detector/runtime-overlay layer instead of fragmenting the base grammar.
     let hcl = grammar("hcl");
     if matches_path(hcl, source_path) {
-        return Some(SupportedLanguage::Hcl);
+        return Some(DocumentKind::plain("hcl"));
     }
 
     let rust = grammar("rust");
     if matches_path(rust, source_path) {
-        return Some(SupportedLanguage::Rust);
+        return Some(DocumentKind::plain("rust"));
     }
 
     let python = grammar("python");
     if matches_path(python, source_path) {
-        return Some(SupportedLanguage::Python);
+        return Some(DocumentKind::plain("python"));
     }
 
     let go = grammar("go");
     if matches_path(go, source_path) {
-        return Some(SupportedLanguage::Go);
+        return Some(DocumentKind::plain("go"));
     }
 
     let gomod = grammar("gomod");
     if matches_path(gomod, source_path) {
-        return Some(SupportedLanguage::GoMod);
+        return Some(DocumentKind::plain("gomod"));
     }
 
     let gowork = grammar("gowork");
     if matches_path(gowork, source_path) {
-        return Some(SupportedLanguage::GoWork);
+        return Some(DocumentKind::plain("gowork"));
     }
 
     let gosum = grammar("gosum");
     if matches_path(gosum, source_path) {
-        return Some(SupportedLanguage::GoSum);
+        return Some(DocumentKind::plain("gosum"));
     }
 
     let sql = grammar("sql");
     if matches_path(sql, source_path) {
-        return Some(SupportedLanguage::Sql);
+        return Some(DocumentKind::plain("sql"));
     }
 
     let html = grammar("html");
     if matches_path(html, source_path) {
-        return Some(SupportedLanguage::Html);
+        return Some(DocumentKind::plain("html"));
     }
 
     let css = grammar("css");
     if matches_path(css, source_path) {
-        return Some(SupportedLanguage::Css);
+        return Some(DocumentKind::plain("css"));
     }
 
     let graphql = grammar("graphql");
     if matches_path(graphql, source_path) {
-        return Some(SupportedLanguage::Graphql);
+        return Some(DocumentKind::plain("graphql"));
+    }
+
+    let proto = grammar("proto");
+    if matches_path(proto, source_path) {
+        return Some(DocumentKind::plain("proto"));
+    }
+
+    let textproto = grammar("textproto");
+    if matches_path(textproto, source_path) {
+        return Some(DocumentKind::plain("textproto"));
     }
 
     let javascript = grammar("javascript");
     if matches_path(javascript, source_path) || matches_shebang(javascript, source) {
-        return Some(SupportedLanguage::JavaScript);
+        return Some(DocumentKind::plain("javascript"));
     }
 
     let fish = grammar("fish");
     if matches_path(fish, source_path) || matches_shebang(fish, source) {
-        return Some(SupportedLanguage::Fish);
+        return Some(DocumentKind::plain("fish"));
     }
 
     let zsh = grammar("zsh");
     if matches_path(zsh, source_path) || matches_shebang(zsh, source) {
-        return Some(SupportedLanguage::Zsh);
+        return Some(DocumentKind::plain("zsh"));
     }
 
     let markdown = grammar("markdown");
     if matches_path(markdown, source_path) {
-        return Some(SupportedLanguage::Markdown);
+        return Some(DocumentKind::plain("markdown"));
     }
 
     let json = grammar("json");
     if matches_path(json, source_path) || looks_like_json(source) {
-        return Some(SupportedLanguage::Json);
+        return Some(DocumentKind::plain("json"));
     }
 
     let ignore = grammar("ignore");
     if matches_path(ignore, source_path) {
-        return Some(SupportedLanguage::Ignore);
+        return Some(DocumentKind::plain("ignore"));
     }
 
     let dockerfile = grammar("dockerfile");
     if matches_path(dockerfile, source_path) {
-        return Some(SupportedLanguage::Dockerfile);
+        return Some(DocumentKind::plain("dockerfile"));
     }
 
     if source_path.is_none() && looks_like_graphql(source) {
-        return Some(SupportedLanguage::Graphql);
+        return Some(DocumentKind::plain("graphql"));
     }
 
     if source_path.is_none() && looks_like_sql(source) {
-        return Some(SupportedLanguage::Sql);
+        return Some(DocumentKind::plain("sql"));
     }
 
     let bash = grammar("bash");
     if matches_path(bash, source_path) || matches_shebang(bash, source) {
-        return Some(SupportedLanguage::Bash);
+        return Some(DocumentKind::plain("bash"));
     }
 
     None
@@ -540,90 +614,27 @@ fn matches_shebang(grammar: &grammar_registry::GrammarSpec, source: &str) -> boo
         let Some(interpreter) = shebang_interpreter_name(line) else {
             return false;
         };
-        let normalized = normalize_injection_language_name(interpreter).unwrap_or(interpreter);
+        let normalized = normalize_language_name(interpreter).unwrap_or(interpreter);
 
         normalized == grammar.name
             || grammar.shebang_substrings.iter().any(|alias| {
                 let alias = alias.as_str();
-                normalize_injection_language_name(alias).unwrap_or(alias) == normalized
+                normalize_language_name(alias).unwrap_or(alias) == normalized
             })
     })
 }
 
-fn shebang_interpreter_name(line: &str) -> Option<&str> {
-    let mut parts = line
-        .strip_prefix("#!")?
-        .split_whitespace()
-        .map(|part| part.rsplit('/').next().unwrap_or(part));
-    let first = parts.next()?;
-
-    if matches!(first, "env" | "/usr/bin/env") {
-        for part in parts {
-            if part.starts_with('-') {
-                continue;
-            }
-            return Some(part);
-        }
-        None
-    } else {
-        Some(first)
-    }
-}
-
-fn normalize_injection_language_name(name: &str) -> Option<&str> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let head = trimmed
-        .trim_start_matches('{')
-        .split(|ch: char| ch.is_whitespace() || matches!(ch, ',' | '{' | '}'))
-        .next()
-        .unwrap_or(trimmed)
-        .trim_matches(|ch| matches!(ch, '{' | '}' | '"' | '\''))
-        .trim_end_matches(".exe");
-
-    if head.is_empty() {
-        return None;
-    }
-
-    Some(match head {
-        "js" | "node" | "nodejs" | "bun" => "javascript",
-        "golang" => "go",
-        "sql:postgres" | "sql-postgres" | "sql_postgres" => "sql_postgres",
-        "postgres" | "postgresql" | "pgsql" | "psql" => "sql_postgres",
-        "sql:mysql" | "sql-mysql" | "sql_mysql" => "sql_mysql",
-        "mysql" | "mariadb" => "sql_mysql",
-        "sql:sqlite" | "sql:sqlite3" | "sql-sqlite" | "sql_sqlite" => "sql_sqlite",
-        "sqlite" | "sqlite3" => "sql_sqlite",
-        "py" | "python3" | "py3" | "uv" => "python",
-        "regex:javascript" | "regex-javascript" | "regex_javascript" => "regex_javascript",
-        "regex:python" | "regex-python" | "regex_python" => "regex_python",
-        "regex:rust" | "regex-rust" | "regex_rust" => "regex_rust",
-        "regex:go" | "regex-go" | "regex_go" => "regex_go",
-        "regex:posix" | "regex-posix" | "regex_posix" | "ere" | "extended-regexp" => "regex_posix",
-        "rs" => "rust",
-        "sh" | "shell" => "bash",
-        "zsh" => "zsh",
-        "fish" => "fish",
-        "gql" | "graphqls" => "graphql",
-        "md" => "markdown",
-        "yml" => "yaml",
-        other => other,
-    })
-}
-
-fn resolve_highlight_language_name<'a>(
-    language_name: &'a str,
+fn resolve_highlight_document_kind(
+    document_kind: DocumentKind,
     source_path: Option<&Path>,
     source: &str,
-) -> &'a str {
-    match language_name {
-        "sql" | "sql_postgres" | "sql_mysql" | "sql_sqlite" => {
-            resolve_sql_runtime(source_path, language_name, source)
-        }
-        _ => language_name,
+) -> DocumentKind {
+    match document_kind.runtime_name() {
+        "sql" | "sql_postgres" | "sql_mysql" | "sql_sqlite" => DocumentKind::with_profile(
+            resolve_sql_runtime(source_path, document_kind.runtime_name(), source),
+            document_kind.profile(),
+        ),
+        _ => document_kind,
     }
 }
 
@@ -634,16 +645,6 @@ struct NestedRegion {
     merge_parent_styles: bool,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum InjectionDecode {
-    None,
-    JavaScriptLiteral,
-    JavaScriptString,
-    PythonString,
-    RustString,
-    GoString,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct StyledSpan {
     range: Range<usize>,
@@ -651,131 +652,60 @@ struct StyledSpan {
 }
 
 fn collect_top_level_injection_regions(
-    language_name: &str,
+    document_kind: DocumentKind,
     source: &str,
     theme: &Theme,
 ) -> Result<Vec<NestedRegion>> {
-    let language_runtime = runtime(language_name)
-        .with_context(|| format!("missing language runtime for {language_name}"))?;
+    let runtime_name = document_kind.runtime_name();
+    let language_runtime = runtime(runtime_name)
+        .with_context(|| format!("missing language runtime for {runtime_name}"))?;
     if language_runtime.injections_query.trim().is_empty() {
-        return Ok(Vec::new());
+        let mut parser = Parser::new();
+        parser
+            .set_language(&language_runtime.language)
+            .with_context(|| format!("failed to set parser language for {runtime_name}"))?;
+        let tree = parser
+            .parse(source, None)
+            .with_context(|| format!("failed to parse source for {runtime_name}"))?;
+        return render_injection_candidates(
+            source,
+            theme,
+            prune_to_top_level_injection_regions(collect_injection_candidates(
+                document_kind,
+                language_runtime,
+                &tree,
+                source,
+            )?),
+        );
     }
 
     let mut parser = Parser::new();
     parser
         .set_language(&language_runtime.language)
-        .with_context(|| format!("failed to set parser language for {language_name}"))?;
+        .with_context(|| format!("failed to set parser language for {runtime_name}"))?;
     let tree = parser
         .parse(source, None)
-        .with_context(|| format!("failed to parse source for {language_name}"))?;
+        .with_context(|| format!("failed to parse source for {runtime_name}"))?;
 
-    if language_name == "dockerfile" {
-        return collect_dockerfile_injection_regions(language_runtime, &tree, source, theme);
-    }
-
-    let query = Query::new(
-        &language_runtime.language,
-        language_runtime.injections_query,
+    let candidates = collect_injection_candidates(document_kind, language_runtime, &tree, source)?;
+    render_injection_candidates(
+        source,
+        theme,
+        prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
+            source, candidates,
+        )),
     )
-    .with_context(|| format!("failed to compile injections query for {language_name}"))?;
-    let capture_names = query.capture_names();
+}
 
-    let mut cursor = QueryCursor::new();
-    let mut candidates = Vec::new();
-
-    let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
-    while {
-        matches.advance();
-        matches.get().is_some()
-    } {
-        let query_match = matches
-            .get()
-            .expect("query match should exist immediately after advance");
-        let mut injection_language = query
-            .property_settings(query_match.pattern_index)
-            .iter()
-            .find(|property| property.key.as_ref() == "injection.language")
-            .and_then(|property| property.value.as_deref())
-            .and_then(normalize_injection_language_name)
-            .map(str::to_owned);
-
-        let injection_combined = query
-            .property_settings(query_match.pattern_index)
-            .iter()
-            .any(|property| property.key.as_ref() == "injection.combined");
-        let merge_parent_styles = query
-            .property_settings(query_match.pattern_index)
-            .iter()
-            .any(|property| property.key.as_ref() == "kat.merge-parent");
-        let decode = query
-            .property_settings(query_match.pattern_index)
-            .iter()
-            .find(|property| property.key.as_ref() == "kat.decode")
-            .and_then(|property| property.value.as_deref())
-            .map(InjectionDecode::from_query_value)
-            .unwrap_or(InjectionDecode::None);
-
-        let mut content_ranges = Vec::new();
-
-        for capture in query_match.captures {
-            let capture_name = capture_names[capture.index as usize];
-            match capture_name {
-                "injection.language" if injection_language.is_none() => {
-                    let node_text = &source[capture.node.byte_range()];
-                    injection_language =
-                        normalize_injection_language_name(node_text).map(str::to_owned);
-                }
-                "injection.content" => content_ranges.push(capture.node.byte_range()),
-                _ => {}
-            }
-        }
-
-        let Some(injection_language) = injection_language else {
-            continue;
-        };
-
-        if runtime(&injection_language).is_none() || content_ranges.is_empty() {
-            continue;
-        }
-
-        if injection_combined {
-            candidates.push(InjectionCandidate {
-                ranges: normalize_ranges(content_ranges),
-                language_name: injection_language.clone(),
-                is_combined: true,
-                merge_parent_styles,
-                decode,
-            });
-            continue;
-        }
-
-        for range in content_ranges {
-            if range.start < range.end {
-                candidates.push(InjectionCandidate {
-                    ranges: vec![range],
-                    language_name: injection_language.clone(),
-                    is_combined: false,
-                    merge_parent_styles,
-                    decode,
-                });
-            }
-        }
-    }
-
-    let mut top_level = prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
-        source, candidates,
-    ));
+fn render_injection_candidates(
+    source: &str,
+    theme: &Theme,
+    mut top_level: Vec<InjectionCandidate>,
+) -> Result<Vec<NestedRegion>> {
     let mut rendered = Vec::with_capacity(top_level.len());
 
     for candidate in top_level.drain(..) {
         let normalized = candidate.language_name.as_str();
-        if normalized == language_name
-            && candidate.ranges.len() == 1
-            && candidate.ranges[0] == (0..source.len())
-        {
-            continue;
-        }
-
         let (virtual_source, source_map) = build_virtual_source(
             source,
             &candidate.ranges,
@@ -785,7 +715,12 @@ fn collect_top_level_injection_regions(
         rendered.push(NestedRegion {
             source_ranges: candidate.ranges,
             overlays: map_virtual_spans_to_source(
-                &highlight_named_language_spans(normalized, None, &virtual_source, theme)?,
+                &highlight_named_language_spans(
+                    plain_document_kind(normalized),
+                    None,
+                    &virtual_source,
+                    theme,
+                )?,
                 &source_map,
             ),
             merge_parent_styles: candidate.merge_parent_styles,
@@ -793,101 +728,6 @@ fn collect_top_level_injection_regions(
     }
 
     Ok(rendered)
-}
-
-fn collect_dockerfile_injection_regions(
-    language_runtime: &crate::language_runtime::LanguageRuntime,
-    tree: &tree_sitter::Tree,
-    source: &str,
-    theme: &Theme,
-) -> Result<Vec<NestedRegion>> {
-    let query = Query::new(
-        &language_runtime.language,
-        language_runtime.injections_query,
-    )
-    .context("failed to compile dockerfile injections query")?;
-    let capture_names = query.capture_names();
-    let mut cursor = QueryCursor::new();
-    let mut current_shell = String::from("bash");
-    let mut candidates = Vec::new();
-
-    let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
-    while {
-        matches.advance();
-        matches.get().is_some()
-    } {
-        let query_match = matches
-            .get()
-            .expect("query match should exist immediately after advance");
-        let mut matched_shell = None;
-        let mut content_ranges = Vec::new();
-
-        for capture in query_match.captures {
-            let capture_name = capture_names[capture.index as usize];
-            match capture_name {
-                "shell.language" if matched_shell.is_none() => {
-                    let raw = &source[capture.node.byte_range()];
-                    matched_shell = normalize_injection_language_name(raw).map(str::to_owned);
-                }
-                "shell.content" => content_ranges.push(capture.node.byte_range()),
-                _ => {}
-            }
-        }
-
-        if let Some(shell) = matched_shell {
-            if runtime(&shell).is_some() {
-                current_shell = shell;
-            }
-        }
-
-        if runtime(&current_shell).is_none() {
-            continue;
-        }
-
-        for range in content_ranges {
-            if range.start < range.end {
-                candidates.push(InjectionCandidate {
-                    ranges: vec![range],
-                    language_name: current_shell.clone(),
-                    is_combined: false,
-                    merge_parent_styles: false,
-                    decode: InjectionDecode::None,
-                });
-            }
-        }
-    }
-
-    let mut top_level = prune_to_top_level_injection_regions(candidates);
-    let mut rendered = Vec::with_capacity(top_level.len());
-
-    for candidate in top_level.drain(..) {
-        let normalized = candidate.language_name.as_str();
-        let (virtual_source, source_map) = build_virtual_source(
-            source,
-            &candidate.ranges,
-            candidate.is_combined,
-            candidate.decode,
-        );
-        rendered.push(NestedRegion {
-            source_ranges: candidate.ranges,
-            overlays: map_virtual_spans_to_source(
-                &highlight_named_language_spans(normalized, None, &virtual_source, theme)?,
-                &source_map,
-            ),
-            merge_parent_styles: false,
-        });
-    }
-
-    Ok(rendered)
-}
-
-#[derive(Debug)]
-struct InjectionCandidate {
-    ranges: Vec<Range<usize>>,
-    language_name: String,
-    is_combined: bool,
-    merge_parent_styles: bool,
-    decode: InjectionDecode,
 }
 
 fn prune_to_top_level_injection_regions(
@@ -1038,19 +878,6 @@ fn build_virtual_source(
     }
 
     (virtual_source, source_map)
-}
-
-impl InjectionDecode {
-    fn from_query_value(value: &str) -> Self {
-        match value {
-            "javascript-literal" => Self::JavaScriptLiteral,
-            "javascript-string" => Self::JavaScriptString,
-            "python-string" => Self::PythonString,
-            "rust-string" => Self::RustString,
-            "go-string" => Self::GoString,
-            _ => Self::None,
-        }
-    }
 }
 
 fn append_injection_content(
@@ -1456,7 +1283,10 @@ fn overlay_nested_region(parent_spans: Vec<StyledSpan>, region: &NestedRegion) -
     result
 }
 
-fn overlay_style_spans(parent_spans: Vec<StyledSpan>, overlay_spans: Vec<StyledSpan>) -> Vec<StyledSpan> {
+fn overlay_style_spans(
+    parent_spans: Vec<StyledSpan>,
+    overlay_spans: Vec<StyledSpan>,
+) -> Vec<StyledSpan> {
     if overlay_spans.is_empty() {
         return parent_spans;
     }
@@ -1493,7 +1323,6 @@ fn overlay_style_spans(parent_spans: Vec<StyledSpan>, overlay_spans: Vec<StyledS
 
     result
 }
-
 
 fn point_in_ranges(point: usize, ranges: &[Range<usize>]) -> bool {
     ranges
@@ -1532,10 +1361,11 @@ mod tests {
     };
 
     use super::{
-        SupportedLanguage, debug_semantics, detect_language, highlight_named_language,
-        render_with_theme,
+        SupportedLanguage, collect_top_level_injection_regions, debug_semantics,
+        detect_document_kind, detect_language, highlight_named_language, render_with_theme,
     };
     use crate::{
+        document_kind::{DocumentProfile, yaml_document_kind},
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
     };
@@ -1620,6 +1450,23 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "proto/schema.proto",
+            expect_highlight: true,
+            expected_fragments: &[
+                "syntax",
+                "proto3",
+                "message",
+                "ThemePreview",
+                "service",
+                "GetTheme",
+            ],
+        },
+        FixtureCase {
+            relative_path: "textproto/theme.textproto",
+            expect_highlight: true,
+            expected_fragments: &["name", "\"Dracula\"", "enabled", "true", "tags"],
+        },
+        FixtureCase {
             relative_path: "hcl/nomad-job.hcl",
             expect_highlight: true,
             expected_fragments: &[
@@ -1664,13 +1511,7 @@ mod tests {
         FixtureCase {
             relative_path: "python/rich_features.py",
             expect_highlight: true,
-            expected_fragments: &[
-                "dataclass",
-                "ThemePreview",
-                "render",
-                "self",
-                "\"kat\"",
-            ],
+            expected_fragments: &["dataclass", "ThemePreview", "render", "self", "\"kat\""],
         },
         FixtureCase {
             relative_path: "python/advanced.py",
@@ -2132,6 +1973,40 @@ mod tests {
             ),
             Some(SupportedLanguage::Hcl)
         ));
+
+        let workflow_kind = detect_document_kind(
+            Some(Path::new(".github/workflows/build.yml")),
+            "name: Build\njobs: {}\n",
+        )
+        .expect("expected GitHub workflow path to detect as YAML");
+        assert_eq!(workflow_kind.runtime_name(), "yaml");
+        assert_eq!(
+            workflow_kind.profile(),
+            DocumentProfile::GitHubActionsWorkflow
+        );
+
+        let action_kind = detect_document_kind(
+            Some(Path::new("action.yml")),
+            "name: Example\nruns:\n  using: composite\n",
+        )
+        .expect("expected action metadata path to detect as YAML");
+        assert_eq!(action_kind.runtime_name(), "yaml");
+        assert_eq!(action_kind.profile(), DocumentProfile::GitHubActionMetadata);
+
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("proto/theme.proto")),
+                "syntax = \"proto3\";\nmessage Theme {}\n",
+            ),
+            Some(SupportedLanguage::Proto)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("proto/theme.textproto")),
+                "name: \"Dracula\"\nenabled: true\n",
+            ),
+            Some(SupportedLanguage::Textproto)
+        ));
     }
 
     #[test]
@@ -2260,7 +2135,6 @@ mod tests {
             "expected zsh subscript flag styling"
         );
     }
-
 
     #[test]
     fn html_injections_highlight_script_and_style_content() {
@@ -2997,8 +2871,7 @@ mod tests {
             "expected mount param enum-like values to use type-style highlighting"
         );
         assert!(
-            rendered.contains("\x1b[38;2;241;250;140mcache-")
-                && rendered.contains("TARGETARCH"),
+            rendered.contains("\x1b[38;2;241;250;140mcache-") && rendered.contains("TARGETARCH"),
             "expected mount id values to keep string fragments while splitting embedded expansions"
         );
         assert!(
@@ -3084,7 +2957,8 @@ mod tests {
     }
 
     #[test]
-    fn dockerfile_highlights_json_form_with_unified_command_option_path_env_and_expansion_semantics() {
+    fn dockerfile_highlights_json_form_with_unified_command_option_path_env_and_expansion_semantics()
+     {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = fixture_path("dockerfile/Dockerfile.exec-advanced");
         let source = read_file(&path);
@@ -3681,11 +3555,8 @@ mod tests {
 
     #[test]
     fn regex_semantic_overlay_reports_quantifiers_unicode_and_class_ranges() {
-        let output = debug_semantics(
-            "regex",
-            r"(?im-s:\p{Script=Latin}[a-z0-9-]{2,4})",
-        )
-        .expect("failed to render regex semantic overlay");
+        let output = debug_semantics("regex", r"(?im-s:\p{Script=Latin}[a-z0-9-]{2,4})")
+            .expect("failed to render regex semantic overlay");
 
         assert!(
             output.contains("keyword.operator.regex") && output.contains("im"),
@@ -4432,10 +4303,11 @@ mod tests {
 
         let uv_lock_path = fixture_path("toml/uv.lock");
         let uv_lock_source = read_file(&uv_lock_path);
-        let uv_lock_rendered = render_with_theme(Some(uv_lock_path.as_path()), &uv_lock_source, &theme)
-            .unwrap_or_else(|error| {
-                panic!("failed to render {}: {error}", uv_lock_path.display())
-            });
+        let uv_lock_rendered =
+            render_with_theme(Some(uv_lock_path.as_path()), &uv_lock_source, &theme)
+                .unwrap_or_else(|error| {
+                    panic!("failed to render {}: {error}", uv_lock_path.display())
+                });
 
         assert!(
             uv_lock_rendered.contains("\x1b["),
@@ -4478,6 +4350,152 @@ mod tests {
         assert!(
             rendered.contains("\x1b[38;2;255;121;198mconst"),
             "expected YAML github-script block to reuse JavaScript keyword styling"
+        );
+    }
+
+    #[test]
+    fn github_actions_yaml_profiles_inject_run_steps_and_highlight_expressions() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let workflow_path = fixture_path("yaml/github-actions-workflow.yaml");
+        let workflow_source = read_file(&workflow_path);
+        let workflow_rendered = render_with_theme(
+            Some(Path::new(".github/workflows/build.yml")),
+            &workflow_source,
+            &theme,
+        )
+        .unwrap_or_else(|error| panic!("failed to render {}: {error}", workflow_path.display()));
+        let workflow_regions = collect_top_level_injection_regions(
+            yaml_document_kind(Some(Path::new(".github/workflows/build.yml"))),
+            &workflow_source,
+            &theme,
+        )
+        .expect("expected GitHub Actions workflow injections to resolve");
+        assert!(
+            workflow_regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &workflow_source[span.range.clone()] == "printf"
+                        && span.style == theme.token_style_for("function.builtin", "printf")
+                })
+            }),
+            "expected GitHub Actions host resolver to produce Bash overlays for run blocks"
+        );
+
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;139;233;253mprintf"),
+            "expected GitHub Actions run block to reuse Bash runtime styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;139;233;253mprint"),
+            "expected shell: python run block to reuse Python builtin styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;248;248;242mgithub"),
+            "expected GitHub Actions expressions to highlight context identifiers"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;255;121;198m&&"),
+            "expected GitHub Actions expressions to highlight logical operators"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;139;233;253mactions"),
+            "expected uses owner to receive dedicated GitHub Actions styling"
+        );
+        assert!(
+            workflow_rendered.contains("\x1b[38;2;80;250;123mcheckout"),
+            "expected uses repository to receive dedicated GitHub Actions styling"
+        );
+
+        let action_path = fixture_path("yaml/action.yaml");
+        let action_source = read_file(&action_path);
+        let action_rendered =
+            render_with_theme(Some(Path::new("action.yml")), &action_source, &theme)
+                .unwrap_or_else(|error| {
+                    panic!("failed to render {}: {error}", action_path.display())
+                });
+        assert!(
+            action_rendered.contains("\x1b[38;2;80;250;123mecho"),
+            "expected composite action run step to reuse Bash runtime styling"
+        );
+    }
+
+    #[test]
+    fn proto_highlights_keywords_types_and_literals() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let rendered = render_with_theme(
+            Some(Path::new("theme.proto")),
+            r#"syntax = "proto3";
+
+message ThemePreview {
+  string name = 1;
+  bool enabled = 2;
+}
+"#,
+            &theme,
+        )
+        .expect("expected proto highlight to succeed");
+
+        assert!(
+            rendered.contains("\x1b["),
+            "expected proto output to contain ANSI styling"
+        );
+        assert!(
+            rendered.contains("syntax"),
+            "expected proto keyword to be present in rendered output"
+        );
+        assert!(
+            rendered.contains("\"proto3\""),
+            "expected proto syntax literal to be present in rendered output"
+        );
+        assert!(
+            rendered.contains("ThemePreview"),
+            "expected proto message name to be present in rendered output"
+        );
+        assert!(
+            rendered.contains("string"),
+            "expected proto scalar type to be present in rendered output"
+        );
+        assert!(
+            rendered.contains("1"),
+            "expected proto field number to be present in rendered output"
+        );
+    }
+
+    #[test]
+    fn textproto_highlights_fields_strings_booleans_and_numbers() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let rendered = render_with_theme(
+            Some(Path::new("theme.textproto")),
+            r#"name: "Dracula"
+enabled: true
+priority: 7
+"#,
+            &theme,
+        )
+        .expect("expected textproto highlight to succeed");
+
+        assert!(
+            rendered.contains("\x1b["),
+            "expected textproto output to contain ANSI styling"
+        );
+        assert!(
+            rendered.contains("name"),
+            "expected textproto field name to be present in rendered output"
+        );
+        assert!(
+            rendered.contains(":"),
+            "expected textproto delimiter to be present in rendered output"
+        );
+        assert!(
+            rendered.contains("\"Dracula\""),
+            "expected textproto string to be present in rendered output"
+        );
+        assert!(
+            rendered.contains("true"),
+            "expected textproto boolean to be present in rendered output"
+        );
+        assert!(
+            rendered.contains("7"),
+            "expected textproto number to be present in rendered output"
         );
     }
 

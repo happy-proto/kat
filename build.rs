@@ -189,8 +189,12 @@ fn compile_grammar(
 ) -> GrammarBuildResult {
     let grammar_started_at = Instant::now();
     let grammar_dir = manifest_dir.join("grammars").join(&grammar.name);
-    let cache_paths =
-        GrammarCachePaths::new(shared_cache_root, &grammar.name, build_target, build_profile);
+    let cache_paths = GrammarCachePaths::new(
+        shared_cache_root,
+        &grammar.name,
+        build_target,
+        build_profile,
+    );
 
     let grammar_json_input_paths = collect_support_paths(&grammar_dir, &["js", "json"]);
     let c_scanner_paths = collect_scanner_paths(&grammar_dir, &["scanner.c"]);
@@ -221,12 +225,7 @@ fn compile_grammar(
             stage_started_at.elapsed(),
         );
     } else {
-        profiler.log_stage(
-            &grammar.name,
-            "grammar-json",
-            "cache-hit",
-            Duration::ZERO,
-        );
+        profiler.log_stage(&grammar.name, "grammar-json", "cache-hit", Duration::ZERO);
     }
 
     let parser_fingerprint = parser_generation_fingerprint(&grammar_json_path);
@@ -245,12 +244,7 @@ fn compile_grammar(
             stage_started_at.elapsed(),
         );
     } else {
-        profiler.log_stage(
-            &grammar.name,
-            "parser-src",
-            "cache-hit",
-            Duration::ZERO,
-        );
+        profiler.log_stage(&grammar.name, "parser-src", "cache-hit", Duration::ZERO);
     }
 
     let native_fingerprint = native_compile_fingerprint(
@@ -301,20 +295,10 @@ fn compile_grammar(
             stage_started_at.elapsed(),
         );
     } else {
-        profiler.log_stage(
-            &grammar.name,
-            "native",
-            "cache-hit",
-            Duration::ZERO,
-        );
+        profiler.log_stage(&grammar.name, "native", "cache-hit", Duration::ZERO);
     }
 
-    profiler.log_stage(
-        &grammar.name,
-        "total",
-        "done",
-        grammar_started_at.elapsed(),
-    );
+    profiler.log_stage(&grammar.name, "total", "done", grammar_started_at.elapsed());
 
     GrammarBuildResult {
         native_out_dir: cache_paths.native_out_dir,

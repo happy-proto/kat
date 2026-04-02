@@ -79,7 +79,9 @@
 | Dockerfile | 🟨 基础 | 已支持 `Dockerfile`、`Containerfile`、`Dockerfile.*`、`Containerfile.*` 以及 `.dockerfile` 扩展；当前独立 `dockerfile` runtime 已覆盖 instruction keyword、comment、image ref、param、string / escape、variable expansion 等基础结构，并把 `RUN`、shell-form `CMD` / `ENTRYPOINT`、`HEALTHCHECK CMD` 的 `shell_command` 注入 shell runtime；默认走 Bash，同时也已支持 `SHELL ["zsh", ...]`、`SHELL ["fish", ...]` 驱动后续 shell-form 指令切到对应 runtime。`RUN <<'EOF'` 这类 heredoc 行内容也已复用当前 shell runtime。宿主层现在还额外补了 `ARG` / `ENV` / `LABEL` key、`EXPOSE` port、`WORKDIR` / `COPY` path、常见 `--param=value` / `--mount=...` 的 name/value 语义、value 内变量展开、`--mount` 内部 key/value 与 enum / bool / number / path 这类常见 value 分类、按 key 区分的 mount family 语义，以及 JSON-form 命令数组首项、option argv、path-like executable、env-style argv 与 expansion argv 的宿主语义。fixture / showcase 已覆盖基础场景与 advanced heredoc/healthcheck/shell-dispatch/semantics/params/exec-form 场景。 | 本地 `zed` 文档也把 Dockerfile 视作独立语言，并依赖社区扩展与独立 Tree-sitter grammar。 | 这一层已经打通了“宿主 grammar + shell 注入”的关键架构；后续更值得继续抠的是更细的 param 子结构，以及 `SHELL [...]` 与 heredoc / healthcheck / JSON-form 边界的一致性细节。 |
 | Bash | 🟩 精细 | 已支持扩展名、`.bashrc`、`.bash_profile`、`.bash_login`、`.profile`、`.bash_logout`、shebang；有 fixture / showcase；Justfile recipe 默认注入 Bash；解释器驱动的 heredoc 现可递归注入 `python` / `javascript` / `bash`，且 Justfile recipe 会自动复用。当前 query 已补齐 shebang directive、regex、special variable、parameter、ansi-c string、更多 punctuation/operator；同时 shell semantic layer 已开始接管一部分 query 很难长期表达的结构语义，例如 builtin family、declaration / unset 这类命令里的变量角色，以及 subscript bracket 这类组合结构。 | 本地 `zed` 有独立 Bash grammar 包，并补了 `textobjects`、`runnables`、`redactions` 等配套资产；其 `highlights.scm` 也是当前 `kat` Bash 细化的直接参考之一。 | 对终端高亮来说，Bash 仍是仓库内样板语言；下一步更值得继续做深的是沿这条 shell semantic layer 继续补 command family 和 expansion / subscript 细节，而不是把更多规则重新塞回 highlights query。 |
 | TOML | 🟩 精细 | 已支持 `.toml`、`Cargo.toml`、`Cargo.lock` 和 `uv.lock`；Markdown `+++` frontmatter 已注入 TOML；fixture / showcase 已覆盖 quoted key、escape、datetime、inline table、array table，以及 lockfile 检测。Dracula 语义上，TOML key 现按配置语言 key 使用青色，datetime 走橙色值语义。 | 本地 `zed` 文档里有 TOML 语言支持，但当前代码树里没有像其它 grammar 那样直接暴露出可比对的 query 资产。 | 对 `kat` 而言，TOML 这层已经非常完整；现阶段很难再找到必须补的语法层缺口。 |
-| YAML | 🟩 精细 | 已支持 `.yaml` / `.yml`；Markdown `---` frontmatter 已注入 YAML；fixture / showcase 已覆盖 anchor / alias / tag / merge key / block scalar / GitHub Actions workflow；当前还支持 `actions/github-script` 的 JavaScript 注入。Dracula 语义上，YAML alias / anchor 单独走绿色斜体下划线，key 走配置语言 key 的青色。 | 本地 `zed` 有独立 YAML grammar 包，并额外做了 GitHub Actions `actions/github-script` -> JavaScript 注入；这部分已被 `kat` 对齐进统一 runtime。 | YAML 现在已经从“基础接入”升级到“场景化精细支持”；后续剩余工作更多是继续扩充被注入子语言，而不是 YAML 宿主层本身。 |
+| YAML | 🟩 精细 | 已支持 `.yaml` / `.yml`；Markdown `---` frontmatter 已注入 YAML；fixture / showcase 已覆盖 anchor / alias / tag / merge key / block scalar / GitHub Actions workflow。当前除 `actions/github-script` 的 JavaScript 注入外，GitHub Actions workflow / `action.yml` 这类 profile 也已接入宿主级 resolver：`run` block 会按同级 `shell` 分发到 `bash` / `zsh` / `fish` / `python` 等已注册 runtime，`${{ ... }}` expression 与 `uses: owner/repo@ref` 也已有专门语义高亮。Dracula 语义上，YAML alias / anchor 单独走绿色斜体下划线，key 走配置语言 key 的青色。 | 本地 `zed` 有独立 YAML grammar 包，并额外做了 GitHub Actions `actions/github-script` -> JavaScript 注入；这部分已被 `kat` 对齐进统一 runtime。 | YAML 现在已经从“基础接入”升级到“场景化精细支持”；后续剩余工作更多是继续扩充被注入子语言，而不是 YAML 宿主层本身。 |
+| Protocol Buffers (`.proto`) | 🟨 基础 | 已支持 `.proto` / `.protobuf` / `.protodevel`；当前独立 `proto` runtime 已覆盖 `syntax` / `package` / `import` / `message` / `service` / `rpc`、标量类型、message/service 标识符、字段编号和基础字符串字面量。fixture / showcase 已覆盖 schema 场景。 | 成熟编辑器生态通常会把 protobuf schema 作为独立 IDL 语言处理，而不是混入通用文本或数据格式 runtime。 | 这一层已经具备基础可读性；后续主要值得继续细化的是 enum / option / oneof / reserved / map 等 protobuf schema 专有结构。 |
+| Protocol Buffers Text Format (`textproto`) | 🟨 基础 | 已支持 `.textproto` / `.textpb` / `.pbtxt` / `.prototxt`；当前独立 `textproto` runtime 已覆盖 field name、`:` delimiter、string / boolean / number 等基础值语义。fixture / showcase 已覆盖常见文本数据场景。 | 成熟编辑器生态通常会把 protobuf text format 视作独立于 `.proto` schema 的数据格式，而不是复用同一套 schema runtime。 | 这一层最重要的架构决策已经落定：schema 与文本数据格式拆成两个 runtime，比在同一 grammar 里混合特判更长期可维护。 |
 | HCL | 🟨 基础 | 已支持 `.hcl` / `.nomad`；当前独立 `hcl` runtime 已覆盖注释、block/type、attribute key、function call、数字 / 布尔 / null、operator、template interpolation / directive、heredoc delimiter 与基本 string/token 结构。fixture / showcase 当前以 Nomad 风格 HCL 为主，但实现仍保持通用 HCL runtime。 | Helix 等成熟编辑器生态通常会把 HCL 作为独立配置语言处理，并在 Terraform / Nomad 等 DSL 之间复用同一语法基础。 | 这一层已经脱离“纯文本配置”阶段，足够支撑泛 HCL 文件的日常阅读；后续主要值得继续细化的是更多 HCL 专有 capture，以及是否要在未来为 Terraform / Nomad 这类生态增加 detector / overlay。 |
 | Rust | 🟩 精细 | 已支持 `.rs`；宏 token-tree 注入、Rustdoc Markdown 注入、Rustdoc 内 fenced Rust / Python、普通 macro / attribute / trait / function definition / function method / variable / lifetime / local binding 都已细化；这一轮还补上了常见 SQL 宏字符串与 regex 宏 / `Regex(Builder)::new` 的注入。fixture / showcase 已覆盖 rich 结构、rustdoc nested case 与 SQL/Regex 场景。Dracula 语义上，attribute 走绿色斜体，trait/interface 走青色，local variable 保持前景色，不再被误染成 literal 色。 | 本地 `zed` 既有更细的 Rust highlights / injections，也有 `semantic_token_rules`、context provider、imports、runnables 等更成熟的语言层实现；当前 `kat` 已对齐它在 highlights/injections 里最关键的终端可见部分。 | 对终端语法高亮本身，Rust 已经达到当前仓库里最精细的一档；剩余明显差距已更多集中在 `rstml`、更细的 SQL 宏识别，以及编辑器层能力。 |
 | Go | 🟩 精细 | 已支持 `.go`；当前 query 已补齐 package namespace、type / builtin type、generic type parameter、function definition、method definition / call、builtin function、directive comment、数值 / 字符串 / rune / escape；并且支持基于 comment hint 的 `json` / `yaml` / `html` / `javascript` / `css` / `bash` / `sql` / `regex` 注入调度。现在 `sql` 这条线还进一步支持了 `sql:postgres` / `sql:mysql` / `sql:sqlite` 方言 hint。fixture / showcase 已覆盖独立文件与 Markdown fenced `go` / `golang` alias；这些 `sql` / `regex` hint 已真正落到共享 runtime。 | 本地 `zed` 有独立 Go grammar 包，并维护了 `highlights.scm` 与面向 regex / sql / json / yaml / html / css / js / bash 等子语言的 `injections.scm`。 | 对 `kat` 来说，Go source runtime 已经达到样板语言级别；当前剩余收益更多来自继续补嵌入语言本体细节，而不是 Go 宿主层重写。 |
@@ -124,6 +126,8 @@
 - `SQL`
 - `Regex`
 - `HCL`
+- `Proto`
+- `Textproto`
 
 这类语言的问题不再是“完全没接入”，而是 grammar / query 表达能力本身还有限。
 其中 `JSDoc` 当前最值得继续观察的是：是否要升级 grammar revision、补独立 injections，或者接受它维持在“tags / types 已经够用”的层级。`GraphQL` 则已经接通 runtime，但 query 还明显浅于样板语言；`SQL` / `Regex` 的剩余工作更多集中在共享 grammar 的表达上限。
@@ -144,6 +148,7 @@
 | Justfile recipe 嵌套语言 | 🟩 已支持 | `zed-just` 也支持默认 Bash、全局 shell 与多种 shebang 映射。 | `kat` 这一层已经具备对照 `zed-just` 的基础，并且由于 Bash heredoc 注入已下沉到共享 runtime，Justfile 中的 `python/node/bash <<'EOF'` 也会自动受益；后续重点应转向补 runtime 缺口与语言本体 query。 |
 | Markdown fenced `go` / `golang` | 🟩 已支持 | `zed` 也支持按 fenced language dispatch 到 Go runtime。 | `kat` 现在已把 `go` runtime 接入统一 fenced-language 分发，并补了 `golang -> go` 的 alias 归一化，因此顶层 `.go` 文件和 Markdown/Rustdoc 等嵌套 Go 场景天然复用同一套 query。 |
 | `Dockerfile` / `.dockerignore` | 🟨 已支持 | `Dockerfile` 现已作为独立 runtime 接入，并支持 `RUN`、shell-form `CMD` / `ENTRYPOINT`、`HEALTHCHECK CMD` 和 `RUN` heredoc 复用当前 shell runtime；默认走 Bash，也已支持由 `SHELL [...]` 驱动切到 `zsh` / `fish` 等已注册 shell runtime。宿主层 query 也已补到常见 key / port / path、`--mount` key/value 与常见 value 分类、按 key 区分的 mount family、value 内变量展开，以及 JSON-form 首项命令、option、path-like executable、env-style argv 和 expansion argv 语义。`.dockerignore` 则继续复用共享 `ignore` runtime。 | 成熟实现通常会把 `Dockerfile` 当成独立宿主语言，并进一步处理其中的 shell 片段。 | 结构性缺口已经补上；下一阶段更值得继续做深的是 param 子结构与边界一致性，而不是重新讨论 runtime 归属。 |
+| GitHub Actions workflow / `action.yml` | 🟦 中等 | 现已通过 YAML profile 检测支持 `.github/workflows/*.yml` / `*.yaml` 与 `action.yml` / `action.yaml`。`run` block 会按同级 `shell` 分发到现有 shell / Python runtime，未显式声明时默认复用 Bash；`${{ ... }}` expression 已有独立语义补层，`uses: owner/repo@ref` 和本地 `./path` action ref 也已做专门落色。当前这层仍建立在 YAML 宿主 profile + host resolver + semantic overlay 上，而不是独立 grammar。 | 成熟实现通常会把 workflow YAML 视作 YAML 宿主上的场景化 profile，并对 expression、`uses`、`run` 做额外高亮或 schema 感知。 | 这一层的关键架构已经落定：不复制第二套 YAML grammar，而是沿 document profile / host resolver / overlay 继续做深。后续收益主要来自 expression 子语言进一步细化、更多 schema-aware key/value 语义，以及后续 `pwsh` / `cmd` runtime 接入。 |
 | Vue 单文件组件 | 🟥 待定 | 先记录为明确想支持的一类前端文件，但当前还没有确定文件后缀、运行时归属与宿主/嵌入语言拆分策略。 | `zed` 这类成熟实现通常会把模板、脚本、样式分层处理。 | 现阶段先保留需求记录，后续再决定是否以 `.vue` 作为主入口，以及内部如何分发到 HTML / JavaScript / CSS runtime。 |
 | React 组件文件 | 🟥 待定 | 先记录为明确想支持的一类前端文件；当前仓库已经支持 `.jsx`，但 React 相关文件命名与是否纳入 `.tsx` 等后缀策略，这里先不下结论。 | 成熟实现通常会把 JSX / TSX 作为 React 生态的主要文件形态。 | 现阶段先记录方向，后续再统一决定 React 文件范围、后缀集合与 detector 策略。 |
 | Userscript metadata block | 🟩 已支持 | 暂未见本地 `zed` 中有同级内建支持信号。 | 当前通过 JavaScript comment injection + 独立 mini-runtime 支持，因此独立 `.js` 文件和所有嵌套 JavaScript 场景都能原生复用。 |
@@ -153,8 +158,8 @@
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前 registry 已注册 `26` 组 runtime。
-- 相比 `bat`，当前还有 `163` 组文件类型完全没有对应 runtime / detector 入口。
+- `kat` 当前 registry 已注册 `28` 组 runtime。
+- 相比 `bat`，当前还有 `159` 组文件类型完全没有对应 runtime / detector 入口。
 - 另外还有 `15` 组文件类型已部分覆盖，但文件名、扩展名或特殊检测范围仍明显窄于 `bat`。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
@@ -269,8 +274,6 @@
 - `PHP`：`php`、`php3`、`php4`、`php5`、`php7`、`phps`、`phpt`、`phtml`
 - `Plain Text`：`txt`
 - `PowerShell`：`ps1`、`psm1`、`psd1`
-- `Protocol Buffer`：`proto`、`protobuf`、`protodevel`
-- `Protocol Buffer (TEXT)`：`pb.txt`、`proto.text`、`textpb`、`pbtxt`、`prototxt`、`textproto`
 - `Puppet`：`pp`、`epp`
 - `PureScript`：`purs`
 - `QML`：`qml`、`qmlproject`

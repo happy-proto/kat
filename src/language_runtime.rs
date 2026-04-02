@@ -56,6 +56,9 @@ const JAVASCRIPT_INJECTIONS_QUERY: &str =
     include_str!("../grammars/javascript/queries/injections.scm");
 const JAVASCRIPT_LOCALS_QUERY: &str = include_str!("../grammars/javascript/queries/locals.scm");
 const GRAPHQL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/graphql/queries/highlights.scm");
+const PROTO_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/proto/queries/highlights.scm");
+const TEXTPROTO_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/textproto/queries/highlights.scm");
 const REGEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/regex/queries/highlights.scm");
 const REGEX_JAVASCRIPT_HIGHLIGHTS_QUERY: &str = concat!(
     include_str!("../grammars/regex/queries/highlights.scm"),
@@ -115,6 +118,8 @@ unsafe extern "C" {
     fn tree_sitter_css() -> *const ();
     fn tree_sitter_javascript() -> *const ();
     fn tree_sitter_graphql() -> *const ();
+    fn tree_sitter_proto() -> *const ();
+    fn tree_sitter_textproto() -> *const ();
     fn tree_sitter_regex() -> *const ();
     fn tree_sitter_jsdoc() -> *const ();
     fn tree_sitter_userscript_metadata() -> *const ();
@@ -143,6 +148,8 @@ const HTML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_html
 const CSS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_css) };
 const JAVASCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_javascript) };
 const GRAPHQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_graphql) };
+const PROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_proto) };
+const TEXTPROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_textproto) };
 const REGEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_regex) };
 const JSDOC_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_jsdoc) };
 const USERSCRIPT_METADATA_LANGUAGE: LanguageFn =
@@ -330,6 +337,20 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "graphql",
         language_fn: GRAPHQL_LANGUAGE,
         highlights_query: GRAPHQL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "proto",
+        language_fn: PROTO_LANGUAGE,
+        highlights_query: PROTO_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "textproto",
+        language_fn: TEXTPROTO_LANGUAGE,
+        highlights_query: TEXTPROTO_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },

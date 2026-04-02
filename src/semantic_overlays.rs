@@ -3,7 +3,10 @@ use std::ops::Range;
 use anyhow::{Context, Result};
 use tree_sitter::{Node, Parser};
 
-use crate::language_runtime::runtime;
+use crate::{
+    document_kind::{DocumentKind, DocumentProfile},
+    language_runtime::runtime,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct SemanticCaptureSpan {
@@ -249,7 +252,7 @@ pub(crate) fn debug_named_language_tree(language_name: &str, source: &str) -> Re
 }
 
 pub(crate) fn debug_semantics(language_name: &str, source: &str) -> Result<String> {
-    let spans = semantic_capture_spans(language_name, source)?;
+    let spans = semantic_capture_spans_for(language_name, DocumentProfile::Plain, source)?;
     let mut rendered = String::new();
 
     for span in spans {
@@ -267,10 +270,22 @@ pub(crate) fn debug_semantics(language_name: &str, source: &str) -> Result<Strin
 }
 
 pub(crate) fn semantic_capture_spans(
-    language_name: &str,
+    document_kind: DocumentKind,
     source: &str,
 ) -> Result<Vec<SemanticCaptureSpan>> {
-    if !matches!(
+    semantic_capture_spans_for(
+        document_kind.runtime_name(),
+        document_kind.profile(),
+        source,
+    )
+}
+
+fn semantic_capture_spans_for(
+    language_name: &str,
+    profile: DocumentProfile,
+    source: &str,
+) -> Result<Vec<SemanticCaptureSpan>> {
+    let has_runtime_overlays = matches!(
         language_name,
         "bash"
             | "fish"
@@ -286,7 +301,13 @@ pub(crate) fn semantic_capture_spans(
             | "sql_mysql"
             | "sql_sqlite"
             | "jsdoc"
-    ) {
+    );
+    let has_profile_overlays = matches!(
+        profile,
+        DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata
+    ) && language_name == "yaml";
+
+    if !has_runtime_overlays && !has_profile_overlays {
         return Ok(Vec::new());
     }
 
@@ -313,6 +334,15 @@ pub(crate) fn semantic_capture_spans(
         if language_name == "jsdoc" {
             collect_jsdoc_node_spans(node, source, &mut spans);
         }
+
+        if language_name == "yaml"
+            && matches!(
+                profile,
+                DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata
+            )
+        {
+            collect_github_actions_node_spans(node, source, &mut spans);
+        }
     });
 
     spans.sort_by(|left, right| {
@@ -325,6 +355,269 @@ pub(crate) fn semantic_capture_spans(
     spans.dedup_by(|left, right| left.range == right.range && left.capture == right.capture);
 
     Ok(spans)
+}
+
+fn collect_github_actions_node_spans(
+    node: Node,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    match node.kind() {
+        "plain_scalar"
+        | "string_scalar"
+        | "double_quote_scalar"
+        | "single_quote_scalar"
+        | "block_scalar" => {
+            collect_github_actions_expression_spans(node.byte_range(), source, spans)
+        }
+        "block_mapping_pair" => collect_github_actions_uses_spans(node, source, spans),
+        _ => {}
+    }
+}
+
+fn collect_github_actions_expression_spans(
+    range: Range<usize>,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let text = &source[range.clone()];
+    let mut offset = 0;
+
+    while let Some(start) = text[offset..].find("${{") {
+        let start = offset + start;
+        let Some(end_rel) = text[start + 3..].find("}}") else {
+            break;
+        };
+        let end = start + 3 + end_rel;
+        let absolute_start = range.start + start;
+        let absolute_end = range.start + end + 2;
+
+        push_capture(
+            spans,
+            absolute_start..absolute_start + 3,
+            "punctuation.special",
+        );
+        lex_github_actions_expression(
+            &source[absolute_start + 3..range.start + end],
+            absolute_start + 3,
+            spans,
+        );
+        push_capture(
+            spans,
+            range.start + end..absolute_end,
+            "punctuation.special",
+        );
+        offset = end + 2;
+    }
+}
+
+fn lex_github_actions_expression(
+    source: &str,
+    absolute_start: usize,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let bytes = source.as_bytes();
+    let mut index = 0;
+    let mut previous_was_dot = false;
+
+    while index < bytes.len() {
+        let ch = bytes[index] as char;
+        if ch.is_whitespace() {
+            index += 1;
+            continue;
+        }
+
+        if matches!(ch, '\'' | '"') {
+            let start = index;
+            index += 1;
+            while index < bytes.len() {
+                let inner = bytes[index] as char;
+                index += 1;
+                if inner == '\\' && index < bytes.len() {
+                    index += 1;
+                    continue;
+                }
+                if inner == ch {
+                    break;
+                }
+            }
+            push_capture(
+                spans,
+                absolute_start + start..absolute_start + index,
+                "string",
+            );
+            previous_was_dot = false;
+            continue;
+        }
+
+        if ch.is_ascii_digit() {
+            let start = index;
+            index += 1;
+            while index < bytes.len() && matches!(bytes[index] as char, '0'..='9' | '.' | '_') {
+                index += 1;
+            }
+            push_capture(
+                spans,
+                absolute_start + start..absolute_start + index,
+                "number",
+            );
+            previous_was_dot = false;
+            continue;
+        }
+
+        if is_identifier_start(ch) {
+            let start = index;
+            index += 1;
+            while index < bytes.len() && is_identifier_continue(bytes[index] as char) {
+                index += 1;
+            }
+
+            let token = &source[start..index];
+            let capture = if matches!(token, "true" | "false") {
+                "boolean"
+            } else if token == "null" {
+                "constant.builtin"
+            } else {
+                let mut lookahead = index;
+                while lookahead < bytes.len() && (bytes[lookahead] as char).is_whitespace() {
+                    lookahead += 1;
+                }
+
+                if lookahead < bytes.len() && bytes[lookahead] as char == '(' {
+                    "function"
+                } else if previous_was_dot {
+                    "property"
+                } else {
+                    "variable"
+                }
+            };
+
+            push_capture(
+                spans,
+                absolute_start + start..absolute_start + index,
+                capture,
+            );
+            previous_was_dot = false;
+            continue;
+        }
+
+        if let Some((capture, width, dot)) = github_actions_operator_capture(&bytes[index..]) {
+            push_capture(
+                spans,
+                absolute_start + index..absolute_start + index + width,
+                capture,
+            );
+            index += width;
+            previous_was_dot = dot;
+            continue;
+        }
+
+        index += 1;
+        previous_was_dot = false;
+    }
+}
+
+fn collect_github_actions_uses_spans(
+    node: Node,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let Some(key) = node.child_by_field_name("key") else {
+        return;
+    };
+    let Some(value) = node.child_by_field_name("value") else {
+        return;
+    };
+    let Some(key_text) = yaml_scalar_text(key, source) else {
+        return;
+    };
+    if key_text != "uses" {
+        return;
+    }
+
+    let Some((text, range)) = yaml_scalar_with_range(value, source) else {
+        return;
+    };
+
+    if let Some(local) = text.strip_prefix("./") {
+        let local_start = range.start + (text.len() - local.len());
+        push_capture(spans, range.start..local_start, "punctuation.special");
+        push_capture(spans, local_start..range.end, "string");
+        return;
+    }
+
+    let Some((owner, rest)) = text.split_once('/') else {
+        return;
+    };
+    let Some((repo, reference)) = rest.split_once('@') else {
+        return;
+    };
+
+    let owner_start = range.start;
+    let owner_end = owner_start + owner.len();
+    let slash_end = owner_end + 1;
+    let repo_end = slash_end + repo.len();
+    let at_end = repo_end + 1;
+
+    push_capture(spans, owner_start..owner_end, "type");
+    push_capture(spans, owner_end..slash_end, "punctuation.delimiter");
+    push_capture(spans, slash_end..repo_end, "function");
+    push_capture(spans, repo_end..at_end, "keyword.operator");
+    push_capture(spans, at_end..at_end + reference.len(), "string.special");
+}
+
+fn github_actions_operator_capture(bytes: &[u8]) -> Option<(&'static str, usize, bool)> {
+    let first = *bytes.first()? as char;
+    let second = bytes.get(1).copied().map(char::from);
+
+    match (first, second) {
+        ('&', Some('&'))
+        | ('|', Some('|'))
+        | ('=', Some('='))
+        | ('!', Some('='))
+        | ('<', Some('='))
+        | ('>', Some('=')) => Some(("keyword.operator", 2, false)),
+        ('!', _) | ('<', _) | ('>', _) => Some(("keyword.operator", 1, false)),
+        ('(', _) | (')', _) | ('[', _) | (']', _) => Some(("punctuation.bracket", 1, false)),
+        ('.', _) | (',', _) => Some(("punctuation.delimiter", 1, first == '.')),
+        (':', _) => Some(("punctuation.special", 1, false)),
+        _ => None,
+    }
+}
+
+fn is_identifier_start(ch: char) -> bool {
+    ch == '_' || ch.is_ascii_alphabetic()
+}
+
+fn is_identifier_continue(ch: char) -> bool {
+    ch == '_' || ch == '-' || ch.is_ascii_alphanumeric()
+}
+
+fn yaml_scalar_text<'a>(node: Node, source: &'a str) -> Option<&'a str> {
+    yaml_scalar_with_range(node, source).map(|(text, _)| text)
+}
+
+fn yaml_scalar_with_range<'a>(node: Node, source: &'a str) -> Option<(&'a str, Range<usize>)> {
+    match node.kind() {
+        "block_node" | "flow_node" => {
+            let mut cursor = node.walk();
+            node.named_children(&mut cursor)
+                .find_map(|child| yaml_scalar_with_range(child, source))
+        }
+        "plain_scalar"
+        | "string_scalar"
+        | "double_quote_scalar"
+        | "single_quote_scalar"
+        | "block_scalar" => Some((
+            source[node.byte_range()].trim_matches(|ch| matches!(ch, '"' | '\'')),
+            node.byte_range(),
+        )),
+        _ => {
+            let mut cursor = node.walk();
+            node.named_children(&mut cursor)
+                .find_map(|child| yaml_scalar_with_range(child, source))
+        }
+    }
 }
 
 impl ShellLanguage {
@@ -580,7 +873,8 @@ fn collect_fish_function_option_value_spans(
             }
         }
 
-        if let Some((capture, arity, value_filter)) = option_value_capture(&option_specs, option_text)
+        if let Some((capture, arity, value_filter)) =
+            option_value_capture(&option_specs, option_text)
         {
             pending_capture = Some((capture, arity.pending_count(), value_filter));
         }
@@ -718,8 +1012,16 @@ fn collect_regex_count_quantifier_spans(
         return;
     }
 
-    push_capture(spans, node.start_byte()..(node.start_byte() + 1), "punctuation.bracket");
-    push_capture(spans, (node.end_byte() - 1)..node.end_byte(), "punctuation.bracket");
+    push_capture(
+        spans,
+        node.start_byte()..(node.start_byte() + 1),
+        "punctuation.bracket",
+    );
+    push_capture(
+        spans,
+        (node.end_byte() - 1)..node.end_byte(),
+        "punctuation.bracket",
+    );
 
     if let Some(offset) = text.find(',') {
         let start = node.start_byte() + offset;
@@ -858,7 +1160,11 @@ fn collect_jsdoc_inline_tag_spans(
         return;
     };
     let base = description.start_byte();
-    let capture = if text.contains('/') { "text.uri" } else { "variable.jsdoc" };
+    let capture = if text.contains('/') {
+        "text.uri"
+    } else {
+        "variable.jsdoc"
+    };
     let mut chunk_start = None;
 
     for (offset, ch) in text.char_indices() {
@@ -867,7 +1173,11 @@ fn collect_jsdoc_inline_tag_spans(
                 push_capture(spans, (base + start)..(base + offset), capture);
             }
             let start = base + offset;
-            push_capture(spans, start..(start + ch.len_utf8()), "punctuation.delimiter");
+            push_capture(
+                spans,
+                start..(start + ch.len_utf8()),
+                "punctuation.delimiter",
+            );
         } else if !ch.is_whitespace() {
             if chunk_start.is_none() {
                 chunk_start = Some(offset);
@@ -1004,11 +1314,7 @@ fn push_number_like_tokens(node: Node<'_>, spans: &mut Vec<SemanticCaptureSpan>)
     }
 }
 
-fn push_capture(
-    spans: &mut Vec<SemanticCaptureSpan>,
-    range: Range<usize>,
-    capture: &'static str,
-) {
+fn push_capture(spans: &mut Vec<SemanticCaptureSpan>, range: Range<usize>, capture: &'static str) {
     if range.start < range.end {
         spans.push(SemanticCaptureSpan { range, capture });
     }

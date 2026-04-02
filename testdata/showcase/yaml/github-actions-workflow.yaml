@@ -1,0 +1,27 @@
+name: Build ${{ github.ref_name }}
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell Setup
+        run: |
+          set -euo pipefail
+          echo "Ref is ${{ github.ref }}"
+          printf '%s\n' "${RUNNER_OS}"
+      - name: Python Check
+        shell: python
+        run: |
+          import json
+          print(json.dumps({"ref": "${{ github.ref_name }}"}))

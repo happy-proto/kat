@@ -1,9 +1,9 @@
 use std::{
     env,
     ffi::OsStr,
+    ffi::OsString,
     fs,
     io::{self, Read},
-    ffi::OsString,
     path::PathBuf,
 };
 
@@ -14,7 +14,10 @@ fn main() -> Result<()> {
 
     if options.paths.is_empty() {
         let stdin = read_stdin().context("failed to read stdin")?;
-        print!("{}", render_output(options.mode, options.language.as_deref(), None, &stdin)?);
+        print!(
+            "{}",
+            render_output(options.mode, options.language.as_deref(), None, &stdin)?
+        );
         return Ok(());
     }
 
@@ -38,7 +41,12 @@ fn main() -> Result<()> {
         }
         print!(
             "{}",
-            render_output(options.mode, options.language.as_deref(), Some(path.as_path()), &source)?
+            render_output(
+                options.mode,
+                options.language.as_deref(),
+                Some(path.as_path()),
+                &source
+            )?
         );
     }
 
@@ -73,7 +81,11 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
                     continue;
                 }
                 "--debug-shell-semantics" => {
-                    ensure_mode(&mut mode, OutputMode::DebugSemantics, "--debug-shell-semantics")?;
+                    ensure_mode(
+                        &mut mode,
+                        OutputMode::DebugSemantics,
+                        "--debug-shell-semantics",
+                    )?;
                     continue;
                 }
                 "--debug-semantics" => {
@@ -159,7 +171,9 @@ fn resolve_debug_language_name(
 
     kat::detected_language_name(source_path, source)
         .map(str::to_owned)
-        .ok_or_else(|| anyhow::anyhow!("could not detect language for debug output; pass --language <name>"))
+        .ok_or_else(|| {
+            anyhow::anyhow!("could not detect language for debug output; pass --language <name>")
+        })
 }
 
 fn print_header(label: &str, add_leading_newline: bool) {
@@ -170,7 +184,9 @@ fn print_header(label: &str, add_leading_newline: bool) {
 }
 
 fn print_help() {
-    println!("Usage: kat [--debug-ast|--debug-semantics|--debug-shell-semantics] [--language <name>] [PATH|-]...");
+    println!(
+        "Usage: kat [--debug-ast|--debug-semantics|--debug-shell-semantics] [--language <name>] [PATH|-]..."
+    );
 }
 
 fn read_source_from_path(path: &PathBuf) -> Result<String> {

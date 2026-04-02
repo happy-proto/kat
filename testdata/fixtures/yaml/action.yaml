@@ -1,0 +1,9 @@
+name: Composite Preview
+description: Example composite action
+
+runs:
+  using: composite
+  steps:
+    - run: |
+        echo "Preparing"
+      shell: bash
