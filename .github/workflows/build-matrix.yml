@@ -72,6 +72,8 @@ jobs:
       - name: Measure install and build times
         if: github.event_name != 'pull_request' || matrix.tier == 'baseline'
         shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
 
