@@ -25,3 +25,4 @@
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
 - Tree-sitter 构建中间产物会缓存到仓库级 `.build-cache/tree-sitter-cache/`；CI 编译缓存统一使用 `sccache`
 - 仓库内可复用的 GitHub Actions 默认放在 `.github/actions/`；当前 `sccache` 初始化使用仓库内 action，而不是外部 marketplace action
+- CI 的 release 构建会额外上传 Cargo timings HTML 和 linker timing 日志，用于判断瓶颈是否落在最终链接阶段

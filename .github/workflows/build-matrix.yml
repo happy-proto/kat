@@ -32,8 +32,10 @@ jobs:
         include:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            linker: cc
           - runner: macos-latest
             target: aarch64-apple-darwin
+            linker: cc
 
     steps:
       - name: Checkout repository
@@ -62,10 +64,17 @@ jobs:
           key: ${{ matrix.target }}
           cache-targets: false
 
+      - name: Make linker wrapper executable
+        run: chmod +x .github/scripts/rust-link-wrapper.sh
+
       - name: Install dependencies and build release binary
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
+          KAT_REAL_LINKER: ${{ matrix.linker }}
+          KAT_LINK_LOG: ${{ runner.temp }}/rust-link-timings.tsv
+          RUSTFLAGS: >-
+            -Clinker=${{ github.workspace }}/.github/scripts/rust-link-wrapper.sh
         run: |
           set -euo pipefail
 
@@ -77,7 +86,8 @@ jobs:
 
           build_start=$(date +%s)
           "${SCCACHE_PATH}" --zero-stats
-          cargo build --release --locked --target "${TARGET}"
+          : > "${KAT_LINK_LOG}"
+          cargo build --timings --release --locked --target "${TARGET}"
           build_end=$(date +%s)
 
           total_end=$(date +%s)
@@ -86,12 +96,31 @@ jobs:
 
           artifact_size=$(stat -f%z "${artifact_path}" 2>/dev/null || stat -c%s "${artifact_path}")
 
+          if [[ -s "${KAT_LINK_LOG}" ]]; then
+            link_invocations=$(wc -l < "${KAT_LINK_LOG}" | tr -d ' ')
+            link_total_ms=$(awk -F'\t' '{sum += $2} END {printf "%.0f", sum}' "${KAT_LINK_LOG}")
+            longest_link_record=$(awk -F'\t' 'BEGIN { max = -1 } { if (($2 + 0) > max) { max = $2; status = $3; output = $4 } } END { if (max < 0) { print "0\tunknown\t(unknown)" } else { print max "\t" status "\t" output } }' "${KAT_LINK_LOG}")
+            IFS=$'\t' read -r longest_link_ms longest_link_status longest_link_output <<< "${longest_link_record}"
+          else
+            link_invocations=0
+            link_total_ms=0
+            longest_link_ms=0
+            longest_link_status=unknown
+            longest_link_output="(unknown)"
+          fi
+
           {
             echo "INSTALL_SECONDS=$((install_end - install_start))"
             echo "BUILD_SECONDS=$((build_end - build_start))"
             echo "TOTAL_SECONDS=$((total_end - total_start))"
             echo "ARTIFACT_PATH=${artifact_path}"
             echo "ARTIFACT_SIZE=${artifact_size}"
+            echo "LINK_INVOCATIONS=${link_invocations}"
+            echo "LINK_TOTAL_MS=${link_total_ms}"
+            echo "LONGEST_LINK_MS=${longest_link_ms}"
+            echo "LONGEST_LINK_STATUS=${longest_link_status}"
+            echo "LONGEST_LINK_OUTPUT=${longest_link_output}"
+            echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
           } >> "${GITHUB_ENV}"
 
       - name: Publish job summary
@@ -107,6 +136,12 @@ jobs:
             echo "- Total: \`${TOTAL_SECONDS}s\`"
             echo "- Binary: \`${ARTIFACT_PATH}\`"
             echo "- Size: \`${ARTIFACT_SIZE} bytes\`"
+            echo "- Link invocations: \`${LINK_INVOCATIONS}\`"
+            echo "- Total linker wall time: \`${LINK_TOTAL_MS} ms\`"
+            echo "- Longest linker invocation: \`${LONGEST_LINK_MS} ms\`"
+            echo "- Longest linker status: \`${LONGEST_LINK_STATUS}\`"
+            echo "- Longest linker output: \`${LONGEST_LINK_OUTPUT}\`"
+            echo "- Cargo timings: \`target/cargo-timings/cargo-timing.html\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload release artifact
@@ -114,4 +149,13 @@ jobs:
         with:
           name: kat-${{ matrix.target }}
           path: ${{ env.ARTIFACT_PATH }}
+          if-no-files-found: error
+
+      - name: Upload build observability artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: kat-build-observability-${{ matrix.target }}
+          path: |
+            target/cargo-timings/
+            ${{ env.LINK_LOG_PATH }}
           if-no-files-found: error
