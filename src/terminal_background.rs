@@ -21,8 +21,8 @@ pub(crate) fn detect_nested_region_tint(color_mode: ColorMode) -> Option<RgbColo
     let background = background_color(options).ok()?;
     let (r, g, b) = background.scale_to_8bit();
     let background = RgbColor(r, g, b);
-    let target = mix_rgb(background, RgbColor(68, 71, 90), 0.65);
-    Some(mix_rgb(background, target, 0.36))
+    let lifted = mix_rgb(background, RgbColor(68, 71, 90), 0.55);
+    Some(mix_rgb(background, lifted, 0.5))
 }
 
 fn mix_rgb(base: RgbColor, other: RgbColor, weight: f32) -> RgbColor {

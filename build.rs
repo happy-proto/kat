@@ -201,7 +201,10 @@ fn compile_grammar(
     profiler: &BuildProfiler,
 ) -> Option<GrammarBuildResult> {
     if grammar.parser_source == ParserSource::Crate {
-        profiler.log_global(format!("grammar={} source=crate skip-local-build", grammar.name));
+        profiler.log_global(format!(
+            "grammar={} source=crate skip-local-build",
+            grammar.name
+        ));
         return None;
     }
 

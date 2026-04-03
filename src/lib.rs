@@ -16,7 +16,10 @@ use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
 use crate::document_kind::{DocumentKind, yaml_document_kind};
 use crate::grammar_registry::grammar;
-use crate::host_injections::{InjectionCandidate, InjectionDecode, collect_injection_candidates};
+use crate::host_injections::{
+    InjectionCandidate, InjectionDecode, InjectionVisualAnchor, InjectionVisualKind,
+    collect_injection_candidates,
+};
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
 use crate::semantic_overlays::{
@@ -298,34 +301,33 @@ fn highlight_named_language_with_path(
     source: &str,
     theme: &Theme,
 ) -> Result<String> {
-    let render_data = highlight_named_language_render_data(document_kind, source_path, source, theme)?;
+    let render_data =
+        highlight_named_language_render_data(document_kind, source_path, source, theme)?;
     Ok(render_styled_spans(
         source,
         &render_data.spans,
-        &render_data.line_pads,
+        &render_data.regions,
         theme,
     ))
 }
 
-fn highlight_named_language_spans(
-    document_kind: DocumentKind,
-    source_path: Option<&Path>,
-    source: &str,
-    theme: &Theme,
-) -> Result<Vec<StyledSpan>> {
-    Ok(highlight_named_language_render_data(document_kind, source_path, source, theme)?.spans)
-}
-
 struct HighlightRenderData {
     spans: Vec<StyledSpan>,
-    line_pads: Vec<LinePad>,
+    regions: Vec<VisualRegion>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct VisualRegion {
+    visual_level: usize,
+    segments: Vec<RegionSegment>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct LinePad {
-    line_end: usize,
-    width: usize,
-    style: TokenStyle,
+struct RegionSegment {
+    line_start: usize,
+    left: usize,
+    text_end: usize,
+    right: usize,
 }
 
 fn highlight_named_language_render_data(
@@ -333,6 +335,16 @@ fn highlight_named_language_render_data(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
+) -> Result<HighlightRenderData> {
+    highlight_named_language_render_data_with_depth(document_kind, source_path, source, theme, 0)
+}
+
+fn highlight_named_language_render_data_with_depth(
+    document_kind: DocumentKind,
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+    nested_depth: usize,
 ) -> Result<HighlightRenderData> {
     let resolved_document_kind =
         resolve_highlight_document_kind(document_kind, source_path, source);
@@ -352,16 +364,14 @@ fn highlight_named_language_render_data(
     let mut spans = collect_styled_spans(source, events, theme)?;
     spans = overlay_semantic_captures(resolved_document_kind, source, spans, theme)?;
     let nested_regions =
-        collect_top_level_injection_regions(resolved_document_kind, source, theme)?;
+        collect_top_level_injection_regions(resolved_document_kind, source, theme, nested_depth)?;
 
     for region in &nested_regions {
-        spans = overlay_nested_region(spans, &region);
+        spans = overlay_nested_region(spans, region);
     }
 
-    spans = overlay_nested_region_tint(spans, &nested_regions, theme);
-
     Ok(HighlightRenderData {
-        line_pads: build_line_pads(source, &nested_regions, theme),
+        regions: collect_visual_regions(&nested_regions),
         spans,
     })
 }
@@ -696,8 +706,11 @@ fn resolve_highlight_document_kind(
 
 #[derive(Debug)]
 struct NestedRegion {
+    visual_level: usize,
+    visual_kind: InjectionVisualKind,
     source_ranges: Vec<Range<usize>>,
-    block_ranges: Vec<Range<usize>>,
+    layout_segments: Vec<RegionSegment>,
+    child_regions: Vec<VisualRegion>,
     overlays: Vec<StyledSpan>,
     merge_parent_styles: bool,
 }
@@ -712,6 +725,7 @@ fn collect_top_level_injection_regions(
     document_kind: DocumentKind,
     source: &str,
     theme: &Theme,
+    nested_visual_level: usize,
 ) -> Result<Vec<NestedRegion>> {
     let runtime_name = document_kind.runtime_name();
     let language_runtime = runtime(runtime_name)
@@ -727,6 +741,7 @@ fn collect_top_level_injection_regions(
         return render_injection_candidates(
             source,
             theme,
+            nested_visual_level,
             prune_to_top_level_injection_regions(collect_injection_candidates(
                 document_kind,
                 language_runtime,
@@ -748,6 +763,7 @@ fn collect_top_level_injection_regions(
     render_injection_candidates(
         source,
         theme,
+        nested_visual_level,
         prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
             source, candidates,
         )),
@@ -757,30 +773,40 @@ fn collect_top_level_injection_regions(
 fn render_injection_candidates(
     source: &str,
     theme: &Theme,
+    parent_visual_level: usize,
     mut top_level: Vec<InjectionCandidate>,
 ) -> Result<Vec<NestedRegion>> {
     let mut rendered = Vec::with_capacity(top_level.len());
 
     for candidate in top_level.drain(..) {
         let normalized = candidate.language_name.as_str();
+        let visual_level = parent_visual_level.saturating_add(candidate.visual_level_bump);
         let (virtual_source, source_map) = build_virtual_source(
             source,
             &candidate.ranges,
             candidate.is_combined,
             candidate.decode,
         );
+        let child_render = render_virtual_injection_render_data(
+            normalized,
+            &virtual_source,
+            candidate.highlight_github_expressions,
+            theme,
+            visual_level,
+        )?;
+        let layout_segments =
+            build_region_segments(source, &candidate.ranges, candidate.visual_anchor);
         rendered.push(NestedRegion {
-            block_ranges: build_block_ranges(source, &candidate.ranges),
+            visual_level,
+            visual_kind: candidate.visual_kind,
+            layout_segments,
             source_ranges: candidate.ranges,
-            overlays: map_virtual_spans_to_source(
-                &render_virtual_injection_spans(
-                    normalized,
-                    &virtual_source,
-                    candidate.highlight_github_expressions,
-                    theme,
-                )?,
+            child_regions: map_virtual_regions_to_source(
+                source,
+                &child_render.regions,
                 &source_map,
             ),
+            overlays: map_virtual_spans_to_source(&child_render.spans, &source_map),
             merge_parent_styles: candidate.merge_parent_styles,
         });
     }
@@ -788,20 +814,27 @@ fn render_injection_candidates(
     Ok(rendered)
 }
 
-fn render_virtual_injection_spans(
+fn render_virtual_injection_render_data(
     language_name: &str,
     source: &str,
     highlight_github_expressions: bool,
     theme: &Theme,
-) -> Result<Vec<StyledSpan>> {
-    let mut spans =
-        highlight_named_language_spans(plain_document_kind(language_name), None, source, theme)?;
+    nested_visual_level: usize,
+) -> Result<HighlightRenderData> {
+    let mut render_data = highlight_named_language_render_data_with_depth(
+        plain_document_kind(language_name),
+        None,
+        source,
+        theme,
+        nested_visual_level,
+    )?;
 
     if highlight_github_expressions {
-        spans = overlay_github_actions_expression_styles(source, spans, theme);
+        render_data.spans =
+            overlay_github_actions_expression_styles(source, render_data.spans, theme);
     }
 
-    Ok(spans)
+    Ok(render_data)
 }
 
 fn overlay_github_actions_expression_styles(
@@ -842,10 +875,10 @@ fn prune_to_top_level_injection_regions(
     let mut pruned: Vec<InjectionCandidate> = Vec::new();
 
     for candidate in candidates {
-        if let Some(last) = pruned.last() {
-            if candidate_extent(&candidate.ranges).start < candidate_extent(&last.ranges).end {
-                continue;
-            }
+        if let Some(last) = pruned.last()
+            && candidate_extent(&candidate.ranges).start < candidate_extent(&last.ranges).end
+        {
+            continue;
         }
 
         pruned.push(candidate);
@@ -872,17 +905,16 @@ fn merge_adjacent_combined_candidates(
     let mut merged: Vec<InjectionCandidate> = Vec::new();
 
     for candidate in candidates {
-        if let Some(last) = merged.last_mut() {
-            if last.is_combined
-                && candidate.is_combined
-                && last.language_name == candidate.language_name
-                && last.merge_parent_styles == candidate.merge_parent_styles
-                && can_merge_combined_candidates(source, last, &candidate)
-            {
-                last.ranges.extend(candidate.ranges);
-                last.ranges = normalize_ranges(std::mem::take(&mut last.ranges));
-                continue;
-            }
+        if let Some(last) = merged.last_mut()
+            && last.is_combined
+            && candidate.is_combined
+            && last.language_name == candidate.language_name
+            && last.merge_parent_styles == candidate.merge_parent_styles
+            && can_merge_combined_candidates(source, last, &candidate)
+        {
+            last.ranges.extend(candidate.ranges);
+            last.ranges = normalize_ranges(std::mem::take(&mut last.ranges));
+            continue;
         }
 
         merged.push(candidate);
@@ -924,11 +956,12 @@ fn push_span(spans: &mut Vec<StyledSpan>, range: Range<usize>, style: Option<Tok
         return;
     }
 
-    if let Some(last) = spans.last_mut() {
-        if last.range.end == range.start && last.style == style {
-            last.range.end = range.end;
-            return;
-        }
+    if let Some(last) = spans.last_mut()
+        && last.range.end == range.start
+        && last.style == style
+    {
+        last.range.end = range.end;
+        return;
     }
 
     spans.push(StyledSpan { range, style });
@@ -975,9 +1008,13 @@ fn build_virtual_source(
     (virtual_source, source_map)
 }
 
-fn build_block_ranges(source: &str, ranges: &[Range<usize>]) -> Vec<Range<usize>> {
-    let left_indent = shared_leading_indent(source, ranges);
-    let mut block_ranges = Vec::new();
+fn build_region_segments(
+    source: &str,
+    ranges: &[Range<usize>],
+    visual_anchor: InjectionVisualAnchor,
+) -> Vec<RegionSegment> {
+    let shared_indent = shared_leading_indent(source, ranges);
+    let mut line_bounds = Vec::new();
 
     for range in ranges {
         let mut line_start = line_start_offset(source, range.start);
@@ -988,20 +1025,25 @@ fn build_block_ranges(source: &str, ranges: &[Range<usize>]) -> Vec<Range<usize>
                 .find('\n')
                 .map(|offset| line_start + offset)
                 .unwrap_or(source.len());
-            let line = &source[line_start..line_end];
-
-            if !line.trim().is_empty() {
-                let indent_bytes = line
-                    .chars()
-                    .take_while(|ch| matches!(ch, ' ' | '\t'))
-                    .map(char::len_utf8)
-                    .take(left_indent)
-                    .sum::<usize>();
-                let block_start = (line_start + indent_bytes).min(line_end);
-                if block_start < line_end {
-                    block_ranges.push(block_start..line_end);
+            let range_start_on_line = range.start.max(line_start).min(line_end);
+            let indent_bytes = source[range_start_on_line..line_end]
+                .chars()
+                .take_while(|ch| matches!(ch, ' ' | '\t'))
+                .map(char::len_utf8)
+                .take(shared_indent)
+                .sum::<usize>();
+            let left = match visual_anchor {
+                InjectionVisualAnchor::Content => {
+                    (range_start_on_line + indent_bytes).min(line_end)
                 }
-            }
+                InjectionVisualAnchor::LineStart => line_start,
+            };
+            line_bounds.push(RegionSegment {
+                line_start,
+                left,
+                text_end: line_end,
+                right: line_end,
+            });
 
             if line_end >= line_end_limit || line_end == source.len() {
                 break;
@@ -1010,7 +1052,29 @@ fn build_block_ranges(source: &str, ranges: &[Range<usize>]) -> Vec<Range<usize>
         }
     }
 
-    normalize_ranges(block_ranges)
+    line_bounds.sort_by_key(|line| (line.line_start, line.left, line.text_end));
+    line_bounds.dedup();
+
+    let region_left = line_bounds
+        .iter()
+        .filter(|line| line.left < line.text_end)
+        .map(|line| line.left.saturating_sub(line.line_start))
+        .min()
+        .unwrap_or(0);
+    let region_width = line_bounds
+        .iter()
+        .map(|line| line.text_end.saturating_sub(line.line_start + region_left))
+        .max()
+        .unwrap_or(0);
+
+    line_bounds
+        .into_iter()
+        .map(|line| RegionSegment {
+            left: (line.line_start + region_left).min(line.text_end),
+            right: line.line_start + region_left + region_width,
+            ..line
+        })
+        .collect()
 }
 
 fn line_start_offset(source: &str, offset: usize) -> usize {
@@ -1369,6 +1433,51 @@ fn map_virtual_spans_to_source(
     mapped
 }
 
+fn map_virtual_regions_to_source(
+    source: &str,
+    virtual_regions: &[VisualRegion],
+    source_map: &[Range<usize>],
+) -> Vec<VisualRegion> {
+    let mut mapped = Vec::new();
+
+    for region in virtual_regions {
+        let mut segments = Vec::with_capacity(region.segments.len());
+        for segment in &region.segments {
+            let mapped_left = source_map
+                .get(segment.left)
+                .map(|range| range.start)
+                .unwrap_or(0);
+            let mapped_text_end = if segment.left < segment.text_end {
+                source_map
+                    .get(segment.text_end.saturating_sub(1))
+                    .map(|range| range.end)
+                    .unwrap_or(mapped_left)
+            } else {
+                mapped_left
+            };
+            segments.push(RegionSegment {
+                line_start: line_start_offset(source, mapped_left),
+                left: mapped_left,
+                text_end: mapped_text_end,
+                right: mapped_text_end + segment.right.saturating_sub(segment.text_end),
+            });
+        }
+        mapped.push(VisualRegion {
+            visual_level: region.visual_level,
+            segments,
+        });
+    }
+
+    mapped.sort_by_key(|region| {
+        region
+            .segments
+            .first()
+            .map(|segment| (segment.line_start, segment.left, region.visual_level))
+            .unwrap_or((0, 0, region.visual_level))
+    });
+    mapped
+}
+
 fn overlay_nested_region(parent_spans: Vec<StyledSpan>, region: &NestedRegion) -> Vec<StyledSpan> {
     let source_len = parent_spans.last().map_or(0, |span| span.range.end);
     let mut boundaries = vec![0, source_len];
@@ -1464,72 +1573,6 @@ fn overlay_style_spans(
     result
 }
 
-fn overlay_nested_region_tint(
-    parent_spans: Vec<StyledSpan>,
-    nested_regions: &[NestedRegion],
-    theme: &Theme,
-) -> Vec<StyledSpan> {
-    let Some(tint_style) = theme.nested_region_tint() else {
-        return parent_spans;
-    };
-
-    let mut overlays = Vec::new();
-    for region in nested_regions {
-        for range in &region.block_ranges {
-            push_span(&mut overlays, range.clone(), Some(tint_style));
-        }
-    }
-    merge_background_overlay_spans(parent_spans, overlays)
-}
-
-fn merge_background_overlay_spans(
-    parent_spans: Vec<StyledSpan>,
-    overlay_spans: Vec<StyledSpan>,
-) -> Vec<StyledSpan> {
-    if overlay_spans.is_empty() {
-        return parent_spans;
-    }
-
-    let source_len = parent_spans.last().map_or(0, |span| span.range.end);
-    let mut boundaries = vec![0, source_len];
-
-    for span in &parent_spans {
-        boundaries.push(span.range.start);
-        boundaries.push(span.range.end);
-    }
-
-    for span in &overlay_spans {
-        boundaries.push(span.range.start);
-        boundaries.push(span.range.end);
-    }
-
-    boundaries.sort_unstable();
-    boundaries.dedup();
-
-    let mut result = Vec::new();
-
-    for window in boundaries.windows(2) {
-        let start = window[0];
-        let end = window[1];
-        if start == end {
-            continue;
-        }
-
-        let style = match (
-            style_covering_span(&parent_spans, start, end),
-            style_covering_span(&overlay_spans, start, end),
-        ) {
-            (Some(parent), Some(overlay)) => Some(parent.merge(overlay)),
-            (Some(parent), None) => Some(parent),
-            (None, Some(overlay)) => Some(overlay),
-            (None, None) => None,
-        };
-        push_span(&mut result, start..end, style);
-    }
-
-    result
-}
-
 fn point_in_ranges(point: usize, ranges: &[Range<usize>]) -> bool {
     ranges
         .iter()
@@ -1543,114 +1586,208 @@ fn style_covering_span(spans: &[StyledSpan], start: usize, end: usize) -> Option
         .and_then(|span| span.style)
 }
 
-fn build_line_pads(source: &str, nested_regions: &[NestedRegion], theme: &Theme) -> Vec<LinePad> {
-    let Some(style) = theme.nested_region_tint() else {
-        return Vec::new();
-    };
-
-    let mut pads = Vec::new();
+fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<VisualRegion> {
+    let mut regions = Vec::new();
 
     for region in nested_regions {
-        let block_width = region
-            .block_ranges
-            .iter()
-            .map(|range| range.end.saturating_sub(line_start_offset(source, range.start)))
-            .max()
-            .unwrap_or(0);
-
-        for range in &region.block_ranges {
-            let line_start = line_start_offset(source, range.start);
-            let line_width = range.end.saturating_sub(line_start);
-            let pad_width = block_width.saturating_sub(line_width);
-            if pad_width > 0 {
-                pads.push(LinePad {
-                    line_end: range.end,
-                    width: pad_width,
-                    style,
-                });
-            }
+        if region.visual_kind == InjectionVisualKind::Block {
+            regions.push(VisualRegion {
+                visual_level: region.visual_level,
+                segments: region.layout_segments.clone(),
+            });
         }
+        regions.extend(region.child_regions.iter().cloned());
     }
 
-    pads.sort_by_key(|pad| pad.line_end);
-    pads
+    regions.sort_by_key(|region| {
+        region
+            .segments
+            .first()
+            .map(|segment| (segment.line_start, segment.left, region.visual_level))
+            .unwrap_or((0, 0, region.visual_level))
+    });
+    regions
 }
 
 fn render_styled_spans(
     source: &str,
     spans: &[StyledSpan],
-    line_pads: &[LinePad],
+    regions: &[VisualRegion],
     theme: &Theme,
 ) -> String {
     let mut rendered = String::with_capacity(source.len() + source.len() / 8);
-    let mut remaining_pads = line_pads.iter().peekable();
+    let mut line_start = 0;
 
-    for span in spans {
-        let segment = &source[span.range.clone()];
-        if let Some(style) = span.style {
-            let style_prefix = style.to_style(theme.color_mode()).render().to_string();
-            let mut segment_start = 0;
+    while line_start <= source.len() {
+        let line_end = source[line_start..]
+            .find('\n')
+            .map(|offset| line_start + offset)
+            .unwrap_or(source.len());
 
-            while let Some(relative_newline) = segment[segment_start..].find('\n') {
-                let newline_index = segment_start + relative_newline;
-                let line_end = span.range.start + newline_index;
-                rendered.push_str(&style_prefix);
-                rendered.push_str(&segment[segment_start..newline_index]);
-                rendered.push_str("\x1b[0m");
-                emit_line_pad(&mut rendered, &mut remaining_pads, line_end, theme);
-                rendered.push('\n');
-                segment_start = newline_index + 1;
-            }
+        render_line_text(
+            &mut rendered,
+            source,
+            line_start,
+            line_end,
+            spans,
+            regions,
+            theme,
+        );
+        render_line_padding(&mut rendered, line_start, line_end, regions, theme);
 
-            if segment_start < segment.len() {
-                rendered.push_str(&style_prefix);
-                rendered.push_str(&segment[segment_start..]);
-                rendered.push_str("\x1b[0m");
-                if span.range.end == source.len() {
-                    emit_line_pad(&mut rendered, &mut remaining_pads, source.len(), theme);
-                }
-            }
-        } else {
-            let mut segment_start = 0;
-
-            while let Some(relative_newline) = segment[segment_start..].find('\n') {
-                let newline_index = segment_start + relative_newline;
-                let line_end = span.range.start + newline_index;
-                rendered.push_str(&segment[segment_start..newline_index]);
-                emit_line_pad(&mut rendered, &mut remaining_pads, line_end, theme);
-                rendered.push('\n');
-                segment_start = newline_index + 1;
-            }
-
-            if segment_start < segment.len() {
-                rendered.push_str(&segment[segment_start..]);
-                if span.range.end == source.len() {
-                    emit_line_pad(&mut rendered, &mut remaining_pads, source.len(), theme);
-                }
-            }
+        if line_end == source.len() {
+            break;
         }
+
+        rendered.push('\n');
+        line_start = line_end + 1;
     }
 
     rendered
 }
 
-fn emit_line_pad<'a>(
+fn render_line_text(
     rendered: &mut String,
-    remaining_pads: &mut std::iter::Peekable<std::slice::Iter<'a, LinePad>>,
+    source: &str,
+    line_start: usize,
     line_end: usize,
+    spans: &[StyledSpan],
+    regions: &[VisualRegion],
     theme: &Theme,
 ) {
-    while let Some(pad) = remaining_pads.peek() {
-        if pad.line_end != line_end {
-            break;
+    if line_start == line_end {
+        return;
+    }
+
+    let mut boundaries = vec![line_start, line_end];
+
+    for span in spans {
+        if span.range.start < line_end && span.range.end > line_start {
+            boundaries.push(span.range.start.max(line_start));
+            boundaries.push(span.range.end.min(line_end));
+        }
+    }
+
+    for region in regions {
+        for segment in &region.segments {
+            if segment.line_start != line_start {
+                continue;
+            }
+            if segment.left < line_end && segment.text_end > line_start {
+                boundaries.push(segment.left.max(line_start));
+                boundaries.push(segment.text_end.min(line_end));
+            }
+        }
+    }
+
+    boundaries.sort_unstable();
+    boundaries.dedup();
+
+    for window in boundaries.windows(2) {
+        let start = window[0];
+        let end = window[1];
+        if start == end {
+            continue;
         }
 
-        let pad = **pad;
-        rendered.push_str(&pad.style.to_style(theme.color_mode()).render().to_string());
-        rendered.push_str(&" ".repeat(pad.width));
-        rendered.push_str("\x1b[0m");
-        remaining_pads.next();
+        let text = &source[start..end];
+        let style = merged_visual_style(spans, regions, line_start, start, end, theme);
+        push_rendered_segment(rendered, text, style, theme);
     }
+}
+
+fn render_line_padding(
+    rendered: &mut String,
+    line_start: usize,
+    line_end: usize,
+    regions: &[VisualRegion],
+    theme: &Theme,
+) {
+    let mut boundaries = vec![line_end];
+    for region in regions {
+        for segment in &region.segments {
+            if segment.line_start == line_start && segment.right > line_end {
+                boundaries.push(segment.right);
+            }
+        }
+    }
+    boundaries.sort_unstable();
+    boundaries.dedup();
+
+    if boundaries.len() <= 1 {
+        return;
+    }
+
+    for window in boundaries.windows(2) {
+        let start = window[0];
+        let end = window[1];
+        if start == end {
+            continue;
+        }
+
+        let style = top_region_style(regions, line_start, start, end, theme);
+        if let Some(style) = style {
+            push_rendered_segment(rendered, &" ".repeat(end - start), Some(style), theme);
+        }
+    }
+}
+
+fn merged_visual_style(
+    spans: &[StyledSpan],
+    regions: &[VisualRegion],
+    line_start: usize,
+    start: usize,
+    end: usize,
+    theme: &Theme,
+) -> Option<TokenStyle> {
+    let foreground = style_covering_span(spans, start, end);
+    let background = top_region_style(regions, line_start, start, end, theme);
+
+    match (foreground, background) {
+        (Some(foreground), Some(background)) => Some(foreground.with_background_under(background)),
+        (Some(foreground), None) => Some(foreground),
+        (None, Some(background)) => Some(background),
+        (None, None) => None,
+    }
+}
+
+fn push_rendered_segment(
+    rendered: &mut String,
+    text: &str,
+    style: Option<TokenStyle>,
+    theme: &Theme,
+) {
+    if let Some(style) = style {
+        rendered.push_str(&style.to_style(theme.color_mode()).render().to_string());
+        rendered.push_str(text);
+        rendered.push_str("\x1b[0m");
+    } else {
+        rendered.push_str(text);
+    }
+}
+
+fn top_region_style(
+    regions: &[VisualRegion],
+    line_start: usize,
+    start: usize,
+    end: usize,
+    theme: &Theme,
+) -> Option<TokenStyle> {
+    regions
+        .iter()
+        .filter_map(|region| {
+            region
+                .segments
+                .iter()
+                .find(|segment| {
+                    segment.line_start == line_start
+                        && segment.left <= start
+                        && segment.right >= end
+                })
+                .map(|_| region.visual_level)
+        })
+        .max()
+        .and_then(|level| theme.nested_region_tint(level))
 }
 #[cfg(test)]
 mod tests {
@@ -3425,6 +3562,67 @@ mod tests {
     }
 
     #[test]
+    fn rustdoc_nested_regions_use_different_tint_levels() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("rust/doc_comments_nested.rs");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+
+        let outer_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+        let inner_tint = theme
+            .nested_region_background(2)
+            .expect("expected second nested region tint");
+        let prose_line = find_line_containing(&lines, "Rustdoc should support");
+        let fenced_line = find_line_containing(&lines, "fn nested() -> i32 {");
+
+        assert!(
+            line_has_background(prose_line, outer_tint),
+            "outer rustdoc markdown prose should receive the first nested region tint"
+        );
+        assert!(
+            line_has_background(fenced_line, inner_tint),
+            "expected fenced code inside rustdoc to use a stronger nested region tint"
+        );
+    }
+
+    #[test]
+    fn rustdoc_inner_fenced_block_keeps_its_own_block_width() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("rust/doc_comments_nested.rs");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+
+        let class_line = find_line_containing(&lines, "class Nested:");
+        let inner_tint = theme
+            .nested_region_background(2)
+            .expect("expected second nested region tint");
+        let outer_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+
+        assert!(
+            line_has_background(class_line, inner_tint),
+            "inner fenced block line should use its own stronger block tint"
+        );
+        assert!(
+            line_has_background(class_line, outer_tint),
+            "the same line should still preserve the weaker outer rustdoc container tint"
+        );
+        assert!(
+            max_background_space_run(class_line, inner_tint) > 0,
+            "inner fenced block should still contribute a visible block-width pad"
+        );
+    }
+
+    #[test]
     fn rustdoc_fenced_rust_does_not_inherit_markdown_literal_color_for_plain_identifiers() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = Path::new("testdata/showcase/rust/macros.rs").to_path_buf();
@@ -4755,6 +4953,7 @@ mod tests {
             yaml_document_kind(Some(Path::new(".github/workflows/build.yml"))),
             &workflow_source,
             &theme,
+            1,
         )
         .expect("expected GitHub Actions workflow injections to resolve");
         assert!(
@@ -4824,6 +5023,7 @@ mod tests {
             yaml_document_kind(Some(Path::new(".github/workflows/build-matrix.yml"))),
             &workflow_source,
             &theme,
+            1,
         )
         .expect("expected advanced GitHub Actions workflow injections to resolve");
 
@@ -5044,35 +5244,27 @@ priority: 7
         let rendered = render_with_theme(Some(Path::new("Justfile")), source, &theme)
             .expect("expected Justfile source to render");
         let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
 
         assert!(
-            !line_has_background(lines[0], tint),
+            !line_has_background(lines[0], level_one_tint),
             "recipe header line should not be part of the nested block"
         );
         assert!(
-            line_has_background(lines[1], tint),
+            line_has_background(lines[1], level_one_tint),
             "first recipe command line should receive nested block tint"
         );
         assert!(
-            line_has_background(lines[2], tint),
+            line_has_background(lines[2], level_one_tint),
             "second recipe command line should receive nested block tint"
         );
 
-        let source_lines: Vec<_> = source.lines().collect();
-        let block_width = source_lines[1..]
-            .iter()
-            .map(|line| line.len())
-            .max()
-            .expect("expected recipe body lines");
-        let short_pad = " ".repeat(block_width - source_lines[1].len());
-
         assert!(
-            trailing_background_pad_width(lines[1], tint) == short_pad.len(),
-            "shorter recipe body line should be padded to the block width"
-        );
-        assert!(
-            trailing_background_pad_width(lines[2], tint) == 0,
-            "widest recipe body line should not receive trailing block padding"
+            line_has_background(lines[1], level_one_tint)
+                && line_has_background(lines[2], level_one_tint),
+            "recipe body lines should keep their nested block tint"
         );
     }
 
@@ -5085,23 +5277,29 @@ priority: 7
         let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
             .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
         let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
         assert!(
-            line_has_background(find_line_containing(&lines, "package preview"), tint),
+            line_has_background(
+                find_line_containing(&lines, "package preview"),
+                level_one_tint
+            ),
             "fenced code content should receive nested block tint"
         );
 
-        let short_line = "package preview";
-        let wide_line = "func (r *Renderer) Render() string {";
-        let short_pad = " ".repeat(wide_line.len() - short_line.len());
+        let first_empty_line = lines[4];
+        let second_empty_line = lines[14];
 
         assert!(
-            trailing_background_pad_width(find_line_containing(&lines, short_line), tint)
-                == short_pad.len(),
-            "shorter fenced code line should be padded to the block width"
+            line_has_background(first_empty_line, level_one_tint)
+                && visible_trailing_spaces(first_empty_line) > 0,
+            "empty line inside first fenced block should still be part of the block region"
         );
         assert!(
-            trailing_background_pad_width(find_line_containing(&lines, wide_line), tint) == 0,
-            "widest fenced code line should not receive trailing block padding"
+            line_has_background(second_empty_line, level_one_tint)
+                && visible_trailing_spaces(second_empty_line) > 0,
+            "empty line inside second fenced block should still be part of the block region"
         );
     }
 
@@ -5117,16 +5315,19 @@ priority: 7
         )
         .expect("expected workflow source to render");
         let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
         assert!(
-            !line_has_background(lines[3], tint),
+            !line_has_background(lines[3], level_one_tint),
             "run: | header line should stay outside the nested block"
         );
         assert!(
-            line_has_background(lines[4], tint),
+            line_has_background(lines[4], level_one_tint),
             "first run body line should receive nested block tint"
         );
         assert!(
-            line_has_background(lines[5], tint),
+            line_has_background(lines[5], level_one_tint),
             "second run body line should receive nested block tint"
         );
 
@@ -5136,13 +5337,32 @@ priority: 7
         let short_pad = " ".repeat(block_width - body_lines[0].len());
 
         assert!(
-            trailing_background_pad_width(lines[4], tint) == short_pad.len(),
-            "shorter run body line should be padded to the block width"
+            trailing_background_pad_width(lines[4], level_one_tint) >= short_pad.len(),
+            "shorter run body line should keep a visible block-width pad"
         );
         assert!(
-            trailing_background_pad_width(lines[5], tint) == 0,
+            trailing_background_pad_width(lines[5], level_one_tint) == 0,
             "widest run body line should not receive trailing block padding"
         );
+    }
+
+    #[test]
+    fn nested_region_tint_levels_scale_monotonically_for_five_layers() {
+        let tint = RgbColor(16, 24, 32);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let mut previous_luminance = relative_luminance(tint);
+
+        for level in 1..=5 {
+            let background = theme
+                .nested_region_background(level)
+                .unwrap_or_else(|| panic!("expected nested region tint for level {level}"));
+            let luminance = relative_luminance(background);
+            assert!(
+                luminance > previous_luminance,
+                "nested region level {level} should be brighter than the previous level"
+            );
+            previous_luminance = luminance;
+        }
     }
 
     fn line_has_background(line: &str, background: RgbColor) -> bool {
@@ -5150,14 +5370,20 @@ priority: 7
     }
 
     fn find_line_containing<'a>(lines: &'a [&str], needle: &str) -> &'a str {
-        lines.iter()
+        lines
+            .iter()
             .copied()
             .find(|line| strip_ansi(line).contains(needle))
-            .unwrap_or_else(|| panic!("expected rendered output to contain line fragment {needle:?}"))
+            .unwrap_or_else(|| {
+                panic!("expected rendered output to contain line fragment {needle:?}")
+            })
     }
 
     fn background_escape(background: RgbColor) -> String {
-        format!("\x1b[48;2;{};{};{}m", background.0, background.1, background.2)
+        format!(
+            "\x1b[48;2;{};{};{}m",
+            background.0, background.1, background.2
+        )
     }
 
     fn strip_ansi(text: &str) -> String {
@@ -5201,6 +5427,38 @@ priority: 7
         } else {
             0
         }
+    }
+
+    fn max_background_space_run(line: &str, background: RgbColor) -> usize {
+        let background_escape = background_escape(background);
+        let reset = "\x1b[0m";
+        let mut rest = line;
+        let mut max_width = 0;
+
+        while let Some(start) = rest.find(&background_escape) {
+            let after_background = &rest[(start + background_escape.len())..];
+            let width = after_background.chars().take_while(|ch| *ch == ' ').count();
+
+            if width > 0 && after_background[width..].starts_with(reset) {
+                max_width = max_width.max(width);
+            }
+
+            rest = after_background;
+        }
+
+        max_width
+    }
+
+    fn visible_trailing_spaces(line: &str) -> usize {
+        strip_ansi(line)
+            .chars()
+            .rev()
+            .take_while(|ch| *ch == ' ')
+            .count()
+    }
+
+    fn relative_luminance(color: RgbColor) -> f32 {
+        0.2126 * color.0 as f32 + 0.7152 * color.1 as f32 + 0.0722 * color.2 as f32
     }
 
     fn fixture_path(relative_path: &str) -> PathBuf {

@@ -18,11 +18,13 @@
 (recipe_body
   !shebang
   (#set! injection.language "bash")
-  (#set! injection.include-children)) @injection.content
+  (#set! injection.include-children)
+  (#set! kat.visual "block")) @injection.content
 
 (external_command
   (command_body) @injection.content
-  (#set! injection.language "bash"))
+  (#set! injection.language "bash")
+  (#set! kat.visual "block"))
 
 ; ================ Global language specified ================
 ; Global language is set with something like one of the following:
@@ -51,7 +53,8 @@
     (recipe
       (recipe_body
         !shebang
-        (#set! injection.include-children)) @injection.content)
+        (#set! injection.include-children)
+        (#set! kat.visual "block")) @injection.content)
 
     (assignment
       (expression
@@ -68,7 +71,8 @@
     (recipe
       (recipe_body
         !shebang
-        (#set! injection.include-children)) @injection.content)
+        (#set! injection.include-children)
+        (#set! kat.visual "block")) @injection.content)
 
     (assignment
       (expression
@@ -84,7 +88,8 @@
     (recipe
       (recipe_body
         !shebang
-        (#set! injection.include-children)) @injection.content)
+        (#set! injection.include-children)
+        (#set! kat.visual "block")) @injection.content)
 
     (assignment
       (expression
@@ -100,7 +105,8 @@
   (shebang ;
     (language) @injection.language)
   (#not-any-of? @injection.language "python3" "nodejs" "node" "uv")
-  (#set! injection.include-children)) @injection.content
+  (#set! injection.include-children)
+  (#set! kat.visual "block")) @injection.content
 
 ; Transform some known executables
 
@@ -110,7 +116,8 @@
     (language) @_lang)
   (#any-of? @_lang "python3" "uv")
   (#set! injection.language "python")
-  (#set! injection.include-children)) @injection.content
+  (#set! injection.include-children)
+  (#set! kat.visual "block")) @injection.content
 
 ; node/nodejs -> javascript
 (recipe_body
@@ -118,4 +125,5 @@
     (language) @_lang)
   (#any-of? @_lang "node" "nodejs")
   (#set! injection.language "javascript")
-  (#set! injection.include-children)) @injection.content
+  (#set! injection.include-children)
+  (#set! kat.visual "block")) @injection.content

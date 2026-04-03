@@ -44,6 +44,12 @@ impl Theme {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn nested_region_background(&self, level: usize) -> Option<RgbColor> {
+        self.nested_region_tint
+            .map(|background| adjust_nested_region_tint(background, level))
+    }
+
     pub(crate) fn color_mode(&self) -> ColorMode {
         self.color_mode
     }
@@ -94,9 +100,48 @@ impl Theme {
         })
     }
 
-    pub(crate) fn nested_region_tint(&self) -> Option<TokenStyle> {
-        self.nested_region_tint.map(TokenStyle::background_tint)
+    pub(crate) fn nested_region_tint(&self, level: usize) -> Option<TokenStyle> {
+        if level == 0 {
+            return None;
+        }
+
+        self.nested_region_tint.map(|background| {
+            TokenStyle::background_tint(adjust_nested_region_tint(background, level))
+        })
     }
+}
+
+fn adjust_nested_region_tint(background: RgbColor, level: usize) -> RgbColor {
+    let lift_target = RgbColor(98, 114, 164);
+    let lift = nested_region_lift_weight(level);
+    mix_rgb(background, lift_target, lift)
+}
+
+fn nested_region_lift_weight(level: usize) -> f32 {
+    match level {
+        0 => 0.0,
+        1 => 0.2,
+        2 => 0.34,
+        3 => 0.46,
+        4 => 0.58,
+        5 => 0.68,
+        6 => 0.76,
+        _ => 0.82,
+    }
+}
+
+fn mix_rgb(base: RgbColor, other: RgbColor, weight: f32) -> RgbColor {
+    fn mix_channel(base: u8, other: u8, weight: f32) -> u8 {
+        let base = base as f32;
+        let other = other as f32;
+        (base + (other - base) * weight).round().clamp(0.0, 255.0) as u8
+    }
+
+    RgbColor(
+        mix_channel(base.0, other.0, weight),
+        mix_channel(base.1, other.1, weight),
+        mix_channel(base.2, other.2, weight),
+    )
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -179,6 +224,14 @@ impl TokenStyle {
             strikethrough: (self.strikethrough && self.color_priority >= color_priority)
                 || (overlay.strikethrough && overlay.color_priority >= color_priority),
         }
+    }
+
+    pub(crate) fn with_background_under(self, background: Self) -> Self {
+        let mut merged = self;
+        if merged.background.is_none() {
+            merged.background = background.background;
+        }
+        merged
     }
 
     pub(crate) fn to_style(self, color_mode: ColorMode) -> Style {
