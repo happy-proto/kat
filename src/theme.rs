@@ -2,6 +2,8 @@ use std::env;
 
 use anstyle::{AnsiColor, Color, RgbColor, Style};
 
+use crate::terminal_background::detect_nested_region_tint;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ColorMode {
     NoColor,
@@ -11,18 +13,41 @@ pub enum ColorMode {
 
 pub struct Theme {
     color_mode: ColorMode,
+    nested_region_tint: Option<RgbColor>,
 }
 
 impl Theme {
     pub fn detect() -> Self {
+        let color_mode = detect_color_mode();
         Self {
-            color_mode: detect_color_mode(),
+            nested_region_tint: detect_nested_region_tint(color_mode),
+            color_mode,
         }
     }
 
     #[cfg(test)]
     pub fn for_mode(color_mode: ColorMode) -> Self {
-        Self { color_mode }
+        Self {
+            color_mode,
+            nested_region_tint: None,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn for_mode_with_nested_region_tint(
+        color_mode: ColorMode,
+        nested_region_tint: Option<RgbColor>,
+    ) -> Self {
+        Self {
+            color_mode,
+            nested_region_tint,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn nested_region_background(&self, level: usize) -> Option<RgbColor> {
+        self.nested_region_tint
+            .map(|background| adjust_nested_region_tint(background, level))
     }
 
     pub(crate) fn color_mode(&self) -> ColorMode {
@@ -74,12 +99,56 @@ impl Theme {
             }
         })
     }
+
+    pub(crate) fn nested_region_tint(&self, level: usize) -> Option<TokenStyle> {
+        if level == 0 {
+            return None;
+        }
+
+        self.nested_region_tint.map(|background| {
+            TokenStyle::background_tint(adjust_nested_region_tint(background, level))
+        })
+    }
+}
+
+fn adjust_nested_region_tint(background: RgbColor, level: usize) -> RgbColor {
+    let lift_target = RgbColor(98, 114, 164);
+    let lift = nested_region_lift_weight(level);
+    mix_rgb(background, lift_target, lift)
+}
+
+fn nested_region_lift_weight(level: usize) -> f32 {
+    match level {
+        0 => 0.0,
+        1 => 0.1,
+        2 => 0.2,
+        3 => 0.3,
+        4 => 0.4,
+        5 => 0.5,
+        6 => 0.6,
+        _ => 0.7,
+    }
+}
+
+fn mix_rgb(base: RgbColor, other: RgbColor, weight: f32) -> RgbColor {
+    fn mix_channel(base: u8, other: u8, weight: f32) -> u8 {
+        let base = base as f32;
+        let other = other as f32;
+        (base + (other - base) * weight).round().clamp(0.0, 255.0) as u8
+    }
+
+    RgbColor(
+        mix_channel(base.0, other.0, weight),
+        mix_channel(base.1, other.1, weight),
+        mix_channel(base.2, other.2, weight),
+    )
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct TokenStyle {
     color: DraculaColor,
     color_priority: u8,
+    background: Option<RgbColor>,
     italic: bool,
     bold: bool,
     underline: bool,
@@ -91,6 +160,7 @@ impl TokenStyle {
         Self {
             color,
             color_priority: color.priority(),
+            background: None,
             italic: false,
             bold: false,
             underline: false,
@@ -127,6 +197,13 @@ impl TokenStyle {
         self
     }
 
+    fn background_tint(background: RgbColor) -> Self {
+        Self {
+            background: Some(background),
+            ..Self::new(DraculaColor::Foreground).with_color_priority(0)
+        }
+    }
+
     pub(crate) fn merge(self, overlay: Self) -> Self {
         let (color, color_priority) = if overlay.color_priority >= self.color_priority {
             (overlay.color, overlay.color_priority)
@@ -137,6 +214,7 @@ impl TokenStyle {
         Self {
             color,
             color_priority,
+            background: overlay.background.or(self.background),
             italic: (self.italic && self.color_priority >= color_priority)
                 || (overlay.italic && overlay.color_priority >= color_priority),
             bold: (self.bold && self.color_priority >= color_priority)
@@ -148,8 +226,20 @@ impl TokenStyle {
         }
     }
 
+    pub(crate) fn with_background_under(self, background: Self) -> Self {
+        let mut merged = self;
+        if merged.background.is_none() {
+            merged.background = background.background;
+        }
+        merged
+    }
+
     pub(crate) fn to_style(self, color_mode: ColorMode) -> Style {
         let mut style = Style::new().fg_color(Some(self.color.to_color(color_mode)));
+
+        if let Some(background) = self.background {
+            style = style.bg_color(Some(Color::Rgb(background)));
+        }
 
         if self.italic {
             style = style.italic();

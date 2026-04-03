@@ -69,6 +69,7 @@
 - 宿主字符串解码这层基础设施已经落地：`JavaScript` / `Python` / `Rust` / `Go` 的 raw / escaped string 不再只是按源码字面量截取，而会先经过统一 decode，再把高亮映射回原源码位置。
 - `JSDoc` 也已经不再是纯占位，但受当前 upstream grammar 表达能力限制，参数名等细节仍没有达到和宿主语言同级的细粒度程度。
 - `Justfile` 仍是当前一个明确强项，但参考基线应改为社区扩展 [`zed-just`](https://github.com/jackTabsCode/zed-just)，而不是再写成“`zed` 没有同级支持”。
+- 对 `Justfile recipe`、Markdown fenced code、GitHub Actions `run` 这类块级 nested runtime，renderer 现在已经提供统一的 block contrast：会按共享缩进推导矩形区域并补齐较短行尾部背景；但 inline 注入和更复杂的非矩形区域还没有完全纳入同一视觉模型。
 
 ## 语言总览
 
