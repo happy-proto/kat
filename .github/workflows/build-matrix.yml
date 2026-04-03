@@ -41,14 +41,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v5
-
-      - name: Set up Node.js with pnpm cache
+      - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Enable Corepack pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack install --global "$(node -p "require('./package.json').packageManager")"
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "path=$(pnpm store path --silent)" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore pnpm store cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Restore Cargo registry cache
+        id: cargo-registry-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set up sccache
         uses: ./.github/actions/sccache
@@ -57,12 +82,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      - name: Restore Cargo registry cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}
-          cache-targets: false
 
       - name: Restore tree-sitter build cache
         uses: ./.github/actions/tree-sitter-cache
@@ -143,6 +162,22 @@ jobs:
           key-prefix: tree-sitter-build-cache-${{ runner.os }}-${{ matrix.target }}
           target: ${{ matrix.target }}
           profile: release
+
+      - name: Save pnpm store cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Save Cargo registry cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ steps.cargo-registry-cache.outputs.cache-primary-key }}
 
       - name: Publish job summary
         shell: bash

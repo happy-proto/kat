@@ -4611,6 +4611,10 @@ mod tests {
             "expected bare if expressions to reuse GitHub Actions operator styling"
         );
         assert!(
+            workflow_rendered.contains("\x1b[38;2;255;121;198m||"),
+            "expected bare if expressions to reuse GitHub Actions operator styling"
+        );
+        assert!(
             workflow_regions.iter().any(|region| {
                 region.overlays.iter().any(|span| {
                     &workflow_source[span.range.clone()] == "${{"
@@ -4657,45 +4661,6 @@ mod tests {
             "expected cmd shell values to receive schema-aware runtime styling"
         );
         assert!(
-            workflow_rendered.contains("\x1b[38;2;139;233;253mubuntu-latest"),
-            "expected runs-on labels to receive GitHub Actions runner styling"
-        );
-        assert!(
-            workflow_rendered.contains("\x1b[38;2;139;233;253mself-hosted"),
-            "expected runs-on array labels to receive GitHub Actions runner styling"
-        );
-    }
-
-    #[test]
-    fn repository_build_matrix_workflow_keeps_github_actions_shell_and_expression_highlighting() {
-        let theme = Theme::for_mode(ColorMode::TrueColor);
-        let workflow_path = Path::new(".github/workflows/build-matrix.yml");
-        let workflow_source = read_file(workflow_path);
-        let workflow_rendered = render_with_theme(Some(workflow_path), &workflow_source, &theme)
-            .unwrap_or_else(|error| {
-                panic!("failed to render {}: {error}", workflow_path.display())
-            });
-        let workflow_regions = collect_top_level_injection_regions(
-            yaml_document_kind(Some(workflow_path)),
-            &workflow_source,
-            &theme,
-        )
-        .expect("expected repository build-matrix workflow injections to resolve");
-
-        assert!(
-            workflow_regions.iter().any(|region| {
-                region.overlays.iter().any(|span| {
-                    &workflow_source[span.range.clone()] == "set"
-                        && span.style == theme.token_style_for("function.builtin", "set")
-                })
-            }),
-            "expected build-matrix workflow run blocks to reuse Bash highlighting"
-        );
-        assert!(
-            workflow_rendered.contains("\x1b[38;2;255;121;198m||"),
-            "expected build-matrix expressions to reuse GitHub Actions operator styling"
-        );
-        assert!(
             workflow_rendered.contains("\x1b[3m\x1b[38;2;139;233;253mread"),
             "expected permissions values to receive schema-aware styling"
         );
@@ -4709,16 +4674,11 @@ mod tests {
         );
         assert!(
             workflow_rendered.contains("\x1b[38;2;139;233;253mubuntu-latest"),
-            "expected matrix runner labels to receive GitHub Actions runner styling"
+            "expected runs-on labels to receive GitHub Actions runner styling"
         );
         assert!(
-            workflow_regions.iter().any(|region| {
-                region.overlays.iter().any(|span| {
-                    &workflow_source[span.range.clone()] == "${{"
-                        && span.style == theme.token_style_for("punctuation.special", "${{")
-                })
-            }),
-            "expected build-matrix run blocks to keep GitHub Actions expression punctuation"
+            workflow_rendered.contains("\x1b[38;2;139;233;253mself-hosted"),
+            "expected runs-on array labels to receive GitHub Actions runner styling"
         );
     }
 
