@@ -16,10 +16,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: sccache
-  CC: sccache cc
-  CXX: sccache c++
 
 jobs:
   build:
@@ -67,30 +63,18 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Restore Cargo registry cache
-        id: cargo-registry-cache
+        id: cargo-cache
         uses: actions/cache/restore@v5
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
           key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Set up sccache
-        uses: ./.github/actions/sccache
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      - name: Restore tree-sitter build cache
-        id: tree-sitter-cache
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: restore
-          key-prefix: tree-sitter-build-cache-${{ runner.os }}-${{ matrix.target }}
-          target: ${{ matrix.target }}
-          profile: release
 
       - name: Make linker wrapper executable
         run: chmod +x .github/scripts/rust-link-wrapper.sh
@@ -115,7 +99,6 @@ jobs:
           install_end=$(date +%s)
 
           build_start=$(date +%s)
-          "${SCCACHE_PATH}" --zero-stats
           : > "${KAT_LINK_LOG}"
           : > "${KAT_BUILD_PROFILE_LOG}"
           cargo build --timings --release --locked --target "${TARGET}"
@@ -155,15 +138,6 @@ jobs:
             echo "TREE_SITTER_BUILD_PROFILE_PATH=${KAT_BUILD_PROFILE_LOG}"
           } >> "${GITHUB_ENV}"
 
-      - name: Save tree-sitter build cache
-        if: always() && steps.tree-sitter-cache.outputs.cache-hit != 'true'
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: save
-          key-prefix: tree-sitter-build-cache-${{ runner.os }}-${{ matrix.target }}
-          target: ${{ matrix.target }}
-          profile: release
-
       - name: Save pnpm store cache
         if: always()
         uses: actions/cache/save@v5
@@ -176,9 +150,9 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ steps.cargo-registry-cache.outputs.cache-primary-key }}
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
       - name: Publish job summary
         shell: bash
