@@ -1,0 +1,49 @@
+name: Advanced CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' && (!cancelled() || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker://ghcr.io/catthehacker/ubuntu:act-latest
+      - uses: actions/setup-node/bin@v6
+        with:
+          cache: pnpm
+      - name: Default Shell Step
+        run: |
+          set -euo pipefail
+          echo "Target ${{ matrix.target }}"
+      - name: Python Template Step
+        shell: python {0}
+        run: |
+          print("${{ github.ref_name }}")
+      - name: PowerShell Step
+        shell: pwsh
+        run: |
+          function Invoke-Preview { Write-Host "Ref $env:GITHUB_REF" }
+          Invoke-Preview
+      - name: Cmd Step
+        shell: cmd
+        run: |
+          @echo off
+          set TARGET=kat
+          echo %TARGET%
+      - uses: actions/upload-artifact@v6
+        with:
+          name: logs
+          path: output.txt
+          if-no-files-found: error
+  self_hosted:
+    runs-on: [self-hosted, linux]
+    steps:
+      - run: echo ready

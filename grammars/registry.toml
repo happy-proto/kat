@@ -101,6 +101,8 @@ shebang_substrings = ["fish"]
 extra_c_flags = []
 highlight_names = [
   "comment",
+  "constant",
+  "embedded",
   "function",
   "function.builtin",
   "keyword",
@@ -114,6 +116,7 @@ highlight_names = [
   "string.escape",
   "string.regex",
   "variable",
+  "variable.parameter",
   "variable.special",
 ]
 
@@ -143,6 +146,49 @@ highlight_names = [
   "string.regex",
   "variable",
   "variable.special",
+]
+
+[[grammar]]
+name = "powershell"
+library_name = "tree-sitter-powershell"
+extensions = ["ps1", "psm1", "psd1"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = ["powershell", "pwsh"]
+extra_c_flags = ["-Wno-unused-parameter"]
+highlight_names = [
+  "comment",
+  "function",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "batch"
+library_name = "tree-sitter-batch"
+extensions = ["bat", "cmd"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "function",
+  "keyword",
+  "label",
+  "number",
+  "operator",
+  "string",
+  "string.special",
+  "variable",
+  "variable.parameter",
 ]
 
 [[grammar]]
@@ -546,6 +592,39 @@ highlight_names = [
   "type",
   "type.builtin",
   "variable.parameter",
+]
+
+[[grammar]]
+name = "proto"
+library_name = "tree-sitter-proto"
+extensions = ["proto", "protobuf", "protodevel"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "keyword",
+  "number",
+  "punctuation.bracket",
+  "string",
+  "type",
+]
+
+[[grammar]]
+name = "textproto"
+library_name = "tree-sitter-textproto"
+extensions = ["textproto", "textpb", "pbtxt", "prototxt"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "number",
+  "property",
+  "punctuation.bracket",
+  "string",
 ]
 
 [[grammar]]

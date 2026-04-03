@@ -23,6 +23,11 @@ Included sources:
 - `grammars/zsh/queries/highlights.scm`
 - `grammars/zsh/queries/injections.scm`
 - `grammars/zsh/scanner.c`
+- `grammars/powershell/grammar.js`
+- `grammars/powershell/queries/highlights.scm`
+- `grammars/powershell/scanner.c`
+- `grammars/batch/grammar.js`
+- `grammars/batch/queries/highlights.scm`
 - `grammars/toml/grammar.js`
 - `grammars/toml/queries/highlights.scm`
 - `grammars/toml/scanner.c`
@@ -52,6 +57,10 @@ Included sources:
 - `grammars/gosum/queries/highlights.scm`
 - `grammars/graphql/grammar.js`
 - `grammars/graphql/queries/highlights.scm`
+- `grammars/proto/grammar.js`
+- `grammars/proto/queries/highlights.scm`
+- `grammars/textproto/grammar.js`
+- `grammars/textproto/queries/highlights.scm`
 - `grammars/sql/grammar.js`
 - `grammars/sql/queries/highlights.scm`
 - `grammars/sql/queries/highlights-postgres.scm`
@@ -182,6 +191,21 @@ Upstream projects:
   License: MIT
   Notes: repository-local adapted query that extends kat's existing shell heredoc injection model to zsh. The exact upstream commits used as the starting point still need a later audit.
 
+- `grammars/powershell/grammar.js`
+- `grammars/powershell/queries/highlights.scm`
+- `grammars/powershell/scanner.c`
+  Source: [airbus-cert/tree-sitter-powershell](https://github.com/airbus-cert/tree-sitter-powershell)
+  Revision: `da65ba3acc93777255781b447f5e7448245df4bf`
+  License: MIT
+  Notes: repository-local copy of the upstream PowerShell grammar, highlights query and scanner source, trimmed to the minimal assets needed for kat's native build.
+
+- `grammars/batch/grammar.js`
+- `grammars/batch/queries/highlights.scm`
+  Source: [wharflab/tree-sitter-batch](https://github.com/wharflab/tree-sitter-batch)
+  Revision: `8694fbc701ff6e35e3711bf39225860d13079906`
+  License: MIT
+  Notes: repository-local copy of the upstream Windows Batch / CMD grammar and highlights query, trimmed to the minimal assets needed for kat's native build.
+
 - `grammars/toml/*`
   Source: [tree-sitter/tree-sitter-toml](https://github.com/tree-sitter/tree-sitter-toml)
   Revision: not recorded during the initial import
@@ -290,6 +314,30 @@ Upstream projects:
   Revision: not recorded during the initial import
   License: MIT
   Notes: highlights query maintained in-repo and tuned for kat's renderer/runtime model.
+
+- `grammars/proto/grammar.js`
+  Source: [mitchellh/tree-sitter-proto](https://github.com/mitchellh/tree-sitter-proto)
+  Revision: `42d82fa18f8afe59b5fc0b16c207ee4f84cb185f`
+  License: MIT
+  Notes: repository-local copy of the upstream grammar source, with a minimal local JavaScript syntax fix applied so the vendored grammar can build correctly in kat's grammar pipeline.
+
+- `grammars/proto/queries/highlights.scm`
+  Source: [mitchellh/tree-sitter-proto](https://github.com/mitchellh/tree-sitter-proto)
+  Revision: `42d82fa18f8afe59b5fc0b16c207ee4f84cb185f`
+  License: MIT
+  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model.
+
+- `grammars/textproto/grammar.js`
+  Source: [PorterAtGoogle/tree-sitter-textproto](https://github.com/PorterAtGoogle/tree-sitter-textproto)
+  Revision: `568471b80fd8793d37ed01865d8c2208a9fefd1b`
+  License: MIT
+  Notes: repository-local copy of the upstream grammar source.
+
+- `grammars/textproto/queries/highlights.scm`
+  Source: [PorterAtGoogle/tree-sitter-textproto](https://github.com/PorterAtGoogle/tree-sitter-textproto)
+  Revision: `568471b80fd8793d37ed01865d8c2208a9fefd1b`
+  License: MIT
+  Notes: repository-local adapted highlights query for kat's capture model, including local semantic adjustments for field names and scalar literals.
 
 - `grammars/sql/*`
   Source: [nervenes/tree-sitter-sql](https://github.com/nervenes/tree-sitter-sql)

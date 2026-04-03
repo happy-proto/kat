@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package kat.theme.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message ThemePreview {
+  string name = 1;
+  bool enabled = 2;
+  repeated string tags = 3;
+}
+
+service ThemeService {
+  rpc GetTheme(ThemePreview) returns (ThemePreview);
+}

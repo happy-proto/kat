@@ -19,6 +19,7 @@ use walkdir::WalkDir;
 
 const PARSER_OPT_LEVEL_NAME: &str = "default";
 const TREE_SITTER_CACHE_VERSION: &str = "v1";
+const TREE_SITTER_CACHE_ROOT_DIR: &str = ".build-cache";
 
 #[derive(Debug, Deserialize)]
 struct GrammarRegistry {
@@ -62,7 +63,7 @@ fn main() {
     let package_json_path = manifest_dir.join("package.json");
     let pnpm_lock_path = manifest_dir.join("pnpm-lock.yaml");
     let shared_cache_root = manifest_dir
-        .join("target")
+        .join(TREE_SITTER_CACHE_ROOT_DIR)
         .join("tree-sitter-cache")
         .join(TREE_SITTER_CACHE_VERSION);
     let profiler = BuildProfiler::from_env();
@@ -189,8 +190,12 @@ fn compile_grammar(
 ) -> GrammarBuildResult {
     let grammar_started_at = Instant::now();
     let grammar_dir = manifest_dir.join("grammars").join(&grammar.name);
-    let cache_paths =
-        GrammarCachePaths::new(shared_cache_root, &grammar.name, build_target, build_profile);
+    let cache_paths = GrammarCachePaths::new(
+        shared_cache_root,
+        &grammar.name,
+        build_target,
+        build_profile,
+    );
 
     let grammar_json_input_paths = collect_support_paths(&grammar_dir, &["js", "json"]);
     let c_scanner_paths = collect_scanner_paths(&grammar_dir, &["scanner.c"]);
@@ -221,12 +226,7 @@ fn compile_grammar(
             stage_started_at.elapsed(),
         );
     } else {
-        profiler.log_stage(
-            &grammar.name,
-            "grammar-json",
-            "cache-hit",
-            Duration::ZERO,
-        );
+        profiler.log_stage(&grammar.name, "grammar-json", "cache-hit", Duration::ZERO);
     }
 
     let parser_fingerprint = parser_generation_fingerprint(&grammar_json_path);
@@ -245,12 +245,7 @@ fn compile_grammar(
             stage_started_at.elapsed(),
         );
     } else {
-        profiler.log_stage(
-            &grammar.name,
-            "parser-src",
-            "cache-hit",
-            Duration::ZERO,
-        );
+        profiler.log_stage(&grammar.name, "parser-src", "cache-hit", Duration::ZERO);
     }
 
     let native_fingerprint = native_compile_fingerprint(
@@ -301,20 +296,10 @@ fn compile_grammar(
             stage_started_at.elapsed(),
         );
     } else {
-        profiler.log_stage(
-            &grammar.name,
-            "native",
-            "cache-hit",
-            Duration::ZERO,
-        );
+        profiler.log_stage(&grammar.name, "native", "cache-hit", Duration::ZERO);
     }
 
-    profiler.log_stage(
-        &grammar.name,
-        "total",
-        "done",
-        grammar_started_at.elapsed(),
-    );
+    profiler.log_stage(&grammar.name, "total", "done", grammar_started_at.elapsed());
 
     GrammarBuildResult {
         native_out_dir: cache_paths.native_out_dir,
@@ -331,7 +316,9 @@ impl BuildProfiler {
         let log_path = enabled.then(|| {
             env::var("KAT_BUILD_PROFILE_LOG")
                 .map(PathBuf::from)
-                .unwrap_or_else(|_| PathBuf::from("target/tree-sitter-build-profile.log"))
+                .unwrap_or_else(|_| {
+                    PathBuf::from(TREE_SITTER_CACHE_ROOT_DIR).join("tree-sitter-build-profile.log")
+                })
         });
 
         Self { enabled, log_path }

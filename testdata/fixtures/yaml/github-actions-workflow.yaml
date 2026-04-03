@@ -1,0 +1,25 @@
+name: CI ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    if: ${{ github.ref == 'refs/heads/main' && !cancelled() }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bash Step
+        run: |
+          echo "Hello ${NAME}"
+          if [[ -n "${{ github.ref }}" ]]; then
+            printf '%s\n' "${{ matrix.python-version }}"
+          fi
+      - name: Python Step
+        shell: python
+        run: |
+          import os
+          print(os.environ["GITHUB_REF"])

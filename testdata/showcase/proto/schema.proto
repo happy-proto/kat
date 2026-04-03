@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package kat.theme.preview.v1;
+
+option go_package = "github.com/dcjanus/kat/proto/themepreviewv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+message ThemePreview {
+  string name = 1;
+  bool enabled = 2;
+  repeated string tags = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+enum ThemeKind {
+  THEME_KIND_UNSPECIFIED = 0;
+  THEME_KIND_DARK = 1;
+  THEME_KIND_LIGHT = 2;
+}
+
+service ThemeService {
+  rpc GetTheme(ThemePreview) returns (ThemePreview);
+  rpc ListThemes(google.protobuf.Empty) returns (ThemePreview);
+}

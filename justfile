@@ -1,6 +1,3 @@
-setup:
-    pnpm install
-
 test:
     cargo nextest run --config-file .config/nextest.toml --cargo-quiet --status-level fail --final-status-level fail --failure-output final --success-output never --show-progress none --no-tests pass
 
@@ -21,4 +18,5 @@ showcase path="":
     fi
 
 install:
+    pnpm install
     cargo install --path .
