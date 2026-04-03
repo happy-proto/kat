@@ -30,7 +30,17 @@ struct GrammarRegistry {
 struct GrammarSpec {
     name: String,
     library_name: String,
+    #[serde(default)]
+    parser_source: ParserSource,
     extra_c_flags: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+enum ParserSource {
+    #[default]
+    Vendored,
+    Crate,
 }
 
 struct GrammarCachePaths {
@@ -122,7 +132,7 @@ fn main() {
                         break;
                     };
 
-                    worker_results.push(compile_grammar(
+                    if let Some(build_result) = compile_grammar(
                         manifest_dir.as_path(),
                         grammar,
                         &package_json_path,
@@ -131,7 +141,9 @@ fn main() {
                         &build_target,
                         &build_profile,
                         profiler,
-                    ));
+                    ) {
+                        worker_results.push(build_result);
+                    }
                 }
 
                 worker_results
@@ -187,7 +199,12 @@ fn compile_grammar(
     build_target: &str,
     build_profile: &str,
     profiler: &BuildProfiler,
-) -> GrammarBuildResult {
+) -> Option<GrammarBuildResult> {
+    if grammar.parser_source == ParserSource::Crate {
+        profiler.log_global(format!("grammar={} source=crate skip-local-build", grammar.name));
+        return None;
+    }
+
     let grammar_started_at = Instant::now();
     let grammar_dir = manifest_dir.join("grammars").join(&grammar.name);
     let cache_paths = GrammarCachePaths::new(
@@ -301,11 +318,11 @@ fn compile_grammar(
 
     profiler.log_stage(&grammar.name, "total", "done", grammar_started_at.elapsed());
 
-    GrammarBuildResult {
+    Some(GrammarBuildResult {
         native_out_dir: cache_paths.native_out_dir,
         library_name: grammar.library_name.clone(),
         cpp_library_name: (!cpp_scanner_paths.is_empty()).then_some(cpp_library_name),
-    }
+    })
 }
 
 impl BuildProfiler {

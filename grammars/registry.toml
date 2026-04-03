@@ -123,6 +123,7 @@ highlight_names = [
 [[grammar]]
 name = "zsh"
 library_name = "tree-sitter-zsh"
+parser_source = "crate"
 extensions = ["zsh", "zsh-theme"]
 filenames = [".zshrc", ".zprofile", ".zlogin", ".zlogout", ".zshenv", ".zsh_aliases", ".zsh_functions", ".zshrc.local", ".zprofile.local", ".zlogin.local"]
 filename_prefixes = []
@@ -446,6 +447,7 @@ highlight_names = [
 [[grammar]]
 name = "sql"
 library_name = "tree-sitter-sql"
+parser_source = "crate"
 extensions = ["sql", "psql", "pgsql", "postgresql", "mysql", "mariadb", "sqlite", "sqlite3"]
 filenames = []
 shebang_substrings = []

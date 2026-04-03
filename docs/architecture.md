@@ -9,7 +9,7 @@
 当前技术方向已经收敛为：
 
 - 基于 Tree-sitter 做语法识别和高亮；
-- 在仓库内维护最小 grammar 资产，而不是依赖各语言的 Rust grammar crate；
+- 默认在仓库内维护最小 grammar 资产；只有当某个 grammar 的冷构建生成成本明显高到影响整体构建体验时，才允许切换到预生成 parser 的 Rust grammar crate；
 - 用统一 runtime 和 injection 基础设施承接嵌套高亮、方言分发和宿主感知子语言；
 - 让 grammar、query、detector 和 build 行为都由仓库内约定直接描述。
 
@@ -17,15 +17,17 @@
 
 ### Grammar 资产模型
 
-- `grammars/<name>/` 只保留项目集成必需的最小源码资产：
+- `grammars/<name>/` 默认只保留项目集成必需的最小源码资产：
   `grammar.js`、`queries/*.scm`，以及可选的 `scanner.*` 或必要 support 文件。
 - 不提交生成出来的 parser 产物，例如 `parser.c`、`grammar.json`、`node-types.json`。
-- `grammars/registry.toml` 是 grammar 注册、构建参数和运行时识别规则的单一事实来源。
+- `grammars/registry.toml` 是 grammar 注册、parser 来源、构建参数和运行时识别规则的单一事实来源。
+- 当某个 grammar 标记为 crate-backed 时，仓库内只保留 queries 等集成资产；底层 parser AST 由对应 Rust crate 提供。
 
 ### 构建模型
 
-- `build.rs` 在构建期通过 `tree-sitter-generate` 生成 parser C 源码。
-- 生成出来的 `parser.c` 与 vendored `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
+- `build.rs` 对 vendored grammar 在构建期通过 `tree-sitter-generate` 生成 parser C 源码。
+- vendored grammar 的 `parser.c` 会与仓库内 `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
+- 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
 - 仓库本地 JavaScript 构建依赖统一在根目录管理，构建前先执行 `pnpm install`。
 - Tree-sitter 中间产物缓存到仓库级 `.build-cache/tree-sitter-cache/`，与 Cargo 的 `target/` 产物目录解耦，以便在不同 Cargo 命令之间复用。
 - CI 的编译缓存统一通过 `sccache` 管理；Cargo registry 和编译结果缓存分层处理，不再把 `target/` 作为跨 job 主缓存对象。
@@ -58,5 +60,5 @@
 - 只有仓库里已经注册并构建的 runtime 才能作为可高亮的注入目标。
 - 无扩展名内容检测目前仍是有限启发式，不是完整内容识别系统。
 - 部分共享 grammar 的表达能力仍然限制了 query 可细化的上限，例如 SQL、Regex、JSDoc 一类场景。
-- 大型 grammar 的首次 parser 生成成本仍然偏高，冷构建优化仍是后续工作。
+- vendored 大型 grammar 的首次 parser 生成成本仍然偏高；需要继续权衡是保持 vendored 还是转成 crate-backed。
 - `scanner.cc` 路线已经在当前环境验证过，但仍需要补 Linux 构建确认。

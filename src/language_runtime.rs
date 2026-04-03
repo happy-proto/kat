@@ -106,7 +106,6 @@ unsafe extern "C" {
     fn tree_sitter_dockerfile() -> *const ();
     fn tree_sitter_bash() -> *const ();
     fn tree_sitter_fish() -> *const ();
-    fn tree_sitter_zsh() -> *const ();
     fn tree_sitter_powershell() -> *const ();
     fn tree_sitter_batch() -> *const ();
     fn tree_sitter_toml() -> *const ();
@@ -118,7 +117,6 @@ unsafe extern "C" {
     fn tree_sitter_gomod() -> *const ();
     fn tree_sitter_gowork() -> *const ();
     fn tree_sitter_gosum() -> *const ();
-    fn tree_sitter_sql() -> *const ();
     fn tree_sitter_html() -> *const ();
     fn tree_sitter_css() -> *const ();
     fn tree_sitter_javascript() -> *const ();
@@ -138,7 +136,7 @@ const IGNORE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_ig
 const DOCKERFILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dockerfile) };
 const BASH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_bash) };
 const FISH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_fish) };
-const ZSH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_zsh) };
+const ZSH_LANGUAGE: LanguageFn = tree_sitter_zsh::LANGUAGE;
 const POWERSHELL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_powershell) };
 const BATCH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_batch) };
 const TOML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_toml) };
@@ -150,7 +148,7 @@ const GO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_go) };
 const GOMOD_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gomod) };
 const GOWORK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gowork) };
 const GOSUM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gosum) };
-const SQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_sql) };
+const SQL_LANGUAGE: LanguageFn = tree_sitter_sequel::LANGUAGE;
 const HTML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_html) };
 const CSS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_css) };
 const JAVASCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_javascript) };

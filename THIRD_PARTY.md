@@ -19,10 +19,8 @@ Included sources:
 - `grammars/fish/grammar.js`
 - `grammars/fish/queries/highlights.scm`
 - `grammars/fish/scanner.c`
-- `grammars/zsh/grammar.js`
 - `grammars/zsh/queries/highlights.scm`
 - `grammars/zsh/queries/injections.scm`
-- `grammars/zsh/scanner.c`
 - `grammars/powershell/grammar.js`
 - `grammars/powershell/queries/highlights.scm`
 - `grammars/powershell/scanner.c`
@@ -61,12 +59,10 @@ Included sources:
 - `grammars/proto/queries/highlights.scm`
 - `grammars/textproto/grammar.js`
 - `grammars/textproto/queries/highlights.scm`
-- `grammars/sql/grammar.js`
 - `grammars/sql/queries/highlights.scm`
 - `grammars/sql/queries/highlights-postgres.scm`
 - `grammars/sql/queries/highlights-mysql.scm`
 - `grammars/sql/queries/highlights-sqlite.scm`
-- `grammars/sql/scanner.c`
 - `grammars/html/grammar.js`
 - `grammars/html/queries/highlights.scm`
 - `grammars/html/queries/injections.scm`
@@ -175,13 +171,11 @@ Upstream projects:
   License: MIT
   Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored.
 
-- `grammars/zsh/grammar.js`
 - `grammars/zsh/queries/highlights.scm`
-- `grammars/zsh/scanner.c`
   Source: [georgeharker/tree-sitter-zsh](https://github.com/georgeharker/tree-sitter-zsh)
   Revision: `bd344c23a7683e293d077c6648e88f209782fedb`
   License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored.
+  Notes: repository-local adapted highlights query. Zsh parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-zsh](https://crates.io/crates/tree-sitter-zsh).
 
 - `grammars/zsh/queries/injections.scm`
   Sources:
@@ -339,11 +333,14 @@ Upstream projects:
   License: MIT
   Notes: repository-local adapted highlights query for kat's capture model, including local semantic adjustments for field names and scalar literals.
 
-- `grammars/sql/*`
+- `grammars/sql/queries/highlights.scm`
+- `grammars/sql/queries/highlights-postgres.scm`
+- `grammars/sql/queries/highlights-mysql.scm`
+- `grammars/sql/queries/highlights-sqlite.scm`
   Source: [nervenes/tree-sitter-sql](https://github.com/nervenes/tree-sitter-sql)
   Revision: `6dfca8b6dcb196d943c10e9cabab25e60232d332`
   License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored.
+  Notes: repository-local adapted highlight queries. SQL parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-sequel](https://crates.io/crates/tree-sitter-sequel).
 
 - `grammars/html/grammar.js`
   Source: [tree-sitter/tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html)
