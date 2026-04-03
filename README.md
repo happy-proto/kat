@@ -23,6 +23,6 @@
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
-- Tree-sitter 构建中间产物会缓存到仓库级 `.build-cache/tree-sitter-cache/`；CI 通过仓库内 action 按 grammar 目录 hash 做细粒度失效，并继续让 Rust/C/C++ 编译统一走 `sccache`
-- 仓库内可复用的 GitHub Actions 默认放在 `.github/actions/`；当前 `sccache` 初始化使用仓库内 action，而不是外部 marketplace action
+- Tree-sitter 构建中间产物在本地仍会落到仓库级 `.build-cache/tree-sitter-cache/`，用于复用 `build.rs` 生成出来的 grammar 资产
+- CI 当前只保留 pnpm store 与 Cargo `registry` / `index` 缓存，不再额外维护 `sccache` 或 tree-sitter build cache 的 GitHub Actions 逻辑
 - CI 的 release 构建会额外上传 Cargo timings HTML、linker timing 日志和 tree-sitter build profile，用于判断瓶颈是否落在最终链接阶段还是 `build.rs`

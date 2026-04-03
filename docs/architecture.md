@@ -29,8 +29,8 @@
 - vendored grammar 的 `parser.c` 会与仓库内 `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
 - 仓库本地 JavaScript 构建依赖统一在根目录管理，构建前先执行 `pnpm install`。
-- Tree-sitter 中间产物缓存到仓库级 `.build-cache/tree-sitter-cache/`，与 Cargo 的 `target/` 产物目录解耦，以便在不同 Cargo 命令之间复用。
-- CI 的编译缓存统一通过 `sccache` 管理；Cargo registry 和编译结果缓存分层处理，不再把 `target/` 作为跨 job 主缓存对象。
+- Tree-sitter 中间产物在本地会缓存到仓库级 `.build-cache/tree-sitter-cache/`，与 Cargo 的 `target/` 产物目录解耦，以便在不同 Cargo 命令之间复用。
+- CI 只保留 pnpm store 与 Cargo `registry` / `index` 缓存，不再额外维护 `sccache` 或 tree-sitter build cache；`target/` 仍不是跨 job 缓存对象。
 
 ### 运行时模型
 
