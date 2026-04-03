@@ -120,13 +120,13 @@ fn adjust_nested_region_tint(background: RgbColor, level: usize) -> RgbColor {
 fn nested_region_lift_weight(level: usize) -> f32 {
     match level {
         0 => 0.0,
-        1 => 0.2,
-        2 => 0.34,
-        3 => 0.46,
-        4 => 0.58,
-        5 => 0.68,
-        6 => 0.76,
-        _ => 0.82,
+        1 => 0.1,
+        2 => 0.2,
+        3 => 0.3,
+        4 => 0.4,
+        5 => 0.5,
+        6 => 0.6,
+        _ => 0.7,
     }
 }
 
