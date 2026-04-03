@@ -50,7 +50,7 @@
 - 默认不要新增按日期组织的阶段性开发过程文档；如果只是过程记录而非当前有效约定，默认不保留；
 - 如果仓库工作流发生变化，要同步更新 `AGENTS.md`、README 与相关任务运行器或配置文件；
 - 当前 CI 的编译缓存默认模型是：Cargo registry 单独缓存，Rust/C/C++ 编译统一走 `sccache`，不要再把 `target/` 目录当作跨 job 主缓存；
-- 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用 `.build-cache/tree-sitter-cache/`，并在 CI 中保留对应 profiling 日志，避免只观察 Rust 编译层；
+- 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用 `.build-cache/tree-sitter-cache/`；CI 侧优先通过仓库内 action 按 grammar 目录 hash 做细粒度失效，并保留对应 profiling 日志，避免只观察 Rust 编译层；
 - 仓库内需要复用的 GitHub Actions 优先放在 `.github/actions/` 下本地维护；若外部 action 的 runtime 或维护状态不理想，优先内建最小可维护实现；
 - 需要分析 CI 构建瓶颈时，优先保留并利用 Cargo timings 与 linker timing 这类直接观测数据，而不是只根据 `sccache` 命中率做推断；
 - 保持 `node_modules/` 被忽略，但应提交受版本控制的包元数据，例如 `package.json` 和锁文件；

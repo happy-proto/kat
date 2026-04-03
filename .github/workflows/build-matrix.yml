@@ -65,11 +65,12 @@ jobs:
           cache-targets: false
 
       - name: Restore tree-sitter build cache
-        id: tree-sitter-cache
-        uses: actions/cache/restore@v4
+        uses: ./.github/actions/tree-sitter-cache
         with:
-          path: .build-cache/tree-sitter-cache
-          key: ${{ format('tree-sitter-build-cache-{0}-{1}-{2}', runner.os, matrix.target, hashFiles('build.rs', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'grammars/**')) }}
+          mode: restore
+          key-prefix: tree-sitter-build-cache-${{ runner.os }}-${{ matrix.target }}
+          target: ${{ matrix.target }}
+          profile: release
 
       - name: Make linker wrapper executable
         run: chmod +x .github/scripts/rust-link-wrapper.sh
@@ -135,11 +136,13 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Save tree-sitter build cache
-        if: always() && steps.tree-sitter-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        if: always()
+        uses: ./.github/actions/tree-sitter-cache
         with:
-          path: .build-cache/tree-sitter-cache
-          key: ${{ steps.tree-sitter-cache.outputs.cache-primary-key }}
+          mode: save
+          key-prefix: tree-sitter-build-cache-${{ runner.os }}-${{ matrix.target }}
+          target: ${{ matrix.target }}
+          profile: release
 
       - name: Publish job summary
         shell: bash
