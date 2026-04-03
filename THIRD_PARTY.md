@@ -19,10 +19,8 @@ Included sources:
 - `grammars/fish/grammar.js`
 - `grammars/fish/queries/highlights.scm`
 - `grammars/fish/scanner.c`
-- `grammars/zsh/grammar.js`
 - `grammars/zsh/queries/highlights.scm`
 - `grammars/zsh/queries/injections.scm`
-- `grammars/zsh/scanner.c`
 - `grammars/powershell/grammar.js`
 - `grammars/powershell/queries/highlights.scm`
 - `grammars/powershell/scanner.c`
@@ -173,13 +171,11 @@ Upstream projects:
   License: MIT
   Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored.
 
-- `grammars/zsh/grammar.js`
 - `grammars/zsh/queries/highlights.scm`
-- `grammars/zsh/scanner.c`
   Source: [georgeharker/tree-sitter-zsh](https://github.com/georgeharker/tree-sitter-zsh)
   Revision: `bd344c23a7683e293d077c6648e88f209782fedb`
   License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored.
+  Notes: repository-local adapted highlights query. Zsh parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-zsh](https://crates.io/crates/tree-sitter-zsh).
 
 - `grammars/zsh/queries/injections.scm`
   Sources:
