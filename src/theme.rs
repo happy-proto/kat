@@ -2,6 +2,8 @@ use std::env;
 
 use anstyle::{AnsiColor, Color, RgbColor, Style};
 
+use crate::terminal_background::detect_nested_region_tint;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ColorMode {
     NoColor,
@@ -11,18 +13,24 @@ pub enum ColorMode {
 
 pub struct Theme {
     color_mode: ColorMode,
+    nested_region_tint: Option<RgbColor>,
 }
 
 impl Theme {
     pub fn detect() -> Self {
+        let color_mode = detect_color_mode();
         Self {
-            color_mode: detect_color_mode(),
+            nested_region_tint: detect_nested_region_tint(color_mode),
+            color_mode,
         }
     }
 
     #[cfg(test)]
     pub fn for_mode(color_mode: ColorMode) -> Self {
-        Self { color_mode }
+        Self {
+            color_mode,
+            nested_region_tint: None,
+        }
     }
 
     pub(crate) fn color_mode(&self) -> ColorMode {
@@ -74,12 +82,17 @@ impl Theme {
             }
         })
     }
+
+    pub(crate) fn nested_region_tint(&self) -> Option<TokenStyle> {
+        self.nested_region_tint.map(TokenStyle::background_tint)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct TokenStyle {
     color: DraculaColor,
     color_priority: u8,
+    background: Option<RgbColor>,
     italic: bool,
     bold: bool,
     underline: bool,
@@ -91,6 +104,7 @@ impl TokenStyle {
         Self {
             color,
             color_priority: color.priority(),
+            background: None,
             italic: false,
             bold: false,
             underline: false,
@@ -127,6 +141,13 @@ impl TokenStyle {
         self
     }
 
+    fn background_tint(background: RgbColor) -> Self {
+        Self {
+            background: Some(background),
+            ..Self::new(DraculaColor::Foreground).with_color_priority(0)
+        }
+    }
+
     pub(crate) fn merge(self, overlay: Self) -> Self {
         let (color, color_priority) = if overlay.color_priority >= self.color_priority {
             (overlay.color, overlay.color_priority)
@@ -137,6 +158,7 @@ impl TokenStyle {
         Self {
             color,
             color_priority,
+            background: overlay.background.or(self.background),
             italic: (self.italic && self.color_priority >= color_priority)
                 || (overlay.italic && overlay.color_priority >= color_priority),
             bold: (self.bold && self.color_priority >= color_priority)
@@ -150,6 +172,10 @@ impl TokenStyle {
 
     pub(crate) fn to_style(self, color_mode: ColorMode) -> Style {
         let mut style = Style::new().fg_color(Some(self.color.to_color(color_mode)));
+
+        if let Some(background) = self.background {
+            style = style.bg_color(Some(Color::Rgb(background)));
+        }
 
         if self.italic {
             style = style.italic();
