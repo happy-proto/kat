@@ -446,6 +446,7 @@ highlight_names = [
 [[grammar]]
 name = "sql"
 library_name = "tree-sitter-sql"
+parser_source = "crate"
 extensions = ["sql", "psql", "pgsql", "postgresql", "mysql", "mariadb", "sqlite", "sqlite3"]
 filenames = []
 shebang_substrings = []

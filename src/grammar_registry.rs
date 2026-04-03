@@ -14,6 +14,9 @@ pub struct GrammarSpec {
     pub name: String,
     #[allow(dead_code)]
     pub library_name: String,
+    #[allow(dead_code)]
+    #[serde(default)]
+    pub parser_source: ParserSource,
     pub extensions: Vec<String>,
     pub filenames: Vec<String>,
     #[serde(default)]
@@ -22,6 +25,14 @@ pub struct GrammarSpec {
     #[allow(dead_code)]
     pub extra_c_flags: Vec<String>,
     pub highlight_names: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ParserSource {
+    #[default]
+    Vendored,
+    Crate,
 }
 
 pub static REGISTRY: LazyLock<GrammarRegistry> = LazyLock::new(|| {

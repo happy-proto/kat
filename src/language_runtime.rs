@@ -118,7 +118,6 @@ unsafe extern "C" {
     fn tree_sitter_gomod() -> *const ();
     fn tree_sitter_gowork() -> *const ();
     fn tree_sitter_gosum() -> *const ();
-    fn tree_sitter_sql() -> *const ();
     fn tree_sitter_html() -> *const ();
     fn tree_sitter_css() -> *const ();
     fn tree_sitter_javascript() -> *const ();
@@ -150,7 +149,7 @@ const GO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_go) };
 const GOMOD_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gomod) };
 const GOWORK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gowork) };
 const GOSUM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gosum) };
-const SQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_sql) };
+const SQL_LANGUAGE: LanguageFn = tree_sitter_sequel::LANGUAGE;
 const HTML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_html) };
 const CSS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_css) };
 const JAVASCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_javascript) };
