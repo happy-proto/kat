@@ -1668,6 +1668,7 @@ mod tests {
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
     };
+    use anstyle::RgbColor;
 
     struct FixtureCase {
         relative_path: &'static str,
@@ -5033,6 +5034,173 @@ priority: 7
             rendered.contains("\x1b[38;2;248;248;242m preview "),
             "expected Rust local variable bindings to keep foreground styling"
         );
+    }
+
+    #[test]
+    fn just_recipe_body_uses_block_region_tint_without_tinting_header_line() {
+        let source = "install:\n    pnpm install\n    cargo install --path .\n";
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let rendered = render_with_theme(Some(Path::new("Justfile")), source, &theme)
+            .expect("expected Justfile source to render");
+        let lines: Vec<_> = rendered.lines().collect();
+
+        assert!(
+            !line_has_background(lines[0], tint),
+            "recipe header line should not be part of the nested block"
+        );
+        assert!(
+            line_has_background(lines[1], tint),
+            "first recipe command line should receive nested block tint"
+        );
+        assert!(
+            line_has_background(lines[2], tint),
+            "second recipe command line should receive nested block tint"
+        );
+
+        let source_lines: Vec<_> = source.lines().collect();
+        let block_width = source_lines[1..]
+            .iter()
+            .map(|line| line.len())
+            .max()
+            .expect("expected recipe body lines");
+        let short_pad = " ".repeat(block_width - source_lines[1].len());
+
+        assert!(
+            trailing_background_pad_width(lines[1], tint) == short_pad.len(),
+            "shorter recipe body line should be padded to the block width"
+        );
+        assert!(
+            trailing_background_pad_width(lines[2], tint) == 0,
+            "widest recipe body line should not receive trailing block padding"
+        );
+    }
+
+    #[test]
+    fn markdown_fenced_code_uses_block_region_tint_only_inside_fence_body() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("markdown/go_fence.md");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+        assert!(
+            line_has_background(find_line_containing(&lines, "package preview"), tint),
+            "fenced code content should receive nested block tint"
+        );
+
+        let short_line = "package preview";
+        let wide_line = "func (r *Renderer) Render() string {";
+        let short_pad = " ".repeat(wide_line.len() - short_line.len());
+
+        assert!(
+            trailing_background_pad_width(find_line_containing(&lines, short_line), tint)
+                == short_pad.len(),
+            "shorter fenced code line should be padded to the block width"
+        );
+        assert!(
+            trailing_background_pad_width(find_line_containing(&lines, wide_line), tint) == 0,
+            "widest fenced code line should not receive trailing block padding"
+        );
+    }
+
+    #[test]
+    fn github_actions_run_block_uses_block_region_tint_without_tinting_run_header() {
+        let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo hi\n          printf '%s\\n' \"$GITHUB_REF\"\n";
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let rendered = render_with_theme(
+            Some(Path::new(".github/workflows/demo.yml")),
+            source,
+            &theme,
+        )
+        .expect("expected workflow source to render");
+        let lines: Vec<_> = rendered.lines().collect();
+        assert!(
+            !line_has_background(lines[3], tint),
+            "run: | header line should stay outside the nested block"
+        );
+        assert!(
+            line_has_background(lines[4], tint),
+            "first run body line should receive nested block tint"
+        );
+        assert!(
+            line_has_background(lines[5], tint),
+            "second run body line should receive nested block tint"
+        );
+
+        let source_lines: Vec<_> = source.lines().collect();
+        let body_lines = [source_lines[4], source_lines[5]];
+        let block_width = body_lines.iter().map(|line| line.len()).max().unwrap_or(0);
+        let short_pad = " ".repeat(block_width - body_lines[0].len());
+
+        assert!(
+            trailing_background_pad_width(lines[4], tint) == short_pad.len(),
+            "shorter run body line should be padded to the block width"
+        );
+        assert!(
+            trailing_background_pad_width(lines[5], tint) == 0,
+            "widest run body line should not receive trailing block padding"
+        );
+    }
+
+    fn line_has_background(line: &str, background: RgbColor) -> bool {
+        line.contains(&background_escape(background))
+    }
+
+    fn find_line_containing<'a>(lines: &'a [&str], needle: &str) -> &'a str {
+        lines.iter()
+            .copied()
+            .find(|line| strip_ansi(line).contains(needle))
+            .unwrap_or_else(|| panic!("expected rendered output to contain line fragment {needle:?}"))
+    }
+
+    fn background_escape(background: RgbColor) -> String {
+        format!("\x1b[48;2;{};{};{}m", background.0, background.1, background.2)
+    }
+
+    fn strip_ansi(text: &str) -> String {
+        let bytes = text.as_bytes();
+        let mut stripped = String::with_capacity(text.len());
+        let mut index = 0;
+
+        while index < bytes.len() {
+            if bytes[index] == 0x1b && bytes.get(index + 1) == Some(&b'[') {
+                index += 2;
+                while index < bytes.len() {
+                    let byte = bytes[index];
+                    index += 1;
+                    if (0x40..=0x7e).contains(&byte) {
+                        break;
+                    }
+                }
+                continue;
+            }
+
+            let ch = text[index..].chars().next().unwrap_or_default();
+            stripped.push(ch);
+            index += ch.len_utf8();
+        }
+
+        stripped
+    }
+
+    fn trailing_background_pad_width(line: &str, background: RgbColor) -> usize {
+        let reset = "\x1b[0m";
+        let Some(prefix) = line.strip_suffix(reset) else {
+            return 0;
+        };
+        let background_escape = background_escape(background);
+        let Some(background_start) = prefix.rfind(&background_escape) else {
+            return 0;
+        };
+        let pad = &prefix[(background_start + background_escape.len())..];
+        if pad.chars().all(|ch| ch == ' ') {
+            pad.len()
+        } else {
+            0
+        }
     }
 
     fn fixture_path(relative_path: &str) -> PathBuf {

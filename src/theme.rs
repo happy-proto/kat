@@ -33,6 +33,17 @@ impl Theme {
         }
     }
 
+    #[cfg(test)]
+    pub fn for_mode_with_nested_region_tint(
+        color_mode: ColorMode,
+        nested_region_tint: Option<RgbColor>,
+    ) -> Self {
+        Self {
+            color_mode,
+            nested_region_tint,
+        }
+    }
+
     pub(crate) fn color_mode(&self) -> ColorMode {
         self.color_mode
     }
