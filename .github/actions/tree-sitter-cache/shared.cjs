@@ -3,7 +3,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 function getInput(name, fallback = "") {
-  return process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] ?? fallback;
+  return process.env[`INPUT_${name.replace(/[\s-]+/g, "_").toUpperCase()}`] ?? fallback;
 }
 
 function logInfo(message) {
