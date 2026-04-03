@@ -84,6 +84,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: restore
@@ -155,7 +156,7 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Save tree-sitter build cache
-        if: always()
+        if: always() && steps.tree-sitter-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: save

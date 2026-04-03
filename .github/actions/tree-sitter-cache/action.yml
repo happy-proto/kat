@@ -23,6 +23,10 @@ inputs:
     description: "Path to grammars/registry.toml"
     required: false
     default: "grammars/registry.toml"
+outputs:
+  cache-hit:
+    description: "Whether restore matched the cache key exactly."
+    value: ${{ steps.cache-restore.outputs.cache-hit }}
 runs:
   using: "composite"
   steps:
