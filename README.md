@@ -53,7 +53,7 @@ cargo build
 ## 开发调试
 
 - 跑测试：`just test`
-- CI 会先在 Linux 上执行 `just test`，通过后再继续 release build matrix
+- CI 会先在 Linux 上执行 `cargo nextest run` 测试，再继续 release build matrix
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果

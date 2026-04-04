@@ -68,12 +68,6 @@ jobs:
         with:
           tool: nextest
 
-      - name: Install just
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo install --locked just
-
       - name: Install dependencies
         shell: bash
         run: |
@@ -84,7 +78,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          just test
+          cargo nextest run \
+            --config-file .config/nextest.toml \
+            --cargo-quiet \
+            --status-level fail \
+            --final-status-level fail \
+            --failure-output final \
+            --success-output never \
+            --show-progress none \
+            --no-tests pass
 
       - name: Save pnpm store cache
         if: always()
