@@ -49,6 +49,7 @@
 - 仓库只维护根 [README.md](README.md) 这一份中文入口文档，不再维护平行语言版本的 README；
 - 默认不要新增按日期组织的阶段性开发过程文档；如果只是过程记录而非当前有效约定，默认不保留；
 - 如果仓库工作流发生变化，要同步更新 `AGENTS.md`、README 与相关任务运行器或配置文件；
+- 当前 GitHub Actions workflow 默认应先执行 `just test`，再继续 release build matrix；
 - 当前 CI 的缓存默认模型是：保留 pnpm store 与 Cargo `registry` / `index` 缓存，不要再把 `target/` 目录当作跨 job 主缓存；
 - 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用本地 `.build-cache/tree-sitter-cache/`；CI 默认不再额外维护 tree-sitter build cache，并继续保留相关 profiling 日志，避免只观察 Rust 编译层；
 - 仓库内需要复用的 GitHub Actions 优先放在 `.github/actions/` 下本地维护；若外部 action 的 runtime 或维护状态不理想，优先内建最小可维护实现；

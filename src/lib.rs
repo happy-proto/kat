@@ -5014,13 +5014,13 @@ mod tests {
         let workflow_path = fixture_path("yaml/github-actions-workflow-advanced.yaml");
         let workflow_source = read_file(&workflow_path);
         let workflow_rendered = render_with_theme(
-            Some(Path::new(".github/workflows/build-matrix.yml")),
+            Some(Path::new(".github/workflows/example.yml")),
             &workflow_source,
             &theme,
         )
         .unwrap_or_else(|error| panic!("failed to render {}: {error}", workflow_path.display()));
         let workflow_regions = collect_top_level_injection_regions(
-            yaml_document_kind(Some(Path::new(".github/workflows/build-matrix.yml"))),
+            yaml_document_kind(Some(Path::new(".github/workflows/example.yml"))),
             &workflow_source,
             &theme,
             1,

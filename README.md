@@ -1,6 +1,6 @@
 # Kat
 
-[![build](https://github.com/happy-proto/kat/actions/workflows/build-matrix.yml/badge.svg?branch=master)](https://github.com/happy-proto/kat/actions/workflows/build-matrix.yml)
+[![build](https://github.com/happy-proto/kat/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/happy-proto/kat/actions/workflows/ci.yml)
 [![dependency status](https://deps.rs/repo/github/happy-proto/kat/status.svg)](https://deps.rs/repo/github/happy-proto/kat)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/happy-proto/kat/blob/master/LICENSE)
 
@@ -53,6 +53,7 @@ cargo build
 ## 开发调试
 
 - 跑测试：`just test`
+- CI 会先在 Linux 上执行 `just test`，通过后再继续 release build matrix
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
