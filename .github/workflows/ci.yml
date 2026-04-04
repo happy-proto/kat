@@ -114,9 +114,6 @@ jobs:
 
   test:
     name: test (ubuntu-latest)
-    needs:
-      - fmt
-      - clippy
     runs-on: ubuntu-latest
 
     steps:
@@ -204,7 +201,10 @@ jobs:
   build:
     name: >-
       build (${{ matrix.runner }} / ${{ matrix.target }})
-    needs: test
+    needs:
+      - fmt
+      - clippy
+      - test
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
