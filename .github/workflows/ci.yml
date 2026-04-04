@@ -16,6 +16,8 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  TREE_SITTER_CACHE_KEY_PREFIX: tree-sitter-cache-v1
+  TREE_SITTER_CACHE_HASH: ${{ hashFiles('build.rs', 'grammars/registry.toml', 'grammars/**/grammar.js', 'grammars/**/queries/*.scm', 'grammars/**/scanner.c', 'grammars/**/scanner.cc', 'grammars/**/scanner.cpp', 'package.json', 'pnpm-lock.yaml') }}
 
 jobs:
   fmt:
@@ -84,6 +86,14 @@ jobs:
         with:
           components: clippy
 
+      - name: Restore tree-sitter build cache
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: restore
+          target: x86_64-unknown-linux-gnu
+          profile: debug
+          enabled: ${{ github.ref_name != 'master' }}
+
       - name: Install dependencies
         shell: bash
         run: |
@@ -111,6 +121,14 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/registry/index
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+      - name: Save tree-sitter build cache
+        if: always()
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: save
+          target: x86_64-unknown-linux-gnu
+          profile: debug
 
   test:
     name: test (ubuntu-latest)
@@ -162,6 +180,14 @@ jobs:
         with:
           tool: nextest
 
+      - name: Restore tree-sitter build cache
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: restore
+          target: x86_64-unknown-linux-gnu
+          profile: debug
+          enabled: ${{ github.ref_name != 'master' }}
+
       - name: Install dependencies
         shell: bash
         run: |
@@ -197,6 +223,14 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/registry/index
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+      - name: Save tree-sitter build cache
+        if: always()
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: save
+          target: x86_64-unknown-linux-gnu
+          profile: debug
 
   build:
     name: >-
@@ -259,6 +293,14 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Restore tree-sitter build cache
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: restore
+          target: ${{ matrix.target }}
+          profile: release
+          enabled: ${{ github.ref_name != 'master' }}
 
       - name: Make linker wrapper executable
         run: chmod +x .github/scripts/rust-link-wrapper.sh
@@ -337,6 +379,14 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/registry/index
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+      - name: Save tree-sitter build cache
+        if: always()
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: save
+          target: ${{ matrix.target }}
+          profile: release
 
       - name: Publish job summary
         shell: bash

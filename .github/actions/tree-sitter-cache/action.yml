@@ -1,0 +1,37 @@
+name: Tree-sitter Cache
+description: Restore or save the repository-local tree-sitter build cache.
+
+inputs:
+  mode:
+    description: restore or save
+    required: true
+  target:
+    description: Rust target triple used for this cache bucket
+    required: true
+  profile:
+    description: Cargo profile used for this cache bucket
+    required: true
+  enabled:
+    description: Whether this invocation should run
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Restore tree-sitter build cache
+      if: inputs.mode == 'restore' && inputs.enabled == 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: .build-cache/tree-sitter-cache
+        key: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-${{ github.job }}-${{ github.sha }}
+        restore-keys: |
+          ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-${{ github.job }}-
+          ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-
+
+    - name: Save tree-sitter build cache
+      if: inputs.mode == 'save' && inputs.enabled == 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: .build-cache/tree-sitter-cache
+        key: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-${{ github.job }}-${{ github.sha }}
