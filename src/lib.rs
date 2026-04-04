@@ -1154,6 +1154,28 @@ fn decode_javascript_string_content(
     }
 }
 
+fn decode_javascript_string_literal(
+    source: &str,
+    range: Range<usize>,
+    virtual_source: &mut String,
+    source_map: &mut Vec<Range<usize>>,
+) {
+    let slice = &source[range.clone()];
+    if slice.len() >= 2
+        && matches!(slice.as_bytes().first(), Some(b'\'') | Some(b'"'))
+        && slice.as_bytes().first() == slice.as_bytes().last()
+    {
+        decode_javascript_string_content(
+            source,
+            (range.start + 1)..(range.end - 1),
+            virtual_source,
+            source_map,
+        );
+    } else {
+        append_raw_range(source, range, virtual_source, source_map);
+    }
+}
+
 fn decode_python_string_content(
     source: &str,
     range: Range<usize>,
@@ -5014,13 +5036,13 @@ mod tests {
         let workflow_path = fixture_path("yaml/github-actions-workflow-advanced.yaml");
         let workflow_source = read_file(&workflow_path);
         let workflow_rendered = render_with_theme(
-            Some(Path::new(".github/workflows/build-matrix.yml")),
+            Some(Path::new(".github/workflows/example.yml")),
             &workflow_source,
             &theme,
         )
         .unwrap_or_else(|error| panic!("failed to render {}: {error}", workflow_path.display()));
         let workflow_regions = collect_top_level_injection_regions(
-            yaml_document_kind(Some(Path::new(".github/workflows/build-matrix.yml"))),
+            yaml_document_kind(Some(Path::new(".github/workflows/example.yml"))),
             &workflow_source,
             &theme,
             1,
@@ -5496,26 +5518,5 @@ priority: 7
 
     fn is_supported_highlight_path(path: &Path) -> bool {
         detect_language(Some(path), "").is_some()
-    }
-}
-fn decode_javascript_string_literal(
-    source: &str,
-    range: Range<usize>,
-    virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
-) {
-    let slice = &source[range.clone()];
-    if slice.len() >= 2
-        && matches!(slice.as_bytes().first(), Some(b'\'') | Some(b'"'))
-        && slice.as_bytes().first() == slice.as_bytes().last()
-    {
-        decode_javascript_string_content(
-            source,
-            (range.start + 1)..(range.end - 1),
-            virtual_source,
-            source_map,
-        );
-    } else {
-        append_raw_range(source, range, virtual_source, source_map);
     }
 }

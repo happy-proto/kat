@@ -676,44 +676,44 @@ fn collect_github_actions_schema_spans(
             }
         }
         "using" if ancestor_key == Some("runs") => {
-            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
-                if matches!(
+            if let Some((text, range)) = yaml_scalar_with_range(value, source)
+                && matches!(
                     text,
                     "composite" | "docker" | "node12" | "node16" | "node20" | "node24"
-                ) {
-                    push_capture(spans, range, "type.builtin");
-                }
+                )
+            {
+                push_capture(spans, range, "type.builtin");
             }
         }
         "runs-on" => {
             collect_github_actions_runner_value_spans(value, source, spans);
         }
         "runner" if ancestor_keys.starts_with(&["include", "matrix"]) => {
-            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
-                if is_github_actions_runner_label(text) {
-                    push_capture(spans, range, "type");
-                }
+            if let Some((text, range)) = yaml_scalar_with_range(value, source)
+                && is_github_actions_runner_label(text)
+            {
+                push_capture(spans, range, "type");
             }
         }
         "cache" if ancestor_key == Some("with") => {
-            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
-                if matches!(text, "pnpm" | "npm" | "yarn") {
-                    push_capture(spans, range, "type.builtin");
-                }
+            if let Some((text, range)) = yaml_scalar_with_range(value, source)
+                && matches!(text, "pnpm" | "npm" | "yarn")
+            {
+                push_capture(spans, range, "type.builtin");
             }
         }
         "if-no-files-found" if ancestor_key == Some("with") => {
-            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
-                if matches!(text, "error" | "warn" | "ignore") {
-                    push_capture(spans, range, "type.builtin");
-                }
+            if let Some((text, range)) = yaml_scalar_with_range(value, source)
+                && matches!(text, "error" | "warn" | "ignore")
+            {
+                push_capture(spans, range, "type.builtin");
             }
         }
         _ if ancestor_key == Some("permissions") => {
-            if let Some((text, range)) = yaml_scalar_with_range(value, source) {
-                if matches!(text, "read" | "write" | "none") {
-                    push_capture(spans, range, "type.builtin");
-                }
+            if let Some((text, range)) = yaml_scalar_with_range(value, source)
+                && matches!(text, "read" | "write" | "none")
+            {
+                push_capture(spans, range, "type.builtin");
             }
         }
         _ => {}
@@ -957,10 +957,10 @@ fn collect_powershell_node_spans(
         }
         "function_name" => push_capture(spans, node.byte_range(), "function.definition"),
         "variable" => {
-            if let Some(name_text) = node_text(node, source) {
-                if is_powershell_special_variable(name_text) {
-                    push_capture(spans, node.byte_range(), "variable.special");
-                }
+            if let Some(name_text) = node_text(node, source)
+                && is_powershell_special_variable(name_text)
+            {
+                push_capture(spans, node.byte_range(), "variable.special");
             }
         }
         _ => {}
@@ -973,10 +973,10 @@ fn collect_batch_node_spans(node: Node<'_>, source: &str, spans: &mut Vec<Semant
             let mut cursor = node.walk();
             for child in node.children(&mut cursor) {
                 if child.kind() == "command_name" {
-                    if let Some(name_text) = node_text(child, source) {
-                        if is_batch_builtin_command(name_text) {
-                            push_capture(spans, child.byte_range(), "function.builtin");
-                        }
+                    if let Some(name_text) = node_text(child, source)
+                        && is_batch_builtin_command(name_text)
+                    {
+                        push_capture(spans, child.byte_range(), "function.builtin");
                     }
                     break;
                 }
@@ -1104,10 +1104,10 @@ fn collect_command_family_spans(
             seen_first_bare = true;
         }
 
-        if let Some(capture) = spec.bare_capture {
-            if matches_value_filter(argument_text, spec.bare_value_filter) {
-                push_capture(spans, argument.byte_range(), capture);
-            }
+        if let Some(capture) = spec.bare_capture
+            && matches_value_filter(argument_text, spec.bare_value_filter)
+        {
+            push_capture(spans, argument.byte_range(), capture);
         }
     }
 }
@@ -1213,10 +1213,11 @@ fn collect_bash_like_declaration_command_spans(
                 }
             }
             "word" | "variable_name" | "simple_variable_name" => {
-                if let Some(text) = node_text(child, source) {
-                    if !is_option_like(text) && looks_like_identifierish(text) {
-                        push_capture(spans, child.byte_range(), "variable.parameter");
-                    }
+                if let Some(text) = node_text(child, source)
+                    && !is_option_like(text)
+                    && looks_like_identifierish(text)
+                {
+                    push_capture(spans, child.byte_range(), "variable.parameter");
                 }
             }
             _ => {}
@@ -1236,10 +1237,11 @@ fn collect_bash_like_unset_command_spans(
     for child in node.children(&mut node.walk()) {
         match child.kind() {
             "word" | "variable_name" | "simple_variable_name" => {
-                if let Some(text) = node_text(child, source) {
-                    if !is_option_like(text) && looks_like_identifierish(text) {
-                        push_capture(spans, child.byte_range(), "variable.parameter");
-                    }
+                if let Some(text) = node_text(child, source)
+                    && !is_option_like(text)
+                    && looks_like_identifierish(text)
+                {
+                    push_capture(spans, child.byte_range(), "variable.parameter");
                 }
             }
             _ => {}
@@ -1505,10 +1507,10 @@ fn field_children<'tree>(node: Node<'tree>, field_name: &str) -> Vec<Node<'tree>
     let mut children = Vec::new();
     for index in 0..node.child_count() {
         let index = index as u32;
-        if node.field_name_for_child(index) == Some(field_name) {
-            if let Some(child) = node.child(index) {
-                children.push(child);
-            }
+        if node.field_name_for_child(index) == Some(field_name)
+            && let Some(child) = node.child(index)
+        {
+            children.push(child);
         }
     }
     children

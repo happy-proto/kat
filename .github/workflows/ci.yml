@@ -1,0 +1,447 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  TREE_SITTER_CACHE_KEY_PREFIX: tree-sitter-cache-v1
+
+jobs:
+  fmt:
+    name: fmt (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Run rustfmt check
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --check
+
+  clippy:
+    name: clippy (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack install --global "$(node -p "require('./package.json').packageManager")"
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "path=$(pnpm store path --silent)" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore pnpm store cache
+        id: pnpm-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Restore Cargo registry cache
+        id: cargo-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
+      - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: restore
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs', 'package.json', 'pnpm-lock.yaml') }}
+          target: x86_64-unknown-linux-gnu
+          profile: debug
+          enabled: ${{ github.ref_name != 'master' }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+
+      - name: Run clippy
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${SCCACHE_PATH}" --zero-stats
+          cargo clippy --locked --all-targets --all-features -- -D warnings
+
+      - name: Save pnpm store cache
+        if: always() && (github.ref_name == 'master' || steps.pnpm-cache.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Save Cargo registry cache
+        if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+      - name: Save tree-sitter build cache
+        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: save
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs', 'package.json', 'pnpm-lock.yaml') }}
+          target: x86_64-unknown-linux-gnu
+          profile: debug
+
+  test:
+    name: test (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack install --global "$(node -p "require('./package.json').packageManager")"
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "path=$(pnpm store path --silent)" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore pnpm store cache
+        id: pnpm-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Restore Cargo registry cache
+        id: cargo-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
+      - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: restore
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs', 'package.json', 'pnpm-lock.yaml') }}
+          target: x86_64-unknown-linux-gnu
+          profile: debug
+          enabled: ${{ github.ref_name != 'master' }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+
+      - name: Run test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${SCCACHE_PATH}" --zero-stats
+          cargo nextest run \
+            --config-file .config/nextest.toml \
+            --cargo-quiet \
+            --failure-output final \
+            --no-tests pass
+
+      - name: Save pnpm store cache
+        if: always() && (github.ref_name == 'master' || steps.pnpm-cache.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Save Cargo registry cache
+        if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+      - name: Save tree-sitter build cache
+        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: save
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs', 'package.json', 'pnpm-lock.yaml') }}
+          target: x86_64-unknown-linux-gnu
+          profile: debug
+
+  build:
+    name: >-
+      build (${{ matrix.runner }} / ${{ matrix.target }})
+    needs:
+      - fmt
+      - clippy
+      - test
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            linker: cc
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            linker: cc
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack install --global "$(node -p "require('./package.json').packageManager")"
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "path=$(pnpm store path --silent)" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore pnpm store cache
+        id: pnpm-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Restore Cargo registry cache
+        id: cargo-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
+      - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: restore
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('build.rs', 'package.json', 'pnpm-lock.yaml') }}
+          target: ${{ matrix.target }}
+          profile: release
+          enabled: ${{ github.ref_name != 'master' }}
+
+      - name: Make linker wrapper executable
+        run: chmod +x .github/scripts/rust-link-wrapper.sh
+
+      - name: Install dependencies and build release binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          KAT_REAL_LINKER: ${{ matrix.linker }}
+          KAT_LINK_LOG: ${{ runner.temp }}/rust-link-timings.tsv
+          KAT_BUILD_PROFILE: "1"
+          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/tree-sitter-build-profile.log
+          RUSTFLAGS: >-
+            -Clinker=${{ github.workspace }}/.github/scripts/rust-link-wrapper.sh
+        run: |
+          set -euo pipefail
+
+          total_start=$(date +%s)
+
+          install_start=$(date +%s)
+          pnpm install --frozen-lockfile
+          install_end=$(date +%s)
+
+          build_start=$(date +%s)
+          "${SCCACHE_PATH}" --zero-stats
+          : > "${KAT_LINK_LOG}"
+          : > "${KAT_BUILD_PROFILE_LOG}"
+          cargo build --timings --release --locked --target "${TARGET}"
+          build_end=$(date +%s)
+
+          total_end=$(date +%s)
+
+          artifact_path="target/${TARGET}/release/kat"
+
+          artifact_size=$(stat -f%z "${artifact_path}" 2>/dev/null || stat -c%s "${artifact_path}")
+
+          if [[ -s "${KAT_LINK_LOG}" ]]; then
+            link_invocations=$(wc -l < "${KAT_LINK_LOG}" | tr -d ' ')
+            link_total_ms=$(awk -F'\t' '{sum += $2} END {printf "%.0f", sum}' "${KAT_LINK_LOG}")
+            longest_link_record=$(awk -F'\t' 'BEGIN { max = -1 } { if (($2 + 0) > max) { max = $2; status = $3; output = $4 } } END { if (max < 0) { print "0\tunknown\t(unknown)" } else { print max "\t" status "\t" output } }' "${KAT_LINK_LOG}")
+            IFS=$'\t' read -r longest_link_ms longest_link_status longest_link_output <<< "${longest_link_record}"
+          else
+            link_invocations=0
+            link_total_ms=0
+            longest_link_ms=0
+            longest_link_status=unknown
+            longest_link_output="(unknown)"
+          fi
+
+          {
+            echo "INSTALL_SECONDS=$((install_end - install_start))"
+            echo "BUILD_SECONDS=$((build_end - build_start))"
+            echo "TOTAL_SECONDS=$((total_end - total_start))"
+            echo "ARTIFACT_PATH=${artifact_path}"
+            echo "ARTIFACT_SIZE=${artifact_size}"
+            echo "LINK_INVOCATIONS=${link_invocations}"
+            echo "LINK_TOTAL_MS=${link_total_ms}"
+            echo "LONGEST_LINK_MS=${longest_link_ms}"
+            echo "LONGEST_LINK_STATUS=${longest_link_status}"
+            echo "LONGEST_LINK_OUTPUT=${longest_link_output}"
+            echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
+            echo "TREE_SITTER_BUILD_PROFILE_PATH=${KAT_BUILD_PROFILE_LOG}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Save pnpm store cache
+        if: always() && (github.ref_name == 'master' || steps.pnpm-cache.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Save Cargo registry cache
+        if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+      - name: Save tree-sitter build cache
+        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
+        uses: ./.github/actions/tree-sitter-cache
+        with:
+          mode: save
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('build.rs', 'package.json', 'pnpm-lock.yaml') }}
+          target: ${{ matrix.target }}
+          profile: release
+
+      - name: Publish job summary
+        shell: bash
+        run: |
+          {
+            echo "## Build summary"
+            echo
+            echo "- Runner: \`${{ matrix.runner }}\`"
+            echo "- Target: \`${{ matrix.target }}\`"
+            echo "- pnpm install: \`${INSTALL_SECONDS}s\`"
+            echo "- cargo build --release --locked: \`${BUILD_SECONDS}s\`"
+            echo "- Total: \`${TOTAL_SECONDS}s\`"
+            echo "- Binary: \`${ARTIFACT_PATH}\`"
+            echo "- Size: \`${ARTIFACT_SIZE} bytes\`"
+            echo "- Link invocations: \`${LINK_INVOCATIONS}\`"
+            echo "- Total linker wall time: \`${LINK_TOTAL_MS} ms\`"
+            echo "- Longest linker invocation: \`${LONGEST_LINK_MS} ms\`"
+            echo "- Longest linker status: \`${LONGEST_LINK_STATUS}\`"
+            echo "- Longest linker output: \`${LONGEST_LINK_OUTPUT}\`"
+            echo "- Cargo timings: \`target/cargo-timings/cargo-timing.html\`"
+            echo "- Tree-sitter build profile: \`${TREE_SITTER_BUILD_PROFILE_PATH}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: kat-${{ matrix.target }}
+          path: ${{ env.ARTIFACT_PATH }}
+          if-no-files-found: error
+
+      - name: Upload build observability artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: kat-build-observability-${{ matrix.target }}
+          path: |
+            target/cargo-timings/
+            ${{ env.LINK_LOG_PATH }}
+            ${{ env.TREE_SITTER_BUILD_PROFILE_PATH }}
+          if-no-files-found: error

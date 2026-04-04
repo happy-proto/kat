@@ -54,6 +54,16 @@ struct GrammarCachePaths {
     native_fingerprint_path: PathBuf,
 }
 
+#[derive(Clone)]
+struct BuildContext {
+    manifest_dir: PathBuf,
+    package_json_path: PathBuf,
+    pnpm_lock_path: PathBuf,
+    shared_cache_root: PathBuf,
+    build_target: String,
+    build_profile: String,
+}
+
 struct BuildProfiler {
     enabled: bool,
     log_path: Option<PathBuf>,
@@ -80,6 +90,14 @@ fn main() {
     let process_staging_root = shared_cache_root
         .join("staging")
         .join(format!("pid-{}", process::id()));
+    let build_context = BuildContext {
+        manifest_dir: manifest_dir.clone(),
+        package_json_path: package_json_path.clone(),
+        pnpm_lock_path: pnpm_lock_path.clone(),
+        shared_cache_root: shared_cache_root.clone(),
+        build_target: build_target.clone(),
+        build_profile: build_profile.clone(),
+    };
     let registry: GrammarRegistry = toml::from_str(
         &fs::read_to_string(&registry_path).expect("failed to read grammars/registry.toml"),
     )
@@ -115,12 +133,7 @@ fn main() {
         for _ in 0..job_count {
             let grammar_specs = Arc::clone(&grammar_specs);
             let next_index = Arc::clone(&next_index);
-            let manifest_dir = manifest_dir.clone();
-            let package_json_path = package_json_path.clone();
-            let pnpm_lock_path = pnpm_lock_path.clone();
-            let shared_cache_root = shared_cache_root.clone();
-            let build_target = build_target.clone();
-            let build_profile = build_profile.clone();
+            let build_context = build_context.clone();
             let profiler = &profiler;
 
             handles.push(scope.spawn(move || {
@@ -132,16 +145,7 @@ fn main() {
                         break;
                     };
 
-                    if let Some(build_result) = compile_grammar(
-                        manifest_dir.as_path(),
-                        grammar,
-                        &package_json_path,
-                        &pnpm_lock_path,
-                        &shared_cache_root,
-                        &build_target,
-                        &build_profile,
-                        profiler,
-                    ) {
+                    if let Some(build_result) = compile_grammar(&build_context, grammar, profiler) {
                         worker_results.push(build_result);
                     }
                 }
@@ -191,13 +195,8 @@ fn ensure_javascript_dependencies_installed(manifest_dir: &Path, package_json_pa
 }
 
 fn compile_grammar(
-    manifest_dir: &Path,
+    build_context: &BuildContext,
     grammar: &GrammarSpec,
-    package_json_path: &Path,
-    pnpm_lock_path: &Path,
-    shared_cache_root: &Path,
-    build_target: &str,
-    build_profile: &str,
     profiler: &BuildProfiler,
 ) -> Option<GrammarBuildResult> {
     if grammar.parser_source == ParserSource::Crate {
@@ -209,12 +208,15 @@ fn compile_grammar(
     }
 
     let grammar_started_at = Instant::now();
-    let grammar_dir = manifest_dir.join("grammars").join(&grammar.name);
+    let grammar_dir = build_context
+        .manifest_dir
+        .join("grammars")
+        .join(&grammar.name);
     let cache_paths = GrammarCachePaths::new(
-        shared_cache_root,
+        &build_context.shared_cache_root,
         &grammar.name,
-        build_target,
-        build_profile,
+        &build_context.build_target,
+        &build_context.build_profile,
     );
 
     let grammar_json_input_paths = collect_support_paths(&grammar_dir, &["js", "json"]);
@@ -225,8 +227,8 @@ fn compile_grammar(
     let grammar_json_path = cache_paths.grammar_json_dir.join("grammar.json");
     let grammar_json_fingerprint = grammar_json_generation_fingerprint(
         &grammar_json_input_paths,
-        package_json_path,
-        pnpm_lock_path,
+        &build_context.package_json_path,
+        &build_context.pnpm_lock_path,
     );
     if !fingerprint_matches(
         &cache_paths.grammar_json_fingerprint_path,
