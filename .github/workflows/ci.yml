@@ -66,6 +66,7 @@ jobs:
           echo "path=$(pnpm store path --silent)" >> "${GITHUB_OUTPUT}"
 
       - name: Restore pnpm store cache
+        id: pnpm-cache
         uses: actions/cache/restore@v5
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -86,6 +87,7 @@ jobs:
           components: clippy
 
       - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: restore
@@ -107,14 +109,14 @@ jobs:
           cargo clippy --locked --all-targets --all-features -- -D warnings
 
       - name: Save pnpm store cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.pnpm-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Save Cargo registry cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
         with:
           path: |
@@ -123,7 +125,7 @@ jobs:
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
       - name: Save tree-sitter build cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: save
@@ -159,6 +161,7 @@ jobs:
           echo "path=$(pnpm store path --silent)" >> "${GITHUB_OUTPUT}"
 
       - name: Restore pnpm store cache
+        id: pnpm-cache
         uses: actions/cache/restore@v5
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -182,6 +185,7 @@ jobs:
           tool: nextest
 
       - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: restore
@@ -211,14 +215,14 @@ jobs:
             --no-tests pass
 
       - name: Save pnpm store cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.pnpm-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Save Cargo registry cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
         with:
           path: |
@@ -227,7 +231,7 @@ jobs:
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
       - name: Save tree-sitter build cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: save
@@ -278,6 +282,7 @@ jobs:
           echo "path=$(pnpm store path --silent)" >> "${GITHUB_OUTPUT}"
 
       - name: Restore pnpm store cache
+        id: pnpm-cache
         uses: actions/cache/restore@v5
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -298,6 +303,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Restore tree-sitter build cache
+        id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: restore
@@ -369,14 +375,14 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Save pnpm store cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.pnpm-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Save Cargo registry cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
         with:
           path: |
@@ -385,7 +391,7 @@ jobs:
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
       - name: Save tree-sitter build cache
-        if: always()
+        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: save
