@@ -56,3 +56,4 @@
 - 需要分析 CI 构建瓶颈时，优先保留并利用 Cargo timings 与 linker timing 这类直接观测数据，而不是依赖额外缓存命中率做推断；
 - 保持 `node_modules/` 被忽略，但应提交受版本控制的包元数据，例如 `package.json` 和锁文件；
 - 一旦仓库存在 `justfile`，就使用 `just test` 作为标准测试入口。
+- 当 Agent 运行 `just test` 且希望减少日志 / Token 开销时，使用 `KAT_AGENT_TEST_LOG_MODE=quiet just test`；默认不设置该环境变量，保留 nextest 的常规进度输出。
