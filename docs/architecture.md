@@ -35,6 +35,7 @@
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
+- CLI 输出层默认仍以“renderer 产出完整 ANSI 文本”为边界；长输出分页优先通过外部 pager 承接，而不是把 renderer 直接改造成内建 TUI。当前 `--paging=auto` 只在 stdout 为 TTY 且内容超过一屏时接入 pager，优先读取 `PAGER`，未设置时默认回退到 `less -R -F -X`。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。当前 profile 至少已覆盖普通 YAML、GitHub Actions workflow YAML、`action.yml` 这类 GitHub Action metadata YAML。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
 - 对 `Justfile` recipe、Markdown fenced code、GitHub Actions `run` block 这类明显是“块级运行时区域”的注入，renderer 现在会基于注入 range 和共享缩进推导矩形 block range，而不是只给每一行已有文本上色。
