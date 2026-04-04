@@ -63,11 +63,16 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install test tooling
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Install just
         shell: bash
         run: |
           set -euo pipefail
-          cargo install --locked just cargo-nextest
+          cargo install --locked just
 
       - name: Install dependencies
         shell: bash
