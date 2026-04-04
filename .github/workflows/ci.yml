@@ -94,13 +94,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo clippy --locked --all-targets --all-features -- \
-            -D warnings \
-            -A clippy::collapsible_if \
-            -A clippy::explicit_auto_deref \
-            -A clippy::items_after_test_module \
-            -A clippy::too_many_arguments \
-            -A clippy::unnecessary_sort_by
+          cargo clippy --locked --all-targets --all-features -- -D warnings
 
       - name: Save pnpm store cache
         if: always()

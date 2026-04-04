@@ -478,7 +478,7 @@ fn build_runtimes() -> Result<BTreeMap<&'static str, LanguageRuntime>> {
                 asset.name
             )
         })?;
-        flat_configuration.configure(&*HIGHLIGHT_NAMES);
+        flat_configuration.configure(&HIGHLIGHT_NAMES);
 
         runtimes.insert(
             asset.name,

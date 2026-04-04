@@ -347,7 +347,7 @@ fn best_dialect(scores: SqlDialectScores) -> (SqlDialect, i32, i32) {
         (SqlDialect::Mysql, scores.mysql),
         (SqlDialect::Sqlite, scores.sqlite),
     ];
-    entries.sort_by(|left, right| right.1.cmp(&left.1));
+    entries.sort_by_key(|entry| std::cmp::Reverse(entry.1));
     (entries[0].0, entries[0].1, entries[1].1)
 }
 
