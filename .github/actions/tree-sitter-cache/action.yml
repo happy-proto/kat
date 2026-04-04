@@ -1,9 +1,12 @@
 name: Tree-sitter Cache
-description: Restore or save the repository-local tree-sitter build cache.
+description: Manage the repository-local tree-sitter build cache with manifest-aware reconciliation.
 
 inputs:
   mode:
     description: restore or save
+    required: true
+  key-prefix:
+    description: Stable cache key prefix, usually scoped by runner OS, arch, target, profile, and shared inputs
     required: true
   target:
     description: Rust target triple used for this cache bucket
@@ -11,6 +14,14 @@ inputs:
   profile:
     description: Cargo profile used for this cache bucket
     required: true
+  cache-root:
+    description: Shared tree-sitter cache root
+    required: false
+    default: .build-cache/tree-sitter-cache
+  registry-path:
+    description: Path to grammars registry
+    required: false
+    default: grammars/registry.toml
   enabled:
     description: Whether this invocation should run
     required: false
@@ -19,19 +30,58 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Prepare tree-sitter cache state
+      if: inputs.enabled == 'true'
+      id: prepare
+      shell: bash
+      run: node "${{ github.action_path }}/setup.cjs"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_KEY_PREFIX: ${{ inputs.key-prefix }}
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_CACHE_ROOT: ${{ inputs.cache-root }}
+        INPUT_REGISTRY_PATH: ${{ inputs.registry-path }}
+
     - name: Restore tree-sitter build cache
       if: inputs.mode == 'restore' && inputs.enabled == 'true'
+      id: cache-restore
       uses: actions/cache/restore@v5
       with:
-        path: .build-cache/tree-sitter-cache
-        key: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-${{ github.job }}-${{ github.sha }}
+        path: ${{ inputs.cache-root }}
+        key: ${{ steps.prepare.outputs.cache-key }}
         restore-keys: |
-          ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-${{ github.job }}-
-          ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-
+          ${{ steps.prepare.outputs.restore-prefix }}
+
+    - name: Reconcile tree-sitter cache contents
+      if: inputs.mode == 'restore' && inputs.enabled == 'true'
+      shell: bash
+      run: node "${{ github.action_path }}/reconcile.cjs"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_CACHE_ROOT: ${{ inputs.cache-root }}
+
+    - name: Finalize tree-sitter cache contents
+      if: inputs.mode == 'save' && inputs.enabled == 'true'
+      shell: bash
+      run: node "${{ github.action_path }}/finalize.cjs"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_CACHE_ROOT: ${{ inputs.cache-root }}
 
     - name: Save tree-sitter build cache
       if: inputs.mode == 'save' && inputs.enabled == 'true'
       uses: actions/cache/save@v5
       with:
-        path: .build-cache/tree-sitter-cache
-        key: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ inputs.profile }}-${{ env.TREE_SITTER_CACHE_HASH }}-${{ github.job }}-${{ github.sha }}
+        path: ${{ inputs.cache-root }}
+        key: ${{ steps.prepare.outputs.cache-key }}
+
+outputs:
+  cache-hit:
+    description: Whether restore matched the cache key exactly.
+    value: ${{ steps.cache-restore.outputs.cache-hit }}

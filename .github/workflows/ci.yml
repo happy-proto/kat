@@ -17,7 +17,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   TREE_SITTER_CACHE_KEY_PREFIX: tree-sitter-cache-v1
-  TREE_SITTER_CACHE_HASH: ${{ hashFiles('build.rs', 'grammars/registry.toml', 'grammars/**/grammar.js', 'grammars/**/queries/*.scm', 'grammars/**/scanner.c', 'grammars/**/scanner.cc', 'grammars/**/scanner.cpp', 'package.json', 'pnpm-lock.yaml') }}
+  TREE_SITTER_CACHE_HASH: ${{ hashFiles('build.rs', 'package.json', 'pnpm-lock.yaml') }}
 
 jobs:
   fmt:
@@ -90,6 +90,7 @@ jobs:
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: restore
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ env.TREE_SITTER_CACHE_HASH }}
           target: x86_64-unknown-linux-gnu
           profile: debug
           enabled: ${{ github.ref_name != 'master' }}
@@ -127,6 +128,7 @@ jobs:
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: save
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ env.TREE_SITTER_CACHE_HASH }}
           target: x86_64-unknown-linux-gnu
           profile: debug
 
@@ -184,6 +186,7 @@ jobs:
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: restore
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ env.TREE_SITTER_CACHE_HASH }}
           target: x86_64-unknown-linux-gnu
           profile: debug
           enabled: ${{ github.ref_name != 'master' }}
@@ -229,6 +232,7 @@ jobs:
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: save
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ env.TREE_SITTER_CACHE_HASH }}
           target: x86_64-unknown-linux-gnu
           profile: debug
 
@@ -298,6 +302,7 @@ jobs:
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: restore
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ env.TREE_SITTER_CACHE_HASH }}
           target: ${{ matrix.target }}
           profile: release
           enabled: ${{ github.ref_name != 'master' }}
@@ -385,6 +390,7 @@ jobs:
         uses: ./.github/actions/tree-sitter-cache
         with:
           mode: save
+          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ env.TREE_SITTER_CACHE_HASH }}
           target: ${{ matrix.target }}
           profile: release
 
