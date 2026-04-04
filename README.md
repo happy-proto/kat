@@ -59,7 +59,7 @@ cargo build
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
 - 长输出默认支持外部分页：`--paging=auto|always|never`，`auto` 会在 TTY 中按屏高判断是否接入 pager；pager 命令优先读 `PAGER`，未设置时默认回退到 `less -R -F -X`
 - Tree-sitter 构建中间产物在本地会落到仓库级 `.build-cache/tree-sitter-cache/`，用于复用 `build.rs` 生成出来的 grammar 资产
-- CI 当前保留 pnpm store、Cargo `registry` / `index` 缓存，以及 `.build-cache/tree-sitter-cache/`。其中 tree-sitter build cache 在 `master` 分支上默认只写不读，其他分支 / PR 运行可读写，用来加速开发中的 grammar 生成与 parser 源码复用
+- CI 当前保留 pnpm store、Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 `.build-cache/tree-sitter-cache/`。其中 tree-sitter build cache 在 `master` 分支上默认只写不读，其他分支 / PR 运行可读写，用来加速开发中的 grammar 生成与 parser 源码复用
 - CI 的 release 构建会额外上传 Cargo timings HTML、linker timing 日志和 tree-sitter build profile，用于判断瓶颈是否落在最终链接阶段还是 `build.rs`
 
 ## 文档入口

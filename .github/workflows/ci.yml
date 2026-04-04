@@ -86,6 +86,9 @@ jobs:
         with:
           components: clippy
 
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
       - name: Restore tree-sitter build cache
         id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
@@ -106,6 +109,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          "${SCCACHE_PATH}" --zero-stats
           cargo clippy --locked --all-targets --all-features -- -D warnings
 
       - name: Save pnpm store cache
@@ -184,6 +188,9 @@ jobs:
         with:
           tool: nextest
 
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
       - name: Restore tree-sitter build cache
         id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
@@ -204,6 +211,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          "${SCCACHE_PATH}" --zero-stats
           cargo nextest run \
             --config-file .config/nextest.toml \
             --cargo-quiet \
@@ -298,6 +306,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
       - name: Restore tree-sitter build cache
         id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
@@ -331,6 +342,7 @@ jobs:
           install_end=$(date +%s)
 
           build_start=$(date +%s)
+          "${SCCACHE_PATH}" --zero-stats
           : > "${KAT_LINK_LOG}"
           : > "${KAT_BUILD_PROFILE_LOG}"
           cargo build --timings --release --locked --target "${TARGET}"
