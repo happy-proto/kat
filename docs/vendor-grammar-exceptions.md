@@ -59,7 +59,7 @@
 - `jq`
   原因：当前 crates.io 上常用的 `tree-sitter-jq` 走 GPL 许可证链路；仓库里改用 BSD 3-Clause 上游并保留 vendored parser 源。
 
-## 仍被其他 vendored grammar 在构建期直接依赖
+## 例外：parser 已迁移，但仍保留 vendored support asset
 
 - `css`
   原因：虽然 CSS runtime 已迁到 crate-backed，但 `grammars/less/grammar.js` 和 `grammars/scss/grammar.js` 仍会在生成期直接 `require("../css/grammar.js")`，所以仓库里继续保留 `grammars/css/grammar.js` 这份最小 support asset。

@@ -82,6 +82,7 @@ cargo build
 - 架构说明：[`docs/architecture.md`](docs/architecture.md)
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
 - 仓库维护约定：[`docs/maintenance.md`](docs/maintenance.md)
+- vendored grammar 例外清单：[`docs/vendor-grammar-exceptions.md`](docs/vendor-grammar-exceptions.md)
 - 测试样例约定：[`docs/test-assets.md`](docs/test-assets.md)
 
 如果你最关心的是“现在到底支持哪些语言、做到什么程度”，先读 [`docs/language-coverage.md`](docs/language-coverage.md)。如果你想看这个仓库为什么会长成现在这样，再看 [`docs/architecture.md`](docs/architecture.md)。
