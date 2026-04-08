@@ -12,6 +12,7 @@ use anyhow::{Context, Result, bail};
 use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
 use clap_complete::CompleteEnv;
 use clap_complete::engine::{ArgValueCompleter, CompletionCandidate};
+use miette::{Report, miette};
 use shadow_rs::shadow;
 use terminal_size::{Height, terminal_size};
 
@@ -105,15 +106,19 @@ impl std::error::Error for ReadSourceError {
 fn format_cli_error(error: &anyhow::Error) -> String {
     if let Some(read_error) = error.downcast_ref::<ReadSourceError>() {
         if let Some(io_error) = read_error.io_error() {
-            return format!(
-                "[kat error]: '{}': {}",
-                read_error.path().display(),
-                io_error
-            );
+            let report = miette!("'{}': {}", read_error.path().display(), io_error);
+            return format!("{report:?}");
         }
+
+        let report = miette!(
+            help = "pass a file path instead",
+            "'{}' is a directory",
+            read_error.path().display()
+        );
+        return format!("{report:?}");
     }
 
-    format!("[kat error]: {error}")
+    format!("{:?}", Report::msg(error.to_string()))
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -620,12 +625,9 @@ mod tests {
         let error = read_source_from_path(&missing).expect_err("missing file should fail");
         let message = format_cli_error(&error);
 
-        assert_eq!(
-            message,
-            format!(
-                "[kat error]: '{}': No such file or directory (os error 2)",
-                missing.display()
-            )
+        assert!(
+            message.contains("con':") && message.contains("No such file or directory (os error 2)"),
+            "unexpected missing-file cli error: {message}"
         );
     }
 
