@@ -21,10 +21,18 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
 
     Some(match head {
         "c" => "c",
+        "cs" | "c#" | "csharp" => "csharp",
         "cpp" | "cxx" | "cc" | "c++" | "cplusplus" => "cpp",
+        "diff" | "patch" => "diff",
+        "dot" | "graphviz" | "gv" => "dot",
+        "gradle" | "groovy" | "gvy" => "groovy",
         "java" | "bsh" => "java",
         "js" | "node" | "nodejs" | "bun" => "javascript",
+        "jq" => "jq",
+        "less" => "less",
         "kt" | "kts" | "kotlin" => "kotlin",
+        "nginx" => "nginx",
+        "properties" => "properties",
         "ts" | "mts" | "cts" => "typescript",
         "tsx" | "typescriptreact" => "tsx",
         "golang" => "go",

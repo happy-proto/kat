@@ -1,0 +1,6 @@
+digraph ThemeGraph {
+  rankdir = LR;
+  preview [label="Preview"];
+  render [label="Render"];
+  preview -> render;
+}
