@@ -5,4 +5,4 @@ use (
 	../shared/theme-kit
 )
 
-replace github.com/dcjanus/theme-kit => ../shared/theme-kit
+replace github.com/example/theme-kit => ../shared/theme-kit

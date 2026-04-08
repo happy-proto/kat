@@ -37,6 +37,27 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "git_config"
+library_name = "tree-sitter-git-config"
+extensions = []
+filenames = [".gitconfig", "gitconfig", ".gitmodules", "config.worktree"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "function.builtin",
+  "number",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.special.path",
+  "tag",
+]
+
+[[grammar]]
 name = "dockerfile"
 library_name = "tree-sitter-dockerfile"
 extensions = ["dockerfile"]

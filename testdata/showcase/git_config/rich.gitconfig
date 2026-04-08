@@ -1,0 +1,28 @@
+[core]
+	repositoryFormatVersion = 0
+	fileMode = true
+	bare = false
+	logAllRefUpdates = true
+	sshCommand = "ssh -i ~/.ssh/id_example"
+
+[user]
+	name = Example User
+	email = dev@example.com
+
+[include]
+	path = ~/.gitconfig.local
+
+[includeIf "gitdir:~/Code/work/"]
+	path = ~/Code/work/.gitconfig
+
+[remote "origin"]
+	url = git@github.com:example/kat.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+
+[alias]
+	lg = log --graph --decorate --oneline
+	co = checkout
+
+[filter "lfs"]
+	process = !git-lfs filter-process
+	required = true

@@ -7,7 +7,7 @@ released_at = 2026-03-26T18:00:00Z
 [tool.kat.preview]
 theme = "Dracula"
 escaped = "line\nsecond"
-authors = ["DCjanus", "kat"]
+authors = ["Example User", "kat"]
 meta = { enabled = true, mode = "showcase" }
 
 [[tool.kat.targets]]

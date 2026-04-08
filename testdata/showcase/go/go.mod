@@ -1,4 +1,4 @@
-module github.com/dcjanus/kat
+module github.com/example/kat
 
 go 1.24.0
 
@@ -12,7 +12,7 @@ require (
 
 replace (
 	github.com/charmbracelet/lipgloss => ../forks/lipgloss
-	github.com/muesli/termenv v0.15.2 => github.com/dcjanus/termenv v0.15.2-preview.1
+	github.com/muesli/termenv v0.15.2 => github.com/example/termenv v0.15.2-preview.1
 )
 
 exclude golang.org/x/text v0.21.0

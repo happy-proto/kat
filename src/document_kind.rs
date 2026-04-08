@@ -5,6 +5,8 @@ pub(crate) enum DocumentProfile {
     Plain,
     GitHubActionsWorkflow,
     GitHubActionMetadata,
+    GitConfig,
+    GitModules,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -44,6 +46,13 @@ pub(crate) fn yaml_document_kind(source_path: Option<&Path>) -> DocumentKind {
     }
 }
 
+pub(crate) fn git_config_document_kind(source_path: Option<&Path>) -> DocumentKind {
+    match git_config_profile(source_path) {
+        Some(profile) => DocumentKind::with_profile("git_config", profile),
+        None => DocumentKind::plain("git_config"),
+    }
+}
+
 fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
 
@@ -53,6 +62,23 @@ fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile>
 
     if is_github_action_metadata_path(path) {
         return Some(DocumentProfile::GitHubActionMetadata);
+    }
+
+    None
+}
+
+fn git_config_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+    let path = source_path?;
+
+    if matches!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some(".gitmodules")
+    ) {
+        return Some(DocumentProfile::GitModules);
+    }
+
+    if is_git_config_path(path) {
+        return Some(DocumentProfile::GitConfig);
     }
 
     None
@@ -86,5 +112,20 @@ fn is_github_action_metadata_path(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
         Some("action.yml" | "action.yaml")
+    )
+}
+
+fn is_git_config_path(path: &Path) -> bool {
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(
+        components.as_slice(),
+        [.., ".git", "config"] | [.., "git", "config"]
+    ) || matches!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some(".gitconfig" | "gitconfig" | "config.worktree")
     )
 }
