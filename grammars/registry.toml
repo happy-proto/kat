@@ -1,8 +1,8 @@
 [[grammar]]
 name = "json"
 library_name = "tree-sitter-json"
-extensions = ["json", "jsonc"]
-filenames = []
+extensions = ["json", "jsonc", "jsonl", "ipynb"]
+filenames = ["flake.lock"]
 shebang_substrings = []
 extra_c_flags = ["-Wno-unused-but-set-variable"]
 highlight_names = [
@@ -237,8 +237,8 @@ highlight_names = [
 [[grammar]]
 name = "yaml"
 library_name = "tree-sitter-yaml"
-extensions = ["yaml", "yml"]
-filenames = []
+extensions = ["yaml", "yml", "cff"]
+filenames = [".clang-format", "CITATION.cff"]
 filename_prefixes = []
 shebang_substrings = []
 extra_c_flags = ["-Wno-unused-but-set-variable"]
@@ -261,7 +261,7 @@ highlight_names = [
 [[grammar]]
 name = "hcl"
 library_name = "tree-sitter-hcl"
-extensions = ["hcl", "nomad"]
+extensions = ["hcl", "nomad", "tf", "tfvars"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
@@ -469,7 +469,7 @@ highlight_names = [
 name = "sql"
 library_name = "tree-sitter-sql"
 parser_source = "crate"
-extensions = ["sql", "psql", "pgsql", "postgresql", "mysql", "mariadb", "sqlite", "sqlite3"]
+extensions = ["sql", "ddl", "dml", "psql", "pgsql", "postgresql", "mysql", "mariadb", "sqlite", "sqlite3"]
 filenames = []
 shebang_substrings = []
 extra_c_flags = []
@@ -717,7 +717,7 @@ highlight_names = [
 [[grammar]]
 name = "markdown"
 library_name = "tree-sitter-markdown"
-extensions = ["md", "markdown"]
+extensions = ["md", "markdown", "mdown", "markdn", "mkd"]
 filenames = ["README.md"]
 shebang_substrings = []
 extra_c_flags = []
@@ -787,4 +787,549 @@ highlight_names = [
   "string.escape",
   "variable",
   "variable.parameter",
+]
+
+[[grammar]]
+name = "c"
+library_name = "tree-sitter-c"
+parser_source = "crate"
+extensions = ["c"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "function",
+  "function.special",
+  "keyword",
+  "label",
+  "number",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "cpp"
+library_name = "tree-sitter-cpp"
+parser_source = "crate"
+extensions = ["cpp", "cc", "cp", "cxx", "c++", "h", "hh", "hpp", "hxx", "h++", "inl", "ipp"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "function",
+  "function.special",
+  "keyword",
+  "label",
+  "number",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "java"
+library_name = "tree-sitter-java"
+parser_source = "crate"
+extensions = ["java", "bsh"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "function.builtin",
+  "function.method",
+  "keyword",
+  "number",
+  "operator",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "kotlin"
+library_name = "tree-sitter-kotlin"
+parser_source = "crate"
+extensions = ["kt", "kts"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "function",
+  "keyword",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "typescript"
+library_name = "tree-sitter-typescript"
+parser_source = "crate"
+extensions = ["ts", "mts", "cts"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "embedded",
+  "function",
+  "function.method",
+  "keyword",
+  "keyword.control",
+  "keyword.declaration",
+  "keyword.import",
+  "keyword.operator.regex",
+  "nested",
+  "number",
+  "operator",
+  "property",
+  "property.name",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.regex",
+  "type",
+  "type.builtin",
+  "type.class",
+  "type.name",
+  "variable",
+  "variable.parameter",
+  "variable.special",
+]
+
+[[grammar]]
+name = "tsx"
+library_name = "tree-sitter-typescript"
+parser_source = "crate"
+extensions = ["tsx"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute.jsx",
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "embedded",
+  "function",
+  "function.method",
+  "keyword",
+  "keyword.control",
+  "keyword.declaration",
+  "keyword.import",
+  "keyword.operator.regex",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.bracket.jsx",
+  "punctuation.delimiter",
+  "punctuation.delimiter.jsx",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.regex",
+  "string.special",
+  "tag.jsx",
+  "text.jsx",
+  "type",
+  "type.builtin",
+  "type.class",
+  "variable",
+  "variable.parameter",
+  "variable.special",
+]
+
+[[grammar]]
+name = "vue"
+library_name = "tree-sitter-vue"
+extensions = ["vue"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "function.builtin",
+  "keyword.directive",
+  "punctuation.bracket",
+  "string",
+  "tag",
+  "tag.error",
+]
+
+[[grammar]]
+name = "svelte"
+library_name = "tree-sitter-svelte"
+extensions = ["svelte", "svlt"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "keyword.control",
+  "punctuation.bracket",
+  "punctuation.special",
+  "string",
+  "tag",
+  "tag.error",
+]
+
+[[grammar]]
+name = "dotenv"
+library_name = "tree-sitter-dotenv"
+extensions = []
+filenames = [".env", "env", ".flaskenv"]
+filename_prefixes = [".env.", "env."]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "number",
+  "operator",
+  "string",
+  "variable",
+]
+
+[[grammar]]
+name = "ruby"
+library_name = "tree-sitter-ruby"
+parser_source = "crate"
+extensions = ["rb", "cgi", "fcgi", "gemspec", "jbuilder", "podspec", "prawn", "rabl", "rake", "rbx", "rjs", "ruby.rail", "thor"]
+filenames = ["Appfile", "Appraisals", "Berksfile", "Brewfile", "capfile", "Cheffile", "config.ru", "Deliverfile", "Fastfile", "Gemfile", "Guardfile", "irbrc", "Podfile", "Rakefile", "Rantfile", "Scanfile", "simplecov", "Snapfile", "Thorfile", "Vagrantfile"]
+shebang_substrings = ["ruby"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "embedded",
+  "function.method",
+  "function.method.builtin",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special.regex",
+  "string.special.symbol",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "lua"
+library_name = "tree-sitter-lua"
+parser_source = "crate"
+extensions = ["lua", "nse"]
+filenames = []
+shebang_substrings = ["lua"]
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "function",
+  "function.builtin",
+  "function.call",
+  "function.method",
+  "keyword",
+  "keyword.control",
+  "keyword.directive",
+  "keyword.function",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "label",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "nix"
+library_name = "tree-sitter-nix"
+parser_source = "crate"
+extensions = ["nix"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "embedded",
+  "function",
+  "function.builtin",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special.path",
+  "string.special.uri",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "ini"
+library_name = "tree-sitter-ini"
+parser_source = "crate"
+extensions = ["ini", "INI", "inf", "INF", "reg", "REG", "lng", "cfg", "CFG", "desktop", "url", "URL"]
+filenames = [".editorconfig", ".coveragerc", ".pylintrc", ".gitlint", ".hgrc", "hgrc"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "none",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "spell",
+  "type",
+]
+
+[[grammar]]
+name = "xml"
+library_name = "tree-sitter-xml"
+parser_source = "crate"
+extensions = ["xml", "xsd", "xslt", "tld", "dtml", "rng", "rss", "opml", "svg", "xaml", "csproj", "vbproj", "props", "targets"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "embedded",
+  "error",
+  "keyword",
+  "label",
+  "markup",
+  "markup.heading",
+  "markup.link",
+  "markup.raw",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+  "string.special.symbol",
+  "tag",
+  "type",
+  "type.builtin",
+]
+
+[[grammar]]
+name = "make"
+library_name = "tree-sitter-make"
+parser_source = "crate"
+extensions = ["mak", "mk"]
+filenames = ["make", "GNUmakefile", "makefile", "Makefile", "makefile.am", "Makefile.am", "makefile.in", "Makefile.in", "OCamlMakefile"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "character.special",
+  "comment",
+  "function",
+  "function.builtin",
+  "keyword",
+  "keyword.conditional",
+  "keyword.import",
+  "operator",
+  "punctuation.special",
+  "spell",
+  "string",
+  "string.special.path",
+  "string.special.symbol",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "cmake"
+library_name = "tree-sitter-cmake"
+parser_source = "crate"
+extensions = ["cmake"]
+filenames = ["CMakeLists.txt"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "constant",
+  "function",
+  "function.builtin",
+  "function.macro",
+  "keyword.conditional",
+  "keyword.directive",
+  "keyword.function",
+  "keyword.modifier",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "module",
+  "none",
+  "nospell",
+  "punctuation.bracket",
+  "punctuation.special",
+  "spell",
+  "string",
+  "string.escape",
+  "type",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "ninja"
+library_name = "tree-sitter-ninja"
+extensions = ["ninja"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constant.macro",
+  "function",
+  "function.builtin",
+  "include",
+  "keyword",
+  "operator",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special",
+  "type",
+  "type.builtin",
+]
+
+[[grammar]]
+name = "jinja"
+library_name = "tree-sitter-jinja"
+extensions = ["j2", "jinja2", "jinja"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute.builtin",
+  "boolean",
+  "comment",
+  "constant",
+  "function.builtin",
+  "function.call",
+  "keyword",
+  "keyword.conditional",
+  "keyword.directive",
+  "keyword.import",
+  "keyword.operator",
+  "keyword.repeat",
+  "markup.raw.block",
+  "nospell",
+  "number",
+  "number.float",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "variable",
+  "variable.member",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "twig"
+library_name = "tree-sitter-twig"
+extensions = ["twig"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "function.call",
+  "keyword",
+  "keyword.directive",
+  "number",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "erb"
+library_name = "tree-sitter-embedded-template"
+parser_source = "crate"
+extensions = ["erb"]
+filenames = ["rails", "rhtml"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
 ]

@@ -20,8 +20,17 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
     }
 
     Some(match head {
+        "c" => "c",
+        "cpp" | "cxx" | "cc" | "c++" | "cplusplus" => "cpp",
+        "java" | "bsh" => "java",
         "js" | "node" | "nodejs" | "bun" => "javascript",
+        "kt" | "kts" | "kotlin" => "kotlin",
+        "ts" | "mts" | "cts" => "typescript",
+        "tsx" | "typescriptreact" => "tsx",
         "golang" => "go",
+        "rb" | "ruby" => "ruby",
+        "lua" => "lua",
+        "nix" => "nix",
         "powershell" | "pwsh" => "powershell",
         "cmd" | "bat" | "batch" => "batch",
         "sql:postgres" | "sql-postgres" | "sql_postgres" => "sql_postgres",
@@ -43,6 +52,17 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         "gql" | "graphqls" => "graphql",
         "md" => "markdown",
         "yml" => "yaml",
+        "dotenv" | "env" => "dotenv",
+        "ini" => "ini",
+        "xml" => "xml",
+        "makefile" | "make" => "make",
+        "cmake" => "cmake",
+        "ninja" => "ninja",
+        "jinja" | "jinja2" | "j2" => "jinja",
+        "twig" => "twig",
+        "erb" | "rhtml" => "erb",
+        "vue" => "vue",
+        "svelte" | "svlt" => "svelte",
         other => other,
     })
 }

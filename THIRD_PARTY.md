@@ -102,6 +102,46 @@ Included sources:
 - `grammars/just/queries/highlights.scm`
 - `grammars/just/queries/injections.scm`
 - `grammars/just/scanner.c`
+- `grammars/typescript/queries/highlights.scm`
+- `grammars/typescript/queries/injections.scm`
+- `grammars/typescript/queries/locals.scm`
+- `grammars/tsx/queries/highlights.scm`
+- `grammars/tsx/queries/injections.scm`
+- `grammars/tsx/queries/locals.scm`
+- `grammars/vue/grammar.js`
+- `grammars/vue/queries/highlights.scm`
+- `grammars/vue/queries/injections.scm`
+- `grammars/vue/scanner.cc`
+- `grammars/vue/tree_sitter_html/scanner.cc`
+- `grammars/vue/tree_sitter_html/tag.h`
+- `grammars/svelte/grammar.js`
+- `grammars/svelte/queries/highlights.scm`
+- `grammars/svelte/queries/injections.scm`
+- `grammars/svelte/scanner.c`
+- `grammars/svelte/tag.h`
+- `grammars/dotenv/grammar.js`
+- `grammars/dotenv/queries/highlights.scm`
+- `grammars/dotenv/scanner.c`
+- `grammars/ini/queries/highlights.scm`
+- `grammars/xml/queries/highlights.scm`
+- `grammars/make/queries/highlights.scm`
+- `grammars/cmake/queries/highlights.scm`
+- `grammars/ninja/grammar.js`
+- `grammars/ninja/queries/highlights.scm`
+- `grammars/jinja/grammar.js`
+- `grammars/jinja/base_grammar.js`
+- `grammars/jinja/common/common.js`
+- `grammars/jinja/common/expression.js`
+- `grammars/jinja/common/literal.js`
+- `grammars/jinja/queries/highlights.scm`
+- `grammars/jinja/queries/injections.scm`
+- `grammars/jinja/scanner.c`
+- `grammars/twig/grammar.js`
+- `grammars/twig/queries/highlights.scm`
+- `grammars/twig/queries/injections.scm`
+- `grammars/twig/scanner.c`
+- `grammars/erb/queries/highlights.scm`
+- `grammars/erb/queries/injections.scm`
 
 Upstream projects:
 
@@ -500,5 +540,135 @@ Upstream projects:
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
   Notes: repository-local query files that include local integration changes plus adapted patterns from Zed. The exact upstream commits used as the starting point still need a later audit.
+
+- `grammars/typescript/queries/highlights.scm`
+- `grammars/typescript/queries/injections.scm`
+- `grammars/tsx/queries/highlights.scm`
+- `grammars/tsx/queries/injections.scm`
+  Source: [zed-industries/zed](https://github.com/zed-industries/zed)
+  Revision: local working copy reference under `/Users/jun.fan/Code/zed`; exact upstream commit not yet recorded in this repository
+  License: Apache-2.0
+  Notes: repository-local adapted copies of Zed's TypeScript / TSX query files, reused to keep `kat`'s TypeScript-family captures aligned with the existing JavaScript / JSX integration model.
+
+- `grammars/typescript/queries/locals.scm`
+- `grammars/tsx/queries/locals.scm`
+  Source: [tree-sitter/tree-sitter-typescript](https://github.com/tree-sitter/tree-sitter-typescript)
+  Revision: `75b3874edb2dc714fb1fd77a32013d0f8699989f`
+  License: MIT
+  Notes: repository-local copies of the upstream locals query shared by the TypeScript and TSX runtimes. Parser code is linked from the Rust crate `tree-sitter-typescript`.
+
+- `grammars/vue/*`
+  Source: [ikatyang/tree-sitter-vue](https://github.com/ikatyang/tree-sitter-vue)
+  Revision: `91fe2754796cd8fba5f229505a23fa08f3546c06`
+  License: MIT
+  Notes: repository-local copy of the upstream Vue grammar and scanner support files, plus kat-local highlights / injections queries. `grammars/vue/scanner.cc` keeps the upstream logic but renames the embedded HTML scanner symbols so the dedicated Vue runtime can coexist with kat's standalone HTML runtime.
+
+- `grammars/svelte/*`
+  Source: [Himujjal/tree-sitter-svelte](https://github.com/Himujjal/tree-sitter-svelte)
+  Revision: `60ea1d673a1a3eeeb597e098d9ada9ed0c79ef4b`
+  License: MIT
+  Notes: repository-local copy of the upstream Svelte grammar, scanner and required support headers, plus kat-local highlights / injections queries.
+
+- `grammars/dotenv/*`
+  Source: [pnx/tree-sitter-dotenv](https://github.com/pnx/tree-sitter-dotenv)
+  Revision: `f3b1f1f20d255082f2fd4761f6961ab5cf01d4f4`
+  License: MIT
+  Notes: repository-local copy of the upstream DotENV grammar, highlights query and scanner.
+
+- `grammars/ini/queries/highlights.scm`
+  Source: [justinmk/tree-sitter-ini](https://github.com/justinmk/tree-sitter-ini)
+  Revision: `e4018b5176132b4f3c5d6e61cea383f42288d0f5`
+  License: Apache-2.0
+  Notes: repository-local copy of the upstream highlights query. Parser code is linked from the Rust crate `tree-sitter-ini`.
+
+- `grammars/xml/queries/highlights.scm`
+  Source: [tree-sitter-grammars/tree-sitter-xml](https://github.com/tree-sitter-grammars/tree-sitter-xml)
+  Revision: `5000ae8f22d11fbe93939b05c1e37cf21117162d`
+  License: MIT
+  Notes: repository-local copy of the upstream XML highlights query. Parser code is linked from the Rust crate `tree-sitter-xml`.
+
+- `grammars/make/queries/highlights.scm`
+  Source: [tree-sitter-grammars/tree-sitter-make](https://github.com/tree-sitter-grammars/tree-sitter-make)
+  Revision: `70613f3d812cbabbd7f38d104d60a409c4008b43`
+  License: MIT
+  Notes: repository-local copy of the upstream Makefile highlights query. Parser code is linked from the Rust crate `tree-sitter-make`.
+
+- `grammars/cmake/queries/highlights.scm`
+  Source: [uyha/tree-sitter-cmake](https://github.com/uyha/tree-sitter-cmake)
+  Revision: `c7b2a71e7f8ecb167fad4c97227c838439280175`
+  License: MIT
+  Notes: repository-local copy of the upstream CMake highlights query. Parser code is linked from the Rust crate `tree-sitter-cmake`.
+
+- `grammars/ninja/*`
+  Source: [alemuller/tree-sitter-ninja](https://github.com/alemuller/tree-sitter-ninja)
+  Revision: `0a95cfdc0745b6ae82f60d3a339b37f19b7b9267`
+  License: MIT
+  Notes: repository-local copy of the upstream Ninja grammar and highlights query.
+
+- `grammars/jinja/*`
+  Source: [cathaysia/tree-sitter-jinja](https://github.com/cathaysia/tree-sitter-jinja)
+  Revision: `7e254abb76618227806f6881525980231faa1610`
+  License: Apache-2.0
+  Notes: repository-local adapted copy of the upstream Jinja grammar and support files. `grammars/jinja/grammar.js` is a kat-local wrapper that points at the vendored base grammar file layout and keeps HTML combined injection in kat's runtime model.
+
+- `grammars/twig/*`
+  Source: [kaermorchen/tree-sitter-twig](https://github.com/kaermorchen/tree-sitter-twig)
+  Revision: `dac11024e40536d05c958d920139c310cbe86625`
+  License: MPL-2.0
+  Notes: repository-local copy of the upstream Twig grammar and scanner, with kat-local highlights / injections queries layered on top.
+
+- `grammars/erb/queries/highlights.scm`
+- `grammars/erb/queries/injections.scm`
+  Source: [tree-sitter/tree-sitter-embedded-template](https://github.com/tree-sitter/tree-sitter-embedded-template)
+  Revision: `3499d85f0a0d937c507a4a65368f2f63772786e1`
+  License: MIT
+  Notes: repository-local copies of the upstream embedded-template queries for ERB. Parser code is linked from the Rust crate `tree-sitter-embedded-template`.
+
+- `grammars/c/queries/highlights.scm`
+  Source: [tree-sitter/tree-sitter-c](https://github.com/tree-sitter/tree-sitter-c)
+  Revision: crate release `0.24.1`
+  License: MIT
+  Notes: repository-local copy of the upstream C highlights query. Parser code is linked from the Rust crate `tree-sitter-c`.
+
+- `grammars/cpp/queries/highlights.scm`
+- `grammars/cpp/queries/injections.scm`
+  Source: [tree-sitter/tree-sitter-cpp](https://github.com/tree-sitter/tree-sitter-cpp)
+  Revision: crate release `0.23.4`
+  License: MIT
+  Notes: repository-local copies of the upstream C++-specific highlights and raw-string injection queries. The `cpp` runtime combines the vendored C query with these C++ additions while linking parser code from the Rust crate `tree-sitter-cpp`.
+
+- `grammars/java/queries/highlights.scm`
+  Source: [tree-sitter/tree-sitter-java](https://github.com/tree-sitter/tree-sitter-java)
+  Revision: crate release `0.23.5`
+  License: MIT
+  Notes: repository-local copy of the upstream Java highlights query. Parser code is linked from the Rust crate `tree-sitter-java`.
+
+- `grammars/kotlin/queries/highlights.scm`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local Kotlin highlights query written for kat because the upstream grammar crate currently does not ship query assets. Parser code is linked from the Rust crate `tree-sitter-kotlin-ng`.
+
+- `grammars/ruby/queries/highlights.scm`
+- `grammars/ruby/queries/locals.scm`
+  Source: [tree-sitter/tree-sitter-ruby](https://github.com/tree-sitter/tree-sitter-ruby)
+  Revision: crate release `0.23.1`
+  License: MIT
+  Notes: repository-local copies of the upstream Ruby highlights and locals queries. Parser code is linked from the Rust crate `tree-sitter-ruby`.
+
+- `grammars/lua/queries/highlights.scm`
+- `grammars/lua/queries/injections.scm`
+- `grammars/lua/queries/locals.scm`
+  Source: [tree-sitter-grammars/tree-sitter-lua](https://github.com/tree-sitter-grammars/tree-sitter-lua)
+  Revision: crate release `0.5.0`
+  License: MIT
+  Notes: repository-local copies of the upstream Lua highlights, injections and locals queries. Parser code is linked from the Rust crate `tree-sitter-lua`.
+
+- `grammars/nix/queries/highlights.scm`
+- `grammars/nix/queries/injections.scm`
+  Source: [nix-community/tree-sitter-nix](https://github.com/nix-community/tree-sitter-nix)
+  Revision: crate release `0.3.0`
+  License: MIT
+  Notes: repository-local copies of the upstream Nix highlights and injections queries. Parser code is linked from the Rust crate `tree-sitter-nix`.
 
 These files may be modified locally as needed for integration into `kat`.

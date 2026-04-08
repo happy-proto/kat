@@ -62,6 +62,7 @@
 - 前五门语言已经不只是“亮起来”，而是开始按 Dracula 官方 spec 的语言语义落色：
   `JSON` / `TOML` / `YAML` 的 key 走配置语言 key 语义，`YAML alias` 单独走绿色斜体下划线，`Rust` 则细分到 trait、attribute、macro、function definition、local variable 等层级。
 - `Python`、`HTML`、`CSS`、`JavaScript` 这一轮已经补齐了一批此前明显缺失的语义 capture，并新增 fixture / showcase / 专门测试锁住回归。
+- `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB` 这一轮也已全部接入，且都补上了最小 fixture，避免只是 detector 占位。
 - `Go` 这轮也已接入为独立 runtime，并把 `zed` 的 Go highlights/injections 里对终端渲染最有价值的部分对齐进来。
 - `go.mod`、`go.work`、`go.sum` 现在也已作为 Go 生态元数据文件接入独立 runtime，而不是混入 `.go` source runtime。
 - `HCL` 现已作为独立配置语言 runtime 接入，覆盖 `.hcl` 与 `.nomad`；当前 query 已补齐注释、block/type、attribute key、function call、string/template、operator、布尔/数字/null。现有 fixture / showcase 以 Nomad 风格样例为主，但 runtime 定位仍保持通用 HCL。
@@ -162,9 +163,8 @@
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前 registry 已注册 `31` 组 runtime。
-- 相比 `bat`，当前还有 `156` 组文件类型完全没有对应 runtime / detector 入口。
-- 另外还有 `15` 组文件类型已部分覆盖，但文件名、扩展名或特殊检测范围仍明显窄于 `bat`。
+- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
+- 下表从这一轮之后的真实剩余缺口继续维护；不再保留已经补齐项的旧记录。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
 
@@ -178,13 +178,10 @@
 - `Authorized Keys`：`authorized_keys`、`pub`、`authorized_keys2`
 - `AWK`：`awk`
 - `BibTeX`：`bib`
-- `C`：`c`
 - `C#`：`cs`、`csx`
-- `C++`：`cpp`、`cc`、`cp`、`cxx`、`c++`、`h`、`hh`、`hpp`、`hxx`、`h++`、`inl`、`ipp`、`*.h`
 - `Cabal`：`cabal`
 - `CFML`：`cfml`、`cfm`、`cfc`
 - `Clojure`：`clj`、`cljc`、`cljs`、`edn`
-- `CMake`：`CMakeLists.txt`、`cmake`
 - `CMake C Header`：`h.in`
 - `CMake C++ Header`：`hh.in`、`hpp.in`、`hxx.in`、`h++.in`
 - `CMakeCache`：`CMakeCache.txt`
@@ -231,18 +228,14 @@
 - `HTML (Twig)`：`twig`、`html.twig`
 - `HTTP Request and Response`：`http`
 - `Idris`：`idr`
-- `INI`：`ini`、`INI`、`inf`、`INF`、`reg`、`REG`、`lng`、`cfg`、`CFG`、`desktop`、`url`、`URL`、`.editorconfig`、`.coveragerc`、`.pylintrc`、`.gitlint`、`.hgrc`、`hgrc`、`**/.aws/credentials`、`**/.aws/config`、`/etc/letsencrypt/renewal/*.conf`、`/etc/wireguard/*.conf`
-- `Java`：`java`、`bsh`
 - `Java Properties`：`properties`
 - `Java Server Page (JSP)`：`jsp`
 - `JavaScript`：`htc`
 - `JavaScript (Rails)`：`js.erb`
-- `Jinja2`：`j2`、`jinja2`、`jinja`
 - `JQ`：`jq`
 - `jsonnet`：`jsonnet`、`libsonnet`、`libjsonnet`
 - `Julia`：`jl`
 - `Known Hosts`：`known_hosts`、`known_hosts.old`
-- `Kotlin`：`kt`、`kts`
 - `LaTeX`：`tex`、`ltx`
 - `Lean 4`：`lean`
 - `Less`：`less`、`css.less`
@@ -251,8 +244,6 @@
 - `LiveScript`：`ls`、`Slakefile`、`ls.erb`
 - `LLVM`：`ll`
 - `log`：`log`
-- `Lua`：`lua`、`*.nse`
-- `Makefile`：`make`、`GNUmakefile`、`makefile`、`Makefile`、`makefile.am`、`Makefile.am`、`makefile.in`、`Makefile.in`、`OCamlMakefile`、`mak`、`mk`
 - `Manpage`：`man`
 - `MATLAB`：`matlab`
 - `MediaWiki`：`mediawiki`、`wikipedia`、`wiki`
@@ -260,8 +251,6 @@
 - `NAnt Build File`：`build`
 - `nginx`：`conf.erb`、`nginx.conf`、`mime.types`、`fastcgi_params`、`scgi_params`、`uwsgi_params`、`/etc/nginx/**/*.conf`、`/etc/nginx/sites-*/**/*`
 - `Nim`：`nim`、`nims`、`nimble`
-- `Ninja`：`ninja`
-- `Nix`：`nix`
 - `NSIS`：`nsi`、`nsh`、`bnsi`、`bnsh`、`nsdinc`
 - `Objective-C`：`m`
 - `Objective-C++`：`mm`
@@ -287,7 +276,6 @@
 - `resolv`：`resolv.conf`
 - `reStructuredText`：`rst`、`rest`
 - `Robot Framework`：`robot`、`resource`
-- `Ruby`：`rb`、`Appfile`、`Appraisals`、`Berksfile`、`Brewfile`、`capfile`、`cgi`、`Cheffile`、`config.ru`、`Deliverfile`、`Fastfile`、`fcgi`、`Gemfile`、`gemspec`、`Guardfile`、`irbrc`、`jbuilder`、`Podfile`、`podspec`、`prawn`、`rabl`、`rake`、`Rakefile`、`Rantfile`、`rbx`、`rjs`、`ruby.rail`、`Scanfile`、`simplecov`、`Snapfile`、`thor`、`Thorfile`、`Vagrantfile`
 - `Ruby Haml`：`haml`
 - `Ruby on Rails`：`rxml`、`builder`
 - `Ruby Slim`：`slim`、`skim`
@@ -303,7 +291,6 @@
 - `SSHD Config`：`sshd_config`
 - `Strace`：`strace`
 - `Stylus`：`styl`、`stylus`
-- `Svelte`：`svlt`、`svelte`
 - `Swift`：`swift`
 - `syslog`：`syslog`
 - `SystemVerilog`：`sv`、`svh`、`vh`
@@ -312,19 +299,15 @@
 - `TeX`：`sty`、`cls`
 - `Textile`：`textile`
 - `Todo.txt`：`todo.txt`、`done.txt`
-- `TypeScript`：`ts`、`mts`、`cts`
-- `TypeScriptReact`：`tsx`
 - `Typst`：`typ`
 - `varlink`：`varlink`
 - `Verilog`：`v`、`V`
 - `VHDL`：`vhd`、`vhdl`、`vho`、`vht`
 - `VimHelp`：`vimhelp`
 - `VimL`：`vim`、`vimrc`、`gvimrc`、`.vimrc`、`.gvimrc`、`.exrc`、`.nvimrc`、`_vimrc`、`_gvimrc`、`_exrc`
-- `Vue Component`：`vue`
 - `Vyper`：`vy`
 - `WGSL`：`wgsl`
 - `x86_64 Assembly`：`yasm`、`nasm`、`asm`、`inc`、`mac`
-- `XML`：`xml`、`xsd`、`xslt`、`tld`、`dtml`、`rng`、`rss`、`opml`、`svg`、`xaml`、`*.csproj`、`*.vbproj`、`*.props`、`*.targets`
 - `Zig`：`zig`、`zon`
 
 ### 部分覆盖：已有相关 runtime，但文件识别范围仍窄于 `bat`
@@ -332,18 +315,17 @@
 - `Bourne Again Shell (bash)`：`kat` 已覆盖 `sh`、`bash`、`zsh`、`.bash_aliases`、`.bash_functions`、`.bash_login`、`.bash_logout`、`.bash_profile`、`.bashrc`、`.profile`、`.zlogin`、`.zlogout`、`.zprofile`、`.zshenv`、`.zshrc`；仍缺 `ash`、`.bash_completions`、`.bash_variables`、`.textmate_init`、`PKGBUILD`、`ebuild`、`eclass`、`**/bat/config`、`*.ksh`、`*.kshrc`、`/etc/os-release`、`/var/run/os-release`、`/etc/profile`、`bashrc`、`*.bashrc`、`bash_profile`、`*.bash_profile`、`bash_login`、`*.bash_login`、`bash_logout`、`*.bash_logout`、`zshrc`、`*.zshrc`、`zprofile`、`*.zprofile`、`zlogin`、`*.zlogin`、`zlogout`、`*.zlogout`、`zshenv`、`*.zshenv`
 - `CSS`：`kat` 已覆盖 `css`；仍缺 `css.erb`、`css.liquid`
 - `Dockerfile`：`kat` 已覆盖 `Dockerfile`、`dockerfile`、`Containerfile`；仍缺 `.Dockerfile`
-- `DotENV`：`kat` 已覆盖 `.envrc`；仍缺 `.env`、`.env.dist`、`.env.local`、`.env.sample`、`.env.example`、`.env.template`、`.env.test`、`.env.test.local`、`.env.testing`、`.env.dev`、`.env.development`、`.env.development.local`、`.env.prod`、`.env.production`、`.env.production.local`、`.env.dusk.local`、`.env.staging`、`.env.default`、`.env.defaults`、`.flaskenv`、`env`、`env.example`、`env.sample`、`env.template`
 - `Git Ignore`：`kat` 已覆盖 `gitignore`、`.gitignore`；仍缺 `exclude`、`/home/example/.config/git/ignore`
 - `HTML`：`kat` 已覆盖 `html`、`htm`；仍缺 `shtml`、`xhtml`
 - `JavaScript (Babel)`：`kat` 已覆盖 `js`、`mjs`、`jsx`、`cjs`；仍缺 `babel`、`es6`、`*.pac`
-- `JSON`：`kat` 已覆盖 `json`；仍缺 `sublime-settings`、`sublime-menu`、`sublime-keymap`、`sublime-mousemap`、`sublime-theme`、`sublime-build`、`sublime-project`、`sublime-completions`、`sublime-commands`、`sublime-macro`、`sublime-color-scheme`、`ipynb`、`Pipfile.lock`、`*.jsonl`、`*.jsonc`、`*.jsonld`、`*.geojson`、`*.ndjson`、`flake.lock`、`*.sarif`
-- `Markdown`：`kat` 已覆盖 `md`、`markdown`；仍缺 `mdown`、`markdn`、`*.mkd`
+- `JSON`：`kat` 已覆盖 `json`、`jsonc`、`jsonl`、`ipynb` 与 `flake.lock`；仍缺 `sublime-settings`、`sublime-menu`、`sublime-keymap`、`sublime-mousemap`、`sublime-theme`、`sublime-build`、`sublime-project`、`sublime-completions`、`sublime-commands`、`sublime-macro`、`sublime-color-scheme`、`Pipfile.lock`、`*.jsonld`、`*.geojson`、`*.ndjson`、`*.sarif`
+- `Markdown`：`kat` 已覆盖 `md`、`markdown`、`mdown`、`markdn`、`mkd`
 - `Python`：`kat` 已覆盖 `py`；仍缺 `py3`、`pyw`、`pyi`、`pyx`、`pyx.in`、`pxd`、`pxd.in`、`pxi`、`pxi.in`、`rpy`、`cpy`、`SConstruct`、`Sconstruct`、`sconstruct`、`SConscript`、`gyp`、`gypi`、`Snakefile`、`vpy`、`wscript`、`bazel`、`bzl`、`*.xsh`、`*.xonshrc`
 - `Rust`：`kat` 已覆盖 `rs`；仍缺 `*.ron`
-- `SQL`：`kat` 已覆盖 `sql`；仍缺 `ddl`、`dml`
-- `Terraform`：`kat` 已覆盖 `hcl`；仍缺 `tf`、`tfvars`
+- `SQL`：`kat` 已覆盖 `sql`、`ddl`、`dml`
+- `Terraform`：`kat` 已覆盖 `hcl`、`tf`、`tfvars`
 - `TOML`：`kat` 已覆盖 `toml`、`Cargo.lock`、`uv.lock`；仍缺 `tml`、`Gopkg.lock`、`Pipfile`、`pdm.lock`、`poetry.lock`
-- `YAML`：`kat` 已覆盖 `yaml`、`yml`；仍缺 `sublime-syntax`、`CITATION.cff`、`.clang-format`、`fish_history`
+- `YAML`：`kat` 已覆盖 `yaml`、`yml`、`CITATION.cff`、`.clang-format`；仍缺 `sublime-syntax`、`fish_history`
 
 ## 后续细化优先级
 

@@ -1,0 +1,5 @@
+rule cc
+  command = cc -c $in -o $out
+
+build main.o: cc main.c
+default main.o
