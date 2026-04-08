@@ -30,7 +30,7 @@
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
 - 仓库本地 JavaScript 构建依赖统一在根目录管理，构建前先执行 `pnpm install`。
 - Tree-sitter 中间产物在本地会缓存到仓库级 `.build-cache/tree-sitter-cache/`，与 Cargo 的 `target/` 产物目录解耦，以便在不同 Cargo 命令之间复用。
-- CI 只保留 pnpm store 与 Cargo `registry` / `index` 缓存，不再额外维护 `sccache` 或 tree-sitter build cache；`target/` 仍不是跨 job 缓存对象。
+- CI 保留 pnpm store、Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 tree-sitter build cache；`target/` 仍不是跨 job 缓存对象。
 
 ### 运行时模型
 

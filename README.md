@@ -1,6 +1,6 @@
 # Kat
 
-[![build](https://github.com/happy-proto/kat/actions/workflows/build-matrix.yml/badge.svg?branch=master)](https://github.com/happy-proto/kat/actions/workflows/build-matrix.yml)
+[![build](https://github.com/happy-proto/kat/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/happy-proto/kat/actions/workflows/ci.yml)
 [![dependency status](https://deps.rs/repo/github/happy-proto/kat/status.svg)](https://deps.rs/repo/github/happy-proto/kat)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/happy-proto/kat/blob/master/LICENSE)
 
@@ -53,12 +53,13 @@ cargo build
 ## 开发调试
 
 - 跑测试：`just test`
+- CI 会并行执行 `cargo fmt --check`、`cargo clippy` 和 `cargo nextest run` 测试；全部通过后再继续 release build matrix
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
 - 长输出默认支持外部分页：`--paging=auto|always|never`，`auto` 会在 TTY 中按屏高判断是否接入 pager；pager 命令优先读 `PAGER`，未设置时默认回退到 `less -R -F -X`
 - Tree-sitter 构建中间产物在本地会落到仓库级 `.build-cache/tree-sitter-cache/`，用于复用 `build.rs` 生成出来的 grammar 资产
-- CI 当前只保留 pnpm store 与 Cargo `registry` / `index` 缓存，不再额外维护 `sccache` 或 tree-sitter build cache 的 GitHub Actions 逻辑
+- CI 当前保留 pnpm store、Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 `.build-cache/tree-sitter-cache/`。其中 tree-sitter build cache 在 `master` 分支上默认只写不读，其他分支 / PR 运行可读写，用来加速开发中的 grammar 生成与 parser 源码复用
 - CI 的 release 构建会额外上传 Cargo timings HTML、linker timing 日志和 tree-sitter build profile，用于判断瓶颈是否落在最终链接阶段还是 `build.rs`
 
 ## 文档入口
