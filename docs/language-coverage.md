@@ -207,7 +207,7 @@
 - `Fortran Namelist`：`namelist`
 - `fstab`：`fstab`、`crypttab`、`mtab`
 - `GDScript (Godot Engine)`：`gd`
-- `Git Attributes`：`attributes`、`gitattributes`、`.gitattributes`、`/Users/jun.fan/.config/git/attributes`
+- `Git Attributes`：`attributes`、`gitattributes`、`.gitattributes`、`/home/example/.config/git/attributes`
 - `Git Commit`：`COMMIT_EDITMSG`、`MERGE_MSG`、`TAG_EDITMSG`
 - `Git Link`：`.git`
 - `Git Log`：`gitlog`
@@ -333,7 +333,7 @@
 - `CSS`：`kat` 已覆盖 `css`；仍缺 `css.erb`、`css.liquid`
 - `Dockerfile`：`kat` 已覆盖 `Dockerfile`、`dockerfile`、`Containerfile`；仍缺 `.Dockerfile`
 - `DotENV`：`kat` 已覆盖 `.envrc`；仍缺 `.env`、`.env.dist`、`.env.local`、`.env.sample`、`.env.example`、`.env.template`、`.env.test`、`.env.test.local`、`.env.testing`、`.env.dev`、`.env.development`、`.env.development.local`、`.env.prod`、`.env.production`、`.env.production.local`、`.env.dusk.local`、`.env.staging`、`.env.default`、`.env.defaults`、`.flaskenv`、`env`、`env.example`、`env.sample`、`env.template`
-- `Git Ignore`：`kat` 已覆盖 `gitignore`、`.gitignore`；仍缺 `exclude`、`/Users/jun.fan/.config/git/ignore`
+- `Git Ignore`：`kat` 已覆盖 `gitignore`、`.gitignore`；仍缺 `exclude`、`/home/example/.config/git/ignore`
 - `HTML`：`kat` 已覆盖 `html`、`htm`；仍缺 `shtml`、`xhtml`
 - `JavaScript (Babel)`：`kat` 已覆盖 `js`、`mjs`、`jsx`、`cjs`；仍缺 `babel`、`es6`、`*.pac`
 - `JSON`：`kat` 已覆盖 `json`；仍缺 `sublime-settings`、`sublime-menu`、`sublime-keymap`、`sublime-mousemap`、`sublime-theme`、`sublime-build`、`sublime-project`、`sublime-completions`、`sublime-commands`、`sublime-macro`、`sublime-color-scheme`、`ipynb`、`Pipfile.lock`、`*.jsonl`、`*.jsonc`、`*.jsonld`、`*.geojson`、`*.ndjson`、`flake.lock`、`*.sarif`

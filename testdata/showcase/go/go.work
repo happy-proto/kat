@@ -7,6 +7,6 @@ use (
 )
 
 replace (
-	github.com/dcjanus/theme-kit => ../shared/theme-kit
+	github.com/example/theme-kit => ../shared/theme-kit
 	golang.org/x/tools v0.31.0 => ../forks/tools
 )

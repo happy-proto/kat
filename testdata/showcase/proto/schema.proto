@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package kat.theme.preview.v1;
 
-option go_package = "github.com/dcjanus/kat/proto/themepreviewv1";
+option go_package = "github.com/example/kat/proto/themepreviewv1";
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";

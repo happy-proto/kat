@@ -7,7 +7,7 @@ tags:
   - yaml
   - injection
 authors:
-  primary: DCjanus
+  primary: Example User
   reviewer: Codex
 ---
 

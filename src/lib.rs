@@ -2039,7 +2039,7 @@ mod tests {
             expect_highlight: true,
             expected_fragments: &[
                 "module",
-                "github.com/dcjanus/kat",
+                "github.com/example/kat",
                 "toolchain",
                 "go1.24.1",
                 "replace",
@@ -2056,7 +2056,7 @@ mod tests {
                 "use",
                 "../shared/theme-kit",
                 "replace",
-                "github.com/dcjanus/theme-kit",
+                "github.com/example/theme-kit",
             ],
         },
         FixtureCase {
@@ -2967,7 +2967,7 @@ mod tests {
             "expected go.mod directive keyword styling"
         );
         assert!(
-            gomod_rendered.contains("\x1b[38;2;139;233;253mgithub.com/dcjanus/kat"),
+            gomod_rendered.contains("\x1b[38;2;139;233;253mgithub.com/example/kat"),
             "expected go.mod module path styling"
         );
         assert!(
