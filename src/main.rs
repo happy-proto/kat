@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
 use clap_complete::CompleteEnv;
-use clap_complete::engine::{ArgValueCompleter, PathCompleter};
+use clap_complete::engine::{ArgValueCompleter, CompletionCandidate};
 use shadow_rs::shadow;
 use terminal_size::{Height, terminal_size};
 
@@ -70,8 +70,7 @@ struct CliArgs {
     paging: PagingMode,
     #[arg(
         value_name = "PATH|-",
-        value_hint = clap::ValueHint::FilePath,
-        add = ArgValueCompleter::new(PathCompleter::file().stdio())
+        add = ArgValueCompleter::new(complete_input_paths)
     )]
     paths: Vec<PathBuf>,
 }
@@ -86,6 +85,95 @@ fn completion_command() -> clap::Command {
         command = command.mut_arg(arg_id, |arg| arg.hide(true));
     }
     command
+}
+
+fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
+    let mut candidates = Vec::new();
+    let Some((display_prefix, search_root, fragment)) = resolve_completion_root(current) else {
+        return candidates;
+    };
+
+    let fragment = fragment.to_string_lossy();
+    for entry in fs::read_dir(search_root)
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+    {
+        if !entry.path().is_file() {
+            continue;
+        }
+
+        let file_name = entry.file_name();
+        if !file_name.to_string_lossy().starts_with(&*fragment) {
+            continue;
+        }
+
+        let suggestion = display_prefix.join(&file_name);
+        candidates.push(
+            CompletionCandidate::new(suggestion.into_os_string()).hide(is_hidden_path(&file_name)),
+        );
+    }
+
+    candidates.sort();
+    if current.is_empty() {
+        candidates.push(CompletionCandidate::new("-").help(Some("stdio".into())));
+    }
+    candidates
+}
+
+fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsString)> {
+    let current_path = std::path::Path::new(current);
+    let (prefix, fragment) = split_completion_path(current_path);
+
+    if prefix.is_absolute() {
+        return Some((
+            prefix.to_path_buf(),
+            prefix.to_path_buf(),
+            fragment.to_os_string(),
+        ));
+    }
+
+    if prefix.iter().next() == Some(OsStr::new("~")) {
+        let home = env::var_os("HOME").map(PathBuf::from)?;
+        let home_relative = prefix.strip_prefix("~").ok()?;
+        return Some((
+            prefix.to_path_buf(),
+            home.join(home_relative),
+            fragment.to_os_string(),
+        ));
+    }
+
+    let current_dir = env::current_dir().ok()?;
+    Some((
+        prefix.to_path_buf(),
+        current_dir.join(prefix),
+        fragment.to_os_string(),
+    ))
+}
+
+fn split_completion_path(path: &std::path::Path) -> (&std::path::Path, &OsStr) {
+    if path_has_terminal_name(path) {
+        (
+            path.parent().unwrap_or_else(|| std::path::Path::new("")),
+            path.file_name().expect("path should have file name"),
+        )
+    } else {
+        (path, OsStr::new(""))
+    }
+}
+
+fn path_has_terminal_name(path: &std::path::Path) -> bool {
+    let path_bytes = path.as_os_str().as_encoded_bytes();
+    let Some(trailing_byte) = path_bytes.last() else {
+        return false;
+    };
+
+    *trailing_byte != std::path::MAIN_SEPARATOR as u8
+}
+
+fn is_hidden_path(file_name: &OsStr) -> bool {
+    file_name.to_string_lossy().starts_with('.')
 }
 
 fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions> {
@@ -586,7 +674,7 @@ mod tests {
             "expected file completion, got {values:?}"
         );
         assert!(
-            values.iter().all(|value| !value.ends_with("nested")),
+            values.iter().all(|value| !value.ends_with("nested/")),
             "expected directories to be excluded, got {values:?}"
         );
 
