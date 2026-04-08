@@ -292,7 +292,7 @@ fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
         .filter_map(Result::ok)
     {
         let file_name = entry.file_name();
-        if !file_name.to_string_lossy().starts_with(&*fragment) {
+        if !case_insensitive_starts_with(&file_name.to_string_lossy(), &fragment) {
             continue;
         }
 
@@ -310,6 +310,16 @@ fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
 
     candidates.sort();
     candidates
+}
+
+fn case_insensitive_starts_with(candidate: &str, prefix: &str) -> bool {
+    if prefix.is_empty() {
+        return true;
+    }
+
+    let candidate = candidate.to_lowercase();
+    let prefix = prefix.to_lowercase();
+    candidate.starts_with(&prefix)
 }
 
 fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsString)> {
@@ -916,6 +926,37 @@ mod tests {
                 .iter()
                 .all(|value| !value.ends_with("/.") && !value.ends_with("/..")),
             "expected dot navigation entries to stay hidden, got {values:?}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn path_completion_matches_case_insensitively() {
+        let dir = unique_temp_dir("kat-casefold-path-completion");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let readme = dir.join("README.md");
+        fs::write(&readme, "# kat\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write completion fixture {}: {error}",
+                readme.display()
+            )
+        });
+
+        let current = dir.join("read");
+        let args = vec![OsString::from("kat"), current.into_os_string()];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("failed to compute case-insensitive completions");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().any(|value| value.ends_with("README.md")),
+            "expected lowercase prefix to match uppercase file names, got {values:?}"
         );
 
         fs::remove_dir_all(&dir)
