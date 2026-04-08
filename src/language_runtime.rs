@@ -194,16 +194,12 @@ unsafe extern "C" {
     fn tree_sitter_gomod() -> *const ();
     fn tree_sitter_gowork() -> *const ();
     fn tree_sitter_gosum() -> *const ();
-    fn tree_sitter_html() -> *const ();
     fn tree_sitter_vue() -> *const ();
     fn tree_sitter_svelte() -> *const ();
-    fn tree_sitter_css() -> *const ();
     fn tree_sitter_scss() -> *const ();
-    fn tree_sitter_javascript() -> *const ();
     fn tree_sitter_graphql() -> *const ();
     fn tree_sitter_proto() -> *const ();
     fn tree_sitter_textproto() -> *const ();
-    fn tree_sitter_regex() -> *const ();
     fn tree_sitter_userscript_metadata() -> *const ();
     fn tree_sitter_markdown() -> *const ();
     fn tree_sitter_markdown_inline() -> *const ();
@@ -272,15 +268,15 @@ const GOMOD_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gom
 const GOWORK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gowork) };
 const GOSUM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gosum) };
 const SQL_LANGUAGE: LanguageFn = tree_sitter_sequel::LANGUAGE;
-const HTML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_html) };
+const HTML_LANGUAGE: LanguageFn = tree_sitter_html::LANGUAGE;
 const VUE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_vue) };
 const SVELTE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_svelte) };
-const CSS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_css) };
-const JAVASCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_javascript) };
+const CSS_LANGUAGE: LanguageFn = tree_sitter_css::LANGUAGE;
+const JAVASCRIPT_LANGUAGE: LanguageFn = tree_sitter_javascript::LANGUAGE;
 const GRAPHQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_graphql) };
 const PROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_proto) };
 const TEXTPROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_textproto) };
-const REGEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_regex) };
+const REGEX_LANGUAGE: LanguageFn = tree_sitter_regex::LANGUAGE;
 const JSDOC_LANGUAGE: LanguageFn = tree_sitter_jsdoc::LANGUAGE;
 const USERSCRIPT_METADATA_LANGUAGE: LanguageFn =
     unsafe { LanguageFn::from_raw(tree_sitter_userscript_metadata) };

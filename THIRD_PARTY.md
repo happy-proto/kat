@@ -49,20 +49,13 @@ Included sources:
 - `grammars/sql/queries/highlights-postgres.scm`
 - `grammars/sql/queries/highlights-mysql.scm`
 - `grammars/sql/queries/highlights-sqlite.scm`
-- `grammars/html/grammar.js`
 - `grammars/html/queries/highlights.scm`
 - `grammars/html/queries/injections.scm`
-- `grammars/html/scanner.c`
-- `grammars/html/tag.h`
 - `grammars/css/grammar.js`
 - `grammars/css/queries/highlights.scm`
-- `grammars/css/scanner.c`
-- `grammars/javascript/grammar.js`
 - `grammars/javascript/queries/highlights.scm`
 - `grammars/javascript/queries/injections.scm`
 - `grammars/javascript/queries/locals.scm`
-- `grammars/javascript/scanner.c`
-- `grammars/regex/grammar.js`
 - `grammars/regex/queries/highlights.scm`
 - `grammars/regex/queries/highlights-javascript.scm`
 - `grammars/regex/queries/highlights-python.scm`
@@ -383,60 +376,24 @@ Upstream projects:
   License: MIT
   Notes: repository-local adapted highlight queries. SQL parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-sequel](https://crates.io/crates/tree-sitter-sequel).
 
-- `grammars/html/grammar.js`
-  Source: [tree-sitter/tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html)
-  Revision: `266f2e4785f4a66dd22b46ad39f8b4d332a682bb`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source.
-
-- `grammars/html/scanner.c`
-  Source: [tree-sitter/tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html)
-  Revision: `eee29ca0ce287b699d9d52118f9c1cd9094c48f9`
-  License: MIT
-  Notes: repository-local copy of the upstream scanner source.
-
-- `grammars/html/tag.h`
-  Source: [tree-sitter/tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html)
-  Revision: `bfa075d83c6b97cd48440b3829ab8d24a2319809`
-  License: MIT
-  Notes: repository-local copy of the upstream scanner support header.
-
 - `grammars/html/queries/highlights.scm`
 - `grammars/html/queries/injections.scm`
   Source: [tree-sitter/tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html)
   Revision: not recorded during the initial import
   License: MIT
-  Notes: repository-local adapted query assets for kat's terminal renderer and nested-runtime model.
+  Notes: repository-local adapted query assets for kat's terminal renderer and nested-runtime model. HTML parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-html](https://crates.io/crates/tree-sitter-html).
 
 - `grammars/css/grammar.js`
   Source: [tree-sitter/tree-sitter-css](https://github.com/tree-sitter/tree-sitter-css)
   Revision: `4a9aab1668bf13d024710420648ef9a9ee6ccc17`
   License: MIT
-  Notes: repository-local copy of the upstream grammar source.
-
-- `grammars/css/scanner.c`
-  Source: [tree-sitter/tree-sitter-css](https://github.com/tree-sitter/tree-sitter-css)
-  Revision: `a1ca8a4921d13130f3b15118e0112da882f835ea`
-  License: MIT
-  Notes: repository-local copy of the upstream scanner source.
+  Notes: repository-local copy of the upstream grammar source, retained because the vendored Less and SCSS grammars import this file during their own build step. CSS parser sources are otherwise no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-css](https://crates.io/crates/tree-sitter-css).
 
 - `grammars/css/queries/highlights.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copy of Zed's CSS highlights query.
-
-- `grammars/javascript/grammar.js`
-  Source: [tree-sitter/tree-sitter-javascript](https://github.com/tree-sitter/tree-sitter-javascript)
-  Revision: `39798e26b6d4dbcee8e522b8db83f8b2df33a5ea`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source.
-
-- `grammars/javascript/scanner.c`
-  Source: [tree-sitter/tree-sitter-javascript](https://github.com/tree-sitter/tree-sitter-javascript)
-  Revision: `ee3bc5af628b6f899ff56a7fddcb95e0266dec2c`
-  License: MIT
-  Notes: repository-local copy of the upstream scanner source.
+  Notes: repository-local adapted copy of Zed's CSS highlights query. CSS parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-css](https://crates.io/crates/tree-sitter-css).
 
 - `grammars/javascript/queries/locals.scm`
   Source: [tree-sitter/tree-sitter-javascript](https://github.com/tree-sitter/tree-sitter-javascript)
@@ -448,13 +405,7 @@ Upstream projects:
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copy of Zed's JavaScript highlights query, further adjusted for kat's vendored grammar revision and terminal renderer.
-
-- `grammars/regex/grammar.js`
-  Source: [tree-sitter/tree-sitter-regex](https://github.com/tree-sitter/tree-sitter-regex)
-  Revision: `b2ac15e27fce703d2f37a79ccd94a5c0cbe9720b`
-  License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored.
+  Notes: repository-local adapted copy of Zed's JavaScript highlights query, further adjusted for kat's terminal renderer. JavaScript parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-javascript](https://crates.io/crates/tree-sitter-javascript).
 
 - `grammars/regex/queries/highlights.scm`
 - `grammars/regex/queries/highlights-javascript.scm`
@@ -467,7 +418,7 @@ Upstream projects:
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local highlight queries and host-aware overlay queries, adapted for kat's shared parser plus runtime-family model. These files include local integration changes and invalid-construct overlays for different regex hosts. The exact upstream commits used as the starting point still need a later audit.
+  Notes: repository-local highlight queries and host-aware overlay queries, adapted for kat's shared parser plus runtime-family model. These files include local integration changes and invalid-construct overlays for different regex hosts. Regex parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-regex](https://crates.io/crates/tree-sitter-regex). The exact upstream commits used as the starting point still need a later audit.
 
 - `grammars/jsdoc/queries/highlights.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)

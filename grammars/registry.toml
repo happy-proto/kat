@@ -508,6 +508,7 @@ highlight_names = [
 [[grammar]]
 name = "html"
 library_name = "tree-sitter-html"
+parser_source = "crate"
 extensions = ["html", "htm"]
 filenames = []
 shebang_substrings = []
@@ -526,6 +527,7 @@ highlight_names = [
 [[grammar]]
 name = "css"
 library_name = "tree-sitter-css"
+parser_source = "crate"
 extensions = ["css"]
 filenames = []
 shebang_substrings = []
@@ -557,6 +559,7 @@ highlight_names = [
 [[grammar]]
 name = "javascript"
 library_name = "tree-sitter-javascript"
+parser_source = "crate"
 extensions = ["js", "mjs", "cjs", "jsx"]
 filenames = []
 shebang_substrings = ["node", "nodejs", "deno", "bun"]
@@ -662,6 +665,7 @@ highlight_names = [
 [[grammar]]
 name = "regex"
 library_name = "tree-sitter-regex"
+parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []

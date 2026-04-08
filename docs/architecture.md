@@ -49,6 +49,7 @@
 
 - grammar 与 query 默认分开治理：grammar 源文件按上游 revision 快照管理，query 按仓库内集成资产独立演进。
 - 具体同步和归属约定见 [maintenance.md](maintenance.md)。
+- 仍保留 vendored 模式的 grammar 以及保留原因，统一记录在 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 
 ### 文档分工
 
@@ -56,6 +57,7 @@
 - 当前支持现状统一放在 [language-coverage.md](language-coverage.md)。
 - 未完成事项统一放在 [roadmap.md](roadmap.md)。
 - 仓库维护约定见 [maintenance.md](maintenance.md)。
+- vendored grammar 保留清单见 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 - 测试样例约定见 [test-assets.md](test-assets.md)。
 
 ## 已知边界
