@@ -58,7 +58,7 @@
 
 ## 当前结论
 
-- `kat` 当前真正达到 `精细` 的，已经扩展为 `JSON`、`Bash`、`TOML`、`YAML`、`Rust`、`Go`、`Markdown`、`Justfile`。
+- `kat` 当前真正达到 `精细` 的，已经扩展为 `JSON`、`Bash`、`TOML`、`YAML`、`Git Config`、`Rust`、`Go`、`Markdown`、`Justfile`。
 - 前五门语言已经不只是“亮起来”，而是开始按 Dracula 官方 spec 的语言语义落色：
   `JSON` / `TOML` / `YAML` 的 key 走配置语言 key 语义，`YAML alias` 单独走绿色斜体下划线，`Rust` 则细分到 trait、attribute、macro、function definition、local variable 等层级。
 - `Python`、`HTML`、`CSS`、`JavaScript` 这一轮已经补齐了一批此前明显缺失的语义 capture，并新增 fixture / showcase / 专门测试锁住回归。
@@ -76,6 +76,7 @@
 | 语言 | `kat` 当前层级 | `kat` 当前事实 | `zed` 参考信号 | 现阶段判断 |
 | --- | --- | --- | --- | --- |
 | JSON | 🟩 精细 | 已支持 `.json` / `.jsonc`；fixture / showcase 已覆盖 rich 场景；当前 query 已细化到 comment、string、escape、number、boolean、null、delimiter、bracket、config-style object key。Dracula 语义上，JSON key 现按配置语言 key 使用青色，而不是退回普通 string。 | 本地 `zed` 有独立 `json` / `jsonc` grammar 包，附带 `outline`、`indents`、`textobjects`、`runnables` 等资产；其 `highlights.scm` 也把 key 单独提升为 `property.json_key`。 | 在终端高亮目标内，JSON 这一层已经基本没有明显缺口；后续再做更多工作也主要会落到编辑器层能力，而不是 query 本身。 |
+| Git Config | 🟨 基础 | 已支持 `.gitconfig`、`gitconfig`、`.gitmodules`、`.git/config`、`*/git/config` 与 `config.worktree`；当前独立 `git_config` runtime 已覆盖 section / subsection、key、comment、boolean、integer、string、path-like string，以及 `include` / `includeIf` 这类 Git 特有 section 名。fixture 已覆盖顶层 config、submodule metadata 与路径感知 detector。 | 生态里通常会把它作为独立 `git_config` grammar，而不是退回通用 INI。 | 结构入口已经独立出来；下一步若继续做深，收益主要来自按 profile 做 Git schema-aware key/value 语义，而不是重新拆基础 parser。 |
 | Ignore Files | 🟨 基础 | 已支持 `.gitignore`、`.dockerignore`、`*.dockerignore`、`.npmignore`、`.ignore`；当前独立 `ignore` runtime 已覆盖 comment、negation、directory separator、wildcard、bracket expr / char class 等高收益结构。fixture / showcase 已覆盖基础场景。 | 编辑器生态里通常会把这类文件作为专门文件类型处理，至少保证模式语法可读。 | 这一层已经脱离“纯文本”阶段，但目前仍是共享 ignore-pattern runtime；后续是否需要继续区分 Git / Docker 的语义差异，应以真实高收益差异为准。 |
 | Dockerfile | 🟨 基础 | 已支持 `Dockerfile`、`Containerfile`、`Dockerfile.*`、`Containerfile.*` 以及 `.dockerfile` 扩展；当前独立 `dockerfile` runtime 已覆盖 instruction keyword、comment、image ref、param、string / escape、variable expansion 等基础结构，并把 `RUN`、shell-form `CMD` / `ENTRYPOINT`、`HEALTHCHECK CMD` 的 `shell_command` 注入 shell runtime；默认走 Bash，同时也已支持 `SHELL ["zsh", ...]`、`SHELL ["fish", ...]` 驱动后续 shell-form 指令切到对应 runtime。`RUN <<'EOF'` 这类 heredoc 行内容也已复用当前 shell runtime。宿主层现在还额外补了 `ARG` / `ENV` / `LABEL` key、`EXPOSE` port、`WORKDIR` / `COPY` path、常见 `--param=value` / `--mount=...` 的 name/value 语义、value 内变量展开、`--mount` 内部 key/value 与 enum / bool / number / path 这类常见 value 分类、按 key 区分的 mount family 语义，以及 JSON-form 命令数组首项、option argv、path-like executable、env-style argv 与 expansion argv 的宿主语义。fixture / showcase 已覆盖基础场景与 advanced heredoc/healthcheck/shell-dispatch/semantics/params/exec-form 场景。 | 本地 `zed` 文档也把 Dockerfile 视作独立语言，并依赖社区扩展与独立 Tree-sitter grammar。 | 这一层已经打通了“宿主 grammar + shell 注入”的关键架构；后续更值得继续抠的是更细的 param 子结构，以及 `SHELL [...]` 与 heredoc / healthcheck / JSON-form 边界的一致性细节。 |
 | Bash | 🟩 精细 | 已支持扩展名、`.bashrc`、`.bash_profile`、`.bash_login`、`.profile`、`.bash_logout`、shebang；有 fixture / showcase；Justfile recipe 默认注入 Bash；解释器驱动的 heredoc 现可递归注入 `python` / `javascript` / `bash`，且 Justfile recipe 会自动复用。当前 query 已补齐 shebang directive、regex、special variable、parameter、ansi-c string、更多 punctuation/operator；同时 shell semantic layer 已开始接管一部分 query 很难长期表达的结构语义，例如 builtin family、declaration / unset 这类命令里的变量角色，以及 subscript bracket 这类组合结构。 | 本地 `zed` 有独立 Bash grammar 包，并补了 `textobjects`、`runnables`、`redactions` 等配套资产；其 `highlights.scm` 也是当前 `kat` Bash 细化的直接参考之一。 | 对终端高亮来说，Bash 仍是仓库内样板语言；下一步更值得继续做深的是沿这条 shell semantic layer 继续补 command family 和 expansion / subscript 细节，而不是把更多规则重新塞回 highlights query。 |
@@ -161,8 +162,8 @@
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前 registry 已注册 `30` 组 runtime。
-- 相比 `bat`，当前还有 `157` 组文件类型完全没有对应 runtime / detector 入口。
+- `kat` 当前 registry 已注册 `31` 组 runtime。
+- 相比 `bat`，当前还有 `156` 组文件类型完全没有对应 runtime / detector 入口。
 - 另外还有 `15` 组文件类型已部分覆盖，但文件名、扩展名或特殊检测范围仍明显窄于 `bat`。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
@@ -208,7 +209,6 @@
 - `GDScript (Godot Engine)`：`gd`
 - `Git Attributes`：`attributes`、`gitattributes`、`.gitattributes`、`/Users/jun.fan/.config/git/attributes`
 - `Git Commit`：`COMMIT_EDITMSG`、`MERGE_MSG`、`TAG_EDITMSG`
-- `Git Config`：`gitconfig`、`.gitconfig`、`.gitmodules`、`/Users/jun.fan/.config/git/config`
 - `Git Link`：`.git`
 - `Git Log`：`gitlog`
 - `Git Mailmap`：`.mailmap`、`mailmap`

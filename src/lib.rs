@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
-use crate::document_kind::{DocumentKind, yaml_document_kind};
+use crate::document_kind::{DocumentKind, git_config_document_kind, yaml_document_kind};
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
     InjectionCandidate, InjectionDecode, InjectionVisualAnchor, InjectionVisualKind,
@@ -37,6 +37,7 @@ enum SupportedLanguage {
     Css,
     Dockerfile,
     Fish,
+    GitConfig,
     Go,
     GoMod,
     GoSum,
@@ -77,6 +78,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "batch" => SupportedLanguage::Batch,
         "dockerfile" => SupportedLanguage::Dockerfile,
         "fish" => SupportedLanguage::Fish,
+        "git_config" => SupportedLanguage::GitConfig,
         "zsh" => SupportedLanguage::Zsh,
         "toml" => SupportedLanguage::Toml,
         "yaml" => SupportedLanguage::Yaml,
@@ -115,6 +117,10 @@ pub fn highlight_json(source: &str) -> Result<String> {
 
 pub fn highlight_ignore(source: &str) -> Result<String> {
     highlight_named_language("ignore", source, &Theme::detect())
+}
+
+pub fn highlight_git_config(source: &str) -> Result<String> {
+    highlight_named_language("git_config", source, &Theme::detect())
 }
 
 pub fn highlight_bash(source: &str) -> Result<String> {
@@ -255,6 +261,7 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
     match language_name {
         "json" => DocumentKind::plain("json"),
         "ignore" => DocumentKind::plain("ignore"),
+        "git_config" => DocumentKind::plain("git_config"),
         "dockerfile" => DocumentKind::plain("dockerfile"),
         "bash" => DocumentKind::plain("bash"),
         "batch" => DocumentKind::plain("batch"),
@@ -471,6 +478,11 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(yaml_document_kind(source_path));
     }
 
+    let git_config = grammar("git_config");
+    if matches_path(git_config, source_path) || is_git_config_path(source_path) {
+        return Some(git_config_document_kind(source_path));
+    }
+
     // TODO: Keep HCL as one generic runtime for now. If Terraform/tfvars or
     // Nomad later need different file detection or semantics, split that at the
     // detector/runtime-overlay layer instead of fragmenting the base grammar.
@@ -621,6 +633,22 @@ fn matches_path(grammar: &grammar_registry::GrammarSpec, source_path: Option<&Pa
                         .any(|expected_extension| expected_extension == extension)
                 })
     })
+}
+
+fn is_git_config_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(
+        components.as_slice(),
+        [.., ".git", "config"] | [.., "git", "config"]
+    )
 }
 
 fn looks_like_json(source: &str) -> bool {
@@ -2408,6 +2436,35 @@ mod tests {
             Some(SupportedLanguage::Ignore)
         ));
         assert!(matches!(
+            detect_language(Some(Path::new(".gitconfig")), "[core]\n  editor = nvim\n"),
+            Some(SupportedLanguage::GitConfig)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new(".gitmodules")),
+                "[submodule \"kat\"]\n  path = vendor/kat\n"
+            ),
+            Some(SupportedLanguage::GitConfig)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".git/config")), "[core]\n  bare = false\n"),
+            Some(SupportedLanguage::GitConfig)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new(".config/git/config")),
+                "[include]\n  path = ~/.gitconfig.local\n"
+            ),
+            Some(SupportedLanguage::GitConfig)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new(".git/worktrees/demo/config.worktree")),
+                "[core]\n  sparseCheckout = true\n"
+            ),
+            Some(SupportedLanguage::GitConfig)
+        ));
+        assert!(matches!(
             detect_language(Some(Path::new("Dockerfile")), "FROM alpine:3.21\n"),
             Some(SupportedLanguage::Dockerfile)
         ));
@@ -3252,6 +3309,54 @@ mod tests {
         assert!(
             rendered.contains("\x1b[38;2;255;121;198m!"),
             "expected ignore-file negation to use operator styling"
+        );
+    }
+
+    #[test]
+    fn git_config_files_are_detected_and_highlight_core_syntax() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("git_config/.gitconfig");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253minclude"),
+            "expected include section names to reuse builtin styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;241;250;140m~/.gitconfig.local"),
+            "expected include paths to receive path-oriented string styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;241;250;140m!.git/hooks/post-checkout"),
+            "expected shell-command style values to remain string-highlighted"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;189;147;249mtrue"),
+            "expected boolean values to receive builtin constant styling"
+        );
+    }
+
+    #[test]
+    fn git_modules_profile_preserves_git_config_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("git_config/.gitmodules");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let document_kind = detect_document_kind(Some(path.as_path()), &source)
+            .expect("expected .gitmodules to detect as git_config");
+
+        assert_eq!(document_kind.runtime_name(), "git_config");
+        assert_eq!(document_kind.profile(), DocumentProfile::GitModules);
+        assert!(
+            rendered.contains("\x1b[38;2;241;250;140mvendor/kat"),
+            "expected submodule paths to remain visible and highlighted"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;241;250;140mhttps://github.com/happy-proto/kat.git"),
+            "expected submodule URLs to be string-highlighted"
         );
     }
 

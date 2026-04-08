@@ -1,0 +1,4 @@
+[submodule "vendor/kat"]
+	path = vendor/kat
+	url = https://github.com/happy-proto/kat.git
+	branch = master

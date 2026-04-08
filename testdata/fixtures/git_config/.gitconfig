@@ -1,0 +1,19 @@
+[core]
+	editor = nvim
+	hooksPath = .git/hooks
+	logAllRefUpdates = true
+
+[include]
+	path = ~/.gitconfig.local
+
+[includeIf "gitdir:~/Code/"]
+	path = ~/Code/.gitconfig-work
+
+[alias]
+	lg = log --graph --decorate --oneline
+
+[url "ssh://git@github.com/"]
+	insteadOf = https://github.com/
+
+[filter "lfs"]
+	process = !.git/hooks/post-checkout

@@ -8,6 +8,8 @@ Included sources:
 - `grammars/json/queries/highlights.scm`
 - `grammars/ignore/grammar.js`
 - `grammars/ignore/queries/highlights.scm`
+- `grammars/git_config/grammar.js`
+- `grammars/git_config/queries/highlights.scm`
 - `grammars/dockerfile/grammar.js`
 - `grammars/dockerfile/queries/highlights.scm`
 - `grammars/dockerfile/queries/injections.scm`
@@ -122,6 +124,12 @@ Upstream projects:
   Revision: `f4685bf11ac466dd278449bcfe5fd014e94aa504`
   License: MIT
   Notes: repository-local adapted copy of the upstream ignore-pattern grammar, renamed to `ignore` so `.gitignore`, `.dockerignore`, `.npmignore` and similar files can share one runtime.
+
+- `grammars/git_config/*`
+  Source: [the-mikedavis/tree-sitter-git-config](https://github.com/the-mikedavis/tree-sitter-git-config)
+  Revision: `0fbc9f99d5a28865f9de8427fb0672d66f9d83a5`
+  License: MIT
+  Notes: repository-local copy of the upstream Git config grammar and highlights query, kept as a dedicated runtime so `.gitconfig`, `.gitmodules`, `.git/config` and related paths can share one parser while preserving room for future Git-specific profile overlays.
 
 - `grammars/dockerfile/grammar.js`
 - `grammars/dockerfile/queries/highlights.scm`
