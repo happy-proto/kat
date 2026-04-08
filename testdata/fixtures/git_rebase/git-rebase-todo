@@ -1,0 +1,4 @@
+pick abc1234 add runtime support
+reword def5678 refine detector rules
+exec cargo test
+# Rebase 1234abcd onto 5678efgh

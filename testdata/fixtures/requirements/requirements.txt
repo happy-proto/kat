@@ -1,0 +1,4 @@
+-r base.txt
+httpx[http2]>=0.27
+uvicorn==0.34 ; python_version >= "3.11"
+theme-utils @ https://example.com/theme-utils.whl

@@ -1,0 +1,10 @@
+$base-color: #6272a4;
+
+@mixin preview-card($padding) {
+  color: $base-color;
+  padding: $padding;
+}
+
+.preview {
+  @include preview-card(12px);
+}

@@ -24,7 +24,7 @@ extensions = ["gitignore", "dockerignore", "npmignore", "ignore"]
 filenames = [".gitignore", ".dockerignore", ".npmignore", ".ignore"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
+extra_c_flags = ["-Wno-unused-parameter"]
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -43,7 +43,7 @@ extensions = []
 filenames = [".gitconfig", "gitconfig", ".gitmodules", "config.worktree"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
+extra_c_flags = ["-Wno-unused-variable"]
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -1534,4 +1534,383 @@ extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
+]
+
+[[grammar]]
+name = "php"
+library_name = "tree-sitter-php"
+parser_source = "crate"
+extensions = ["php", "php3", "php4", "php5", "php7", "phps", "phpt", "phtml"]
+filenames = []
+shebang_substrings = ["php"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "function",
+  "function.builtin",
+  "function.method",
+  "keyword",
+  "module",
+  "module.builtin",
+  "number",
+  "operator",
+  "property",
+  "string",
+  "tag",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "scala"
+library_name = "tree-sitter-scala"
+parser_source = "crate"
+extensions = ["scala", "sbt", "sc", "mill"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "annotation",
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "function",
+  "function.call",
+  "function.method",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "swift"
+library_name = "tree-sitter-swift"
+parser_source = "crate"
+extensions = ["swift"]
+filenames = []
+shebang_substrings = ["swift"]
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "conditional",
+  "constant",
+  "constant.builtin",
+  "function",
+  "function.builtin",
+  "function.call",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "dart"
+library_name = "tree-sitter-dart"
+parser_source = "crate"
+extensions = ["dart"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "function",
+  "function.builtin",
+  "function.call",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "elixir"
+library_name = "tree-sitter-elixir"
+parser_source = "crate"
+extensions = ["ex", "exs"]
+filenames = []
+shebang_substrings = ["elixir", "iex"]
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "function",
+  "function.builtin",
+  "function.call",
+  "keyword",
+  "module",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "sigil",
+  "string",
+  "string.escape",
+  "string.special",
+  "type",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "zig"
+library_name = "tree-sitter-zig"
+parser_source = "crate"
+extensions = ["zig", "zon"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "function",
+  "function.builtin",
+  "function.call",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "ssh_config"
+library_name = "tree-sitter-ssh-config"
+extensions = []
+filenames = ["ssh_config"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "constant.builtin",
+  "keyword",
+  "module",
+  "number",
+  "operator",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.regexp",
+  "string.special",
+  "tag",
+  "text.uri",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "gitattributes"
+library_name = "tree-sitter-gitattributes"
+extensions = []
+filenames = [".gitattributes", "gitattributes"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "constant",
+  "keyword",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.regexp",
+  "string.special",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "git_commit"
+library_name = "tree-sitter-git-commit"
+extensions = []
+filenames = ["COMMIT_EDITMSG", "MERGE_MSG", "TAG_EDITMSG"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "diff.minus",
+  "diff.plus",
+  "keyword",
+  "number",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+]
+
+[[grammar]]
+name = "git_rebase"
+library_name = "tree-sitter-git-rebase"
+extensions = []
+filenames = ["git-rebase-todo"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "keyword",
+  "string",
+  "string.special",
+]
+
+[[grammar]]
+name = "requirements"
+library_name = "tree-sitter-requirements"
+extensions = []
+filenames = ["requirements.txt", "requirements.in", "pip"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "keyword",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+  "text.uri",
+  "type",
+]
+
+[[grammar]]
+name = "apache"
+library_name = "tree-sitter-apache"
+extensions = []
+filenames = ["envvars", "htaccess", "HTACCESS", "htgroups", "HTGROUPS", "htpasswd", "HTPASSWD", ".htaccess", ".HTACCESS", ".htgroups", ".HTGROUPS", ".htpasswd", ".HTPASSWD", "httpd.conf"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "number",
+  "punctuation.bracket",
+  "string",
+  "string.special",
+  "variable",
+]
+
+[[grammar]]
+name = "scss"
+library_name = "tree-sitter-scss"
+extensions = ["scss"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "function",
+  "keyword",
+  "keyword.function",
+  "keyword.import",
+  "keyword.repeat",
+  "keyword.return",
+  "operator",
+  "punctuation.bracket",
+  "string",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "sass"
+library_name = "tree-sitter-sass"
+extensions = ["sass"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant.builtin",
+  "function",
+  "function.builtin",
+  "function.call",
+  "function.definition",
+  "keyword",
+  "keyword.control",
+  "keyword.import",
+  "number",
+  "number.float",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special",
+  "tag",
+  "type",
+  "type.class",
+  "variable",
 ]
