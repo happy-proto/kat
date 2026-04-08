@@ -1539,7 +1539,6 @@ highlight_names = [
 [[grammar]]
 name = "php"
 library_name = "tree-sitter-php"
-parser_source = "crate"
 extensions = ["php", "php3", "php4", "php5", "php7", "phps", "phpt", "phtml"]
 filenames = []
 shebang_substrings = ["php"]
@@ -1569,7 +1568,6 @@ highlight_names = [
 [[grammar]]
 name = "scala"
 library_name = "tree-sitter-scala"
-parser_source = "crate"
 extensions = ["scala", "sbt", "sc", "mill"]
 filenames = []
 shebang_substrings = []
@@ -1601,7 +1599,6 @@ highlight_names = [
 [[grammar]]
 name = "swift"
 library_name = "tree-sitter-swift"
-parser_source = "crate"
 extensions = ["swift"]
 filenames = []
 shebang_substrings = ["swift"]
@@ -1636,7 +1633,6 @@ highlight_names = [
 [[grammar]]
 name = "dart"
 library_name = "tree-sitter-dart"
-parser_source = "crate"
 extensions = ["dart"]
 filenames = []
 shebang_substrings = []
@@ -1667,7 +1663,6 @@ highlight_names = [
 [[grammar]]
 name = "elixir"
 library_name = "tree-sitter-elixir"
-parser_source = "crate"
 extensions = ["ex", "exs"]
 filenames = []
 shebang_substrings = ["elixir", "iex"]
@@ -1700,7 +1695,6 @@ highlight_names = [
 [[grammar]]
 name = "zig"
 library_name = "tree-sitter-zig"
-parser_source = "crate"
 extensions = ["zig", "zon"]
 filenames = []
 shebang_substrings = []
