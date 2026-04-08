@@ -1,6 +1,7 @@
 [[grammar]]
 name = "json"
 library_name = "tree-sitter-json"
+parser_source = "crate"
 extensions = ["json", "jsonc", "jsonl", "ipynb"]
 filenames = ["flake.lock"]
 shebang_substrings = []
@@ -86,6 +87,7 @@ highlight_names = [
 [[grammar]]
 name = "bash"
 library_name = "tree-sitter-bash"
+parser_source = "crate"
 extensions = ["sh", "bash"]
 filenames = [".bashrc", ".bash_profile", ".bash_login", ".profile", ".bash_logout", ".bash_aliases", ".bash_functions", ".envrc"]
 filename_prefixes = []
@@ -173,6 +175,7 @@ highlight_names = [
 [[grammar]]
 name = "powershell"
 library_name = "tree-sitter-powershell"
+parser_source = "crate"
 extensions = ["ps1", "psm1", "psd1"]
 filenames = []
 filename_prefixes = []
@@ -194,6 +197,7 @@ highlight_names = [
 [[grammar]]
 name = "batch"
 library_name = "tree-sitter-batch"
+parser_source = "crate"
 extensions = ["bat", "cmd"]
 filenames = []
 filename_prefixes = []
@@ -216,6 +220,7 @@ highlight_names = [
 [[grammar]]
 name = "toml"
 library_name = "tree-sitter-toml"
+parser_source = "crate"
 extensions = ["toml"]
 filenames = ["Cargo.toml", "Cargo.lock", "uv.lock"]
 filename_prefixes = []
@@ -237,6 +242,7 @@ highlight_names = [
 [[grammar]]
 name = "yaml"
 library_name = "tree-sitter-yaml"
+parser_source = "crate"
 extensions = ["yaml", "yml", "cff"]
 filenames = [".clang-format", "CITATION.cff"]
 filename_prefixes = []
@@ -290,6 +296,7 @@ highlight_names = [
 [[grammar]]
 name = "rust"
 library_name = "tree-sitter-rust"
+parser_source = "crate"
 extensions = ["rs"]
 filenames = []
 filename_prefixes = []
@@ -329,6 +336,7 @@ highlight_names = [
 [[grammar]]
 name = "python"
 library_name = "tree-sitter-python"
+parser_source = "crate"
 extensions = ["py"]
 filenames = []
 filename_prefixes = []
@@ -379,6 +387,7 @@ highlight_names = [
 [[grammar]]
 name = "go"
 library_name = "tree-sitter-go"
+parser_source = "crate"
 extensions = ["go"]
 filenames = []
 filename_prefixes = []
@@ -499,6 +508,7 @@ highlight_names = [
 [[grammar]]
 name = "html"
 library_name = "tree-sitter-html"
+parser_source = "crate"
 extensions = ["html", "htm"]
 filenames = []
 shebang_substrings = []
@@ -517,6 +527,7 @@ highlight_names = [
 [[grammar]]
 name = "css"
 library_name = "tree-sitter-css"
+parser_source = "crate"
 extensions = ["css"]
 filenames = []
 shebang_substrings = []
@@ -548,6 +559,7 @@ highlight_names = [
 [[grammar]]
 name = "javascript"
 library_name = "tree-sitter-javascript"
+parser_source = "crate"
 extensions = ["js", "mjs", "cjs", "jsx"]
 filenames = []
 shebang_substrings = ["node", "nodejs", "deno", "bun"]
@@ -653,6 +665,7 @@ highlight_names = [
 [[grammar]]
 name = "regex"
 library_name = "tree-sitter-regex"
+parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
@@ -673,6 +686,7 @@ highlight_names = [
 [[grammar]]
 name = "jsdoc"
 library_name = "tree-sitter-jsdoc"
+parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
@@ -1539,6 +1553,7 @@ highlight_names = [
 [[grammar]]
 name = "php"
 library_name = "tree-sitter-php"
+parser_source = "crate"
 extensions = ["php", "php3", "php4", "php5", "php7", "phps", "phpt", "phtml"]
 filenames = []
 shebang_substrings = ["php"]
@@ -1568,6 +1583,7 @@ highlight_names = [
 [[grammar]]
 name = "scala"
 library_name = "tree-sitter-scala"
+parser_source = "crate"
 extensions = ["scala", "sbt", "sc", "mill"]
 filenames = []
 shebang_substrings = []
@@ -1599,6 +1615,7 @@ highlight_names = [
 [[grammar]]
 name = "swift"
 library_name = "tree-sitter-swift"
+parser_source = "crate"
 extensions = ["swift"]
 filenames = []
 shebang_substrings = ["swift"]
@@ -1633,6 +1650,7 @@ highlight_names = [
 [[grammar]]
 name = "dart"
 library_name = "tree-sitter-dart"
+parser_source = "crate"
 extensions = ["dart"]
 filenames = []
 shebang_substrings = []
@@ -1663,6 +1681,7 @@ highlight_names = [
 [[grammar]]
 name = "elixir"
 library_name = "tree-sitter-elixir"
+parser_source = "crate"
 extensions = ["ex", "exs"]
 filenames = []
 shebang_substrings = ["elixir", "iex"]
@@ -1695,6 +1714,7 @@ highlight_names = [
 [[grammar]]
 name = "zig"
 library_name = "tree-sitter-zig"
+parser_source = "crate"
 extensions = ["zig", "zon"]
 filenames = []
 shebang_substrings = []

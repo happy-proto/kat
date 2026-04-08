@@ -22,5 +22,4 @@ showcase path="":
     fi
 
 install:
-    pnpm install
     cargo install --path .

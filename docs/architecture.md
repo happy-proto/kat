@@ -28,9 +28,8 @@
 - `build.rs` 对 vendored grammar 在构建期通过 `tree-sitter-generate` 生成 parser C 源码。
 - vendored grammar 的 `parser.c` 会与仓库内 `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
-- 仓库本地 JavaScript 构建依赖统一在根目录管理，构建前先执行 `pnpm install`。
 - Tree-sitter 中间产物在本地会缓存到仓库级 `.build-cache/tree-sitter-cache/`，与 Cargo 的 `target/` 产物目录解耦，以便在不同 Cargo 命令之间复用。
-- CI 保留 pnpm store、Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 tree-sitter build cache；`target/` 仍不是跨 job 缓存对象。
+- CI 保留 Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 tree-sitter build cache；`target/` 仍不是跨 job 缓存对象。
 
 ### 运行时模型
 
@@ -50,6 +49,7 @@
 
 - grammar 与 query 默认分开治理：grammar 源文件按上游 revision 快照管理，query 按仓库内集成资产独立演进。
 - 具体同步和归属约定见 [maintenance.md](maintenance.md)。
+- 仍保留 vendored 模式的 grammar 以及保留原因，统一记录在 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 
 ### 文档分工
 
@@ -57,6 +57,7 @@
 - 当前支持现状统一放在 [language-coverage.md](language-coverage.md)。
 - 未完成事项统一放在 [roadmap.md](roadmap.md)。
 - 仓库维护约定见 [maintenance.md](maintenance.md)。
+- vendored grammar 保留清单见 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 - 测试样例约定见 [test-assets.md](test-assets.md)。
 
 ## 已知边界

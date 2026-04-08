@@ -58,8 +58,6 @@ struct GrammarCachePaths {
 #[derive(Clone)]
 struct BuildContext {
     manifest_dir: PathBuf,
-    package_json_path: PathBuf,
-    pnpm_lock_path: PathBuf,
     shared_cache_root: PathBuf,
     build_target: String,
     build_profile: String,
@@ -86,8 +84,6 @@ fn main() {
     let build_target = env::var("TARGET").expect("missing TARGET");
     let build_profile = env::var("PROFILE").expect("missing PROFILE");
     let registry_path = manifest_dir.join("grammars/registry.toml");
-    let package_json_path = manifest_dir.join("package.json");
-    let pnpm_lock_path = manifest_dir.join("pnpm-lock.yaml");
     let shared_cache_root = manifest_dir
         .join(TREE_SITTER_CACHE_ROOT_DIR)
         .join("tree-sitter-cache")
@@ -98,8 +94,6 @@ fn main() {
         .join(format!("pid-{}", process::id()));
     let build_context = BuildContext {
         manifest_dir: manifest_dir.clone(),
-        package_json_path: package_json_path.clone(),
-        pnpm_lock_path: pnpm_lock_path.clone(),
         shared_cache_root: shared_cache_root.clone(),
         build_target: build_target.clone(),
         build_profile: build_profile.clone(),
@@ -110,10 +104,6 @@ fn main() {
     .expect("failed to parse grammars/registry.toml");
 
     println!("cargo:rerun-if-changed={}", registry_path.display());
-    println!("cargo:rerun-if-changed={}", package_json_path.display());
-    println!("cargo:rerun-if-changed={}", pnpm_lock_path.display());
-
-    ensure_javascript_dependencies_installed(&manifest_dir, &package_json_path);
     remove_dir_if_exists(&process_staging_root);
     profiler.log_global(format!(
         "shared cache root={} target={} profile={}",
@@ -184,22 +174,6 @@ fn main() {
     remove_dir_if_exists(&process_staging_root);
 }
 
-fn ensure_javascript_dependencies_installed(manifest_dir: &Path, package_json_path: &Path) {
-    if !package_json_path.exists() {
-        return;
-    }
-
-    let node_modules_dir = manifest_dir.join("node_modules");
-    if node_modules_dir.exists() {
-        return;
-    }
-
-    panic!(
-        "missing repository-local JavaScript build dependencies at {:?}; run `pnpm install` before building",
-        node_modules_dir
-    );
-}
-
 fn compile_grammar(
     build_context: &BuildContext,
     grammar: &GrammarSpec,
@@ -231,11 +205,7 @@ fn compile_grammar(
     let native_support_paths = collect_support_paths(&grammar_dir, &["h", "hh", "hpp"]);
 
     let grammar_json_path = cache_paths.grammar_json_dir.join("grammar.json");
-    let grammar_json_fingerprint = grammar_json_generation_fingerprint(
-        &grammar_json_input_paths,
-        &build_context.package_json_path,
-        &build_context.pnpm_lock_path,
-    );
+    let grammar_json_fingerprint = grammar_json_generation_fingerprint(&grammar_json_input_paths);
     if !fingerprint_matches(
         &cache_paths.grammar_json_fingerprint_path,
         &grammar_json_fingerprint,
@@ -559,24 +529,12 @@ fn collect_support_paths(grammar_dir: &Path, extensions: &[&str]) -> Vec<PathBuf
     paths
 }
 
-fn grammar_json_generation_fingerprint(
-    grammar_input_paths: &[PathBuf],
-    package_json_path: &Path,
-    pnpm_lock_path: &Path,
-) -> Vec<u8> {
+fn grammar_json_generation_fingerprint(grammar_input_paths: &[PathBuf]) -> Vec<u8> {
     let mut hasher = Hasher::new();
     hasher.update(b"kat-grammar-json-generation-v1");
 
     for path in grammar_input_paths {
         hash_file(&mut hasher, path);
-    }
-
-    if package_json_path.exists() {
-        hash_file(&mut hasher, package_json_path);
-    }
-
-    if pnpm_lock_path.exists() {
-        hash_file(&mut hasher, pnpm_lock_path);
     }
 
     hasher.finalize().as_bytes().to_vec()

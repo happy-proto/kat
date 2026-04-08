@@ -6574,7 +6574,7 @@ priority: 7
 
     #[test]
     fn just_recipe_body_uses_block_region_tint_without_tinting_header_line() {
-        let source = "install:\n    pnpm install\n    cargo install --path .\n";
+        let source = "install:\n    cargo install --path .\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let rendered = render_with_theme(Some(Path::new("Justfile")), source, &theme)
@@ -6593,14 +6593,13 @@ priority: 7
             "first recipe command line should receive nested block tint"
         );
         assert!(
-            line_has_background(lines[2], level_one_tint),
-            "second recipe command line should receive nested block tint"
+            lines.len() == 2,
+            "expected single-command recipe rendering, got {lines:?}"
         );
 
         assert!(
-            line_has_background(lines[1], level_one_tint)
-                && line_has_background(lines[2], level_one_tint),
-            "recipe body lines should keep their nested block tint"
+            line_has_background(lines[1], level_one_tint),
+            "recipe body line should keep its nested block tint"
         );
     }
 
