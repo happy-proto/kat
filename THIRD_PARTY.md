@@ -142,6 +142,53 @@ Included sources:
 - `grammars/twig/scanner.c`
 - `grammars/erb/queries/highlights.scm`
 - `grammars/erb/queries/injections.scm`
+- `grammars/php/grammar.js`
+- `grammars/php/common/define-grammar.js`
+- `grammars/php/common/scanner.h`
+- `grammars/php/scanner.c`
+- `grammars/php/queries/highlights.scm`
+- `grammars/php/queries/injections.scm`
+- `grammars/php/queries/injections-text.scm`
+- `grammars/scala/grammar.js`
+- `grammars/scala/scanner.c`
+- `grammars/scala/queries/highlights.scm`
+- `grammars/scala/queries/locals.scm`
+- `grammars/swift/grammar.js`
+- `grammars/swift/scanner.c`
+- `grammars/swift/queries/highlights.scm`
+- `grammars/swift/queries/injections.scm`
+- `grammars/swift/queries/locals.scm`
+- `grammars/dart/grammar.js`
+- `grammars/dart/scanner.c`
+- `grammars/dart/queries/highlights.scm`
+- `grammars/dart/queries/locals.scm`
+- `grammars/elixir/grammar.js`
+- `grammars/elixir/scanner.c`
+- `grammars/elixir/queries/highlights.scm`
+- `grammars/elixir/queries/injections.scm`
+- `grammars/zig/grammar.js`
+- `grammars/zig/queries/highlights.scm`
+- `grammars/zig/queries/injections.scm`
+- `grammars/zig/queries/locals.scm`
+- `grammars/ssh_config/grammar.js`
+- `grammars/ssh_config/queries/highlights.scm`
+- `grammars/ssh_config/queries/injections.scm`
+- `grammars/gitattributes/grammar.js`
+- `grammars/gitattributes/queries/highlights.scm`
+- `grammars/git_commit/grammar.js`
+- `grammars/git_commit/queries/highlights.scm`
+- `grammars/git_rebase/grammar.js`
+- `grammars/git_rebase/queries/highlights.scm`
+- `grammars/requirements/grammar.js`
+- `grammars/requirements/queries/highlights.scm`
+- `grammars/apache/grammar.js`
+- `grammars/apache/queries/highlights.scm`
+- `grammars/scss/grammar.js`
+- `grammars/scss/queries/highlights.scm`
+- `grammars/scss/scanner.c`
+- `grammars/sass/grammar.js`
+- `grammars/sass/queries/highlights.scm`
+- `grammars/sass/scanner.c`
 - `grammars/csharp/queries/highlights.scm`
 - `grammars/groovy/queries/highlights.scm`
 - `grammars/diff/queries/highlights.scm`
@@ -637,6 +684,112 @@ Upstream projects:
   Revision: `3499d85f0a0d937c507a4a65368f2f63772786e1`
   License: MIT
   Notes: repository-local copies of the upstream embedded-template queries for ERB. Parser code is linked from the Rust crate `tree-sitter-embedded-template`.
+
+- `grammars/php/grammar.js`
+- `grammars/php/common/define-grammar.js`
+- `grammars/php/common/scanner.h`
+- `grammars/php/scanner.c`
+- `grammars/php/queries/highlights.scm`
+- `grammars/php/queries/injections.scm`
+- `grammars/php/queries/injections-text.scm`
+  Source: [tree-sitter/tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php)
+  Revision: `3f2465c217d0a966d41e584b42d75522f2a3149e`
+  License: MIT
+  Notes: repository-local copies of the upstream PHP grammar, shared support files, scanner and query assets.
+
+- `grammars/scala/grammar.js`
+- `grammars/scala/scanner.c`
+- `grammars/scala/queries/highlights.scm`
+- `grammars/scala/queries/locals.scm`
+  Source: [tree-sitter/tree-sitter-scala](https://github.com/tree-sitter/tree-sitter-scala)
+  Revision: `22af0ac923c90cef50a31085b27049d50c94c70f`
+  License: MIT
+  Notes: repository-local copies of the upstream Scala grammar, scanner and query assets.
+
+- `grammars/swift/grammar.js`
+- `grammars/swift/scanner.c`
+- `grammars/swift/queries/highlights.scm`
+- `grammars/swift/queries/injections.scm`
+- `grammars/swift/queries/locals.scm`
+  Source: [alex-pinkus/tree-sitter-swift](https://github.com/alex-pinkus/tree-sitter-swift)
+  Revision: `da7f9370b70ba31357122c211734db98eb6f6a35`
+  License: MIT
+  Notes: repository-local copies of the upstream Swift grammar, scanner and query assets.
+
+- `grammars/dart/grammar.js`
+- `grammars/dart/scanner.c`
+- `grammars/dart/queries/highlights.scm`
+- `grammars/dart/queries/locals.scm`
+  Source: [nielsenko/tree-sitter-dart](https://github.com/nielsenko/tree-sitter-dart)
+  Revision: `316b9743b2d45b7e7b71fdbdb28e3e8971d64c13`
+  License: MIT
+  Notes: repository-local copies of the upstream Dart grammar, scanner and query assets.
+
+- `grammars/elixir/grammar.js`
+- `grammars/elixir/scanner.c`
+- `grammars/elixir/queries/highlights.scm`
+- `grammars/elixir/queries/injections.scm`
+  Source: [elixir-lang/tree-sitter-elixir](https://github.com/elixir-lang/tree-sitter-elixir)
+  Revision: `7937d3b4d65fa574163cfa59394515d3c1cf16f4`
+  License: Apache-2.0
+  Notes: repository-local copies of the upstream Elixir grammar, scanner and query assets.
+
+- `grammars/zig/grammar.js`
+- `grammars/zig/queries/highlights.scm`
+- `grammars/zig/queries/injections.scm`
+- `grammars/zig/queries/locals.scm`
+  Source: [tree-sitter-grammars/tree-sitter-zig](https://github.com/tree-sitter-grammars/tree-sitter-zig)
+  Revision: `6479aa13f32f701c383083d8b28360ebd682fb7d`
+  License: MIT
+  Notes: repository-local copies of the upstream Zig grammar and query assets.
+
+- `grammars/ssh_config/*`
+  Source: [tree-sitter-grammars/tree-sitter-ssh-config](https://github.com/tree-sitter-grammars/tree-sitter-ssh-config)
+  Revision: `71d2693deadaca8cdc09e38ba41d2f6042da1616`
+  License: MIT
+  Notes: repository-local copy of the upstream OpenSSH config grammar and query assets.
+
+- `grammars/gitattributes/*`
+  Source: [tree-sitter-grammars/tree-sitter-gitattributes](https://github.com/tree-sitter-grammars/tree-sitter-gitattributes)
+  Revision: `1b7af09d45b579f9f288453b95ad555f1f431645`
+  License: MIT
+  Notes: repository-local copy of the upstream gitattributes grammar and highlights query.
+
+- `grammars/git_commit/*`
+  Source: [the-mikedavis/tree-sitter-git-commit](https://github.com/the-mikedavis/tree-sitter-git-commit)
+  Revision: `5a50da19b3841ac51e9d483cd9c856a85232233d`
+  License: MIT
+  Notes: repository-local copy of the upstream git commit grammar, with highlights query adapted to kat's capture model.
+
+- `grammars/git_rebase/*`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for `git-rebase-todo`.
+
+- `grammars/requirements/*`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for `requirements.txt` / `requirements.in` style files.
+
+- `grammars/apache/*`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for Apache-style configuration files.
+
+- `grammars/scss/*`
+  Source: [tree-sitter-grammars/tree-sitter-scss](https://github.com/tree-sitter-grammars/tree-sitter-scss)
+  Revision: `2ef6d42e3ad7a8208900f9346f4529806ae0f9f9`
+  License: MIT
+  Notes: repository-local copy of the upstream SCSS grammar, scanner and highlights query. `grammars/scss/grammar.js` is locally adjusted to reuse kat's vendored CSS grammar instead of depending on a second external CSS package.
+
+- `grammars/sass/*`
+  Source: [bajrangCoder/tree-sitter-sass](https://github.com/bajrangCoder/tree-sitter-sass)
+  Revision: `fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8`
+  License: MIT
+  Notes: repository-local copy of the upstream Sass grammar, scanner and highlights query.
 
 - `grammars/csharp/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-c-sharp](https://github.com/tree-sitter/tree-sitter-c-sharp)

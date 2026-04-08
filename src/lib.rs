@@ -39,13 +39,19 @@ enum SupportedLanguage {
     Cmake,
     Css,
     Cpp,
+    Apache,
     Diff,
     Dockerfile,
     Dot,
     Dotenv,
+    Dart,
     Erb,
+    Elixir,
     Fish,
+    GitAttributes,
+    GitCommit,
     GitConfig,
+    GitRebase,
     Go,
     GoMod,
     GoSum,
@@ -70,14 +76,21 @@ enum SupportedLanguage {
     Nginx,
     Ninja,
     Nix,
+    Php,
     Properties,
     Proto,
     Powershell,
     Python,
+    Requirements,
     Ruby,
+    Sass,
+    Scala,
+    Scss,
+    SshConfig,
     Sql,
     Rust,
     Svelte,
+    Swift,
     Textproto,
     Toml,
     Tsx,
@@ -86,6 +99,7 @@ enum SupportedLanguage {
     Vue,
     Xml,
     Yaml,
+    Zig,
     Zsh,
 }
 
@@ -121,6 +135,20 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "groovy" => SupportedLanguage::Groovy,
         "diff" => SupportedLanguage::Diff,
         "properties" => SupportedLanguage::Properties,
+        "php" => SupportedLanguage::Php,
+        "scala" => SupportedLanguage::Scala,
+        "swift" => SupportedLanguage::Swift,
+        "dart" => SupportedLanguage::Dart,
+        "elixir" => SupportedLanguage::Elixir,
+        "zig" => SupportedLanguage::Zig,
+        "ssh_config" => SupportedLanguage::SshConfig,
+        "gitattributes" => SupportedLanguage::GitAttributes,
+        "git_commit" => SupportedLanguage::GitCommit,
+        "git_rebase" => SupportedLanguage::GitRebase,
+        "requirements" => SupportedLanguage::Requirements,
+        "apache" => SupportedLanguage::Apache,
+        "scss" => SupportedLanguage::Scss,
+        "sass" => SupportedLanguage::Sass,
         "jq" => SupportedLanguage::Jq,
         "less" => SupportedLanguage::Less,
         "dot" => SupportedLanguage::Dot,
@@ -257,6 +285,62 @@ pub fn highlight_diff(source: &str) -> Result<String> {
 
 pub fn highlight_properties(source: &str) -> Result<String> {
     highlight_named_language("properties", source, &Theme::detect())
+}
+
+pub fn highlight_php(source: &str) -> Result<String> {
+    highlight_named_language("php", source, &Theme::detect())
+}
+
+pub fn highlight_scala(source: &str) -> Result<String> {
+    highlight_named_language("scala", source, &Theme::detect())
+}
+
+pub fn highlight_swift(source: &str) -> Result<String> {
+    highlight_named_language("swift", source, &Theme::detect())
+}
+
+pub fn highlight_dart(source: &str) -> Result<String> {
+    highlight_named_language("dart", source, &Theme::detect())
+}
+
+pub fn highlight_elixir(source: &str) -> Result<String> {
+    highlight_named_language("elixir", source, &Theme::detect())
+}
+
+pub fn highlight_zig(source: &str) -> Result<String> {
+    highlight_named_language("zig", source, &Theme::detect())
+}
+
+pub fn highlight_ssh_config(source: &str) -> Result<String> {
+    highlight_named_language("ssh_config", source, &Theme::detect())
+}
+
+pub fn highlight_gitattributes(source: &str) -> Result<String> {
+    highlight_named_language("gitattributes", source, &Theme::detect())
+}
+
+pub fn highlight_git_commit(source: &str) -> Result<String> {
+    highlight_named_language("git_commit", source, &Theme::detect())
+}
+
+pub fn highlight_git_rebase(source: &str) -> Result<String> {
+    highlight_named_language("git_rebase", source, &Theme::detect())
+}
+
+pub fn highlight_requirements(source: &str) -> Result<String> {
+    highlight_named_language("requirements", source, &Theme::detect())
+}
+
+pub fn highlight_apache(source: &str) -> Result<String> {
+    highlight_named_language("apache", source, &Theme::detect())
+}
+
+pub fn highlight_scss(source: &str) -> Result<String> {
+    highlight_named_language("scss", source, &Theme::detect())
+}
+
+pub fn highlight_sass(source: &str) -> Result<String> {
+    highlight_named_language("sass", source, &Theme::detect())
 }
 
 pub fn highlight_jq(source: &str) -> Result<String> {
@@ -449,6 +533,20 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
         "groovy" => DocumentKind::plain("groovy"),
         "diff" => DocumentKind::plain("diff"),
         "properties" => DocumentKind::plain("properties"),
+        "php" => DocumentKind::plain("php"),
+        "scala" => DocumentKind::plain("scala"),
+        "swift" => DocumentKind::plain("swift"),
+        "dart" => DocumentKind::plain("dart"),
+        "elixir" => DocumentKind::plain("elixir"),
+        "zig" => DocumentKind::plain("zig"),
+        "ssh_config" => DocumentKind::plain("ssh_config"),
+        "gitattributes" => DocumentKind::plain("gitattributes"),
+        "git_commit" => DocumentKind::plain("git_commit"),
+        "git_rebase" => DocumentKind::plain("git_rebase"),
+        "requirements" => DocumentKind::plain("requirements"),
+        "apache" => DocumentKind::plain("apache"),
+        "scss" => DocumentKind::plain("scss"),
+        "sass" => DocumentKind::plain("sass"),
         "jq" => DocumentKind::plain("jq"),
         "less" => DocumentKind::plain("less"),
         "dot" => DocumentKind::plain("dot"),
@@ -737,6 +835,76 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(DocumentKind::plain("properties"));
     }
 
+    let php = grammar("php");
+    if matches_path(php, source_path) || matches_shebang(php, source) {
+        return Some(DocumentKind::plain("php"));
+    }
+
+    let scala = grammar("scala");
+    if matches_path(scala, source_path) {
+        return Some(DocumentKind::plain("scala"));
+    }
+
+    let swift = grammar("swift");
+    if matches_path(swift, source_path) || matches_shebang(swift, source) {
+        return Some(DocumentKind::plain("swift"));
+    }
+
+    let dart = grammar("dart");
+    if matches_path(dart, source_path) {
+        return Some(DocumentKind::plain("dart"));
+    }
+
+    let elixir = grammar("elixir");
+    if matches_path(elixir, source_path) || matches_shebang(elixir, source) {
+        return Some(DocumentKind::plain("elixir"));
+    }
+
+    let zig = grammar("zig");
+    if matches_path(zig, source_path) {
+        return Some(DocumentKind::plain("zig"));
+    }
+
+    let ssh_config = grammar("ssh_config");
+    if matches_path(ssh_config, source_path) || is_ssh_config_path(source_path) {
+        return Some(DocumentKind::plain("ssh_config"));
+    }
+
+    let gitattributes = grammar("gitattributes");
+    if matches_path(gitattributes, source_path) || is_gitattributes_path(source_path) {
+        return Some(DocumentKind::plain("gitattributes"));
+    }
+
+    let git_commit = grammar("git_commit");
+    if matches_path(git_commit, source_path) {
+        return Some(DocumentKind::plain("git_commit"));
+    }
+
+    let git_rebase = grammar("git_rebase");
+    if matches_path(git_rebase, source_path) {
+        return Some(DocumentKind::plain("git_rebase"));
+    }
+
+    let requirements = grammar("requirements");
+    if matches_path(requirements, source_path) {
+        return Some(DocumentKind::plain("requirements"));
+    }
+
+    let apache = grammar("apache");
+    if matches_path(apache, source_path) || is_apache_path(source_path) {
+        return Some(DocumentKind::plain("apache"));
+    }
+
+    let scss = grammar("scss");
+    if matches_path(scss, source_path) {
+        return Some(DocumentKind::plain("scss"));
+    }
+
+    let sass = grammar("sass");
+    if matches_path(sass, source_path) {
+        return Some(DocumentKind::plain("sass"));
+    }
+
     let jq = grammar("jq");
     if matches_path(jq, source_path) {
         return Some(DocumentKind::plain("jq"));
@@ -985,6 +1153,67 @@ fn is_git_config_path(source_path: Option<&Path>) -> bool {
         components.as_slice(),
         [.., ".git", "config"] | [.., "git", "config"]
     )
+}
+
+fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(components.as_slice(), [.., ".ssh", "config"])
+}
+
+fn is_gitattributes_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(
+        components.as_slice(),
+        [.., ".config", "git", "attributes"] | [.., "git", "attributes"]
+    )
+}
+
+fn is_apache_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    if matches!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some("httpd.conf" | "envvars")
+    ) {
+        return true;
+    }
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    let has_apache_root = components
+        .iter()
+        .any(|component| *component == "apache2" || *component == "httpd");
+    let has_apache_subdir = components
+        .iter()
+        .any(|component| *component == "conf" || component.starts_with("sites-"));
+
+    has_apache_root
+        && has_apache_subdir
+        && matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("conf")
+        )
 }
 
 fn is_nginx_path(source_path: Option<&Path>) -> bool {
@@ -2694,6 +2923,111 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "php/ThemePreview.php",
+            expect_highlight: true,
+            expected_fragments: &[
+                "namespace",
+                "ThemePreview",
+                "DEFAULT_THEME",
+                "render",
+                "echo",
+            ],
+        },
+        FixtureCase {
+            relative_path: "scala/ThemePreview.scala",
+            expect_highlight: true,
+            expected_fragments: &[
+                "object",
+                "ThemePreview",
+                "DefaultTheme",
+                "render",
+                "println",
+            ],
+        },
+        FixtureCase {
+            relative_path: "swift/ThemePreview.swift",
+            expect_highlight: true,
+            expected_fragments: &[
+                "Foundation",
+                "ThemePreview",
+                "defaultTheme",
+                "render",
+                "print",
+            ],
+        },
+        FixtureCase {
+            relative_path: "dart/theme_preview.dart",
+            expect_highlight: true,
+            expected_fragments: &["ThemePreview", "defaultTheme", "render", "main", "print"],
+        },
+        FixtureCase {
+            relative_path: "elixir/theme_preview.ex",
+            expect_highlight: true,
+            expected_fragments: &[
+                "defmodule",
+                "ThemePreview",
+                "@default_theme",
+                "render",
+                "IO",
+            ],
+        },
+        FixtureCase {
+            relative_path: "zig/theme.zig",
+            expect_highlight: true,
+            expected_fragments: &["const", "@import", "std", "main", "debug"],
+        },
+        FixtureCase {
+            relative_path: "ssh_config/.ssh/config",
+            expect_highlight: true,
+            expected_fragments: &["Host", "HostName", "IdentityFile", "Match", "Port"],
+        },
+        FixtureCase {
+            relative_path: "gitattributes/.gitattributes",
+            expect_highlight: true,
+            expected_fragments: &["rs", "text", "binary", "linguist-generated"],
+        },
+        FixtureCase {
+            relative_path: "git_commit/COMMIT_EDITMSG",
+            expect_highlight: true,
+            expected_fragments: &[
+                "Add theme preview runtime support",
+                "Reviewed-by",
+                "DCjanus",
+                "Please enter the commit message",
+            ],
+        },
+        FixtureCase {
+            relative_path: "git_rebase/git-rebase-todo",
+            expect_highlight: true,
+            expected_fragments: &["pick", "abc1234", "reword", "cargo test"],
+        },
+        FixtureCase {
+            relative_path: "requirements/requirements.txt",
+            expect_highlight: true,
+            expected_fragments: &["-r", "httpx", "0.27", "python_version", "example.com"],
+        },
+        FixtureCase {
+            relative_path: "apache/httpd.conf",
+            expect_highlight: true,
+            expected_fragments: &[
+                "VirtualHost",
+                "ServerName",
+                "DocumentRoot",
+                "RewriteRule",
+                "index.html",
+            ],
+        },
+        FixtureCase {
+            relative_path: "scss/theme.scss",
+            expect_highlight: true,
+            expected_fragments: &["@mixin", "preview-card", "base-color", "@include", "12px"],
+        },
+        FixtureCase {
+            relative_path: "sass/theme.sass",
+            expect_highlight: true,
+            expected_fragments: &["base-color", "preview-card", "padding", "preview", "color"],
+        },
+        FixtureCase {
             relative_path: "jq/theme.jq",
             expect_highlight: true,
             expected_fragments: &["def", "preview", "Dracula", "themes", "select"],
@@ -3327,6 +3661,91 @@ mod tests {
                 "INSERT INTO themes VALUES (1);"
             ),
             Some(SupportedLanguage::Sql)
+        ));
+    }
+
+    #[test]
+    fn newer_languages_and_special_files_detect_by_path() {
+        assert!(matches!(
+            detect_language(Some(Path::new("ThemePreview.php")), "<?php echo 'kat';\n"),
+            Some(SupportedLanguage::Php)
+        ));
+        assert!(matches!(
+            detect_language(None, "#!/usr/bin/env php\n<?php echo 'kat';\n"),
+            Some(SupportedLanguage::Php)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("build.sbt")), "name := \"kat\"\n"),
+            Some(SupportedLanguage::Scala)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("ThemePreview.swift")), "print(\"kat\")\n"),
+            Some(SupportedLanguage::Swift)
+        ));
+        assert!(matches!(
+            detect_language(None, "#!/usr/bin/env swift\nprint(\"kat\")\n"),
+            Some(SupportedLanguage::Swift)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.dart")), "void main() {}\n"),
+            Some(SupportedLanguage::Dart)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.exs")), "IO.puts(\"kat\")\n"),
+            Some(SupportedLanguage::Elixir)
+        ));
+        assert!(matches!(
+            detect_language(None, "#!/usr/bin/env elixir\nIO.puts(\"kat\")\n"),
+            Some(SupportedLanguage::Elixir)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("build.zig.zon")), ".{ .name = \"kat\" }\n"),
+            Some(SupportedLanguage::Zig)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".ssh/config")), "Host github.com\n"),
+            Some(SupportedLanguage::SshConfig)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("ssh_config")), "Host *\n"),
+            Some(SupportedLanguage::SshConfig)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new(".config/git/attributes")),
+                "*.rs text eol=lf\n"
+            ),
+            Some(SupportedLanguage::GitAttributes)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("COMMIT_EDITMSG")), "Add support\n"),
+            Some(SupportedLanguage::GitCommit)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("git-rebase-todo")),
+                "pick abc1234 add support\n"
+            ),
+            Some(SupportedLanguage::GitRebase)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("requirements.txt")), "httpx>=0.27\n"),
+            Some(SupportedLanguage::Requirements)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("/etc/apache2/sites-enabled/kat.conf")),
+                "ServerName kat.example.com\n"
+            ),
+            Some(SupportedLanguage::Apache)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.scss")), "$color: #fff;\n"),
+            Some(SupportedLanguage::Scss)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.sass")), "$color: #fff\n"),
+            Some(SupportedLanguage::Sass)
         ));
     }
 

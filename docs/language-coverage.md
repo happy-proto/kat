@@ -163,14 +163,13 @@
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix` 与 `C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
+- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`、`C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`，和这次继续补齐的 `PHP` / `Scala` / `Swift` / `Dart` / `Elixir` / `Zig`、`SSH Config` / `Git Attributes` / `Git Commit` / `Git Rebase Todo` / `Requirements.txt` / `Apache Conf` / `SCSS` / `Sass`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
 - 下表从这一轮之后的真实剩余缺口继续维护；不再保留已经补齐项的旧记录。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
 
 - `ActionScript`：`as`
 - `Ada`：`adb`、`ads`、`gpr`
-- `Apache Conf`：`envvars`、`htaccess`、`HTACCESS`、`htgroups`、`HTGROUPS`、`htpasswd`、`HTPASSWD`、`.htaccess`、`.HTACCESS`、`.htgroups`、`.HTGROUPS`、`.htpasswd`、`.HTPASSWD`、`httpd.conf`、`/etc/apache2/**/*.conf`、`/etc/apache2/sites-*/**/*`、`/etc/httpd/conf/**/*.conf`
 - `AppleScript`：`applescript`、`script editor`
 - `ARM Assembly`：`s`、`S`
 - `AsciiDoc (Asciidoctor)`：`adoc`、`ad`、`asciidoc`
@@ -190,9 +189,7 @@
 - `Crontab`：`tab`、`crontab`、`cron.d`
 - `Crystal`：`cr`
 - `D`：`d`、`di`
-- `Dart`：`dart`
 - `debsources`：`sources.list`
-- `Elixir`：`ex`、`exs`
 - `Elm`：`elm`
 - `Email`：`eml`、`msg`、`mbx`、`mboxz`、`/var/spool/mail/*`、`/var/mail/*`
 - `Erlang`：`erl`、`hrl`、`Emakefile`、`emakefile`、`escript`
@@ -202,12 +199,9 @@
 - `Fortran Namelist`：`namelist`
 - `fstab`：`fstab`、`crypttab`、`mtab`
 - `GDScript (Godot Engine)`：`gd`
-- `Git Attributes`：`attributes`、`gitattributes`、`.gitattributes`、`/home/example/.config/git/attributes`
-- `Git Commit`：`COMMIT_EDITMSG`、`MERGE_MSG`、`TAG_EDITMSG`
 - `Git Link`：`.git`
 - `Git Log`：`gitlog`
 - `Git Mailmap`：`.mailmap`、`mailmap`
-- `Git Rebase Todo`：`git-rebase-todo`
 - `GLSL`：`vs`、`gs`、`vsh`、`fsh`、`gsh`、`vshader`、`fshader`、`gshader`、`vert`、`frag`、`geom`、`tesc`、`tese`、`comp`、`glsl`、`mesh`、`task`、`rgen`、`rint`、`rahit`、`rchit`、`rmiss`、`rcall`
 - `gnuplot`：`gp`、`gpl`、`gnuplot`、`gnu`、`plot`、`plt`
 - `Groff/troff`：`groff`、`troff`、`1`、`2`、`3`、`4`、`5`、`6`、`7`、`8`、`9`
@@ -254,7 +248,6 @@
 - `Pascal`：`pas`、`p`、`dpr`
 - `passwd`：`passwd`
 - `Perl`：`pl`、`pc`、`pm`、`pmc`、`pod`、`t`
-- `PHP`：`php`、`php3`、`php4`、`php5`、`php7`、`phps`、`phpt`、`phtml`
 - `Plain Text`：`txt`
 - `Puppet`：`pp`、`epp`
 - `PureScript`：`purs`
@@ -264,7 +257,6 @@
 - `Rd (R Documentation)`：`rd`
 - `Rego`：`rego`
 - `Regular Expression`：`re`
-- `Requirements.txt`：`requirements.txt`、`requirements.in`、`pip`
 - `resolv`：`resolv.conf`
 - `reStructuredText`：`rst`、`rest`
 - `Robot Framework`：`robot`、`resource`
@@ -272,18 +264,13 @@
 - `Ruby on Rails`：`rxml`、`builder`
 - `Ruby Slim`：`slim`、`skim`
 - `Salt State (SLS)`：`sls`
-- `Sass`：`sass`
-- `Scala`：`scala`、`sbt`、`sc`、`*.mill`
-- `SCSS`：`scss`
 - `Separated Values`：`csv`
 - `SML`：`sml`、`cm`、`sig`
 - `Solidity`：`sol`
 - `SQL (Rails)`：`erbsql`、`sql.erb`
-- `SSH Config`：`ssh_config`、`**/.ssh/config`
 - `SSHD Config`：`sshd_config`
 - `Strace`：`strace`
 - `Stylus`：`styl`、`stylus`
-- `Swift`：`swift`
 - `syslog`：`syslog`
 - `SystemVerilog`：`sv`、`svh`、`vh`
 - `Tab Separated Values`：`tsv`
@@ -300,7 +287,6 @@
 - `Vyper`：`vy`
 - `WGSL`：`wgsl`
 - `x86_64 Assembly`：`yasm`、`nasm`、`asm`、`inc`、`mac`
-- `Zig`：`zig`、`zon`
 
 ### 部分覆盖：已有相关 runtime，但文件识别范围仍窄于 `bat`
 

@@ -60,6 +60,39 @@ const GROOVY_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/groovy/queries/h
 const DIFF_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/diff/queries/highlights.scm");
 const PROPERTIES_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/properties/queries/highlights.scm");
+const PHP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/php/queries/highlights.scm");
+const PHP_INJECTIONS_QUERY: &str = concat!(
+    include_str!("../grammars/php/queries/injections.scm"),
+    "\n",
+    include_str!("../grammars/php/queries/injections-text.scm")
+);
+const SCALA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/scala/queries/highlights.scm");
+const SCALA_LOCALS_QUERY: &str = include_str!("../grammars/scala/queries/locals.scm");
+const SWIFT_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/swift/queries/highlights.scm");
+const SWIFT_INJECTIONS_QUERY: &str = include_str!("../grammars/swift/queries/injections.scm");
+const SWIFT_LOCALS_QUERY: &str = include_str!("../grammars/swift/queries/locals.scm");
+const DART_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dart/queries/highlights.scm");
+const DART_LOCALS_QUERY: &str = include_str!("../grammars/dart/queries/locals.scm");
+const ELIXIR_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/elixir/queries/highlights.scm");
+const ELIXIR_INJECTIONS_QUERY: &str = include_str!("../grammars/elixir/queries/injections.scm");
+const ZIG_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/zig/queries/highlights.scm");
+const ZIG_INJECTIONS_QUERY: &str = include_str!("../grammars/zig/queries/injections.scm");
+const ZIG_LOCALS_QUERY: &str = include_str!("../grammars/zig/queries/locals.scm");
+const SSH_CONFIG_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/ssh_config/queries/highlights.scm");
+const SSH_CONFIG_INJECTIONS_QUERY: &str =
+    include_str!("../grammars/ssh_config/queries/injections.scm");
+const GITATTRIBUTES_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/gitattributes/queries/highlights.scm");
+const GIT_COMMIT_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/git_commit/queries/highlights.scm");
+const GIT_REBASE_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/git_rebase/queries/highlights.scm");
+const REQUIREMENTS_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/requirements/queries/highlights.scm");
+const APACHE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/apache/queries/highlights.scm");
+const SCSS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/scss/queries/highlights.scm");
+const SASS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/sass/queries/highlights.scm");
 const JQ_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jq/queries/highlights.scm");
 const LESS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/less/queries/highlights.scm");
 const DOT_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dot/queries/highlights.scm");
@@ -166,6 +199,12 @@ unsafe extern "C" {
     fn tree_sitter_hcl() -> *const ();
     fn tree_sitter_rust() -> *const ();
     fn tree_sitter_python() -> *const ();
+    fn tree_sitter_php() -> *const ();
+    fn tree_sitter_scala() -> *const ();
+    fn tree_sitter_swift() -> *const ();
+    fn tree_sitter_dart() -> *const ();
+    fn tree_sitter_elixir() -> *const ();
+    fn tree_sitter_zig() -> *const ();
     fn tree_sitter_go() -> *const ();
     fn tree_sitter_gomod() -> *const ();
     fn tree_sitter_gowork() -> *const ();
@@ -174,6 +213,7 @@ unsafe extern "C" {
     fn tree_sitter_vue() -> *const ();
     fn tree_sitter_svelte() -> *const ();
     fn tree_sitter_css() -> *const ();
+    fn tree_sitter_scss() -> *const ();
     fn tree_sitter_javascript() -> *const ();
     fn tree_sitter_graphql() -> *const ();
     fn tree_sitter_proto() -> *const ();
@@ -191,6 +231,13 @@ unsafe extern "C" {
     fn tree_sitter_jq() -> *const ();
     fn tree_sitter_less() -> *const ();
     fn tree_sitter_dot() -> *const ();
+    fn tree_sitter_ssh_config() -> *const ();
+    fn tree_sitter_gitattributes() -> *const ();
+    fn tree_sitter_git_commit() -> *const ();
+    fn tree_sitter_git_rebase() -> *const ();
+    fn tree_sitter_requirements() -> *const ();
+    fn tree_sitter_apache() -> *const ();
+    fn tree_sitter_sass() -> *const ();
 }
 
 const JSON_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_json) };
@@ -215,6 +262,21 @@ const CSHARP_LANGUAGE: LanguageFn = tree_sitter_c_sharp::LANGUAGE;
 const GROOVY_LANGUAGE: LanguageFn = tree_sitter_groovy::LANGUAGE;
 const DIFF_LANGUAGE: LanguageFn = tree_sitter_diff::LANGUAGE;
 const PROPERTIES_LANGUAGE: LanguageFn = tree_sitter_properties::LANGUAGE;
+const PHP_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_php) };
+const SCALA_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_scala) };
+const SWIFT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_swift) };
+const DART_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dart) };
+const ELIXIR_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_elixir) };
+const ZIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_zig) };
+const SCSS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_scss) };
+const SSH_CONFIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_ssh_config) };
+const GITATTRIBUTES_LANGUAGE: LanguageFn =
+    unsafe { LanguageFn::from_raw(tree_sitter_gitattributes) };
+const GIT_COMMIT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_commit) };
+const GIT_REBASE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_rebase) };
+const REQUIREMENTS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_requirements) };
+const APACHE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_apache) };
+const SASS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_sass) };
 const JQ_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_jq) };
 const LESS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_less) };
 const DOT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dot) };
@@ -426,6 +488,104 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "properties",
         language_fn: PROPERTIES_LANGUAGE,
         highlights_query: PROPERTIES_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "php",
+        language_fn: PHP_LANGUAGE,
+        highlights_query: PHP_HIGHLIGHTS_QUERY,
+        injections_query: PHP_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "scala",
+        language_fn: SCALA_LANGUAGE,
+        highlights_query: SCALA_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: SCALA_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "swift",
+        language_fn: SWIFT_LANGUAGE,
+        highlights_query: SWIFT_HIGHLIGHTS_QUERY,
+        injections_query: SWIFT_INJECTIONS_QUERY,
+        locals_query: SWIFT_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "dart",
+        language_fn: DART_LANGUAGE,
+        highlights_query: DART_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: DART_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "elixir",
+        language_fn: ELIXIR_LANGUAGE,
+        highlights_query: ELIXIR_HIGHLIGHTS_QUERY,
+        injections_query: ELIXIR_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "zig",
+        language_fn: ZIG_LANGUAGE,
+        highlights_query: ZIG_HIGHLIGHTS_QUERY,
+        injections_query: ZIG_INJECTIONS_QUERY,
+        locals_query: ZIG_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "ssh_config",
+        language_fn: SSH_CONFIG_LANGUAGE,
+        highlights_query: SSH_CONFIG_HIGHLIGHTS_QUERY,
+        injections_query: SSH_CONFIG_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "gitattributes",
+        language_fn: GITATTRIBUTES_LANGUAGE,
+        highlights_query: GITATTRIBUTES_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "git_commit",
+        language_fn: GIT_COMMIT_LANGUAGE,
+        highlights_query: GIT_COMMIT_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "git_rebase",
+        language_fn: GIT_REBASE_LANGUAGE,
+        highlights_query: GIT_REBASE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "requirements",
+        language_fn: REQUIREMENTS_LANGUAGE,
+        highlights_query: REQUIREMENTS_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "apache",
+        language_fn: APACHE_LANGUAGE,
+        highlights_query: APACHE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "scss",
+        language_fn: SCSS_LANGUAGE,
+        highlights_query: SCSS_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "sass",
+        language_fn: SASS_LANGUAGE,
+        highlights_query: SASS_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },
