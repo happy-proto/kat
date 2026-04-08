@@ -100,16 +100,18 @@ fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
         .flatten()
         .filter_map(Result::ok)
     {
-        if !entry.path().is_file() {
-            continue;
-        }
-
         let file_name = entry.file_name();
         if !file_name.to_string_lossy().starts_with(&*fragment) {
             continue;
         }
 
-        let suggestion = display_prefix.join(&file_name);
+        let mut suggestion = display_prefix.join(&file_name);
+        if entry.path().is_dir() {
+            suggestion.push("");
+        } else if !entry.path().is_file() {
+            continue;
+        }
+
         candidates.push(
             CompletionCandidate::new(suggestion.into_os_string()).hide(is_hidden_path(&file_name)),
         );
@@ -153,23 +155,27 @@ fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsStrin
 }
 
 fn split_completion_path(path: &std::path::Path) -> (&std::path::Path, &OsStr) {
-    if path_has_terminal_name(path) {
+    if let Some(file_name) = completion_file_name(path) {
         (
             path.parent().unwrap_or_else(|| std::path::Path::new("")),
-            path.file_name().expect("path should have file name"),
+            file_name,
         )
     } else {
         (path, OsStr::new(""))
     }
 }
 
-fn path_has_terminal_name(path: &std::path::Path) -> bool {
+fn completion_file_name(path: &std::path::Path) -> Option<&OsStr> {
     let path_bytes = path.as_os_str().as_encoded_bytes();
     let Some(trailing_byte) = path_bytes.last() else {
-        return false;
+        return None;
     };
 
-    *trailing_byte != std::path::MAIN_SEPARATOR as u8
+    if *trailing_byte == std::path::MAIN_SEPARATOR as u8 {
+        return None;
+    }
+
+    path.file_name()
 }
 
 fn is_hidden_path(file_name: &OsStr) -> bool {
@@ -640,7 +646,7 @@ mod tests {
     }
 
     #[test]
-    fn positional_path_completion_excludes_directories() {
+    fn positional_path_completion_includes_files_and_directories() {
         let dir = unique_temp_dir("kat-path-completion");
         fs::create_dir_all(&dir)
             .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
@@ -674,12 +680,34 @@ mod tests {
             "expected file completion, got {values:?}"
         );
         assert!(
-            values.iter().all(|value| !value.ends_with("nested/")),
-            "expected directories to be excluded, got {values:?}"
+            values.iter().any(|value| value.ends_with("nested/")),
+            "expected directory completion, got {values:?}"
+        );
+        assert!(
+            values
+                .iter()
+                .all(|value| !value.ends_with("/.") && !value.ends_with("/..")),
+            "expected dot navigation entries to stay hidden, got {values:?}"
         );
 
         fs::remove_dir_all(&dir)
             .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn dot_path_completion_does_not_panic() {
+        let args = vec![OsString::from("kat"), OsString::from(".")];
+        let completions =
+            complete(&mut completion_command(), args, 1, None).expect("dot completion should work");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().all(|value| value != "." && value != "../"),
+            "expected dot navigation entries to stay hidden, got {values:?}"
+        );
     }
 
     #[test]
