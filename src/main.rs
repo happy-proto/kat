@@ -125,8 +125,7 @@ fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
 }
 
 fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsString)> {
-    let current_path = std::path::Path::new(current);
-    let (prefix, fragment) = split_completion_path(current_path);
+    let (prefix, fragment) = split_completion_path(current);
 
     if prefix.is_absolute() {
         return Some((
@@ -147,35 +146,48 @@ fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsStrin
     }
 
     let current_dir = env::current_dir().ok()?;
-    Some((
-        prefix.to_path_buf(),
-        current_dir.join(prefix),
-        fragment.to_os_string(),
-    ))
+    Some((prefix.clone(), current_dir.join(&prefix), fragment))
 }
 
-fn split_completion_path(path: &std::path::Path) -> (&std::path::Path, &OsStr) {
-    if let Some(file_name) = completion_file_name(path) {
-        (
-            path.parent().unwrap_or_else(|| std::path::Path::new("")),
-            file_name,
-        )
-    } else {
-        (path, OsStr::new(""))
-    }
-}
-
-fn completion_file_name(path: &std::path::Path) -> Option<&OsStr> {
-    let path_bytes = path.as_os_str().as_encoded_bytes();
-    let Some(trailing_byte) = path_bytes.last() else {
-        return None;
-    };
-
-    if *trailing_byte == std::path::MAIN_SEPARATOR as u8 {
-        return None;
+fn split_completion_path(path: &OsStr) -> (PathBuf, OsString) {
+    let path = path.to_string_lossy();
+    if path.is_empty() {
+        return (PathBuf::new(), OsString::new());
     }
 
-    path.file_name()
+    let separator = std::path::MAIN_SEPARATOR;
+    if path == "." || path.ends_with(&format!("{separator}.")) {
+        let prefix = if path == "." {
+            PathBuf::new()
+        } else {
+            PathBuf::from(&path[..path.len() - 2])
+        };
+        return (prefix, OsString::from("."));
+    }
+
+    if path == ".." || path.ends_with(&format!("{separator}..")) {
+        let prefix = if path == ".." {
+            PathBuf::new()
+        } else {
+            PathBuf::from(&path[..path.len() - 3])
+        };
+        return (prefix, OsString::from(".."));
+    }
+
+    if path.ends_with(separator) {
+        return (PathBuf::from(path.as_ref()), OsString::new());
+    }
+
+    if let Some(index) = path.rfind(separator) {
+        let prefix = if index == 0 {
+            separator.to_string()
+        } else {
+            path[..index].to_owned()
+        };
+        return (PathBuf::from(prefix), OsString::from(&path[index + 1..]));
+    }
+
+    (PathBuf::new(), OsString::from(path.as_ref()))
 }
 
 fn is_hidden_path(file_name: &OsStr) -> bool {
@@ -708,6 +720,54 @@ mod tests {
             values.iter().all(|value| value != "." && value != "../"),
             "expected dot navigation entries to stay hidden, got {values:?}"
         );
+    }
+
+    #[test]
+    fn dot_prefix_completion_prefers_hidden_entries() {
+        let dir = unique_temp_dir("kat-dot-path-completion");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let hidden_file = dir.join(".gitignore");
+        fs::write(&hidden_file, "*\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write hidden completion fixture {}: {error}",
+                hidden_file.display()
+            )
+        });
+        let visible_file = dir.join("visible.txt");
+        fs::write(&visible_file, "kat\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write visible completion fixture {}: {error}",
+                visible_file.display()
+            )
+        });
+
+        let current = dir.join(".");
+        let args = vec![OsString::from("kat"), current.into_os_string()];
+        let completions = complete(&mut completion_command(), args, 1, None)
+            .expect("dot-prefix completion should work");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().any(|value| value.ends_with(".gitignore")),
+            "expected hidden file completion, got {values:?}"
+        );
+        assert!(
+            values.iter().all(|value| !value.ends_with("visible.txt")),
+            "expected visible files to stay out of dot-prefix completion, got {values:?}"
+        );
+        assert!(
+            values
+                .iter()
+                .all(|value| !value.ends_with("/.") && !value.ends_with("/./")),
+            "expected current-directory navigation entries to stay hidden, got {values:?}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
     }
 
     #[test]
