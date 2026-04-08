@@ -9,8 +9,9 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use clap::{CommandFactory, Parser, ValueEnum};
+use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
 use clap_complete::CompleteEnv;
+use clap_complete::engine::{ArgValueCompleter, PathCompleter};
 use shadow_rs::shadow;
 use terminal_size::{Height, terminal_size};
 
@@ -19,7 +20,7 @@ const DEFAULT_TERMINAL_ROWS: usize = 24;
 shadow!(build);
 
 fn main() -> Result<()> {
-    CompleteEnv::with_factory(CliArgs::command).complete();
+    CompleteEnv::with_factory(completion_command).complete();
     let options = parse_cli_args(env::args_os().skip(1))?;
     let output = build_output(&options)?;
     write_output(&output, &options)
@@ -67,12 +68,31 @@ struct CliArgs {
     language: Option<String>,
     #[arg(long, value_enum, default_value_t = PagingMode::Auto)]
     paging: PagingMode,
-    #[arg(value_name = "PATH|-", value_hint = clap::ValueHint::AnyPath)]
+    #[arg(
+        value_name = "PATH|-",
+        value_hint = clap::ValueHint::FilePath,
+        add = ArgValueCompleter::new(PathCompleter::file().stdio())
+    )]
     paths: Vec<PathBuf>,
 }
 
+fn cli_command() -> clap::Command {
+    CliArgs::command()
+}
+
+fn completion_command() -> clap::Command {
+    let mut command = cli_command();
+    for arg_id in ["debug_ast", "debug_semantics", "debug_shell_semantics"] {
+        command = command.mut_arg(arg_id, |arg| arg.hide(true));
+    }
+    command
+}
+
 fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions> {
-    let cli = CliArgs::try_parse_from(std::iter::once(OsString::from("kat")).chain(args))?;
+    let cli = CliArgs::from_arg_matches_mut(
+        &mut cli_command()
+            .try_get_matches_from_mut(std::iter::once(OsString::from("kat")).chain(args))?,
+    )?;
 
     let mode = if cli.version {
         OutputMode::Version
@@ -375,13 +395,13 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use clap::CommandFactory;
+    use clap_complete::engine::complete;
     use std::path::Path;
 
     use super::{
-        CliArgs, CliOptions, OutputMode, PagerCommand, PagingMode, page_output_via_command,
-        parse_cli_args, read_source_from_path, render_output, resolve_pager_command,
-        should_page_output, version_output,
+        CliOptions, OutputMode, PagerCommand, PagingMode, cli_command, completion_command,
+        page_output_via_command, parse_cli_args, read_source_from_path, render_output,
+        resolve_pager_command, should_page_output, version_output,
     };
 
     #[test]
@@ -528,7 +548,70 @@ mod tests {
 
     #[test]
     fn clap_command_configuration_is_valid() {
-        CliArgs::command().debug_assert();
+        cli_command().debug_assert();
+    }
+
+    #[test]
+    fn positional_path_completion_excludes_directories() {
+        let dir = unique_temp_dir("kat-path-completion");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let nested_dir = dir.join("nested");
+        fs::create_dir_all(&nested_dir).unwrap_or_else(|error| {
+            panic!(
+                "failed to create nested temp dir {}: {error}",
+                nested_dir.display()
+            )
+        });
+        let nested_file = dir.join("notes.txt");
+        fs::write(&nested_file, "kat\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write completion fixture {}: {error}",
+                nested_file.display()
+            )
+        });
+
+        let current = dir.join("n");
+        let args = vec![OsString::from("kat"), current.into_os_string()];
+        let completions = complete(&mut completion_command(), args, 1, None)
+            .expect("failed to compute completions");
+
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().any(|value| value.ends_with("notes.txt")),
+            "expected file completion, got {values:?}"
+        );
+        assert!(
+            values.iter().all(|value| !value.ends_with("nested")),
+            "expected directories to be excluded, got {values:?}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn debug_flags_are_hidden_from_dynamic_completion() {
+        let args = vec![OsString::from("kat"), OsString::from("")];
+        let completions = complete(&mut completion_command(), args, 1, None)
+            .expect("failed to compute option completions");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().all(|value| {
+                value != "--debug-ast"
+                    && value != "--debug-semantics"
+                    && value != "--debug-shell-semantics"
+            }),
+            "expected debug flags to be excluded from completions, got {values:?}"
+        );
     }
 
     #[test]
