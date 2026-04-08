@@ -44,6 +44,20 @@ just install
 kat path/to/file
 ```
 
+查看当前构建的版本与构建元信息：
+
+```bash
+kat --version
+```
+
+启用基于 `clap` 动态补全：
+
+```bash
+echo 'source <(COMPLETE=bash kat)' >> ~/.bashrc
+echo 'source <(COMPLETE=zsh kat)' >> ~/.zshrc
+echo 'COMPLETE=fish kat | source' >> ~/.config/fish/completions/kat.fish
+```
+
 如果只想本地编译调试：
 
 ```bash

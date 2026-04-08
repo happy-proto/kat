@@ -9,11 +9,17 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
+use clap::{CommandFactory, Parser, ValueEnum};
+use clap_complete::CompleteEnv;
+use shadow_rs::shadow;
 use terminal_size::{Height, terminal_size};
 
 const DEFAULT_TERMINAL_ROWS: usize = 24;
 
+shadow!(build);
+
 fn main() -> Result<()> {
+    CompleteEnv::with_factory(CliArgs::command).complete();
     let options = parse_cli_args(env::args_os().skip(1))?;
     let output = build_output(&options)?;
     write_output(&output, &options)
@@ -24,6 +30,7 @@ enum OutputMode {
     Render,
     DebugAst,
     DebugSemantics,
+    Version,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -34,99 +41,55 @@ struct CliOptions {
     paths: Vec<PathBuf>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 enum PagingMode {
     Auto,
     Always,
     Never,
 }
 
+#[derive(Debug, Parser)]
+#[command(
+    name = "kat",
+    disable_help_subcommand = true,
+    disable_version_flag = true
+)]
+struct CliArgs {
+    #[arg(long = "debug-ast", group = "mode")]
+    debug_ast: bool,
+    #[arg(long = "debug-semantics", group = "mode")]
+    debug_semantics: bool,
+    #[arg(long = "debug-shell-semantics", group = "mode")]
+    debug_shell_semantics: bool,
+    #[arg(long = "version", short = 'V', group = "mode")]
+    version: bool,
+    #[arg(long)]
+    language: Option<String>,
+    #[arg(long, value_enum, default_value_t = PagingMode::Auto)]
+    paging: PagingMode,
+    #[arg(value_name = "PATH|-", value_hint = clap::ValueHint::AnyPath)]
+    paths: Vec<PathBuf>,
+}
+
 fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions> {
-    let mut mode = OutputMode::Render;
-    let mut paging = PagingMode::Auto;
-    let mut language = None;
-    let mut paths = Vec::new();
-    let mut args = args.into_iter();
+    let cli = CliArgs::try_parse_from(std::iter::once(OsString::from("kat")).chain(args))?;
 
-    while let Some(arg) = args.next() {
-        if let Some(value) = arg.to_str() {
-            match value {
-                "--debug-ast" => {
-                    ensure_mode(&mut mode, OutputMode::DebugAst, "--debug-ast")?;
-                    continue;
-                }
-                "--debug-shell-semantics" => {
-                    ensure_mode(
-                        &mut mode,
-                        OutputMode::DebugSemantics,
-                        "--debug-shell-semantics",
-                    )?;
-                    continue;
-                }
-                "--debug-semantics" => {
-                    ensure_mode(&mut mode, OutputMode::DebugSemantics, "--debug-semantics")?;
-                    continue;
-                }
-                "--language" => {
-                    let Some(next) = args.next() else {
-                        bail!("--language requires a language name");
-                    };
-                    language = Some(next.to_string_lossy().into_owned());
-                    continue;
-                }
-                "--paging" => {
-                    let Some(next) = args.next() else {
-                        bail!("--paging requires one of auto, always, or never");
-                    };
-                    paging = parse_paging_mode(&next)?;
-                    continue;
-                }
-                "--help" | "-h" => {
-                    print_help();
-                    std::process::exit(0);
-                }
-                _ => {
-                    if let Some(value) = value.strip_prefix("--language=") {
-                        language = Some(value.to_owned());
-                        continue;
-                    }
-                    if let Some(value) = value.strip_prefix("--paging=") {
-                        paging = parse_paging_mode(value)?;
-                        continue;
-                    }
-                }
-            }
-        }
-
-        paths.push(PathBuf::from(arg));
-    }
+    let mode = if cli.version {
+        OutputMode::Version
+    } else if cli.debug_ast {
+        OutputMode::DebugAst
+    } else if cli.debug_semantics || cli.debug_shell_semantics {
+        OutputMode::DebugSemantics
+    } else {
+        OutputMode::Render
+    };
 
     Ok(CliOptions {
         mode,
-        paging,
-        language,
-        paths,
+        paging: cli.paging,
+        language: cli.language,
+        paths: cli.paths,
     })
-}
-
-fn parse_paging_mode(value: impl AsRef<OsStr>) -> Result<PagingMode> {
-    match value.as_ref().to_string_lossy().as_ref() {
-        "auto" => Ok(PagingMode::Auto),
-        "always" => Ok(PagingMode::Always),
-        "never" => Ok(PagingMode::Never),
-        other => bail!("unsupported paging mode: {other}; expected auto, always, or never"),
-    }
-}
-
-fn ensure_mode(current: &mut OutputMode, next: OutputMode, flag: &str) -> Result<()> {
-    if *current != OutputMode::Render && *current != next {
-        bail!("multiple debug modes provided; keep only one of --debug-ast or --debug-semantics");
-    }
-    *current = next;
-    if matches!(next, OutputMode::Render) {
-        bail!("unexpected render mode request from {flag}");
-    }
-    Ok(())
 }
 
 fn render_output(
@@ -153,6 +116,7 @@ fn render_output(
             }
             Ok(output)
         }
+        OutputMode::Version => Ok(version_output()),
     }
 }
 
@@ -172,15 +136,41 @@ fn resolve_debug_language_name(
         })
 }
 
-fn print_help() {
-    println!(
-        "Usage: kat [--debug-ast|--debug-semantics|--debug-shell-semantics] [--paging <auto|always|never>] [--language <name>] [PATH|-]..."
-    );
-    println!();
-    println!("Paging:");
-    println!("  auto   page long highlighted output when stdout is a TTY (default)");
-    println!("  always always try pager when stdout is a TTY");
-    println!("  never  write directly to stdout");
+fn version_output() -> String {
+    let mut output = String::new();
+    output.push_str(&format!("kat {}\n", build::PKG_VERSION));
+    output.push_str(&format!("branch: {}\n", build::BRANCH));
+    output.push_str(&format!("tag: {}\n", build::TAG));
+    output.push_str(&format!("commit: {}\n", build::COMMIT_HASH));
+    output.push_str(&format!("short-commit: {}\n", build::SHORT_COMMIT));
+    output.push_str(&format!("commit-date: {}\n", build::COMMIT_DATE));
+    output.push_str(&format!(
+        "commit-author: {} <{}>\n",
+        build::COMMIT_AUTHOR,
+        build::COMMIT_EMAIL
+    ));
+    output.push_str(&format!("build-time: {}\n", build::BUILD_TIME));
+    output.push_str(&format!("build-channel: {}\n", build::BUILD_RUST_CHANNEL));
+    output.push_str(&format!("build-os: {}\n", build::BUILD_OS));
+    output.push_str(&format!("build-target: {}\n", build::BUILD_TARGET));
+    output.push_str(&format!("rust-version: {}\n", build::RUST_VERSION));
+    output.push_str(&format!("rust-channel: {}\n", build::RUST_CHANNEL));
+    output.push_str(&format!("cargo-version: {}\n", build::CARGO_VERSION));
+    output.push_str(&format!("git-clean: {}\n", build::GIT_CLEAN));
+
+    let git_status = build::GIT_STATUS_FILE.trim();
+    if git_status.is_empty() {
+        output.push_str("git-status: clean\n");
+    } else {
+        output.push_str("git-status:\n");
+        for line in git_status.lines() {
+            output.push_str("  ");
+            output.push_str(line.trim_start());
+            output.push('\n');
+        }
+    }
+
+    output
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -259,6 +249,10 @@ fn page_output_via_command(output: &str, pager: &PagerCommand) -> Result<()> {
 }
 
 fn build_output(options: &CliOptions) -> Result<String> {
+    if matches!(options.mode, OutputMode::Version) {
+        return Ok(version_output());
+    }
+
     if options.paths.is_empty() {
         let stdin = read_stdin().context("failed to read stdin")?;
         return render_output(options.mode, options.language.as_deref(), None, &stdin);
@@ -381,11 +375,13 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
+    use clap::CommandFactory;
     use std::path::Path;
 
     use super::{
-        CliOptions, OutputMode, PagerCommand, PagingMode, page_output_via_command, parse_cli_args,
-        read_source_from_path, render_output, resolve_pager_command, should_page_output,
+        CliArgs, CliOptions, OutputMode, PagerCommand, PagingMode, page_output_via_command,
+        parse_cli_args, read_source_from_path, render_output, resolve_pager_command,
+        should_page_output, version_output,
     };
 
     #[test]
@@ -476,12 +472,42 @@ mod tests {
     }
 
     #[test]
+    fn parses_version_flag() {
+        let options =
+            parse_cli_args([OsString::from("--version")]).expect("failed to parse version flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::Version,
+                paging: PagingMode::Auto,
+                language: None,
+                paths: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn version_output_includes_build_metadata() {
+        let output = version_output();
+
+        assert!(
+            output.contains("kat ")
+                && output.contains("commit:")
+                && output.contains("build-time:")
+                && output.contains("rust-version:")
+                && output.contains("git-clean:"),
+            "unexpected version output: {output}"
+        );
+    }
+
+    #[test]
     fn rejects_unknown_paging_mode() {
         let error = parse_cli_args([OsString::from("--paging=maybe")])
             .expect_err("unknown paging mode should fail");
 
         assert!(
-            format!("{error:#}").contains("unsupported paging mode"),
+            format!("{error:#}").contains("invalid value"),
             "unexpected error: {error:#}"
         );
     }
@@ -495,9 +521,14 @@ mod tests {
         .expect_err("multiple debug flags should fail");
 
         assert!(
-            format!("{error:#}").contains("multiple debug modes"),
+            format!("{error:#}").contains("cannot be used with"),
             "unexpected error: {error:#}"
         );
+    }
+
+    #[test]
+    fn clap_command_configuration_is_valid() {
+        CliArgs::command().debug_assert();
     }
 
     #[test]
