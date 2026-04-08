@@ -55,6 +55,16 @@ const CPP_HIGHLIGHTS_QUERY: &str = concat!(
 const CPP_INJECTIONS_QUERY: &str = include_str!("../grammars/cpp/queries/injections.scm");
 const JAVA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/java/queries/highlights.scm");
 const KOTLIN_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/kotlin/queries/highlights.scm");
+const CSHARP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/csharp/queries/highlights.scm");
+const GROOVY_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/groovy/queries/highlights.scm");
+const DIFF_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/diff/queries/highlights.scm");
+const PROPERTIES_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/properties/queries/highlights.scm");
+const JQ_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jq/queries/highlights.scm");
+const LESS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/less/queries/highlights.scm");
+const DOT_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dot/queries/highlights.scm");
+const DOT_INJECTIONS_QUERY: &str = include_str!("../grammars/dot/queries/injections.scm");
+const NGINX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/nginx/queries/highlights.scm");
 const TYPESCRIPT_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/typescript/queries/highlights.scm");
 const TYPESCRIPT_INJECTIONS_QUERY: &str =
@@ -178,6 +188,9 @@ unsafe extern "C" {
     fn tree_sitter_ninja() -> *const ();
     fn tree_sitter_jinja() -> *const ();
     fn tree_sitter_twig() -> *const ();
+    fn tree_sitter_jq() -> *const ();
+    fn tree_sitter_less() -> *const ();
+    fn tree_sitter_dot() -> *const ();
 }
 
 const JSON_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_json) };
@@ -198,6 +211,14 @@ const C_LANGUAGE: LanguageFn = tree_sitter_c::LANGUAGE;
 const CPP_LANGUAGE: LanguageFn = tree_sitter_cpp::LANGUAGE;
 const JAVA_LANGUAGE: LanguageFn = tree_sitter_java::LANGUAGE;
 const KOTLIN_LANGUAGE: LanguageFn = tree_sitter_kotlin_ng::LANGUAGE;
+const CSHARP_LANGUAGE: LanguageFn = tree_sitter_c_sharp::LANGUAGE;
+const GROOVY_LANGUAGE: LanguageFn = tree_sitter_groovy::LANGUAGE;
+const DIFF_LANGUAGE: LanguageFn = tree_sitter_diff::LANGUAGE;
+const PROPERTIES_LANGUAGE: LanguageFn = tree_sitter_properties::LANGUAGE;
+const JQ_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_jq) };
+const LESS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_less) };
+const DOT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dot) };
+const NGINX_LANGUAGE: LanguageFn = tree_sitter_nginx::LANGUAGE;
 const TYPESCRIPT_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TYPESCRIPT;
 const TSX_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TSX;
 const GO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_go) };
@@ -377,6 +398,62 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "kotlin",
         language_fn: KOTLIN_LANGUAGE,
         highlights_query: KOTLIN_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "csharp",
+        language_fn: CSHARP_LANGUAGE,
+        highlights_query: CSHARP_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "groovy",
+        language_fn: GROOVY_LANGUAGE,
+        highlights_query: GROOVY_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "diff",
+        language_fn: DIFF_LANGUAGE,
+        highlights_query: DIFF_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "properties",
+        language_fn: PROPERTIES_LANGUAGE,
+        highlights_query: PROPERTIES_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "jq",
+        language_fn: JQ_LANGUAGE,
+        highlights_query: JQ_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "less",
+        language_fn: LESS_LANGUAGE,
+        highlights_query: LESS_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "dot",
+        language_fn: DOT_LANGUAGE,
+        highlights_query: DOT_HIGHLIGHTS_QUERY,
+        injections_query: DOT_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "nginx",
+        language_fn: NGINX_LANGUAGE,
+        highlights_query: NGINX_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },

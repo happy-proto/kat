@@ -1,0 +1,12 @@
+diff --git a/src/theme.rs b/src/theme.rs
+index 4d2c123..7f8e456 100644
+--- a/src/theme.rs
++++ b/src/theme.rs
+@@ -10,7 +10,8 @@ pub struct Theme {
+     color_mode: ColorMode,
+ }
+ 
+-pub fn preview() {}
++pub fn preview() {
++    println!("kat");
++}

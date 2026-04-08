@@ -163,7 +163,7 @@
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
+- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix` 与 `C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
 - 下表从这一轮之后的真实剩余缺口继续维护；不再保留已经补齐项的旧记录。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
@@ -178,7 +178,6 @@
 - `Authorized Keys`：`authorized_keys`、`pub`、`authorized_keys2`
 - `AWK`：`awk`
 - `BibTeX`：`bib`
-- `C#`：`cs`、`csx`
 - `Cabal`：`cabal`
 - `CFML`：`cfml`、`cfm`、`cfc`
 - `Clojure`：`clj`、`cljc`、`cljs`、`edn`
@@ -193,7 +192,6 @@
 - `D`：`d`、`di`
 - `Dart`：`dart`
 - `debsources`：`sources.list`
-- `Diff`：`diff`、`patch`、`*.debdiff`
 - `Elixir`：`ex`、`exs`
 - `Elm`：`elm`
 - `Email`：`eml`、`msg`、`mbx`、`mboxz`、`/var/spool/mail/*`、`/var/mail/*`
@@ -212,9 +210,7 @@
 - `Git Rebase Todo`：`git-rebase-todo`
 - `GLSL`：`vs`、`gs`、`vsh`、`fsh`、`gsh`、`vshader`、`fshader`、`gshader`、`vert`、`frag`、`geom`、`tesc`、`tese`、`comp`、`glsl`、`mesh`、`task`、`rgen`、`rint`、`rahit`、`rchit`、`rmiss`、`rcall`
 - `gnuplot`：`gp`、`gpl`、`gnuplot`、`gnu`、`plot`、`plt`
-- `Graphviz (DOT)`：`dot`、`DOT`、`gv`
 - `Groff/troff`：`groff`、`troff`、`1`、`2`、`3`、`4`、`5`、`6`、`7`、`8`、`9`
-- `Groovy`：`groovy`、`gvy`、`gradle`、`Jenkinsfile`
 - `group`：`group`
 - `Haskell`：`hs`
 - `Highlight non-printables`：`show-nonprintable`
@@ -228,17 +224,14 @@
 - `HTML (Twig)`：`twig`、`html.twig`
 - `HTTP Request and Response`：`http`
 - `Idris`：`idr`
-- `Java Properties`：`properties`
 - `Java Server Page (JSP)`：`jsp`
 - `JavaScript`：`htc`
 - `JavaScript (Rails)`：`js.erb`
-- `JQ`：`jq`
 - `jsonnet`：`jsonnet`、`libsonnet`、`libjsonnet`
 - `Julia`：`jl`
 - `Known Hosts`：`known_hosts`、`known_hosts.old`
 - `LaTeX`：`tex`、`ltx`
 - `Lean 4`：`lean`
-- `Less`：`less`、`css.less`
 - `Lisp`：`lisp`、`cl`、`clisp`、`l`、`mud`、`el`、`scm`、`ss`、`lsp`、`fasl`、`sld`
 - `Literate Haskell`：`lhs`
 - `LiveScript`：`ls`、`Slakefile`、`ls.erb`
@@ -249,7 +242,6 @@
 - `MediaWiki`：`mediawiki`、`wikipedia`、`wiki`
 - `MemInfo`：`meminfo`
 - `NAnt Build File`：`build`
-- `nginx`：`conf.erb`、`nginx.conf`、`mime.types`、`fastcgi_params`、`scgi_params`、`uwsgi_params`、`/etc/nginx/**/*.conf`、`/etc/nginx/sites-*/**/*`
 - `Nim`：`nim`、`nims`、`nimble`
 - `NSIS`：`nsi`、`nsh`、`bnsi`、`bnsh`、`nsdinc`
 - `Objective-C`：`m`

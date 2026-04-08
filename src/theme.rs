@@ -415,6 +415,8 @@ fn token_style_for(capture: &str, text: &str) -> TokenStyle {
         | "type.jsdoc"
         | "type.interface" => TokenStyle::new(DraculaColor::Cyan),
         "datetime" => TokenStyle::new(DraculaColor::Orange),
+        "diff.minus" => TokenStyle::new(DraculaColor::Red),
+        "diff.plus" => TokenStyle::new(DraculaColor::Green),
         "embedded" => TokenStyle::new(DraculaColor::Foreground).with_color_priority(0),
         "escape" | "operator" | "string.escape" | "operator.regex" | "string.escape.regex" => {
             TokenStyle::new(DraculaColor::Pink)

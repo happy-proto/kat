@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+group = 'io.kat'
+version = '0.1.0'
+
+class ThemePreview {
+    static final String DEFAULT_THEME = 'Dracula'
+
+    String render(String name) {
+        def title = name ?: DEFAULT_THEME
+        return "${title} Preview"
+    }
+}
+
+tasks.register('printPreview') {
+    doLast {
+        def preview = new ThemePreview()
+        println preview.render('Kat')
+    }
+}

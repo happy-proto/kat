@@ -142,6 +142,20 @@ Included sources:
 - `grammars/twig/scanner.c`
 - `grammars/erb/queries/highlights.scm`
 - `grammars/erb/queries/injections.scm`
+- `grammars/csharp/queries/highlights.scm`
+- `grammars/groovy/queries/highlights.scm`
+- `grammars/diff/queries/highlights.scm`
+- `grammars/properties/queries/highlights.scm`
+- `grammars/jq/grammar.js`
+- `grammars/jq/queries/highlights.scm`
+- `grammars/less/grammar.js`
+- `grammars/less/queries/highlights.scm`
+- `grammars/less/scanner.c`
+- `grammars/dot/grammar.js`
+- `grammars/dot/queries/highlights.scm`
+- `grammars/dot/queries/injections.scm`
+- `grammars/nginx/queries/highlights.scm`
+- `grammars/nginx/queries/injections.scm`
 
 Upstream projects:
 
@@ -623,6 +637,61 @@ Upstream projects:
   Revision: `3499d85f0a0d937c507a4a65368f2f63772786e1`
   License: MIT
   Notes: repository-local copies of the upstream embedded-template queries for ERB. Parser code is linked from the Rust crate `tree-sitter-embedded-template`.
+
+- `grammars/csharp/queries/highlights.scm`
+  Source: [tree-sitter/tree-sitter-c-sharp](https://github.com/tree-sitter/tree-sitter-c-sharp)
+  Revision: `88366631d598ce6595ec655ce1591b315cffb14c`
+  License: MIT
+  Notes: repository-local copy of the upstream C# highlights query. Parser code is linked from the Rust crate `tree-sitter-c-sharp`.
+
+- `grammars/groovy/queries/highlights.scm`
+  Source: [Decodetalkers/tree-sitter-groovy](https://github.com/Decodetalkers/tree-sitter-groovy)
+  Revision: `70efb0b9b50f95bcbd89dcfd42b275e0304e10cf`
+  License: MIT
+  Notes: repository-local Groovy highlights query derived from the upstream grammar's available node set and adapted for kat's theme model. Parser code is linked from the Rust crate `tree-sitter-groovy`.
+
+- `grammars/diff/queries/highlights.scm`
+  Source: [the-mikedavis/tree-sitter-diff](https://github.com/the-mikedavis/tree-sitter-diff)
+  Revision: `2520c3f934b3179bb540d23e0ef45f75304b5fed`
+  License: MIT
+  Notes: repository-local copy of the upstream diff highlights query. Parser code is linked from the Rust crate `tree-sitter-diff`.
+
+- `grammars/properties/queries/highlights.scm`
+  Source: [ObserverOfTime/tree-sitter-properties](https://github.com/ObserverOfTime/tree-sitter-properties)
+  Revision: `6310671b24d4e04b803577b1c675d765cbd5773b`
+  License: MIT
+  Notes: repository-local copy of the upstream Java properties highlights query. Parser code is linked from the Rust crate `tree-sitter-properties`.
+
+- `grammars/jq/grammar.js`
+  Source: [flurie/tree-sitter-jq](https://github.com/flurie/tree-sitter-jq)
+  Revision: `c204e36d2c3c6fce1f57950b12cabcc24e5cc4d9`
+  License: BSD-3-Clause
+  Notes: repository-local copy of the upstream jq grammar. This vendor source is used instead of the GPL-licensed `nverno/tree-sitter-jq` line so kat can keep a permissive third-party baseline.
+
+- `grammars/jq/queries/highlights.scm`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local jq highlights query written for kat against the vendored BSD jq grammar.
+
+- `grammars/less/*`
+  Source: [amaanq/tree-sitter-less](https://github.com/amaanq/tree-sitter-less)
+  Revision: `e5ae6245f841b5778c79ac93b28fa4f56b679c5d`
+  License: MIT
+  Notes: repository-local copy of the upstream Less grammar, scanner and highlights query. `grammars/less/grammar.js` is locally adjusted to reuse kat's vendored CSS grammar instead of depending on a second external CSS package.
+
+- `grammars/dot/*`
+  Source: [rydesun/tree-sitter-dot](https://github.com/rydesun/tree-sitter-dot)
+  Revision: `80327abbba6f47530edeb0df9f11bd5d5c93c14d`
+  License: MIT
+  Notes: repository-local copy of the upstream Graphviz DOT grammar plus highlights / injections queries.
+
+- `grammars/nginx/queries/highlights.scm`
+- `grammars/nginx/queries/injections.scm`
+  Source: [ngalaiko/tree-sitter-nginx](https://github.com/ngalaiko/tree-sitter-nginx)
+  Revision: `47ade644d754cce57974aac44d2c9450e823d4f4`
+  License: MIT
+  Notes: repository-local copies of the upstream nginx highlights / injections queries. Parser code is linked from the Rust crate `tree-sitter-nginx`.
 
 - `grammars/c/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-c](https://github.com/tree-sitter/tree-sitter-c)

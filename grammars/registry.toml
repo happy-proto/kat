@@ -870,6 +870,7 @@ library_name = "tree-sitter-kotlin"
 parser_source = "crate"
 extensions = ["kt", "kts"]
 filenames = []
+filename_prefixes = []
 shebang_substrings = []
 extra_c_flags = []
 highlight_names = [
@@ -885,6 +886,207 @@ highlight_names = [
   "string.escape",
   "type",
   "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "csharp"
+library_name = "tree-sitter-c-sharp"
+parser_source = "crate"
+extensions = ["cs", "csx"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant.builtin",
+  "constructor",
+  "function",
+  "module",
+  "number",
+  "operator",
+  "property.definition",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "groovy"
+library_name = "tree-sitter-groovy"
+parser_source = "crate"
+extensions = ["groovy", "gvy", "gradle"]
+filenames = ["Jenkinsfile"]
+filename_prefixes = []
+shebang_substrings = ["groovy"]
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "function",
+  "function.method",
+  "keyword",
+  "module",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "diff"
+library_name = "tree-sitter-diff"
+parser_source = "crate"
+extensions = ["diff", "patch", "debdiff"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "diff.minus",
+  "diff.plus",
+  "function",
+  "keyword",
+  "label",
+  "number",
+  "punctuation.special",
+  "string.special.path",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "properties"
+library_name = "tree-sitter-properties"
+parser_source = "crate"
+extensions = ["properties"]
+filenames = ["gradle.properties", "local.properties", "project.properties"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "embedded",
+  "function",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+]
+
+[[grammar]]
+name = "jq"
+library_name = "tree-sitter-jq"
+extensions = ["jq"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "function",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "less"
+library_name = "tree-sitter-less"
+extensions = ["less"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "function",
+  "keyword",
+  "operator",
+  "punctuation.bracket",
+  "string",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "dot"
+library_name = "tree-sitter-dot"
+extensions = ["dot", "DOT", "gv"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "error",
+  "keyword",
+  "namespace",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "nginx"
+library_name = "tree-sitter-nginx"
+parser_source = "crate"
+extensions = []
+filenames = ["nginx.conf", "mime.types", "fastcgi_params", "scgi_params", "uwsgi_params"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "keyword",
+  "keyword.conditional",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+  "variable",
+  "variable.builtin",
   "variable.parameter",
 ]
 

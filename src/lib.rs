@@ -35,10 +35,13 @@ enum SupportedLanguage {
     Bash,
     Batch,
     C,
+    Csharp,
     Cmake,
     Css,
     Cpp,
+    Diff,
     Dockerfile,
+    Dot,
     Dotenv,
     Erb,
     Fish,
@@ -48,6 +51,7 @@ enum SupportedLanguage {
     GoSum,
     GoWork,
     Graphql,
+    Groovy,
     Hcl,
     Html,
     Ignore,
@@ -55,14 +59,18 @@ enum SupportedLanguage {
     Java,
     Jinja,
     JavaScript,
+    Jq,
     Just,
     Json,
     Kotlin,
+    Less,
     Lua,
     Make,
     Markdown,
+    Nginx,
     Ninja,
     Nix,
+    Properties,
     Proto,
     Powershell,
     Python,
@@ -109,6 +117,14 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "cpp" => SupportedLanguage::Cpp,
         "java" => SupportedLanguage::Java,
         "kotlin" => SupportedLanguage::Kotlin,
+        "csharp" => SupportedLanguage::Csharp,
+        "groovy" => SupportedLanguage::Groovy,
+        "diff" => SupportedLanguage::Diff,
+        "properties" => SupportedLanguage::Properties,
+        "jq" => SupportedLanguage::Jq,
+        "less" => SupportedLanguage::Less,
+        "dot" => SupportedLanguage::Dot,
+        "nginx" => SupportedLanguage::Nginx,
         "typescript" => SupportedLanguage::TypeScript,
         "tsx" => SupportedLanguage::Tsx,
         "go" => SupportedLanguage::Go,
@@ -225,6 +241,38 @@ pub fn highlight_java(source: &str) -> Result<String> {
 
 pub fn highlight_kotlin(source: &str) -> Result<String> {
     highlight_named_language("kotlin", source, &Theme::detect())
+}
+
+pub fn highlight_csharp(source: &str) -> Result<String> {
+    highlight_named_language("csharp", source, &Theme::detect())
+}
+
+pub fn highlight_groovy(source: &str) -> Result<String> {
+    highlight_named_language("groovy", source, &Theme::detect())
+}
+
+pub fn highlight_diff(source: &str) -> Result<String> {
+    highlight_named_language("diff", source, &Theme::detect())
+}
+
+pub fn highlight_properties(source: &str) -> Result<String> {
+    highlight_named_language("properties", source, &Theme::detect())
+}
+
+pub fn highlight_jq(source: &str) -> Result<String> {
+    highlight_named_language("jq", source, &Theme::detect())
+}
+
+pub fn highlight_less(source: &str) -> Result<String> {
+    highlight_named_language("less", source, &Theme::detect())
+}
+
+pub fn highlight_dot(source: &str) -> Result<String> {
+    highlight_named_language("dot", source, &Theme::detect())
+}
+
+pub fn highlight_nginx(source: &str) -> Result<String> {
+    highlight_named_language("nginx", source, &Theme::detect())
 }
 
 pub fn highlight_typescript(source: &str) -> Result<String> {
@@ -397,6 +445,14 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
         "cpp" => DocumentKind::plain("cpp"),
         "java" => DocumentKind::plain("java"),
         "kotlin" => DocumentKind::plain("kotlin"),
+        "csharp" => DocumentKind::plain("csharp"),
+        "groovy" => DocumentKind::plain("groovy"),
+        "diff" => DocumentKind::plain("diff"),
+        "properties" => DocumentKind::plain("properties"),
+        "jq" => DocumentKind::plain("jq"),
+        "less" => DocumentKind::plain("less"),
+        "dot" => DocumentKind::plain("dot"),
+        "nginx" => DocumentKind::plain("nginx"),
         "typescript" => DocumentKind::plain("typescript"),
         "tsx" => DocumentKind::plain("tsx"),
         "go" => DocumentKind::plain("go"),
@@ -661,6 +717,46 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(DocumentKind::plain("kotlin"));
     }
 
+    let csharp = grammar("csharp");
+    if matches_path(csharp, source_path) {
+        return Some(DocumentKind::plain("csharp"));
+    }
+
+    let groovy = grammar("groovy");
+    if matches_path(groovy, source_path) || matches_shebang(groovy, source) {
+        return Some(DocumentKind::plain("groovy"));
+    }
+
+    let diff = grammar("diff");
+    if matches_path(diff, source_path) {
+        return Some(DocumentKind::plain("diff"));
+    }
+
+    let properties = grammar("properties");
+    if matches_path(properties, source_path) {
+        return Some(DocumentKind::plain("properties"));
+    }
+
+    let jq = grammar("jq");
+    if matches_path(jq, source_path) {
+        return Some(DocumentKind::plain("jq"));
+    }
+
+    let less = grammar("less");
+    if matches_path(less, source_path) {
+        return Some(DocumentKind::plain("less"));
+    }
+
+    let dot = grammar("dot");
+    if matches_path(dot, source_path) {
+        return Some(DocumentKind::plain("dot"));
+    }
+
+    let nginx = grammar("nginx");
+    if matches_path(nginx, source_path) || is_nginx_path(source_path) {
+        return Some(DocumentKind::plain("nginx"));
+    }
+
     let typescript = grammar("typescript");
     if matches_path(typescript, source_path) {
         return Some(DocumentKind::plain("typescript"));
@@ -889,6 +985,30 @@ fn is_git_config_path(source_path: Option<&Path>) -> bool {
         components.as_slice(),
         [.., ".git", "config"] | [.., "git", "config"]
     )
+}
+
+fn is_nginx_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    if matches!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some("nginx.conf" | "mime.types" | "fastcgi_params" | "scgi_params" | "uwsgi_params")
+    ) {
+        return true;
+    }
+
+    let has_nginx_component = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .any(|component| component == "nginx" || component.starts_with("sites-"));
+
+    has_nginx_component
+        && matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("conf")
+        )
 }
 
 fn looks_like_json(source: &str) -> bool {
@@ -2535,6 +2655,65 @@ mod tests {
             expected_fragments: &["SELECT", "enabled", "ORDER"],
         },
         FixtureCase {
+            relative_path: "csharp/ThemePreview.cs",
+            expect_highlight: true,
+            expected_fragments: &[
+                "namespace",
+                "ThemePreview",
+                "DefaultTheme",
+                "Render",
+                "Obsolete",
+            ],
+        },
+        FixtureCase {
+            relative_path: "groovy/build.gradle",
+            expect_highlight: true,
+            expected_fragments: &[
+                "plugins",
+                "ThemePreview",
+                "DEFAULT_THEME",
+                "render",
+                "println",
+            ],
+        },
+        FixtureCase {
+            relative_path: "diff/theme_preview.patch",
+            expect_highlight: true,
+            expected_fragments: &["diff", "src/theme.rs", "@@", "println!(\"kat\");"],
+        },
+        FixtureCase {
+            relative_path: "properties/gradle.properties",
+            expect_highlight: true,
+            expected_fragments: &[
+                "theme",
+                "name",
+                "Dracula",
+                "preview",
+                "count",
+                "example.com",
+            ],
+        },
+        FixtureCase {
+            relative_path: "jq/theme.jq",
+            expect_highlight: true,
+            expected_fragments: &["def", "preview", "Dracula", "themes", "select"],
+        },
+        FixtureCase {
+            relative_path: "less/theme.less",
+            expect_highlight: true,
+            expected_fragments: &["base-color", "preview-card", "spacing", "padding"],
+        },
+        FixtureCase {
+            relative_path: "dot/theme.dot",
+            expect_highlight: true,
+            expected_fragments: &["digraph", "ThemeGraph", "preview", "render", "rankdir"],
+        },
+        FixtureCase {
+            relative_path: "nginx/nginx.conf",
+            expect_highlight: true,
+            expected_fragments: &["http", "map", "http_x_theme", "location", "try_files"],
+        },
+        FixtureCase {
             relative_path: "ruby/theme_preview.rb",
             expect_highlight: true,
             expected_fragments: &["class", "DEFAULT_THEME", "initialize", "@name", "puts"],
@@ -2962,6 +3141,51 @@ mod tests {
                 "export interface Theme { title: string }\n",
             ),
             Some(SupportedLanguage::TypeScript)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("src/ThemePreview.cs")),
+                "public sealed class ThemePreview {}\n",
+            ),
+            Some(SupportedLanguage::Csharp)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("build.gradle")), "plugins { id 'java' }\n",),
+            Some(SupportedLanguage::Groovy)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("Jenkinsfile")), "pipeline { agent any }\n",),
+            Some(SupportedLanguage::Groovy)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.patch")), "diff --git a/a b/b\n",),
+            Some(SupportedLanguage::Diff)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("gradle.properties")), "theme.name=Dracula\n",),
+            Some(SupportedLanguage::Properties)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("filters/theme.jq")), ".themes[] | .name\n",),
+            Some(SupportedLanguage::Jq)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("styles/theme.less")), "@color: #6272a4;\n",),
+            Some(SupportedLanguage::Less)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("graph/theme.dot")),
+                "digraph ThemeGraph { a -> b }\n",
+            ),
+            Some(SupportedLanguage::Dot)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("/etc/nginx/sites-enabled/default.conf")),
+                "server { listen 8080; }\n",
+            ),
+            Some(SupportedLanguage::Nginx)
         ));
         assert!(matches!(
             detect_language(
