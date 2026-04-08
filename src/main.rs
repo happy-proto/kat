@@ -279,12 +279,13 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
 }
 
 fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
-    let mut candidates = Vec::new();
     let Some((display_prefix, search_root, fragment)) = resolve_completion_root(current) else {
-        return candidates;
+        return Vec::new();
     };
 
     let fragment = fragment.to_string_lossy();
+    let mut prefix_matches = Vec::new();
+    let mut substring_matches = Vec::new();
     for entry in fs::read_dir(search_root)
         .ok()
         .into_iter()
@@ -292,23 +293,41 @@ fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
         .filter_map(Result::ok)
     {
         let file_name = entry.file_name();
-        if !case_insensitive_starts_with(&file_name.to_string_lossy(), &fragment) {
-            continue;
-        }
+        let file_name_text = file_name.to_string_lossy();
 
         let mut suggestion = display_prefix.join(&file_name);
-        if entry.path().is_dir() {
+        let is_dir = entry.path().is_dir();
+        if is_dir {
             suggestion.push("");
         } else if !entry.path().is_file() {
             continue;
         }
 
-        candidates.push(
-            CompletionCandidate::new(suggestion.into_os_string()).hide(is_hidden_path(&file_name)),
-        );
+        let candidate =
+            CompletionCandidate::new(suggestion.into_os_string()).hide(is_hidden_path(&file_name));
+        if case_insensitive_starts_with(&file_name_text, &fragment) {
+            prefix_matches.push((completion_kind_rank(is_dir), candidate));
+            continue;
+        }
+
+        if should_include_substring_match(&file_name_text, &fragment) {
+            substring_matches.push((completion_kind_rank(is_dir), candidate));
+        }
     }
 
-    candidates.sort();
+    prefix_matches.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    substring_matches
+        .sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+
+    let mut candidates = prefix_matches
+        .into_iter()
+        .map(|(_, candidate)| candidate)
+        .collect::<Vec<_>>();
+    candidates.extend(
+        substring_matches
+            .into_iter()
+            .map(|(_, candidate)| candidate),
+    );
     candidates
 }
 
@@ -320,6 +339,20 @@ fn case_insensitive_starts_with(candidate: &str, prefix: &str) -> bool {
     let candidate = candidate.to_lowercase();
     let prefix = prefix.to_lowercase();
     candidate.starts_with(&prefix)
+}
+
+fn should_include_substring_match(candidate: &str, fragment: &str) -> bool {
+    if fragment.is_empty() || fragment.starts_with('.') {
+        return false;
+    }
+
+    let candidate = candidate.to_lowercase();
+    let fragment = fragment.to_lowercase();
+    candidate.contains(&fragment)
+}
+
+fn completion_kind_rank(is_dir: bool) -> u8 {
+    if is_dir { 1 } else { 0 }
 }
 
 fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsString)> {
@@ -957,6 +990,83 @@ mod tests {
         assert!(
             values.iter().any(|value| value.ends_with("README.md")),
             "expected lowercase prefix to match uppercase file names, got {values:?}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn path_completion_falls_back_to_case_insensitive_substring_matches() {
+        let dir = unique_temp_dir("kat-substring-path-completion");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let cargo_toml = dir.join("Cargo.toml");
+        fs::write(&cargo_toml, "[package]\nname = \"kat\"\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write completion fixture {}: {error}",
+                cargo_toml.display()
+            )
+        });
+
+        let current = dir.join("toml");
+        let args = vec![OsString::from("kat"), current.into_os_string()];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("failed to compute substring completions");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().any(|value| value.ends_with("Cargo.toml")),
+            "expected substring completion to match Cargo.toml, got {values:?}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn path_completion_keeps_prefix_matches_ahead_of_substring_matches() {
+        let dir = unique_temp_dir("kat-path-completion-priority");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let prefix_match = dir.join("tom-preview.txt");
+        fs::write(&prefix_match, "theme = true\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write completion fixture {}: {error}",
+                prefix_match.display()
+            )
+        });
+        let substring_match = dir.join("Cargo.toml");
+        fs::write(&substring_match, "[package]\nname = \"kat\"\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write completion fixture {}: {error}",
+                substring_match.display()
+            )
+        });
+
+        let current = dir.join("tom");
+        let args = vec![OsString::from("kat"), current.into_os_string()];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("failed to compute prioritized completions");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        let prefix_index = values
+            .iter()
+            .position(|value| value.ends_with("tom-preview.txt"))
+            .expect("expected prefix match to be present");
+        let substring_index = values
+            .iter()
+            .position(|value| value.ends_with("Cargo.toml"))
+            .expect("expected substring match to be present");
+        assert!(
+            prefix_index < substring_index,
+            "expected prefix matches to outrank substring matches, got {values:?}"
         );
 
         fs::remove_dir_all(&dir)
