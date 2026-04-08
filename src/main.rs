@@ -5,18 +5,199 @@ use std::{
     fs,
     io::{self, IsTerminal, Read, Write},
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{Command, ExitCode, Stdio},
 };
 
 use anyhow::{Context, Result, bail};
+use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, ValueEnum};
+use clap_complete::engine::{ArgValueCompleter, CompletionCandidate};
+use clap_complete::env::{Bash, Elvish, EnvCompleter, Fish, Powershell, Zsh};
+use miette::{Report, miette};
+use shadow_rs::shadow;
 use terminal_size::{Height, terminal_size};
 
 const DEFAULT_TERMINAL_ROWS: usize = 24;
 
-fn main() -> Result<()> {
+shadow!(build);
+
+fn main() -> ExitCode {
+    if let Some(exit_code) = complete_env() {
+        return exit_code;
+    }
+
+    match try_main() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            if let Some(clap_error) = error.downcast_ref::<clap::Error>() {
+                clap_error
+                    .print()
+                    .expect("failed to print clap parsing error");
+                return ExitCode::from(clap_error.exit_code() as u8);
+            }
+
+            eprintln!("{}", format_cli_error(&error));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn complete_env() -> Option<ExitCode> {
+    let shell_name = std::env::var_os("COMPLETE")?;
+    if shell_name.is_empty() || shell_name == "0" {
+        return None;
+    }
+
+    let shell = match env_completer(std::path::Path::new(&shell_name)) {
+        Ok(shell) => shell,
+        Err(error) => {
+            error.print().expect("failed to print completion error");
+            return Some(ExitCode::from(error.exit_code() as u8));
+        }
+    };
+
+    // SAFETY: mirrors clap_complete's initialization behavior and runs before app logic.
+    unsafe {
+        std::env::remove_var("COMPLETE");
+    }
+
+    let mut argv = std::env::args_os().collect::<Vec<_>>();
+    let completer = argv.remove(0);
+    let escape_index = argv
+        .iter()
+        .position(|arg| *arg == "--")
+        .map(|index| index + 1)
+        .unwrap_or(argv.len());
+    argv.drain(0..escape_index);
+
+    let current_dir = std::env::current_dir().ok();
+    let mut buf = Vec::new();
+    if argv.is_empty() {
+        let cmd = completion_command();
+        let name = cmd.get_name().to_owned();
+        let bin = cmd.get_bin_name().unwrap_or(&name).to_owned();
+        let completer = completer.to_string_lossy().into_owned();
+        shell
+            .write_registration("COMPLETE", &name, &bin, &completer, &mut buf)
+            .expect("failed to write completion registration");
+    } else {
+        let mut cmd = completion_command_for(&argv);
+        cmd.build();
+        shell
+            .write_complete(&mut cmd, argv, current_dir.as_deref(), &mut buf)
+            .expect("failed to write dynamic completions");
+    }
+    std::io::stdout()
+        .write_all(&buf)
+        .expect("failed to write completion output");
+
+    Some(ExitCode::SUCCESS)
+}
+
+fn env_completer(name: &std::path::Path) -> clap::error::Result<Box<dyn EnvCompleter>> {
+    let name = name
+        .file_stem()
+        .unwrap_or(name.as_os_str())
+        .to_string_lossy();
+    let shell: Box<dyn EnvCompleter> = if Bash.is(&name) {
+        Box::new(Bash)
+    } else if Elvish.is(&name) {
+        Box::new(Elvish)
+    } else if Fish.is(&name) {
+        Box::new(Fish)
+    } else if Powershell.is(&name) {
+        Box::new(Powershell)
+    } else if Zsh.is(&name) {
+        Box::new(Zsh)
+    } else {
+        return Err(clap::Error::raw(
+            clap::error::ErrorKind::InvalidValue,
+            format!("unsupported completion shell `{name}`"),
+        ));
+    };
+    Ok(shell)
+}
+
+fn try_main() -> Result<()> {
     let options = parse_cli_args(env::args_os().skip(1))?;
     let output = build_output(&options)?;
     write_output(&output, &options)
+}
+
+#[derive(Debug)]
+enum ReadSourceErrorKind {
+    Directory,
+    Io(io::Error),
+}
+
+#[derive(Debug)]
+struct ReadSourceError {
+    path: PathBuf,
+    kind: ReadSourceErrorKind,
+}
+
+impl ReadSourceError {
+    fn directory(path: PathBuf) -> Self {
+        Self {
+            path,
+            kind: ReadSourceErrorKind::Directory,
+        }
+    }
+
+    fn io(path: PathBuf, error: io::Error) -> Self {
+        Self {
+            path,
+            kind: ReadSourceErrorKind::Io(error),
+        }
+    }
+
+    fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+
+    fn io_error(&self) -> Option<&io::Error> {
+        match &self.kind {
+            ReadSourceErrorKind::Directory => None,
+            ReadSourceErrorKind::Io(error) => Some(error),
+        }
+    }
+}
+
+impl std::fmt::Display for ReadSourceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.kind {
+            ReadSourceErrorKind::Directory => write!(
+                f,
+                "failed to read {}: path is a directory; pass a file path instead",
+                self.path.display()
+            ),
+            ReadSourceErrorKind::Io(_) => write!(f, "failed to read {}", self.path.display()),
+        }
+    }
+}
+
+impl std::error::Error for ReadSourceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.io_error()
+            .map(|error| error as &(dyn std::error::Error + 'static))
+    }
+}
+
+fn format_cli_error(error: &anyhow::Error) -> String {
+    if let Some(read_error) = error.downcast_ref::<ReadSourceError>() {
+        if let Some(io_error) = read_error.io_error() {
+            let report = miette!("'{}': {}", read_error.path().display(), io_error);
+            return format!("{report:?}");
+        }
+
+        let report = miette!(
+            help = "pass a file path instead",
+            "'{}' is a directory",
+            read_error.path().display()
+        );
+        return format!("{report:?}");
+    }
+
+    format!("{:?}", Report::msg(error.to_string()))
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -24,6 +205,7 @@ enum OutputMode {
     Render,
     DebugAst,
     DebugSemantics,
+    Version,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -34,99 +216,194 @@ struct CliOptions {
     paths: Vec<PathBuf>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 enum PagingMode {
     Auto,
     Always,
     Never,
 }
 
-fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions> {
-    let mut mode = OutputMode::Render;
-    let mut paging = PagingMode::Auto;
-    let mut language = None;
-    let mut paths = Vec::new();
-    let mut args = args.into_iter();
+#[derive(Debug, Parser)]
+#[command(
+    name = "kat",
+    disable_help_flag = true,
+    disable_help_subcommand = true,
+    disable_version_flag = true
+)]
+struct CliArgs {
+    #[arg(long = "debug-ast", group = "mode")]
+    debug_ast: bool,
+    #[arg(long = "debug-semantics", group = "mode")]
+    debug_semantics: bool,
+    #[arg(long = "debug-shell-semantics", group = "mode")]
+    debug_shell_semantics: bool,
+    #[arg(long = "help", short = 'h', action = ArgAction::Help)]
+    help: Option<bool>,
+    #[arg(long = "version", short = 'V', group = "mode")]
+    version: bool,
+    #[arg(long)]
+    language: Option<String>,
+    #[arg(long, value_enum, default_value_t = PagingMode::Auto)]
+    paging: PagingMode,
+    #[arg(
+        value_name = "PATH|-",
+        add = ArgValueCompleter::new(complete_input_paths)
+    )]
+    paths: Vec<PathBuf>,
+}
 
-    while let Some(arg) = args.next() {
-        if let Some(value) = arg.to_str() {
-            match value {
-                "--debug-ast" => {
-                    ensure_mode(&mut mode, OutputMode::DebugAst, "--debug-ast")?;
-                    continue;
-                }
-                "--debug-shell-semantics" => {
-                    ensure_mode(
-                        &mut mode,
-                        OutputMode::DebugSemantics,
-                        "--debug-shell-semantics",
-                    )?;
-                    continue;
-                }
-                "--debug-semantics" => {
-                    ensure_mode(&mut mode, OutputMode::DebugSemantics, "--debug-semantics")?;
-                    continue;
-                }
-                "--language" => {
-                    let Some(next) = args.next() else {
-                        bail!("--language requires a language name");
-                    };
-                    language = Some(next.to_string_lossy().into_owned());
-                    continue;
-                }
-                "--paging" => {
-                    let Some(next) = args.next() else {
-                        bail!("--paging requires one of auto, always, or never");
-                    };
-                    paging = parse_paging_mode(&next)?;
-                    continue;
-                }
-                "--help" | "-h" => {
-                    print_help();
-                    std::process::exit(0);
-                }
-                _ => {
-                    if let Some(value) = value.strip_prefix("--language=") {
-                        language = Some(value.to_owned());
-                        continue;
-                    }
-                    if let Some(value) = value.strip_prefix("--paging=") {
-                        paging = parse_paging_mode(value)?;
-                        continue;
-                    }
-                }
-            }
+fn cli_command() -> clap::Command {
+    CliArgs::command()
+}
+
+fn completion_command() -> clap::Command {
+    completion_command_for(&[])
+}
+
+fn completion_command_for(args: &[OsString]) -> clap::Command {
+    let mut command = cli_command();
+    for arg_id in ["debug_ast", "debug_semantics", "debug_shell_semantics"] {
+        command = command.mut_arg(arg_id, |arg| arg.hide(true));
+    }
+
+    let current_token = args.last().and_then(|arg| arg.to_str()).unwrap_or_default();
+    if current_token.starts_with('-') {
+        command = command.mut_arg("paths", |arg| arg.hide(true));
+    } else {
+        for arg_id in ["help", "version", "language", "paging"] {
+            command = command.mut_arg(arg_id, |arg| arg.hide(true));
+        }
+    }
+
+    command
+}
+
+fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
+    let mut candidates = Vec::new();
+    let Some((display_prefix, search_root, fragment)) = resolve_completion_root(current) else {
+        return candidates;
+    };
+
+    let fragment = fragment.to_string_lossy();
+    for entry in fs::read_dir(search_root)
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+    {
+        let file_name = entry.file_name();
+        if !file_name.to_string_lossy().starts_with(&*fragment) {
+            continue;
         }
 
-        paths.push(PathBuf::from(arg));
+        let mut suggestion = display_prefix.join(&file_name);
+        if entry.path().is_dir() {
+            suggestion.push("");
+        } else if !entry.path().is_file() {
+            continue;
+        }
+
+        candidates.push(
+            CompletionCandidate::new(suggestion.into_os_string()).hide(is_hidden_path(&file_name)),
+        );
     }
+
+    candidates.sort();
+    candidates
+}
+
+fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsString)> {
+    let (prefix, fragment) = split_completion_path(current);
+
+    if prefix.is_absolute() {
+        return Some((
+            prefix.to_path_buf(),
+            prefix.to_path_buf(),
+            fragment.to_os_string(),
+        ));
+    }
+
+    if prefix.iter().next() == Some(OsStr::new("~")) {
+        let home = env::var_os("HOME").map(PathBuf::from)?;
+        let home_relative = prefix.strip_prefix("~").ok()?;
+        return Some((
+            prefix.to_path_buf(),
+            home.join(home_relative),
+            fragment.to_os_string(),
+        ));
+    }
+
+    let current_dir = env::current_dir().ok()?;
+    Some((prefix.clone(), current_dir.join(&prefix), fragment))
+}
+
+fn split_completion_path(path: &OsStr) -> (PathBuf, OsString) {
+    let path = path.to_string_lossy();
+    if path.is_empty() {
+        return (PathBuf::new(), OsString::new());
+    }
+
+    let separator = std::path::MAIN_SEPARATOR;
+    if path == "." || path.ends_with(&format!("{separator}.")) {
+        let prefix = if path == "." {
+            PathBuf::new()
+        } else {
+            PathBuf::from(&path[..path.len() - 2])
+        };
+        return (prefix, OsString::from("."));
+    }
+
+    if path == ".." || path.ends_with(&format!("{separator}..")) {
+        let prefix = if path == ".." {
+            PathBuf::new()
+        } else {
+            PathBuf::from(&path[..path.len() - 3])
+        };
+        return (prefix, OsString::from(".."));
+    }
+
+    if path.ends_with(separator) {
+        return (PathBuf::from(path.as_ref()), OsString::new());
+    }
+
+    if let Some(index) = path.rfind(separator) {
+        let prefix = if index == 0 {
+            separator.to_string()
+        } else {
+            path[..index].to_owned()
+        };
+        return (PathBuf::from(prefix), OsString::from(&path[index + 1..]));
+    }
+
+    (PathBuf::new(), OsString::from(path.as_ref()))
+}
+
+fn is_hidden_path(file_name: &OsStr) -> bool {
+    file_name.to_string_lossy().starts_with('.')
+}
+
+fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions> {
+    let cli = CliArgs::from_arg_matches_mut(
+        &mut cli_command()
+            .try_get_matches_from_mut(std::iter::once(OsString::from("kat")).chain(args))?,
+    )?;
+
+    let mode = if cli.version {
+        OutputMode::Version
+    } else if cli.debug_ast {
+        OutputMode::DebugAst
+    } else if cli.debug_semantics || cli.debug_shell_semantics {
+        OutputMode::DebugSemantics
+    } else {
+        OutputMode::Render
+    };
 
     Ok(CliOptions {
         mode,
-        paging,
-        language,
-        paths,
+        paging: cli.paging,
+        language: cli.language,
+        paths: cli.paths,
     })
-}
-
-fn parse_paging_mode(value: impl AsRef<OsStr>) -> Result<PagingMode> {
-    match value.as_ref().to_string_lossy().as_ref() {
-        "auto" => Ok(PagingMode::Auto),
-        "always" => Ok(PagingMode::Always),
-        "never" => Ok(PagingMode::Never),
-        other => bail!("unsupported paging mode: {other}; expected auto, always, or never"),
-    }
-}
-
-fn ensure_mode(current: &mut OutputMode, next: OutputMode, flag: &str) -> Result<()> {
-    if *current != OutputMode::Render && *current != next {
-        bail!("multiple debug modes provided; keep only one of --debug-ast or --debug-semantics");
-    }
-    *current = next;
-    if matches!(next, OutputMode::Render) {
-        bail!("unexpected render mode request from {flag}");
-    }
-    Ok(())
 }
 
 fn render_output(
@@ -153,6 +430,7 @@ fn render_output(
             }
             Ok(output)
         }
+        OutputMode::Version => Ok(version_output()),
     }
 }
 
@@ -172,15 +450,41 @@ fn resolve_debug_language_name(
         })
 }
 
-fn print_help() {
-    println!(
-        "Usage: kat [--debug-ast|--debug-semantics|--debug-shell-semantics] [--paging <auto|always|never>] [--language <name>] [PATH|-]..."
-    );
-    println!();
-    println!("Paging:");
-    println!("  auto   page long highlighted output when stdout is a TTY (default)");
-    println!("  always always try pager when stdout is a TTY");
-    println!("  never  write directly to stdout");
+fn version_output() -> String {
+    let mut output = String::new();
+    output.push_str(&format!("kat {}\n", build::PKG_VERSION));
+    output.push_str(&format!("branch: {}\n", build::BRANCH));
+    output.push_str(&format!("tag: {}\n", build::TAG));
+    output.push_str(&format!("commit: {}\n", build::COMMIT_HASH));
+    output.push_str(&format!("short-commit: {}\n", build::SHORT_COMMIT));
+    output.push_str(&format!("commit-date: {}\n", build::COMMIT_DATE));
+    output.push_str(&format!(
+        "commit-author: {} <{}>\n",
+        build::COMMIT_AUTHOR,
+        build::COMMIT_EMAIL
+    ));
+    output.push_str(&format!("build-time: {}\n", build::BUILD_TIME));
+    output.push_str(&format!("build-channel: {}\n", build::BUILD_RUST_CHANNEL));
+    output.push_str(&format!("build-os: {}\n", build::BUILD_OS));
+    output.push_str(&format!("build-target: {}\n", build::BUILD_TARGET));
+    output.push_str(&format!("rust-version: {}\n", build::RUST_VERSION));
+    output.push_str(&format!("rust-channel: {}\n", build::RUST_CHANNEL));
+    output.push_str(&format!("cargo-version: {}\n", build::CARGO_VERSION));
+    output.push_str(&format!("git-clean: {}\n", build::GIT_CLEAN));
+
+    let git_status = build::GIT_STATUS_FILE.trim();
+    if git_status.is_empty() {
+        output.push_str("git-status: clean\n");
+    } else {
+        output.push_str("git-status:\n");
+        for line in git_status.lines() {
+            output.push_str("  ");
+            output.push_str(line.trim_start());
+            output.push('\n');
+        }
+    }
+
+    output
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -259,6 +563,10 @@ fn page_output_via_command(output: &str, pager: &PagerCommand) -> Result<()> {
 }
 
 fn build_output(options: &CliOptions) -> Result<String> {
+    if matches!(options.mode, OutputMode::Version) {
+        return Ok(version_output());
+    }
+
     if options.paths.is_empty() {
         let stdin = read_stdin().context("failed to read stdin")?;
         return render_output(options.mode, options.language.as_deref(), None, &stdin);
@@ -355,13 +663,10 @@ fn count_output_lines(output: &str) -> usize {
 
 fn read_source_from_path(path: &PathBuf) -> Result<String> {
     if path.is_dir() {
-        bail!(
-            "failed to read {}: path is a directory; pass a file path instead",
-            path.display()
-        );
+        return Err(ReadSourceError::directory(path.clone()).into());
     }
 
-    let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let bytes = fs::read(path).map_err(|error| ReadSourceError::io(path.clone(), error))?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
@@ -381,11 +686,13 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
+    use clap_complete::engine::complete;
     use std::path::Path;
 
     use super::{
-        CliOptions, OutputMode, PagerCommand, PagingMode, page_output_via_command, parse_cli_args,
-        read_source_from_path, render_output, resolve_pager_command, should_page_output,
+        CliOptions, OutputMode, PagerCommand, PagingMode, cli_command, completion_command_for,
+        format_cli_error, page_output_via_command, parse_cli_args, read_source_from_path,
+        render_output, resolve_pager_command, should_page_output, version_output,
     };
 
     #[test]
@@ -399,6 +706,37 @@ mod tests {
         assert!(
             message.contains("is a directory") && message.contains("pass a file path instead"),
             "unexpected error message: {message}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn missing_file_formats_as_single_line_cli_error() {
+        let missing = unique_temp_dir("kat-missing-file").join("con");
+        let error = read_source_from_path(&missing).expect_err("missing file should fail");
+        let message = format_cli_error(&error);
+
+        assert!(
+            message.contains("con':")
+                && message.contains("No such file or directory")
+                && message.contains("(os error 2)"),
+            "unexpected missing-file cli error: {message}"
+        );
+    }
+
+    #[test]
+    fn directory_error_keeps_actionable_cli_message() {
+        let dir = unique_temp_dir("kat-directory-cli-error");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+
+        let error = read_source_from_path(&dir).expect_err("directory path should fail");
+        let message = format_cli_error(&error);
+        assert!(
+            message.contains("is a directory") && message.contains("pass a file path instead"),
+            "unexpected cli error message: {message}"
         );
 
         fs::remove_dir_all(&dir)
@@ -476,12 +814,42 @@ mod tests {
     }
 
     #[test]
+    fn parses_version_flag() {
+        let options =
+            parse_cli_args([OsString::from("--version")]).expect("failed to parse version flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::Version,
+                paging: PagingMode::Auto,
+                language: None,
+                paths: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn version_output_includes_build_metadata() {
+        let output = version_output();
+
+        assert!(
+            output.contains("kat ")
+                && output.contains("commit:")
+                && output.contains("build-time:")
+                && output.contains("rust-version:")
+                && output.contains("git-clean:"),
+            "unexpected version output: {output}"
+        );
+    }
+
+    #[test]
     fn rejects_unknown_paging_mode() {
         let error = parse_cli_args([OsString::from("--paging=maybe")])
             .expect_err("unknown paging mode should fail");
 
         assert!(
-            format!("{error:#}").contains("unsupported paging mode"),
+            format!("{error:#}").contains("invalid value"),
             "unexpected error: {error:#}"
         );
     }
@@ -495,8 +863,175 @@ mod tests {
         .expect_err("multiple debug flags should fail");
 
         assert!(
-            format!("{error:#}").contains("multiple debug modes"),
+            format!("{error:#}").contains("cannot be used with"),
             "unexpected error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn clap_command_configuration_is_valid() {
+        cli_command().debug_assert();
+    }
+
+    #[test]
+    fn positional_path_completion_includes_files_and_directories() {
+        let dir = unique_temp_dir("kat-path-completion");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let nested_dir = dir.join("nested");
+        fs::create_dir_all(&nested_dir).unwrap_or_else(|error| {
+            panic!(
+                "failed to create nested temp dir {}: {error}",
+                nested_dir.display()
+            )
+        });
+        let nested_file = dir.join("notes.txt");
+        fs::write(&nested_file, "kat\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write completion fixture {}: {error}",
+                nested_file.display()
+            )
+        });
+
+        let current = dir.join("n");
+        let args = vec![OsString::from("kat"), current.into_os_string()];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("failed to compute completions");
+
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().any(|value| value.ends_with("notes.txt")),
+            "expected file completion, got {values:?}"
+        );
+        assert!(
+            values.iter().any(|value| value.ends_with("nested/")),
+            "expected directory completion, got {values:?}"
+        );
+        assert!(
+            values
+                .iter()
+                .all(|value| !value.ends_with("/.") && !value.ends_with("/..")),
+            "expected dot navigation entries to stay hidden, got {values:?}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn dot_path_completion_does_not_panic() {
+        let args = vec![OsString::from("kat"), OsString::from(".")];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("dot completion should work");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().all(|value| value != "." && value != "../"),
+            "expected dot navigation entries to stay hidden, got {values:?}"
+        );
+    }
+
+    #[test]
+    fn dot_prefix_completion_prefers_hidden_entries() {
+        let dir = unique_temp_dir("kat-dot-path-completion");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let hidden_file = dir.join(".gitignore");
+        fs::write(&hidden_file, "*\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write hidden completion fixture {}: {error}",
+                hidden_file.display()
+            )
+        });
+        let visible_file = dir.join("visible.txt");
+        fs::write(&visible_file, "kat\n").unwrap_or_else(|error| {
+            panic!(
+                "failed to write visible completion fixture {}: {error}",
+                visible_file.display()
+            )
+        });
+
+        let current = dir.join(".");
+        let args = vec![OsString::from("kat"), current.into_os_string()];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("dot-prefix completion should work");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().any(|value| value.ends_with(".gitignore")),
+            "expected hidden file completion, got {values:?}"
+        );
+        assert!(
+            values.iter().all(|value| !value.ends_with("visible.txt")),
+            "expected visible files to stay out of dot-prefix completion, got {values:?}"
+        );
+        assert!(
+            values
+                .iter()
+                .all(|value| !value.ends_with("/.") && !value.ends_with("/./")),
+            "expected current-directory navigation entries to stay hidden, got {values:?}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn empty_input_completion_prefers_paths_over_options() {
+        let args = vec![OsString::from("kat"), OsString::from("")];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("failed to compute completions for empty input");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().all(|value| {
+                value != "--help"
+                    && value != "--version"
+                    && value != "--language"
+                    && value != "--paging"
+                    && value != "--debug-ast"
+                    && value != "--debug-semantics"
+                    && value != "--debug-shell-semantics"
+                    && value != "-"
+            }),
+            "expected empty-input completion to stay path-oriented, got {values:?}"
+        );
+    }
+
+    #[test]
+    fn dash_prefixed_input_completion_includes_options() {
+        let args = vec![OsString::from("kat"), OsString::from("-")];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("failed to compute option completions");
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().any(|value| value == "-h") && values.iter().any(|value| value == "-V"),
+            "expected dash-prefixed completion to include options, got {values:?}"
+        );
+        assert!(
+            values.iter().all(|value| {
+                value != "--debug-ast"
+                    && value != "--debug-semantics"
+                    && value != "--debug-shell-semantics"
+            }),
+            "expected debug flags to stay hidden from option completion, got {values:?}"
         );
     }
 

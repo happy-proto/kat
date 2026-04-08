@@ -14,6 +14,7 @@ use std::{
 use blake3::Hasher;
 use cc::Build;
 use serde::Deserialize;
+use shadow_rs::{BuildPattern, ShadowBuilder};
 use tree_sitter_generate::{ABI_VERSION_MIN, OptLevel, generate_parser_in_directory};
 use walkdir::WalkDir;
 
@@ -76,6 +77,11 @@ struct GrammarBuildResult {
 }
 
 fn main() {
+    ShadowBuilder::builder()
+        .build_pattern(BuildPattern::RealTime)
+        .build()
+        .expect("failed to generate shadow build metadata");
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
     let build_target = env::var("TARGET").expect("missing TARGET");
     let build_profile = env::var("PROFILE").expect("missing PROFILE");
