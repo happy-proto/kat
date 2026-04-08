@@ -216,6 +216,7 @@ highlight_names = [
 [[grammar]]
 name = "toml"
 library_name = "tree-sitter-toml"
+parser_source = "crate"
 extensions = ["toml"]
 filenames = ["Cargo.toml", "Cargo.lock", "uv.lock"]
 filename_prefixes = []

@@ -194,7 +194,6 @@ unsafe extern "C" {
     fn tree_sitter_fish() -> *const ();
     fn tree_sitter_powershell() -> *const ();
     fn tree_sitter_batch() -> *const ();
-    fn tree_sitter_toml() -> *const ();
     fn tree_sitter_yaml() -> *const ();
     fn tree_sitter_hcl() -> *const ();
     fn tree_sitter_rust() -> *const ();
@@ -249,7 +248,7 @@ const FISH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_fish
 const ZSH_LANGUAGE: LanguageFn = tree_sitter_zsh::LANGUAGE;
 const POWERSHELL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_powershell) };
 const BATCH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_batch) };
-const TOML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_toml) };
+const TOML_LANGUAGE: LanguageFn = tree_sitter_toml_ng::LANGUAGE;
 const YAML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_yaml) };
 const HCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_hcl) };
 const RUST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_rust) };

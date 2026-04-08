@@ -28,9 +28,7 @@ Included sources:
 - `grammars/powershell/scanner.c`
 - `grammars/batch/grammar.js`
 - `grammars/batch/queries/highlights.scm`
-- `grammars/toml/grammar.js`
 - `grammars/toml/queries/highlights.scm`
-- `grammars/toml/scanner.c`
 - `grammars/yaml/grammar.js`
 - `grammars/yaml/queries/highlights.scm`
 - `grammars/yaml/scanner.c`
@@ -309,11 +307,13 @@ Upstream projects:
   License: MIT
   Notes: repository-local copy of the upstream Windows Batch / CMD grammar and highlights query, trimmed to the minimal assets needed for kat's native build.
 
-- `grammars/toml/*`
-  Source: [tree-sitter/tree-sitter-toml](https://github.com/tree-sitter/tree-sitter-toml)
-  Revision: not recorded during the initial import
-  License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored. The exact upstream commit for the initial import still needs a later audit.
+- `grammars/toml/queries/highlights.scm`
+  Sources:
+  - [helix-editor/helix](https://github.com/helix-editor/helix/blob/035450a2de62142b4117c01b89fff3d4f1b4d51f/runtime/queries/toml/highlights.scm)
+  - [tree-sitter-grammars/tree-sitter-toml](https://github.com/tree-sitter-grammars/tree-sitter-toml)
+  Revisions: query starting point not fully audited
+  Licenses: MPL-2.0 and MIT
+  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model. TOML parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-toml-ng](https://crates.io/crates/tree-sitter-toml-ng).
 
 - `grammars/yaml/*`
   Source: [tree-sitter-grammars/tree-sitter-yaml](https://github.com/tree-sitter-grammars/tree-sitter-yaml)
