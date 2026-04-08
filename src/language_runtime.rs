@@ -186,25 +186,11 @@ const ERB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/erb/queries/highlig
 const ERB_INJECTIONS_QUERY: &str = include_str!("../grammars/erb/queries/injections.scm");
 
 unsafe extern "C" {
-    fn tree_sitter_json() -> *const ();
     fn tree_sitter_ignore() -> *const ();
     fn tree_sitter_git_config() -> *const ();
     fn tree_sitter_dockerfile() -> *const ();
-    fn tree_sitter_bash() -> *const ();
     fn tree_sitter_fish() -> *const ();
-    fn tree_sitter_powershell() -> *const ();
-    fn tree_sitter_batch() -> *const ();
-    fn tree_sitter_yaml() -> *const ();
     fn tree_sitter_hcl() -> *const ();
-    fn tree_sitter_rust() -> *const ();
-    fn tree_sitter_python() -> *const ();
-    fn tree_sitter_php() -> *const ();
-    fn tree_sitter_scala() -> *const ();
-    fn tree_sitter_swift() -> *const ();
-    fn tree_sitter_dart() -> *const ();
-    fn tree_sitter_elixir() -> *const ();
-    fn tree_sitter_zig() -> *const ();
-    fn tree_sitter_go() -> *const ();
     fn tree_sitter_gomod() -> *const ();
     fn tree_sitter_gowork() -> *const ();
     fn tree_sitter_gosum() -> *const ();
@@ -218,7 +204,6 @@ unsafe extern "C" {
     fn tree_sitter_proto() -> *const ();
     fn tree_sitter_textproto() -> *const ();
     fn tree_sitter_regex() -> *const ();
-    fn tree_sitter_jsdoc() -> *const ();
     fn tree_sitter_userscript_metadata() -> *const ();
     fn tree_sitter_markdown() -> *const ();
     fn tree_sitter_markdown_inline() -> *const ();
@@ -239,20 +224,20 @@ unsafe extern "C" {
     fn tree_sitter_sass() -> *const ();
 }
 
-const JSON_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_json) };
+const JSON_LANGUAGE: LanguageFn = tree_sitter_json::LANGUAGE;
 const IGNORE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_ignore) };
 const GIT_CONFIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_config) };
 const DOCKERFILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dockerfile) };
-const BASH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_bash) };
+const BASH_LANGUAGE: LanguageFn = tree_sitter_bash::LANGUAGE;
 const FISH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_fish) };
 const ZSH_LANGUAGE: LanguageFn = tree_sitter_zsh::LANGUAGE;
-const POWERSHELL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_powershell) };
-const BATCH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_batch) };
+const POWERSHELL_LANGUAGE: LanguageFn = tree_sitter_powershell::LANGUAGE;
+const BATCH_LANGUAGE: LanguageFn = tree_sitter_batch::LANGUAGE;
 const TOML_LANGUAGE: LanguageFn = tree_sitter_toml_ng::LANGUAGE;
-const YAML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_yaml) };
+const YAML_LANGUAGE: LanguageFn = tree_sitter_yaml::LANGUAGE;
 const HCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_hcl) };
-const RUST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_rust) };
-const PYTHON_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_python) };
+const RUST_LANGUAGE: LanguageFn = tree_sitter_rust::LANGUAGE;
+const PYTHON_LANGUAGE: LanguageFn = tree_sitter_python::LANGUAGE;
 const C_LANGUAGE: LanguageFn = tree_sitter_c::LANGUAGE;
 const CPP_LANGUAGE: LanguageFn = tree_sitter_cpp::LANGUAGE;
 const JAVA_LANGUAGE: LanguageFn = tree_sitter_java::LANGUAGE;
@@ -261,12 +246,12 @@ const CSHARP_LANGUAGE: LanguageFn = tree_sitter_c_sharp::LANGUAGE;
 const GROOVY_LANGUAGE: LanguageFn = tree_sitter_groovy::LANGUAGE;
 const DIFF_LANGUAGE: LanguageFn = tree_sitter_diff::LANGUAGE;
 const PROPERTIES_LANGUAGE: LanguageFn = tree_sitter_properties::LANGUAGE;
-const PHP_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_php) };
-const SCALA_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_scala) };
-const SWIFT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_swift) };
-const DART_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dart) };
-const ELIXIR_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_elixir) };
-const ZIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_zig) };
+const PHP_LANGUAGE: LanguageFn = tree_sitter_php::LANGUAGE_PHP;
+const SCALA_LANGUAGE: LanguageFn = tree_sitter_scala::LANGUAGE;
+const SWIFT_LANGUAGE: LanguageFn = tree_sitter_swift::LANGUAGE;
+const DART_LANGUAGE: LanguageFn = tree_sitter_dart::LANGUAGE;
+const ELIXIR_LANGUAGE: LanguageFn = tree_sitter_elixir::LANGUAGE;
+const ZIG_LANGUAGE: LanguageFn = tree_sitter_zig::LANGUAGE;
 const SCSS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_scss) };
 const SSH_CONFIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_ssh_config) };
 const GITATTRIBUTES_LANGUAGE: LanguageFn =
@@ -282,7 +267,7 @@ const DOT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dot) 
 const NGINX_LANGUAGE: LanguageFn = tree_sitter_nginx::LANGUAGE;
 const TYPESCRIPT_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TYPESCRIPT;
 const TSX_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TSX;
-const GO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_go) };
+const GO_LANGUAGE: LanguageFn = tree_sitter_go::LANGUAGE;
 const GOMOD_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gomod) };
 const GOWORK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gowork) };
 const GOSUM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gosum) };
@@ -296,7 +281,7 @@ const GRAPHQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_g
 const PROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_proto) };
 const TEXTPROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_textproto) };
 const REGEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_regex) };
-const JSDOC_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_jsdoc) };
+const JSDOC_LANGUAGE: LanguageFn = tree_sitter_jsdoc::LANGUAGE;
 const USERSCRIPT_METADATA_LANGUAGE: LanguageFn =
     unsafe { LanguageFn::from_raw(tree_sitter_userscript_metadata) };
 const MARKDOWN_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_markdown) };

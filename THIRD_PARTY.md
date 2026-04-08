@@ -4,7 +4,6 @@ This repository includes selected upstream Tree-sitter grammar source files.
 
 Included sources:
 
-- `grammars/json/grammar.js`
 - `grammars/json/queries/highlights.scm`
 - `grammars/ignore/grammar.js`
 - `grammars/ignore/queries/highlights.scm`
@@ -14,37 +13,24 @@ Included sources:
 - `grammars/dockerfile/queries/highlights.scm`
 - `grammars/dockerfile/queries/injections.scm`
 - `grammars/dockerfile/scanner.c`
-- `grammars/bash/grammar.js`
 - `grammars/bash/queries/highlights.scm`
 - `grammars/bash/queries/injections.scm`
-- `grammars/bash/scanner.c`
 - `grammars/fish/grammar.js`
 - `grammars/fish/queries/highlights.scm`
 - `grammars/fish/scanner.c`
 - `grammars/zsh/queries/highlights.scm`
 - `grammars/zsh/queries/injections.scm`
-- `grammars/powershell/grammar.js`
 - `grammars/powershell/queries/highlights.scm`
-- `grammars/powershell/scanner.c`
-- `grammars/batch/grammar.js`
 - `grammars/batch/queries/highlights.scm`
 - `grammars/toml/queries/highlights.scm`
-- `grammars/yaml/grammar.js`
 - `grammars/yaml/queries/highlights.scm`
-- `grammars/yaml/scanner.c`
-- `grammars/yaml/schema.core.c`
 - `grammars/hcl/grammar.js`
 - `grammars/hcl/queries/highlights.scm`
 - `grammars/hcl/scanner.c`
-- `grammars/rust/grammar.js`
 - `grammars/rust/queries/highlights.scm`
 - `grammars/rust/queries/injections.scm`
-- `grammars/rust/scanner.c`
-- `grammars/python/grammar.js`
 - `grammars/python/queries/highlights.scm`
 - `grammars/python/queries/injections.scm`
-- `grammars/python/scanner.cc`
-- `grammars/go/grammar.js`
 - `grammars/go/queries/highlights.scm`
 - `grammars/go/queries/injections.scm`
 - `grammars/gomod/grammar.js`
@@ -83,9 +69,7 @@ Included sources:
 - `grammars/regex/queries/highlights-rust.scm`
 - `grammars/regex/queries/highlights-go.scm`
 - `grammars/regex/queries/highlights-posix.scm`
-- `grammars/jsdoc/grammar.js`
 - `grammars/jsdoc/queries/highlights.scm`
-- `grammars/jsdoc/scanner.c`
 - `grammars/markdown/grammar.js`
 - `grammars/markdown/common.js`
 - `grammars/markdown/html_entities.json`
@@ -140,31 +124,18 @@ Included sources:
 - `grammars/twig/scanner.c`
 - `grammars/erb/queries/highlights.scm`
 - `grammars/erb/queries/injections.scm`
-- `grammars/php/grammar.js`
-- `grammars/php/common/define-grammar.js`
-- `grammars/php/common/scanner.h`
-- `grammars/php/scanner.c`
 - `grammars/php/queries/highlights.scm`
 - `grammars/php/queries/injections.scm`
 - `grammars/php/queries/injections-text.scm`
-- `grammars/scala/grammar.js`
-- `grammars/scala/scanner.c`
 - `grammars/scala/queries/highlights.scm`
 - `grammars/scala/queries/locals.scm`
-- `grammars/swift/grammar.js`
-- `grammars/swift/scanner.c`
 - `grammars/swift/queries/highlights.scm`
 - `grammars/swift/queries/injections.scm`
 - `grammars/swift/queries/locals.scm`
-- `grammars/dart/grammar.js`
-- `grammars/dart/scanner.c`
 - `grammars/dart/queries/highlights.scm`
 - `grammars/dart/queries/locals.scm`
-- `grammars/elixir/grammar.js`
-- `grammars/elixir/scanner.c`
 - `grammars/elixir/queries/highlights.scm`
 - `grammars/elixir/queries/injections.scm`
-- `grammars/zig/grammar.js`
 - `grammars/zig/queries/highlights.scm`
 - `grammars/zig/queries/injections.scm`
 - `grammars/zig/queries/locals.scm`
@@ -204,19 +175,13 @@ Included sources:
 
 Upstream projects:
 
-- `grammars/json/grammar.js`
-  Source: [tree-sitter/tree-sitter-json](https://github.com/tree-sitter/tree-sitter-json)
-  Revision: `b8d881b4699dbe2e8b88d88864e7b220b9631a55`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source; generated parser artifacts are not stored.
-
 - `grammars/json/queries/highlights.scm`
   Sources:
   - [tree-sitter/tree-sitter-json](https://github.com/tree-sitter/tree-sitter-json)
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model.
+  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. JSON parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-json](https://crates.io/crates/tree-sitter-json).
 
 - `grammars/ignore/*`
   Source: [shunsambongi/tree-sitter-gitignore](https://github.com/shunsambongi/tree-sitter-gitignore)
@@ -246,25 +211,13 @@ Upstream projects:
   License: MIT
   Notes: repository-local injection query that routes Dockerfile shell-form instruction bodies into kat's shared Bash runtime. The exact upstream commits used as the starting point still need a later audit.
 
-- `grammars/bash/grammar.js`
-  Source: [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash)
-  Revision: `5d8a33249511ed8bcf6cf135b7b2a815c7a02d9b`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source.
-
-- `grammars/bash/scanner.c`
-  Source: [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash)
-  Revision: `8509e3229b863c255ab6b61f3bf74ad0bf14e8bc`
-  License: MIT
-  Notes: repository-local copy of the upstream scanner source. The vendored Bash grammar and scanner are not currently pinned to the same upstream commit.
-
 - `grammars/bash/queries/highlights.scm`
   Sources:
   - [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash)
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model.
+  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model. Bash parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-bash](https://crates.io/crates/tree-sitter-bash).
 
 - `grammars/bash/queries/injections.scm`
   Source: local integration logic initially built around [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash)
@@ -292,20 +245,17 @@ Upstream projects:
   License: MIT
   Notes: repository-local adapted query that extends kat's existing shell heredoc injection model to zsh. The exact upstream commits used as the starting point still need a later audit.
 
-- `grammars/powershell/grammar.js`
 - `grammars/powershell/queries/highlights.scm`
-- `grammars/powershell/scanner.c`
   Source: [airbus-cert/tree-sitter-powershell](https://github.com/airbus-cert/tree-sitter-powershell)
   Revision: `da65ba3acc93777255781b447f5e7448245df4bf`
   License: MIT
-  Notes: repository-local copy of the upstream PowerShell grammar, highlights query and scanner source, trimmed to the minimal assets needed for kat's native build.
+  Notes: repository-local copy of the upstream PowerShell highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-powershell](https://crates.io/crates/tree-sitter-powershell).
 
-- `grammars/batch/grammar.js`
 - `grammars/batch/queries/highlights.scm`
   Source: [wharflab/tree-sitter-batch](https://github.com/wharflab/tree-sitter-batch)
   Revision: `8694fbc701ff6e35e3711bf39225860d13079906`
   License: MIT
-  Notes: repository-local copy of the upstream Windows Batch / CMD grammar and highlights query, trimmed to the minimal assets needed for kat's native build.
+  Notes: repository-local copy of the upstream Windows Batch / CMD highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-batch](https://crates.io/crates/tree-sitter-batch).
 
 - `grammars/toml/queries/highlights.scm`
   Sources:
@@ -315,11 +265,11 @@ Upstream projects:
   Licenses: MPL-2.0 and MIT
   Notes: repository-local adapted highlights query for kat's terminal renderer and capture model. TOML parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-toml-ng](https://crates.io/crates/tree-sitter-toml-ng).
 
-- `grammars/yaml/*`
+- `grammars/yaml/queries/highlights.scm`
   Source: [tree-sitter-grammars/tree-sitter-yaml](https://github.com/tree-sitter-grammars/tree-sitter-yaml)
   Revision: `4463985dfccc640f3d6991e3396a2047610cf5f8`
   License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored. `grammars/yaml/schema.core.c` is retained because the upstream scanner includes it directly at compile time.
+  Notes: repository-local copy of the upstream YAML highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-yaml](https://crates.io/crates/tree-sitter-yaml).
 
 - `grammars/hcl/grammar.js`
 - `grammars/hcl/scanner.c`
@@ -335,44 +285,26 @@ Upstream projects:
   License: MPL-2.0 and Apache-2.0
   Notes: repository-local adapted HCL highlights query, starting from Helix's query and tuned for kat's capture/theme model.
 
-- `grammars/rust/*`
-  Source: [tree-sitter/tree-sitter-rust](https://github.com/tree-sitter/tree-sitter-rust)
-  Revision: `b3e615de069beb04ff44f65ac52f7f03cff04438`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source.
-
-- `grammars/rust/scanner.c`
-  Source: [tree-sitter/tree-sitter-rust](https://github.com/tree-sitter/tree-sitter-rust)
-  Revision: not recorded during the initial import
-  License: MIT
-  Notes: repository-local copy of the upstream scanner source. The exact upstream commit for the initial import still needs a later audit.
-
 - `grammars/rust/queries/highlights.scm`
   Sources:
   - [tree-sitter/tree-sitter-rust](https://github.com/tree-sitter/tree-sitter-rust)
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model.
+  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. Rust parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-rust](https://crates.io/crates/tree-sitter-rust).
 
-- `grammars/python/*`
+- `grammars/python/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-python](https://github.com/tree-sitter/tree-sitter-python)
   Revision: `62827156d01c74dc1538266344e788da74536b8a`
   License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored. This revision is intentionally pinned because it still uses `scanner.cc`, which is needed to validate the repository's C++ scanner build path. Current upstream has since rewritten the scanner in C.
-
-- `grammars/go/grammar.js`
-  Source: [tree-sitter/tree-sitter-go](https://github.com/tree-sitter/tree-sitter-go)
-  Revision: `179ca03b3ac7da8ed7466fc4a8b6b445c3c968da`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source.
+  Notes: repository-local copy of the upstream Python highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-python](https://crates.io/crates/tree-sitter-python).
 
 - `grammars/go/queries/highlights.scm`
 - `grammars/go/queries/injections.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copies of Zed's Go query assets, further tuned for kat's runtime reuse and terminal rendering.
+  Notes: repository-local adapted copies of Zed's Go query assets, further tuned for kat's runtime reuse and terminal rendering. Go parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-go](https://crates.io/crates/tree-sitter-go).
 
 - `grammars/gomod/grammar.js`
   Source: [camdencheek/tree-sitter-go-mod](https://github.com/camdencheek/tree-sitter-go-mod)
@@ -537,23 +469,11 @@ Upstream projects:
   Licenses: MIT and Apache-2.0
   Notes: repository-local highlight queries and host-aware overlay queries, adapted for kat's shared parser plus runtime-family model. These files include local integration changes and invalid-construct overlays for different regex hosts. The exact upstream commits used as the starting point still need a later audit.
 
-- `grammars/jsdoc/grammar.js`
-  Source: [tree-sitter/tree-sitter-jsdoc](https://github.com/tree-sitter/tree-sitter-jsdoc)
-  Revision: `658d18dcdddb75c760363faa4963427a7c6b52db`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source.
-
-- `grammars/jsdoc/scanner.c`
-  Source: [tree-sitter/tree-sitter-jsdoc](https://github.com/tree-sitter/tree-sitter-jsdoc)
-  Revision: `658d18dcdddb75c760363faa4963427a7c6b52db`
-  License: MIT
-  Notes: repository-local copy of the upstream scanner source.
-
 - `grammars/jsdoc/queries/highlights.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copy of Zed's JSDoc highlights query.
+  Notes: repository-local adapted copy of Zed's JSDoc highlights query. JSDoc parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-jsdoc](https://crates.io/crates/tree-sitter-jsdoc).
 
 - `grammars/markdown/*`, `grammars/markdown_inline/*`
   Source: [tree-sitter-grammars/tree-sitter-markdown](https://github.com/tree-sitter-grammars/tree-sitter-markdown)
@@ -685,63 +605,50 @@ Upstream projects:
   License: MIT
   Notes: repository-local copies of the upstream embedded-template queries for ERB. Parser code is linked from the Rust crate `tree-sitter-embedded-template`.
 
-- `grammars/php/grammar.js`
-- `grammars/php/common/define-grammar.js`
-- `grammars/php/common/scanner.h`
-- `grammars/php/scanner.c`
 - `grammars/php/queries/highlights.scm`
 - `grammars/php/queries/injections.scm`
 - `grammars/php/queries/injections-text.scm`
   Source: [tree-sitter/tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php)
   Revision: `3f2465c217d0a966d41e584b42d75522f2a3149e`
   License: MIT
-  Notes: repository-local copies of the upstream PHP grammar, shared support files, scanner and query assets.
+  Notes: repository-local copies of the upstream PHP query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-php](https://crates.io/crates/tree-sitter-php).
 
-- `grammars/scala/grammar.js`
-- `grammars/scala/scanner.c`
 - `grammars/scala/queries/highlights.scm`
 - `grammars/scala/queries/locals.scm`
   Source: [tree-sitter/tree-sitter-scala](https://github.com/tree-sitter/tree-sitter-scala)
   Revision: `22af0ac923c90cef50a31085b27049d50c94c70f`
   License: MIT
-  Notes: repository-local copies of the upstream Scala grammar, scanner and query assets.
+  Notes: repository-local copies of the upstream Scala query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-scala](https://crates.io/crates/tree-sitter-scala).
 
-- `grammars/swift/grammar.js`
-- `grammars/swift/scanner.c`
 - `grammars/swift/queries/highlights.scm`
 - `grammars/swift/queries/injections.scm`
 - `grammars/swift/queries/locals.scm`
   Source: [alex-pinkus/tree-sitter-swift](https://github.com/alex-pinkus/tree-sitter-swift)
   Revision: `da7f9370b70ba31357122c211734db98eb6f6a35`
   License: MIT
-  Notes: repository-local copies of the upstream Swift grammar, scanner and query assets.
+  Notes: repository-local copies of the upstream Swift query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-swift](https://crates.io/crates/tree-sitter-swift).
 
-- `grammars/dart/grammar.js`
-- `grammars/dart/scanner.c`
 - `grammars/dart/queries/highlights.scm`
 - `grammars/dart/queries/locals.scm`
   Source: [nielsenko/tree-sitter-dart](https://github.com/nielsenko/tree-sitter-dart)
   Revision: `316b9743b2d45b7e7b71fdbdb28e3e8971d64c13`
   License: MIT
-  Notes: repository-local copies of the upstream Dart grammar, scanner and query assets.
+  Notes: repository-local copies of the upstream Dart query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-dart](https://crates.io/crates/tree-sitter-dart).
 
-- `grammars/elixir/grammar.js`
-- `grammars/elixir/scanner.c`
 - `grammars/elixir/queries/highlights.scm`
 - `grammars/elixir/queries/injections.scm`
   Source: [elixir-lang/tree-sitter-elixir](https://github.com/elixir-lang/tree-sitter-elixir)
   Revision: `7937d3b4d65fa574163cfa59394515d3c1cf16f4`
   License: Apache-2.0
-  Notes: repository-local copies of the upstream Elixir grammar, scanner and query assets.
+  Notes: repository-local copies of the upstream Elixir query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-elixir](https://crates.io/crates/tree-sitter-elixir).
 
-- `grammars/zig/grammar.js`
 - `grammars/zig/queries/highlights.scm`
 - `grammars/zig/queries/injections.scm`
 - `grammars/zig/queries/locals.scm`
   Source: [tree-sitter-grammars/tree-sitter-zig](https://github.com/tree-sitter-grammars/tree-sitter-zig)
   Revision: `6479aa13f32f701c383083d8b28360ebd682fb7d`
   License: MIT
-  Notes: repository-local copies of the upstream Zig grammar and query assets.
+  Notes: repository-local copies of the upstream Zig query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-zig](https://crates.io/crates/tree-sitter-zig).
 
 - `grammars/ssh_config/*`
   Source: [tree-sitter-grammars/tree-sitter-ssh-config](https://github.com/tree-sitter-grammars/tree-sitter-ssh-config)
