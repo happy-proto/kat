@@ -5,7 +5,7 @@ use std::{
     fs,
     io::{self, IsTerminal, Read, Write},
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{Command, ExitCode, Stdio},
 };
 
 use anyhow::{Context, Result, bail};
@@ -19,11 +19,101 @@ const DEFAULT_TERMINAL_ROWS: usize = 24;
 
 shadow!(build);
 
-fn main() -> Result<()> {
+fn main() -> ExitCode {
     CompleteEnv::with_factory(completion_command).complete();
+    match try_main() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            if let Some(clap_error) = error.downcast_ref::<clap::Error>() {
+                clap_error
+                    .print()
+                    .expect("failed to print clap parsing error");
+                return ExitCode::from(clap_error.exit_code() as u8);
+            }
+
+            eprintln!("{}", format_cli_error(&error));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn try_main() -> Result<()> {
     let options = parse_cli_args(env::args_os().skip(1))?;
     let output = build_output(&options)?;
     write_output(&output, &options)
+}
+
+#[derive(Debug)]
+enum ReadSourceErrorKind {
+    Directory,
+    Io(io::Error),
+}
+
+#[derive(Debug)]
+struct ReadSourceError {
+    path: PathBuf,
+    kind: ReadSourceErrorKind,
+}
+
+impl ReadSourceError {
+    fn directory(path: PathBuf) -> Self {
+        Self {
+            path,
+            kind: ReadSourceErrorKind::Directory,
+        }
+    }
+
+    fn io(path: PathBuf, error: io::Error) -> Self {
+        Self {
+            path,
+            kind: ReadSourceErrorKind::Io(error),
+        }
+    }
+
+    fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+
+    fn io_error(&self) -> Option<&io::Error> {
+        match &self.kind {
+            ReadSourceErrorKind::Directory => None,
+            ReadSourceErrorKind::Io(error) => Some(error),
+        }
+    }
+}
+
+impl std::fmt::Display for ReadSourceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.kind {
+            ReadSourceErrorKind::Directory => write!(
+                f,
+                "failed to read {}: path is a directory; pass a file path instead",
+                self.path.display()
+            ),
+            ReadSourceErrorKind::Io(_) => write!(f, "failed to read {}", self.path.display()),
+        }
+    }
+}
+
+impl std::error::Error for ReadSourceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.io_error()
+            .map(|error| error as &(dyn std::error::Error + 'static))
+    }
+}
+
+fn format_cli_error(error: &anyhow::Error) -> String {
+    if let Some(read_error) = error.downcast_ref::<ReadSourceError>() {
+        if let Some(io_error) = read_error.io_error() {
+            return format!(
+                "[kat error]: '{}': {}",
+                read_error.path().display(),
+                io_error
+            );
+        }
+    }
+
+    format!("[kat error]: {error}")
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -475,13 +565,10 @@ fn count_output_lines(output: &str) -> usize {
 
 fn read_source_from_path(path: &PathBuf) -> Result<String> {
     if path.is_dir() {
-        bail!(
-            "failed to read {}: path is a directory; pass a file path instead",
-            path.display()
-        );
+        return Err(ReadSourceError::directory(path.clone()).into());
     }
 
-    let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let bytes = fs::read(path).map_err(|error| ReadSourceError::io(path.clone(), error))?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
@@ -506,8 +593,8 @@ mod tests {
 
     use super::{
         CliOptions, OutputMode, PagerCommand, PagingMode, cli_command, completion_command,
-        page_output_via_command, parse_cli_args, read_source_from_path, render_output,
-        resolve_pager_command, should_page_output, version_output,
+        format_cli_error, page_output_via_command, parse_cli_args, read_source_from_path,
+        render_output, resolve_pager_command, should_page_output, version_output,
     };
 
     #[test]
@@ -521,6 +608,38 @@ mod tests {
         assert!(
             message.contains("is a directory") && message.contains("pass a file path instead"),
             "unexpected error message: {message}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
+    }
+
+    #[test]
+    fn missing_file_formats_as_single_line_cli_error() {
+        let missing = unique_temp_dir("kat-missing-file").join("con");
+        let error = read_source_from_path(&missing).expect_err("missing file should fail");
+        let message = format_cli_error(&error);
+
+        assert_eq!(
+            message,
+            format!(
+                "[kat error]: '{}': No such file or directory (os error 2)",
+                missing.display()
+            )
+        );
+    }
+
+    #[test]
+    fn directory_error_keeps_actionable_cli_message() {
+        let dir = unique_temp_dir("kat-directory-cli-error");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+
+        let error = read_source_from_path(&dir).expect_err("directory path should fail");
+        let message = format_cli_error(&error);
+        assert!(
+            message.contains("is a directory") && message.contains("pass a file path instead"),
+            "unexpected cli error message: {message}"
         );
 
         fs::remove_dir_all(&dir)
