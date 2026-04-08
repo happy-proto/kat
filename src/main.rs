@@ -175,10 +175,24 @@ fn cli_command() -> clap::Command {
 }
 
 fn completion_command() -> clap::Command {
+    completion_command_for(&[])
+}
+
+fn completion_command_for(args: &[OsString]) -> clap::Command {
     let mut command = cli_command();
     for arg_id in ["debug_ast", "debug_semantics", "debug_shell_semantics"] {
         command = command.mut_arg(arg_id, |arg| arg.hide(true));
     }
+
+    let current_token = args.last().and_then(|arg| arg.to_str()).unwrap_or_default();
+    if current_token.starts_with('-') {
+        command = command.mut_arg("paths", |arg| arg.hide(true));
+    } else {
+        for arg_id in ["version", "language", "paging"] {
+            command = command.mut_arg(arg_id, |arg| arg.hide(true));
+        }
+    }
+
     command
 }
 
@@ -213,10 +227,27 @@ fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
     }
 
     candidates.sort();
-    if current.is_empty() {
-        candidates.push(CompletionCandidate::new("-").help(Some("stdio".into())));
-    }
     candidates
+}
+
+fn filter_completion_candidates(
+    current_token: &OsStr,
+    candidates: Vec<CompletionCandidate>,
+) -> Vec<CompletionCandidate> {
+    let Some(current_token) = current_token.to_str() else {
+        return candidates;
+    };
+    if current_token.starts_with('-') {
+        return candidates;
+    }
+
+    candidates
+        .into_iter()
+        .filter(|candidate| {
+            let value = candidate.get_value().to_string_lossy();
+            !value.starts_with('-')
+        })
+        .collect()
 }
 
 fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsString)> {
@@ -597,9 +628,10 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        CliOptions, OutputMode, PagerCommand, PagingMode, cli_command, completion_command,
-        format_cli_error, page_output_via_command, parse_cli_args, read_source_from_path,
-        render_output, resolve_pager_command, should_page_output, version_output,
+        CliOptions, OutputMode, PagerCommand, PagingMode, cli_command, completion_command_for,
+        filter_completion_candidates, format_cli_error, page_output_via_command, parse_cli_args,
+        read_source_from_path, render_output, resolve_pager_command, should_page_output,
+        version_output,
     };
 
     #[test]
@@ -800,7 +832,7 @@ mod tests {
 
         let current = dir.join("n");
         let args = vec![OsString::from("kat"), current.into_os_string()];
-        let completions = complete(&mut completion_command(), args, 1, None)
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
             .expect("failed to compute completions");
 
         let values = completions
@@ -830,8 +862,8 @@ mod tests {
     #[test]
     fn dot_path_completion_does_not_panic() {
         let args = vec![OsString::from("kat"), OsString::from(".")];
-        let completions =
-            complete(&mut completion_command(), args, 1, None).expect("dot completion should work");
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("dot completion should work");
         let values = completions
             .iter()
             .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
@@ -865,7 +897,7 @@ mod tests {
 
         let current = dir.join(".");
         let args = vec![OsString::from("kat"), current.into_os_string()];
-        let completions = complete(&mut completion_command(), args, 1, None)
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
             .expect("dot-prefix completion should work");
         let values = completions
             .iter()
@@ -892,22 +924,52 @@ mod tests {
     }
 
     #[test]
-    fn debug_flags_are_hidden_from_dynamic_completion() {
+    fn empty_input_completion_prefers_paths_over_options() {
         let args = vec![OsString::from("kat"), OsString::from("")];
-        let completions = complete(&mut completion_command(), args, 1, None)
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
+            .expect("failed to compute completions for empty input");
+        let values =
+            filter_completion_candidates(args.last().expect("missing current token"), completions)
+                .iter()
+                .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+
+        assert!(
+            values.iter().all(|value| {
+                value != "--help"
+                    && value != "--version"
+                    && value != "--language"
+                    && value != "--paging"
+                    && value != "--debug-ast"
+                    && value != "--debug-semantics"
+                    && value != "--debug-shell-semantics"
+                    && value != "-"
+            }),
+            "expected empty-input completion to stay path-oriented, got {values:?}"
+        );
+    }
+
+    #[test]
+    fn dash_prefixed_input_completion_includes_options() {
+        let args = vec![OsString::from("kat"), OsString::from("-")];
+        let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
             .expect("failed to compute option completions");
-        let values = completions
+        let values = filter_completion_candidates(OsStr::new("-"), completions)
             .iter()
             .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
             .collect::<Vec<_>>();
 
+        assert!(
+            values.iter().any(|value| value == "-h") && values.iter().any(|value| value == "-V"),
+            "expected dash-prefixed completion to include options, got {values:?}"
+        );
         assert!(
             values.iter().all(|value| {
                 value != "--debug-ast"
                     && value != "--debug-semantics"
                     && value != "--debug-shell-semantics"
             }),
-            "expected debug flags to be excluded from completions, got {values:?}"
+            "expected debug flags to stay hidden from option completion, got {values:?}"
         );
     }
 
