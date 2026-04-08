@@ -21,6 +21,8 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
 
     Some(match head {
         "js" | "node" | "nodejs" | "bun" => "javascript",
+        "ts" | "mts" | "cts" => "typescript",
+        "tsx" | "typescriptreact" => "tsx",
         "golang" => "go",
         "powershell" | "pwsh" => "powershell",
         "cmd" | "bat" | "batch" => "batch",
@@ -43,6 +45,17 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         "gql" | "graphqls" => "graphql",
         "md" => "markdown",
         "yml" => "yaml",
+        "dotenv" | "env" => "dotenv",
+        "ini" => "ini",
+        "xml" => "xml",
+        "makefile" | "make" => "make",
+        "cmake" => "cmake",
+        "ninja" => "ninja",
+        "jinja" | "jinja2" | "j2" => "jinja",
+        "twig" => "twig",
+        "erb" | "rhtml" => "erb",
+        "vue" => "vue",
+        "svelte" | "svlt" => "svelte",
         other => other,
     })
 }

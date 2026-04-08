@@ -46,6 +46,14 @@ const RUST_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/rust/queries/highl
 const RUST_INJECTIONS_QUERY: &str = include_str!("../grammars/rust/queries/injections.scm");
 const PYTHON_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/python/queries/highlights.scm");
 const PYTHON_INJECTIONS_QUERY: &str = include_str!("../grammars/python/queries/injections.scm");
+const TYPESCRIPT_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/typescript/queries/highlights.scm");
+const TYPESCRIPT_INJECTIONS_QUERY: &str =
+    include_str!("../grammars/typescript/queries/injections.scm");
+const TYPESCRIPT_LOCALS_QUERY: &str = include_str!("../grammars/typescript/queries/locals.scm");
+const TSX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/tsx/queries/highlights.scm");
+const TSX_INJECTIONS_QUERY: &str = include_str!("../grammars/tsx/queries/injections.scm");
+const TSX_LOCALS_QUERY: &str = include_str!("../grammars/tsx/queries/locals.scm");
 const GO_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/go/queries/highlights.scm");
 const GO_INJECTIONS_QUERY: &str = include_str!("../grammars/go/queries/injections.scm");
 const GOMOD_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/gomod/queries/highlights.scm");
@@ -54,6 +62,10 @@ const GOSUM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/gosum/queries/hig
 const SQL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/sql/queries/highlights.scm");
 const HTML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/html/queries/highlights.scm");
 const HTML_INJECTIONS_QUERY: &str = include_str!("../grammars/html/queries/injections.scm");
+const VUE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/vue/queries/highlights.scm");
+const VUE_INJECTIONS_QUERY: &str = include_str!("../grammars/vue/queries/injections.scm");
+const SVELTE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/svelte/queries/highlights.scm");
+const SVELTE_INJECTIONS_QUERY: &str = include_str!("../grammars/svelte/queries/injections.scm");
 const CSS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/css/queries/highlights.scm");
 const JAVASCRIPT_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/javascript/queries/highlights.scm");
@@ -101,6 +113,18 @@ const MARKDOWN_INLINE_INJECTIONS_QUERY: &str =
     include_str!("../grammars/markdown_inline/queries/injections.scm");
 const JUST_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/just/queries/highlights.scm");
 const JUST_INJECTIONS_QUERY: &str = include_str!("../grammars/just/queries/injections.scm");
+const DOTENV_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dotenv/queries/highlights.scm");
+const INI_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ini/queries/highlights.scm");
+const XML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/xml/queries/highlights.scm");
+const MAKE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/make/queries/highlights.scm");
+const CMAKE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cmake/queries/highlights.scm");
+const NINJA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ninja/queries/highlights.scm");
+const JINJA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jinja/queries/highlights.scm");
+const JINJA_INJECTIONS_QUERY: &str = include_str!("../grammars/jinja/queries/injections.scm");
+const TWIG_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/twig/queries/highlights.scm");
+const TWIG_INJECTIONS_QUERY: &str = include_str!("../grammars/twig/queries/injections.scm");
+const ERB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/erb/queries/highlights.scm");
+const ERB_INJECTIONS_QUERY: &str = include_str!("../grammars/erb/queries/injections.scm");
 
 unsafe extern "C" {
     fn tree_sitter_json() -> *const ();
@@ -121,6 +145,8 @@ unsafe extern "C" {
     fn tree_sitter_gowork() -> *const ();
     fn tree_sitter_gosum() -> *const ();
     fn tree_sitter_html() -> *const ();
+    fn tree_sitter_vue() -> *const ();
+    fn tree_sitter_svelte() -> *const ();
     fn tree_sitter_css() -> *const ();
     fn tree_sitter_javascript() -> *const ();
     fn tree_sitter_graphql() -> *const ();
@@ -132,6 +158,10 @@ unsafe extern "C" {
     fn tree_sitter_markdown() -> *const ();
     fn tree_sitter_markdown_inline() -> *const ();
     fn tree_sitter_just() -> *const ();
+    fn tree_sitter_dotenv() -> *const ();
+    fn tree_sitter_ninja() -> *const ();
+    fn tree_sitter_jinja() -> *const ();
+    fn tree_sitter_twig() -> *const ();
 }
 
 const JSON_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_json) };
@@ -148,12 +178,16 @@ const YAML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_yaml
 const HCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_hcl) };
 const RUST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_rust) };
 const PYTHON_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_python) };
+const TYPESCRIPT_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TYPESCRIPT;
+const TSX_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TSX;
 const GO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_go) };
 const GOMOD_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gomod) };
 const GOWORK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gowork) };
 const GOSUM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_gosum) };
 const SQL_LANGUAGE: LanguageFn = tree_sitter_sequel::LANGUAGE;
 const HTML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_html) };
+const VUE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_vue) };
+const SVELTE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_svelte) };
 const CSS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_css) };
 const JAVASCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_javascript) };
 const GRAPHQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_graphql) };
@@ -167,6 +201,15 @@ const MARKDOWN_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_
 const MARKDOWN_INLINE_LANGUAGE: LanguageFn =
     unsafe { LanguageFn::from_raw(tree_sitter_markdown_inline) };
 const JUST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_just) };
+const DOTENV_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dotenv) };
+const INI_LANGUAGE: LanguageFn = tree_sitter_ini::LANGUAGE;
+const XML_LANGUAGE: LanguageFn = tree_sitter_xml::LANGUAGE_XML;
+const MAKE_LANGUAGE: LanguageFn = tree_sitter_make::LANGUAGE;
+const CMAKE_LANGUAGE: LanguageFn = tree_sitter_cmake::LANGUAGE;
+const NINJA_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_ninja) };
+const JINJA_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_jinja) };
+const TWIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_twig) };
+const ERB_LANGUAGE: LanguageFn = tree_sitter_embedded_template::LANGUAGE;
 
 struct StaticLanguageAsset {
     name: &'static str,
@@ -287,6 +330,20 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         locals_query: "",
     },
     StaticLanguageAsset {
+        name: "typescript",
+        language_fn: TYPESCRIPT_LANGUAGE,
+        highlights_query: TYPESCRIPT_HIGHLIGHTS_QUERY,
+        injections_query: TYPESCRIPT_INJECTIONS_QUERY,
+        locals_query: TYPESCRIPT_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "tsx",
+        language_fn: TSX_LANGUAGE,
+        highlights_query: TSX_HIGHLIGHTS_QUERY,
+        injections_query: TSX_INJECTIONS_QUERY,
+        locals_query: TSX_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
         name: "go",
         language_fn: GO_LANGUAGE,
         highlights_query: GO_HIGHLIGHTS_QUERY,
@@ -347,6 +404,20 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: HTML_LANGUAGE,
         highlights_query: HTML_HIGHLIGHTS_QUERY,
         injections_query: HTML_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "vue",
+        language_fn: VUE_LANGUAGE,
+        highlights_query: VUE_HIGHLIGHTS_QUERY,
+        injections_query: VUE_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "svelte",
+        language_fn: SVELTE_LANGUAGE,
+        highlights_query: SVELTE_HIGHLIGHTS_QUERY,
+        injections_query: SVELTE_INJECTIONS_QUERY,
         locals_query: "",
     },
     StaticLanguageAsset {
@@ -459,6 +530,69 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: JUST_LANGUAGE,
         highlights_query: JUST_HIGHLIGHTS_QUERY,
         injections_query: JUST_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "dotenv",
+        language_fn: DOTENV_LANGUAGE,
+        highlights_query: DOTENV_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "ini",
+        language_fn: INI_LANGUAGE,
+        highlights_query: INI_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "xml",
+        language_fn: XML_LANGUAGE,
+        highlights_query: XML_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "make",
+        language_fn: MAKE_LANGUAGE,
+        highlights_query: MAKE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "cmake",
+        language_fn: CMAKE_LANGUAGE,
+        highlights_query: CMAKE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "ninja",
+        language_fn: NINJA_LANGUAGE,
+        highlights_query: NINJA_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "jinja",
+        language_fn: JINJA_LANGUAGE,
+        highlights_query: JINJA_HIGHLIGHTS_QUERY,
+        injections_query: JINJA_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "twig",
+        language_fn: TWIG_LANGUAGE,
+        highlights_query: TWIG_HIGHLIGHTS_QUERY,
+        injections_query: TWIG_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "erb",
+        language_fn: ERB_LANGUAGE,
+        highlights_query: ERB_HIGHLIGHTS_QUERY,
+        injections_query: ERB_INJECTIONS_QUERY,
         locals_query: "",
     },
 ];

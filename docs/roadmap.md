@@ -55,7 +55,7 @@
 
 ## 延后但保留的方向
 
-- 前端文件支持仍保留需求记录，后续再统一决定 Vue / React 的文件范围、宿主模型和 detector 策略。
+- `Vue` / `Svelte` runtime 已落地；前端文件方向里当前仍保留需求记录的，主要是 React 生态剩余 detector 与更深入的宿主表达式模型。
 - 当需要跨多个相邻字符串做语义级拼接时，再评估 combined injection 与 decode 是否需要进一步统一建模。
 - 当前 nested region tint 的终端背景色查询仍通过 `terminal-colorsaurus` 临时承接；长期应迁移到 kat 自己的 terminal API 层，理想方向是接到支持颜色查询的 `termwiz` 方案上，避免双 terminal I/O 栈并存。
 - 如果后续要继续尝试更弱侵入的边界装饰，例如 rail、侧边界或其它非背景式对比，也应等统一 terminal 抽象稳定后再评估，而不是继续在现有查询路径上叠加临时实现。

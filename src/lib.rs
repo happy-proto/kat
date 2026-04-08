@@ -34,8 +34,11 @@ use crate::theme::{Theme, TokenStyle};
 enum SupportedLanguage {
     Bash,
     Batch,
+    Cmake,
     Css,
     Dockerfile,
+    Dotenv,
+    Erb,
     Fish,
     GitConfig,
     Go,
@@ -46,17 +49,27 @@ enum SupportedLanguage {
     Hcl,
     Html,
     Ignore,
+    Ini,
+    Jinja,
     JavaScript,
     Just,
     Json,
+    Make,
     Markdown,
+    Ninja,
     Proto,
     Powershell,
     Python,
     Sql,
     Rust,
+    Svelte,
     Textproto,
     Toml,
+    Tsx,
+    TypeScript,
+    Twig,
+    Vue,
+    Xml,
     Yaml,
     Zsh,
 }
@@ -85,6 +98,8 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "hcl" => SupportedLanguage::Hcl,
         "rust" => SupportedLanguage::Rust,
         "python" => SupportedLanguage::Python,
+        "typescript" => SupportedLanguage::TypeScript,
+        "tsx" => SupportedLanguage::Tsx,
         "go" => SupportedLanguage::Go,
         "gomod" => SupportedLanguage::GoMod,
         "gowork" => SupportedLanguage::GoWork,
@@ -93,6 +108,8 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "sql" => SupportedLanguage::Sql,
         "textproto" => SupportedLanguage::Textproto,
         "html" => SupportedLanguage::Html,
+        "vue" => SupportedLanguage::Vue,
+        "svelte" => SupportedLanguage::Svelte,
         "ignore" => SupportedLanguage::Ignore,
         "css" => SupportedLanguage::Css,
         "javascript" => SupportedLanguage::JavaScript,
@@ -100,6 +117,15 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "proto" => SupportedLanguage::Proto,
         "powershell" => SupportedLanguage::Powershell,
         "just" => SupportedLanguage::Just,
+        "dotenv" => SupportedLanguage::Dotenv,
+        "ini" => SupportedLanguage::Ini,
+        "xml" => SupportedLanguage::Xml,
+        "make" => SupportedLanguage::Make,
+        "cmake" => SupportedLanguage::Cmake,
+        "ninja" => SupportedLanguage::Ninja,
+        "jinja" => SupportedLanguage::Jinja,
+        "twig" => SupportedLanguage::Twig,
+        "erb" => SupportedLanguage::Erb,
         other => panic!("unsupported test language mapping for {other}"),
     })
 }
@@ -171,6 +197,14 @@ pub fn highlight_python(source: &str) -> Result<String> {
     highlight_named_language("python", source, &Theme::detect())
 }
 
+pub fn highlight_typescript(source: &str) -> Result<String> {
+    highlight_named_language("typescript", source, &Theme::detect())
+}
+
+pub fn highlight_tsx(source: &str) -> Result<String> {
+    highlight_named_language("tsx", source, &Theme::detect())
+}
+
 pub fn highlight_go(source: &str) -> Result<String> {
     highlight_named_language("go", source, &Theme::detect())
 }
@@ -195,6 +229,14 @@ pub fn highlight_html(source: &str) -> Result<String> {
     highlight_named_language("html", source, &Theme::detect())
 }
 
+pub fn highlight_vue(source: &str) -> Result<String> {
+    highlight_named_language("vue", source, &Theme::detect())
+}
+
+pub fn highlight_svelte(source: &str) -> Result<String> {
+    highlight_named_language("svelte", source, &Theme::detect())
+}
+
 pub fn highlight_css(source: &str) -> Result<String> {
     highlight_named_language("css", source, &Theme::detect())
 }
@@ -217,6 +259,42 @@ pub fn highlight_javascript(source: &str) -> Result<String> {
 
 pub fn highlight_markdown(source: &str) -> Result<String> {
     highlight_named_language("markdown", source, &Theme::detect())
+}
+
+pub fn highlight_dotenv(source: &str) -> Result<String> {
+    highlight_named_language("dotenv", source, &Theme::detect())
+}
+
+pub fn highlight_ini(source: &str) -> Result<String> {
+    highlight_named_language("ini", source, &Theme::detect())
+}
+
+pub fn highlight_xml(source: &str) -> Result<String> {
+    highlight_named_language("xml", source, &Theme::detect())
+}
+
+pub fn highlight_make(source: &str) -> Result<String> {
+    highlight_named_language("make", source, &Theme::detect())
+}
+
+pub fn highlight_cmake(source: &str) -> Result<String> {
+    highlight_named_language("cmake", source, &Theme::detect())
+}
+
+pub fn highlight_ninja(source: &str) -> Result<String> {
+    highlight_named_language("ninja", source, &Theme::detect())
+}
+
+pub fn highlight_jinja(source: &str) -> Result<String> {
+    highlight_named_language("jinja", source, &Theme::detect())
+}
+
+pub fn highlight_twig(source: &str) -> Result<String> {
+    highlight_named_language("twig", source, &Theme::detect())
+}
+
+pub fn highlight_erb(source: &str) -> Result<String> {
+    highlight_named_language("erb", source, &Theme::detect())
 }
 
 pub fn debug_named_language_tree(language_name: &str, source: &str) -> Result<String> {
@@ -273,6 +351,8 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
         "hcl" => DocumentKind::plain("hcl"),
         "rust" => DocumentKind::plain("rust"),
         "python" => DocumentKind::plain("python"),
+        "typescript" => DocumentKind::plain("typescript"),
+        "tsx" => DocumentKind::plain("tsx"),
         "go" => DocumentKind::plain("go"),
         "gomod" => DocumentKind::plain("gomod"),
         "gowork" => DocumentKind::plain("gowork"),
@@ -284,6 +364,8 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
         "sql_sqlite" => DocumentKind::plain("sql_sqlite"),
         "textproto" => DocumentKind::plain("textproto"),
         "html" => DocumentKind::plain("html"),
+        "vue" => DocumentKind::plain("vue"),
+        "svelte" => DocumentKind::plain("svelte"),
         "css" => DocumentKind::plain("css"),
         "javascript" => DocumentKind::plain("javascript"),
         "graphql" => DocumentKind::plain("graphql"),
@@ -298,6 +380,15 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
         "markdown" => DocumentKind::plain("markdown"),
         "markdown_inline" => DocumentKind::plain("markdown_inline"),
         "just" => DocumentKind::plain("just"),
+        "dotenv" => DocumentKind::plain("dotenv"),
+        "ini" => DocumentKind::plain("ini"),
+        "xml" => DocumentKind::plain("xml"),
+        "make" => DocumentKind::plain("make"),
+        "cmake" => DocumentKind::plain("cmake"),
+        "ninja" => DocumentKind::plain("ninja"),
+        "jinja" => DocumentKind::plain("jinja"),
+        "twig" => DocumentKind::plain("twig"),
+        "erb" => DocumentKind::plain("erb"),
         other => panic!("unsupported runtime name {other}"),
     }
 }
@@ -501,6 +592,16 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(DocumentKind::plain("python"));
     }
 
+    let typescript = grammar("typescript");
+    if matches_path(typescript, source_path) {
+        return Some(DocumentKind::plain("typescript"));
+    }
+
+    let tsx = grammar("tsx");
+    if matches_path(tsx, source_path) {
+        return Some(DocumentKind::plain("tsx"));
+    }
+
     let go = grammar("go");
     if matches_path(go, source_path) {
         return Some(DocumentKind::plain("go"));
@@ -529,6 +630,16 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     let html = grammar("html");
     if matches_path(html, source_path) {
         return Some(DocumentKind::plain("html"));
+    }
+
+    let vue = grammar("vue");
+    if matches_path(vue, source_path) {
+        return Some(DocumentKind::plain("vue"));
+    }
+
+    let svelte = grammar("svelte");
+    if matches_path(svelte, source_path) {
+        return Some(DocumentKind::plain("svelte"));
     }
 
     let css = grammar("css");
@@ -579,6 +690,51 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     let markdown = grammar("markdown");
     if matches_path(markdown, source_path) {
         return Some(DocumentKind::plain("markdown"));
+    }
+
+    let dotenv = grammar("dotenv");
+    if matches_path(dotenv, source_path) {
+        return Some(DocumentKind::plain("dotenv"));
+    }
+
+    let ini = grammar("ini");
+    if matches_path(ini, source_path) {
+        return Some(DocumentKind::plain("ini"));
+    }
+
+    let xml = grammar("xml");
+    if matches_path(xml, source_path) {
+        return Some(DocumentKind::plain("xml"));
+    }
+
+    let make = grammar("make");
+    if matches_path(make, source_path) {
+        return Some(DocumentKind::plain("make"));
+    }
+
+    let cmake = grammar("cmake");
+    if matches_path(cmake, source_path) {
+        return Some(DocumentKind::plain("cmake"));
+    }
+
+    let ninja = grammar("ninja");
+    if matches_path(ninja, source_path) {
+        return Some(DocumentKind::plain("ninja"));
+    }
+
+    let jinja = grammar("jinja");
+    if matches_path(jinja, source_path) {
+        return Some(DocumentKind::plain("jinja"));
+    }
+
+    let twig = grammar("twig");
+    if matches_path(twig, source_path) {
+        return Some(DocumentKind::plain("twig"));
+    }
+
+    let erb = grammar("erb");
+    if matches_path(erb, source_path) {
+        return Some(DocumentKind::plain("erb"));
     }
 
     let json = grammar("json");
@@ -2017,6 +2173,22 @@ mod tests {
             expected_fragments: &["CREATE", "AUTOINCREMENT", "WITHOUT", "re", "compile"],
         },
         FixtureCase {
+            relative_path: "typescript/rich.ts",
+            expect_highlight: true,
+            expected_fragments: &[
+                "interface",
+                "ThemePreview",
+                "Renderer",
+                "constructor",
+                "render",
+            ],
+        },
+        FixtureCase {
+            relative_path: "tsx/component.tsx",
+            expect_highlight: true,
+            expected_fragments: &["CardProps", "PreviewCard", "section", "className", "active"],
+        },
+        FixtureCase {
             relative_path: "go/rich.go",
             expect_highlight: true,
             expected_fragments: &[
@@ -2089,6 +2261,16 @@ mod tests {
             relative_path: "html/rich.html",
             expect_highlight: true,
             expected_fragments: &["Tom", "&amp;", "theme-card", "accent", "Dracula"],
+        },
+        FixtureCase {
+            relative_path: "vue/component.vue",
+            expect_highlight: true,
+            expected_fragments: &["template", "section", "Props", "title", "color"],
+        },
+        FixtureCase {
+            relative_path: "svelte/component.svelte",
+            expect_highlight: true,
+            expected_fragments: &["export", "title", "if", "panel", "color"],
         },
         FixtureCase {
             relative_path: "css/theme.css",
@@ -2265,6 +2447,57 @@ mod tests {
             relative_path: "plain/notes.txt",
             expect_highlight: false,
             expected_fragments: &["plain text"],
+        },
+        FixtureCase {
+            relative_path: "dotenv/.env",
+            expect_highlight: true,
+            expected_fragments: &[
+                "APP_NAME",
+                "\"kat\"",
+                "ENABLED",
+                "DATABASE_URL",
+                "# comment",
+            ],
+        },
+        FixtureCase {
+            relative_path: "ini/.editorconfig",
+            expect_highlight: true,
+            expected_fragments: &["root", "*.rs", "indent_style", "indent_size"],
+        },
+        FixtureCase {
+            relative_path: "xml/layout.xml",
+            expect_highlight: true,
+            expected_fragments: &["layout", "theme", "dracula", "panel", "Preview"],
+        },
+        FixtureCase {
+            relative_path: "make/Makefile",
+            expect_highlight: true,
+            expected_fragments: &["build", "cargo", "install", "/usr/local/bin/kat"],
+        },
+        FixtureCase {
+            relative_path: "cmake/CMakeLists.txt",
+            expect_highlight: true,
+            expected_fragments: &["cmake_minimum_required", "project", "kat", "add_executable"],
+        },
+        FixtureCase {
+            relative_path: "ninja/build.ninja",
+            expect_highlight: true,
+            expected_fragments: &["rule", "command", "build", "main.o", "default"],
+        },
+        FixtureCase {
+            relative_path: "jinja/page.html.jinja",
+            expect_highlight: true,
+            expected_fragments: &["section", "{{", "title", "{%", "endif"],
+        },
+        FixtureCase {
+            relative_path: "twig/page.html.twig",
+            expect_highlight: true,
+            expected_fragments: &["section", "{{", "title", "{%", "endif"],
+        },
+        FixtureCase {
+            relative_path: "erb/page.html.erb",
+            expect_highlight: true,
+            expected_fragments: &["section", "<%=", "title", "<%", "Preview"],
         },
     ];
 
@@ -2491,6 +2724,20 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("main.tf")),
+                "resource \"null_resource\" \"preview\" {}\n"
+            ),
+            Some(SupportedLanguage::Hcl)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("terraform.tfvars")),
+                "region = \"us-east-1\"\n"
+            ),
+            Some(SupportedLanguage::Hcl)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("scripts/profile.ps1")),
                 "Write-Host \"kat\"\n"
             ),
@@ -2537,6 +2784,125 @@ mod tests {
                 "name: \"Dracula\"\nenabled: true\n",
             ),
             Some(SupportedLanguage::Textproto)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("src/theme.ts")),
+                "export interface Theme { title: string }\n",
+            ),
+            Some(SupportedLanguage::TypeScript)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("src/component.tsx")),
+                "export const View = () => <section />;\n",
+            ),
+            Some(SupportedLanguage::Tsx)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("src/App.vue")),
+                "<template><section /></template>\n",
+            ),
+            Some(SupportedLanguage::Vue)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("src/App.svelte")),
+                "<script>let title = 'kat';</script>\n",
+            ),
+            Some(SupportedLanguage::Svelte)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".env")), "APP=kat\n"),
+            Some(SupportedLanguage::Dotenv)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".env.local")), "APP=kat\n"),
+            Some(SupportedLanguage::Dotenv)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("env.example")), "APP=kat\n"),
+            Some(SupportedLanguage::Dotenv)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".editorconfig")), "root = true\n"),
+            Some(SupportedLanguage::Ini)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("layout.xml")), "<layout />\n"),
+            Some(SupportedLanguage::Xml)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("Makefile")), "build:\n\tcargo test\n"),
+            Some(SupportedLanguage::Make)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("CMakeLists.txt")),
+                "cmake_minimum_required(VERSION 3.28)\n",
+            ),
+            Some(SupportedLanguage::Cmake)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("build.ninja")), "build a: phony\n"),
+            Some(SupportedLanguage::Ninja)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/page.html.j2")),
+                "<section>{{ title }}</section>\n",
+            ),
+            Some(SupportedLanguage::Jinja)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/page.html.twig")),
+                "<section>{{ title }}</section>\n",
+            ),
+            Some(SupportedLanguage::Twig)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/page.html.erb")),
+                "<section><%= title %></section>\n",
+            ),
+            Some(SupportedLanguage::Erb)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("notebook.ipynb")), "{\n  \"cells\": []\n}\n"),
+            Some(SupportedLanguage::Json)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("events.jsonl")), "{\"kind\":\"theme\"}\n"),
+            Some(SupportedLanguage::Json)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("flake.lock")), "{\n  \"nodes\": {}\n}\n"),
+            Some(SupportedLanguage::Json)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("CITATION.cff")), "cff-version: 1.2.0\n"),
+            Some(SupportedLanguage::Yaml)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".clang-format")), "BasedOnStyle: LLVM\n"),
+            Some(SupportedLanguage::Yaml)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("README.mkd")), "# kat\n"),
+            Some(SupportedLanguage::Markdown)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("schema.ddl")), "CREATE TABLE themes ();"),
+            Some(SupportedLanguage::Sql)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("seed.dml")),
+                "INSERT INTO themes VALUES (1);"
+            ),
+            Some(SupportedLanguage::Sql)
         ));
     }
 
