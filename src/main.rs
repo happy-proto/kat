@@ -93,10 +93,11 @@ fn complete_env() -> Option<ExitCode> {
     Some(ExitCode::SUCCESS)
 }
 
-fn env_completer(
-    name: &std::path::Path,
-) -> clap::error::Result<Box<dyn EnvCompleter>> {
-    let name = name.file_stem().unwrap_or(name.as_os_str()).to_string_lossy();
+fn env_completer(name: &std::path::Path) -> clap::error::Result<Box<dyn EnvCompleter>> {
+    let name = name
+        .file_stem()
+        .unwrap_or(name.as_os_str())
+        .to_string_lossy();
     let shell: Box<dyn EnvCompleter> = if Bash.is(&name) {
         Box::new(Bash)
     } else if Elvish.is(&name) {
@@ -718,7 +719,9 @@ mod tests {
         let message = format_cli_error(&error);
 
         assert!(
-            message.contains("con':") && message.contains("No such file or directory (os error 2)"),
+            message.contains("con':")
+                && message.contains("No such file or directory")
+                && message.contains("(os error 2)"),
             "unexpected missing-file cli error: {message}"
         );
     }
