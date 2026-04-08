@@ -624,4 +624,51 @@ Upstream projects:
   License: MIT
   Notes: repository-local copies of the upstream embedded-template queries for ERB. Parser code is linked from the Rust crate `tree-sitter-embedded-template`.
 
+- `grammars/c/queries/highlights.scm`
+  Source: [tree-sitter/tree-sitter-c](https://github.com/tree-sitter/tree-sitter-c)
+  Revision: crate release `0.24.1`
+  License: MIT
+  Notes: repository-local copy of the upstream C highlights query. Parser code is linked from the Rust crate `tree-sitter-c`.
+
+- `grammars/cpp/queries/highlights.scm`
+- `grammars/cpp/queries/injections.scm`
+  Source: [tree-sitter/tree-sitter-cpp](https://github.com/tree-sitter/tree-sitter-cpp)
+  Revision: crate release `0.23.4`
+  License: MIT
+  Notes: repository-local copies of the upstream C++-specific highlights and raw-string injection queries. The `cpp` runtime combines the vendored C query with these C++ additions while linking parser code from the Rust crate `tree-sitter-cpp`.
+
+- `grammars/java/queries/highlights.scm`
+  Source: [tree-sitter/tree-sitter-java](https://github.com/tree-sitter/tree-sitter-java)
+  Revision: crate release `0.23.5`
+  License: MIT
+  Notes: repository-local copy of the upstream Java highlights query. Parser code is linked from the Rust crate `tree-sitter-java`.
+
+- `grammars/kotlin/queries/highlights.scm`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local Kotlin highlights query written for kat because the upstream grammar crate currently does not ship query assets. Parser code is linked from the Rust crate `tree-sitter-kotlin-ng`.
+
+- `grammars/ruby/queries/highlights.scm`
+- `grammars/ruby/queries/locals.scm`
+  Source: [tree-sitter/tree-sitter-ruby](https://github.com/tree-sitter/tree-sitter-ruby)
+  Revision: crate release `0.23.1`
+  License: MIT
+  Notes: repository-local copies of the upstream Ruby highlights and locals queries. Parser code is linked from the Rust crate `tree-sitter-ruby`.
+
+- `grammars/lua/queries/highlights.scm`
+- `grammars/lua/queries/injections.scm`
+- `grammars/lua/queries/locals.scm`
+  Source: [tree-sitter-grammars/tree-sitter-lua](https://github.com/tree-sitter-grammars/tree-sitter-lua)
+  Revision: crate release `0.5.0`
+  License: MIT
+  Notes: repository-local copies of the upstream Lua highlights, injections and locals queries. Parser code is linked from the Rust crate `tree-sitter-lua`.
+
+- `grammars/nix/queries/highlights.scm`
+- `grammars/nix/queries/injections.scm`
+  Source: [nix-community/tree-sitter-nix](https://github.com/nix-community/tree-sitter-nix)
+  Revision: crate release `0.3.0`
+  License: MIT
+  Notes: repository-local copies of the upstream Nix highlights and injections queries. Parser code is linked from the Rust crate `tree-sitter-nix`.
+
 These files may be modified locally as needed for integration into `kat`.

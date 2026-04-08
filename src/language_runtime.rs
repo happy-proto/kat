@@ -46,6 +46,15 @@ const RUST_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/rust/queries/highl
 const RUST_INJECTIONS_QUERY: &str = include_str!("../grammars/rust/queries/injections.scm");
 const PYTHON_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/python/queries/highlights.scm");
 const PYTHON_INJECTIONS_QUERY: &str = include_str!("../grammars/python/queries/injections.scm");
+const C_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/c/queries/highlights.scm");
+const CPP_HIGHLIGHTS_QUERY: &str = concat!(
+    include_str!("../grammars/c/queries/highlights.scm"),
+    "\n",
+    include_str!("../grammars/cpp/queries/highlights.scm")
+);
+const CPP_INJECTIONS_QUERY: &str = include_str!("../grammars/cpp/queries/injections.scm");
+const JAVA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/java/queries/highlights.scm");
+const KOTLIN_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/kotlin/queries/highlights.scm");
 const TYPESCRIPT_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/typescript/queries/highlights.scm");
 const TYPESCRIPT_INJECTIONS_QUERY: &str =
@@ -113,6 +122,13 @@ const MARKDOWN_INLINE_INJECTIONS_QUERY: &str =
     include_str!("../grammars/markdown_inline/queries/injections.scm");
 const JUST_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/just/queries/highlights.scm");
 const JUST_INJECTIONS_QUERY: &str = include_str!("../grammars/just/queries/injections.scm");
+const RUBY_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ruby/queries/highlights.scm");
+const RUBY_LOCALS_QUERY: &str = include_str!("../grammars/ruby/queries/locals.scm");
+const LUA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/lua/queries/highlights.scm");
+const LUA_INJECTIONS_QUERY: &str = include_str!("../grammars/lua/queries/injections.scm");
+const LUA_LOCALS_QUERY: &str = include_str!("../grammars/lua/queries/locals.scm");
+const NIX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/nix/queries/highlights.scm");
+const NIX_INJECTIONS_QUERY: &str = include_str!("../grammars/nix/queries/injections.scm");
 const DOTENV_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dotenv/queries/highlights.scm");
 const INI_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ini/queries/highlights.scm");
 const XML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/xml/queries/highlights.scm");
@@ -178,6 +194,10 @@ const YAML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_yaml
 const HCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_hcl) };
 const RUST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_rust) };
 const PYTHON_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_python) };
+const C_LANGUAGE: LanguageFn = tree_sitter_c::LANGUAGE;
+const CPP_LANGUAGE: LanguageFn = tree_sitter_cpp::LANGUAGE;
+const JAVA_LANGUAGE: LanguageFn = tree_sitter_java::LANGUAGE;
+const KOTLIN_LANGUAGE: LanguageFn = tree_sitter_kotlin_ng::LANGUAGE;
 const TYPESCRIPT_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TYPESCRIPT;
 const TSX_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TSX;
 const GO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_go) };
@@ -201,6 +221,9 @@ const MARKDOWN_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_
 const MARKDOWN_INLINE_LANGUAGE: LanguageFn =
     unsafe { LanguageFn::from_raw(tree_sitter_markdown_inline) };
 const JUST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_just) };
+const RUBY_LANGUAGE: LanguageFn = tree_sitter_ruby::LANGUAGE;
+const LUA_LANGUAGE: LanguageFn = tree_sitter_lua::LANGUAGE;
+const NIX_LANGUAGE: LanguageFn = tree_sitter_nix::LANGUAGE;
 const DOTENV_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dotenv) };
 const INI_LANGUAGE: LanguageFn = tree_sitter_ini::LANGUAGE;
 const XML_LANGUAGE: LanguageFn = tree_sitter_xml::LANGUAGE_XML;
@@ -327,6 +350,34 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: PYTHON_LANGUAGE,
         highlights_query: PYTHON_HIGHLIGHTS_QUERY,
         injections_query: PYTHON_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "c",
+        language_fn: C_LANGUAGE,
+        highlights_query: C_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "cpp",
+        language_fn: CPP_LANGUAGE,
+        highlights_query: CPP_HIGHLIGHTS_QUERY,
+        injections_query: CPP_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "java",
+        language_fn: JAVA_LANGUAGE,
+        highlights_query: JAVA_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "kotlin",
+        language_fn: KOTLIN_LANGUAGE,
+        highlights_query: KOTLIN_HIGHLIGHTS_QUERY,
+        injections_query: "",
         locals_query: "",
     },
     StaticLanguageAsset {
@@ -530,6 +581,27 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: JUST_LANGUAGE,
         highlights_query: JUST_HIGHLIGHTS_QUERY,
         injections_query: JUST_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "ruby",
+        language_fn: RUBY_LANGUAGE,
+        highlights_query: RUBY_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: RUBY_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "lua",
+        language_fn: LUA_LANGUAGE,
+        highlights_query: LUA_HIGHLIGHTS_QUERY,
+        injections_query: LUA_INJECTIONS_QUERY,
+        locals_query: LUA_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "nix",
+        language_fn: NIX_LANGUAGE,
+        highlights_query: NIX_HIGHLIGHTS_QUERY,
+        injections_query: NIX_INJECTIONS_QUERY,
         locals_query: "",
     },
     StaticLanguageAsset {

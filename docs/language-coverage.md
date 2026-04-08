@@ -163,7 +163,7 @@
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB`，以及 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
+- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
 - 下表从这一轮之后的真实剩余缺口继续维护；不再保留已经补齐项的旧记录。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
@@ -178,9 +178,7 @@
 - `Authorized Keys`：`authorized_keys`、`pub`、`authorized_keys2`
 - `AWK`：`awk`
 - `BibTeX`：`bib`
-- `C`：`c`
 - `C#`：`cs`、`csx`
-- `C++`：`cpp`、`cc`、`cp`、`cxx`、`c++`、`h`、`hh`、`hpp`、`hxx`、`h++`、`inl`、`ipp`、`*.h`
 - `Cabal`：`cabal`
 - `CFML`：`cfml`、`cfm`、`cfc`
 - `Clojure`：`clj`、`cljc`、`cljs`、`edn`
@@ -230,7 +228,6 @@
 - `HTML (Twig)`：`twig`、`html.twig`
 - `HTTP Request and Response`：`http`
 - `Idris`：`idr`
-- `Java`：`java`、`bsh`
 - `Java Properties`：`properties`
 - `Java Server Page (JSP)`：`jsp`
 - `JavaScript`：`htc`
@@ -239,7 +236,6 @@
 - `jsonnet`：`jsonnet`、`libsonnet`、`libjsonnet`
 - `Julia`：`jl`
 - `Known Hosts`：`known_hosts`、`known_hosts.old`
-- `Kotlin`：`kt`、`kts`
 - `LaTeX`：`tex`、`ltx`
 - `Lean 4`：`lean`
 - `Less`：`less`、`css.less`
@@ -248,7 +244,6 @@
 - `LiveScript`：`ls`、`Slakefile`、`ls.erb`
 - `LLVM`：`ll`
 - `log`：`log`
-- `Lua`：`lua`、`*.nse`
 - `Manpage`：`man`
 - `MATLAB`：`matlab`
 - `MediaWiki`：`mediawiki`、`wikipedia`、`wiki`
@@ -256,7 +251,6 @@
 - `NAnt Build File`：`build`
 - `nginx`：`conf.erb`、`nginx.conf`、`mime.types`、`fastcgi_params`、`scgi_params`、`uwsgi_params`、`/etc/nginx/**/*.conf`、`/etc/nginx/sites-*/**/*`
 - `Nim`：`nim`、`nims`、`nimble`
-- `Nix`：`nix`
 - `NSIS`：`nsi`、`nsh`、`bnsi`、`bnsh`、`nsdinc`
 - `Objective-C`：`m`
 - `Objective-C++`：`mm`
@@ -282,7 +276,6 @@
 - `resolv`：`resolv.conf`
 - `reStructuredText`：`rst`、`rest`
 - `Robot Framework`：`robot`、`resource`
-- `Ruby`：`rb`、`Appfile`、`Appraisals`、`Berksfile`、`Brewfile`、`capfile`、`cgi`、`Cheffile`、`config.ru`、`Deliverfile`、`Fastfile`、`fcgi`、`Gemfile`、`gemspec`、`Guardfile`、`irbrc`、`jbuilder`、`Podfile`、`podspec`、`prawn`、`rabl`、`rake`、`Rakefile`、`Rantfile`、`rbx`、`rjs`、`ruby.rail`、`Scanfile`、`simplecov`、`Snapfile`、`thor`、`Thorfile`、`Vagrantfile`
 - `Ruby Haml`：`haml`
 - `Ruby on Rails`：`rxml`、`builder`
 - `Ruby Slim`：`slim`、`skim`

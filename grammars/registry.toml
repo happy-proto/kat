@@ -790,6 +790,105 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "c"
+library_name = "tree-sitter-c"
+parser_source = "crate"
+extensions = ["c"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "function",
+  "function.special",
+  "keyword",
+  "label",
+  "number",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "cpp"
+library_name = "tree-sitter-cpp"
+parser_source = "crate"
+extensions = ["cpp", "cc", "cp", "cxx", "c++", "h", "hh", "hpp", "hxx", "h++", "inl", "ipp"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "function",
+  "function.special",
+  "keyword",
+  "label",
+  "number",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "java"
+library_name = "tree-sitter-java"
+parser_source = "crate"
+extensions = ["java", "bsh"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "function.builtin",
+  "function.method",
+  "keyword",
+  "number",
+  "operator",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "kotlin"
+library_name = "tree-sitter-kotlin"
+parser_source = "crate"
+extensions = ["kt", "kts"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "function",
+  "keyword",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
 name = "typescript"
 library_name = "tree-sitter-typescript"
 parser_source = "crate"
@@ -927,6 +1026,106 @@ highlight_names = [
   "operator",
   "string",
   "variable",
+]
+
+[[grammar]]
+name = "ruby"
+library_name = "tree-sitter-ruby"
+parser_source = "crate"
+extensions = ["rb", "cgi", "fcgi", "gemspec", "jbuilder", "podspec", "prawn", "rabl", "rake", "rbx", "rjs", "ruby.rail", "thor"]
+filenames = ["Appfile", "Appraisals", "Berksfile", "Brewfile", "capfile", "Cheffile", "config.ru", "Deliverfile", "Fastfile", "Gemfile", "Guardfile", "irbrc", "Podfile", "Rakefile", "Rantfile", "Scanfile", "simplecov", "Snapfile", "Thorfile", "Vagrantfile"]
+shebang_substrings = ["ruby"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "embedded",
+  "function.method",
+  "function.method.builtin",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special.regex",
+  "string.special.symbol",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "lua"
+library_name = "tree-sitter-lua"
+parser_source = "crate"
+extensions = ["lua", "nse"]
+filenames = []
+shebang_substrings = ["lua"]
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "function",
+  "function.builtin",
+  "function.call",
+  "function.method",
+  "keyword",
+  "keyword.control",
+  "keyword.directive",
+  "keyword.function",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "label",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "nix"
+library_name = "tree-sitter-nix"
+parser_source = "crate"
+extensions = ["nix"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "embedded",
+  "function",
+  "function.builtin",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special.path",
+  "string.special.uri",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
 ]
 
 [[grammar]]
