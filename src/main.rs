@@ -9,9 +9,9 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
-use clap_complete::CompleteEnv;
+use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, ValueEnum};
 use clap_complete::engine::{ArgValueCompleter, CompletionCandidate};
+use clap_complete::env::{Bash, Elvish, EnvCompleter, Fish, Powershell, Zsh};
 use miette::{Report, miette};
 use shadow_rs::shadow;
 use terminal_size::{Height, terminal_size};
@@ -21,7 +21,10 @@ const DEFAULT_TERMINAL_ROWS: usize = 24;
 shadow!(build);
 
 fn main() -> ExitCode {
-    CompleteEnv::with_factory(completion_command).complete();
+    if let Some(exit_code) = complete_env() {
+        return exit_code;
+    }
+
     match try_main() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
@@ -36,6 +39,81 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn complete_env() -> Option<ExitCode> {
+    let shell_name = std::env::var_os("COMPLETE")?;
+    if shell_name.is_empty() || shell_name == "0" {
+        return None;
+    }
+
+    let shell = match env_completer(std::path::Path::new(&shell_name)) {
+        Ok(shell) => shell,
+        Err(error) => {
+            error.print().expect("failed to print completion error");
+            return Some(ExitCode::from(error.exit_code() as u8));
+        }
+    };
+
+    // SAFETY: mirrors clap_complete's initialization behavior and runs before app logic.
+    unsafe {
+        std::env::remove_var("COMPLETE");
+    }
+
+    let mut argv = std::env::args_os().collect::<Vec<_>>();
+    let completer = argv.remove(0);
+    let escape_index = argv
+        .iter()
+        .position(|arg| *arg == "--")
+        .map(|index| index + 1)
+        .unwrap_or(argv.len());
+    argv.drain(0..escape_index);
+
+    let current_dir = std::env::current_dir().ok();
+    let mut buf = Vec::new();
+    if argv.is_empty() {
+        let cmd = completion_command();
+        let name = cmd.get_name().to_owned();
+        let bin = cmd.get_bin_name().unwrap_or(&name).to_owned();
+        let completer = completer.to_string_lossy().into_owned();
+        shell
+            .write_registration("COMPLETE", &name, &bin, &completer, &mut buf)
+            .expect("failed to write completion registration");
+    } else {
+        let mut cmd = completion_command_for(&argv);
+        cmd.build();
+        shell
+            .write_complete(&mut cmd, argv, current_dir.as_deref(), &mut buf)
+            .expect("failed to write dynamic completions");
+    }
+    std::io::stdout()
+        .write_all(&buf)
+        .expect("failed to write completion output");
+
+    Some(ExitCode::SUCCESS)
+}
+
+fn env_completer(
+    name: &std::path::Path,
+) -> clap::error::Result<Box<dyn EnvCompleter>> {
+    let name = name.file_stem().unwrap_or(name.as_os_str()).to_string_lossy();
+    let shell: Box<dyn EnvCompleter> = if Bash.is(&name) {
+        Box::new(Bash)
+    } else if Elvish.is(&name) {
+        Box::new(Elvish)
+    } else if Fish.is(&name) {
+        Box::new(Fish)
+    } else if Powershell.is(&name) {
+        Box::new(Powershell)
+    } else if Zsh.is(&name) {
+        Box::new(Zsh)
+    } else {
+        return Err(clap::Error::raw(
+            clap::error::ErrorKind::InvalidValue,
+            format!("unsupported completion shell `{name}`"),
+        ));
+    };
+    Ok(shell)
 }
 
 fn try_main() -> Result<()> {
@@ -147,6 +225,7 @@ enum PagingMode {
 #[derive(Debug, Parser)]
 #[command(
     name = "kat",
+    disable_help_flag = true,
     disable_help_subcommand = true,
     disable_version_flag = true
 )]
@@ -157,6 +236,8 @@ struct CliArgs {
     debug_semantics: bool,
     #[arg(long = "debug-shell-semantics", group = "mode")]
     debug_shell_semantics: bool,
+    #[arg(long = "help", short = 'h', action = ArgAction::Help)]
+    help: Option<bool>,
     #[arg(long = "version", short = 'V', group = "mode")]
     version: bool,
     #[arg(long)]
@@ -188,7 +269,7 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
     if current_token.starts_with('-') {
         command = command.mut_arg("paths", |arg| arg.hide(true));
     } else {
-        for arg_id in ["version", "language", "paging"] {
+        for arg_id in ["help", "version", "language", "paging"] {
             command = command.mut_arg(arg_id, |arg| arg.hide(true));
         }
     }
@@ -228,26 +309,6 @@ fn complete_input_paths(current: &OsStr) -> Vec<CompletionCandidate> {
 
     candidates.sort();
     candidates
-}
-
-fn filter_completion_candidates(
-    current_token: &OsStr,
-    candidates: Vec<CompletionCandidate>,
-) -> Vec<CompletionCandidate> {
-    let Some(current_token) = current_token.to_str() else {
-        return candidates;
-    };
-    if current_token.starts_with('-') {
-        return candidates;
-    }
-
-    candidates
-        .into_iter()
-        .filter(|candidate| {
-            let value = candidate.get_value().to_string_lossy();
-            !value.starts_with('-')
-        })
-        .collect()
 }
 
 fn resolve_completion_root(current: &OsStr) -> Option<(PathBuf, PathBuf, OsString)> {
@@ -629,9 +690,8 @@ mod tests {
 
     use super::{
         CliOptions, OutputMode, PagerCommand, PagingMode, cli_command, completion_command_for,
-        filter_completion_candidates, format_cli_error, page_output_via_command, parse_cli_args,
-        read_source_from_path, render_output, resolve_pager_command, should_page_output,
-        version_output,
+        format_cli_error, page_output_via_command, parse_cli_args, read_source_from_path,
+        render_output, resolve_pager_command, should_page_output, version_output,
     };
 
     #[test]
@@ -928,11 +988,10 @@ mod tests {
         let args = vec![OsString::from("kat"), OsString::from("")];
         let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
             .expect("failed to compute completions for empty input");
-        let values =
-            filter_completion_candidates(args.last().expect("missing current token"), completions)
-                .iter()
-                .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
-                .collect::<Vec<_>>();
+        let values = completions
+            .iter()
+            .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
 
         assert!(
             values.iter().all(|value| {
@@ -954,7 +1013,7 @@ mod tests {
         let args = vec![OsString::from("kat"), OsString::from("-")];
         let completions = complete(&mut completion_command_for(&args), args.clone(), 1, None)
             .expect("failed to compute option completions");
-        let values = filter_completion_candidates(OsStr::new("-"), completions)
+        let values = completions
             .iter()
             .map(|candidate| candidate.get_value().to_string_lossy().into_owned())
             .collect::<Vec<_>>();
