@@ -200,6 +200,11 @@ jobs:
             archive_ext: zip
             binary_ext: ".exe"
             use_link_wrapper: false
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            archive_ext: zip
+            binary_ext: ".exe"
+            use_link_wrapper: false
 
     steps:
       - name: Checkout repository
