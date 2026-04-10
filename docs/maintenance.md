@@ -32,3 +32,10 @@
 - 添加或更新语言支持、文件识别规则或相关路线图时，要同步更新 [language-coverage.md](language-coverage.md)。
 - 有意义的进展和已经确认的决策要记录到对应文档中，不要只留在聊天历史里。
 - 如果仓库工作流发生变化，要同步更新 `AGENTS.md`、[README.md](../README.md) 与相关任务运行器或配置文件。
+
+## Release 与分发
+
+- `master` 分支的 CI 在 `fmt` / `clippy` / 测试与 release build matrix 全部通过后，会覆盖更新 GitHub Releases 的 `latest` prerelease channel。
+- `latest` channel 绑定一个同名 tag，并始终指向当前最新一次成功发布的 `master` commit；不要把它当作稳定版本 tag 使用。
+- 供 `cargo binstall --git` 使用的 release 资产命名与包内目录约定保持固定：资产名使用 `kat-<target>.(tgz|zip)`，包内目录使用 `kat-<target>/`，其中包含最终可执行文件 `kat` 或 `kat.exe`。
+- 如果调整了 `latest` channel 的资产命名、包结构或发布标签，要同步更新 [Cargo.toml](../Cargo.toml) 里的 `package.metadata.binstall` 与 [README.md](../README.md) 中的安装说明。

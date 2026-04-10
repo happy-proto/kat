@@ -2,6 +2,17 @@
 name = "kat"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/happy-proto/kat"
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/latest/kat-{ target }{ archive-suffix }"
+bin-dir = "kat-{ target }/{ bin }{ binary-ext }"
+
+[package.metadata.binstall.overrides.'cfg(target_os = "windows")']
+pkg-fmt = "zip"
+
+[package.metadata.binstall.overrides.'cfg(not(target_os = "windows"))']
+pkg-fmt = "tgz"
 
 [[bin]]
 name = "kat"
