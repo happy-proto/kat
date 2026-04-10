@@ -183,28 +183,33 @@ jobs:
             archive_ext: tgz
             binary_ext: ""
             use_link_wrapper: true
-          - runner: macos-13
+            use_sccache: true
+          - runner: macos-15-intel
             target: x86_64-apple-darwin
             linker: cc
             archive_ext: tgz
             binary_ext: ""
             use_link_wrapper: true
+            use_sccache: true
           - runner: macos-latest
             target: aarch64-apple-darwin
             linker: cc
             archive_ext: tgz
             binary_ext: ""
             use_link_wrapper: true
+            use_sccache: true
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
             archive_ext: zip
             binary_ext: ".exe"
             use_link_wrapper: false
+            use_sccache: false
           - runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             archive_ext: zip
             binary_ext: ".exe"
             use_link_wrapper: false
+            use_sccache: false
 
     steps:
       - name: Checkout repository
@@ -225,6 +230,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Set up sccache
+        if: matrix.use_sccache
         uses: ./.github/actions/sccache
 
       - name: Restore tree-sitter build cache
@@ -250,6 +256,7 @@ jobs:
           KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/tree-sitter-build-profile.log
           BINARY_EXT: ${{ matrix.binary_ext }}
           USE_LINK_WRAPPER: ${{ matrix.use_link_wrapper }}
+          USE_SCCACHE: ${{ matrix.use_sccache }}
           KAT_REAL_LINKER: ${{ matrix.linker }}
         run: |
           set -euo pipefail
@@ -257,7 +264,9 @@ jobs:
           total_start=$(date +%s)
 
           build_start=$(date +%s)
-          "${SCCACHE_PATH}" --zero-stats
+          if [[ "${USE_SCCACHE}" == "true" ]]; then
+            "${SCCACHE_PATH}" --zero-stats
+          fi
           : > "${KAT_LINK_LOG}"
           : > "${KAT_BUILD_PROFILE_LOG}"
 
