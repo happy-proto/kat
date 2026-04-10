@@ -180,9 +180,36 @@ jobs:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             linker: cc
+            archive_ext: tgz
+            binary_ext: ""
+            use_link_wrapper: true
+            use_sccache: true
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            linker: cc
+            archive_ext: tgz
+            binary_ext: ""
+            use_link_wrapper: true
+            use_sccache: true
           - runner: macos-latest
             target: aarch64-apple-darwin
             linker: cc
+            archive_ext: tgz
+            binary_ext: ""
+            use_link_wrapper: true
+            use_sccache: true
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive_ext: zip
+            binary_ext: ".exe"
+            use_link_wrapper: false
+            use_sccache: false
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            archive_ext: zip
+            binary_ext: ".exe"
+            use_link_wrapper: false
+            use_sccache: false
 
     steps:
       - name: Checkout repository
@@ -203,6 +230,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Set up sccache
+        if: matrix.use_sccache
         uses: ./.github/actions/sccache
 
       - name: Restore tree-sitter build cache
@@ -216,33 +244,42 @@ jobs:
           enabled: ${{ github.ref_name != 'master' }}
 
       - name: Make linker wrapper executable
+        if: matrix.use_link_wrapper
         run: chmod +x .github/scripts/rust-link-wrapper.sh
 
       - name: Build release binary
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
-          KAT_REAL_LINKER: ${{ matrix.linker }}
           KAT_LINK_LOG: ${{ runner.temp }}/rust-link-timings.tsv
           KAT_BUILD_PROFILE: "1"
           KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/tree-sitter-build-profile.log
-          RUSTFLAGS: >-
-            -Clinker=${{ github.workspace }}/.github/scripts/rust-link-wrapper.sh
+          BINARY_EXT: ${{ matrix.binary_ext }}
+          USE_LINK_WRAPPER: ${{ matrix.use_link_wrapper }}
+          USE_SCCACHE: ${{ matrix.use_sccache }}
+          KAT_REAL_LINKER: ${{ matrix.linker }}
         run: |
           set -euo pipefail
 
           total_start=$(date +%s)
 
           build_start=$(date +%s)
-          "${SCCACHE_PATH}" --zero-stats
+          if [[ "${USE_SCCACHE}" == "true" ]]; then
+            "${SCCACHE_PATH}" --zero-stats
+          fi
           : > "${KAT_LINK_LOG}"
           : > "${KAT_BUILD_PROFILE_LOG}"
+
+          if [[ "${USE_LINK_WRAPPER}" == "true" ]]; then
+            export RUSTFLAGS="-Clinker=${GITHUB_WORKSPACE}/.github/scripts/rust-link-wrapper.sh"
+          fi
+
           cargo build --timings --release --locked --target "${TARGET}"
           build_end=$(date +%s)
 
           total_end=$(date +%s)
 
-          artifact_path="target/${TARGET}/release/kat"
+          artifact_path="target/${TARGET}/release/kat${BINARY_EXT}"
 
           artifact_size=$(stat -f%z "${artifact_path}" 2>/dev/null || stat -c%s "${artifact_path}")
 
@@ -272,6 +309,48 @@ jobs:
             echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
             echo "TREE_SITTER_BUILD_PROFILE_PATH=${KAT_BUILD_PROFILE_LOG}"
           } >> "${GITHUB_ENV}"
+
+      - name: Package latest release asset (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          ARCHIVE_EXT: ${{ matrix.archive_ext }}
+          BINARY_EXT: ${{ matrix.binary_ext }}
+        run: |
+          set -euo pipefail
+
+          package_dir="${RUNNER_TEMP}/kat-${TARGET}"
+          archive_path="${RUNNER_TEMP}/kat-${TARGET}.${ARCHIVE_EXT}"
+
+          rm -rf "${package_dir}" "${archive_path}"
+          mkdir -p "${package_dir}"
+          cp "${ARTIFACT_PATH}" "${package_dir}/kat${BINARY_EXT}"
+          tar -C "${RUNNER_TEMP}" -czf "${archive_path}" "kat-${TARGET}"
+
+          echo "PACKAGE_PATH=${archive_path}" >> "${GITHUB_ENV}"
+
+      - name: Package latest release asset (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          $packageDir = Join-Path $env:RUNNER_TEMP "kat-$env:TARGET"
+          $archivePath = Join-Path $env:RUNNER_TEMP "kat-$env:TARGET.zip"
+
+          if (Test-Path $packageDir) {
+            Remove-Item $packageDir -Recurse -Force
+          }
+          if (Test-Path $archivePath) {
+            Remove-Item $archivePath -Force
+          }
+
+          New-Item -ItemType Directory -Path $packageDir | Out-Null
+          Copy-Item $env:ARTIFACT_PATH (Join-Path $packageDir "kat.exe")
+          Compress-Archive -Path $packageDir -DestinationPath $archivePath
+
+          "PACKAGE_PATH=$archivePath" >> $env:GITHUB_ENV
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
@@ -315,8 +394,8 @@ jobs:
       - name: Upload release artifact
         uses: actions/upload-artifact@v6
         with:
-          name: kat-${{ matrix.target }}
-          path: ${{ env.ARTIFACT_PATH }}
+          name: kat-release-package-${{ matrix.target }}
+          path: ${{ env.PACKAGE_PATH }}
           if-no-files-found: error
 
       - name: Upload build observability artifacts
@@ -328,3 +407,67 @@ jobs:
             ${{ env.LINK_LOG_PATH }}
             ${{ env.TREE_SITTER_BUILD_PROFILE_PATH }}
           if-no-files-found: error
+
+  release-latest:
+    name: release latest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download latest release packages
+        uses: actions/download-artifact@v5
+        with:
+          pattern: kat-release-package-*
+          path: ${{ runner.temp }}/latest-release-assets
+          merge-multiple: true
+
+      - name: Move latest tag to current commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags origin
+          git tag -f latest "${GITHUB_SHA}"
+          git push --force origin refs/tags/latest
+
+      - name: Publish latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ASSET_DIR: ${{ runner.temp }}/latest-release-assets
+        run: |
+          set -euo pipefail
+
+          notes_file="${RUNNER_TEMP}/latest-release-notes.md"
+
+          cat > "${notes_file}" <<EOF
+          latest channel for the current master tip.
+
+          - Branch: \`master\`
+          - Commit: \`${GITHUB_SHA}\`
+          - Commit URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}
+          EOF
+
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest \
+              --title "latest" \
+              --notes-file "${notes_file}" \
+              --prerelease
+          else
+            gh release create latest \
+              --title "latest" \
+              --notes-file "${notes_file}" \
+              --prerelease \
+              --latest=false \
+              --target "${GITHUB_SHA}"
+          fi
+
+          gh release upload latest "${RELEASE_ASSET_DIR}"/* --clobber

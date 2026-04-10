@@ -64,10 +64,19 @@ echo 'COMPLETE=fish kat | source' >> ~/.config/fish/completions/kat.fish
 cargo build
 ```
 
+如果想直接安装 `master` 当前最新一次成功 CI 产出的预编译包，可以用：
+
+```bash
+cargo binstall --git https://github.com/happy-proto/kat --force kat
+```
+
+这条命令会读取仓库里的 `cargo-binstall` 元数据，并从 GitHub Releases 的 `latest` channel 下载对应平台的预编译资产。因为 `latest` 会随着 `master` 持续覆盖更新，升级时也建议继续带 `--force`。
+
 ## 开发调试
 
 - 跑测试：`just test`
 - CI 会并行执行 `cargo fmt --check`、`cargo clippy` 和 `cargo nextest run` 测试；全部通过后再继续 release build matrix
+- `master` 分支在 release build matrix 全部通过后，会覆盖更新 GitHub Releases 的 `latest` prerelease channel，并上传供 `cargo binstall --git` 使用的预编译包
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
