@@ -7,7 +7,7 @@
 1. 继续收敛 Dracula 主题与 capture 语义映射，观察是否需要更清晰的分层主题模型。
 2. 继续优化大型 grammar 的冷构建成本，尤其是 parser generation 最重的语言。
 3. 在 Linux 上补跑包含 `scanner.cc` 的完整构建验证。
-4. 在新的 `analysis -> visual -> render_ops -> terminal` 分层上继续补更细的 snapshot、回放和跨环境对照能力。
+4. 继续把 `analysis -> visual -> render_ops -> terminal` 分层上的调试出口和测试契约做深，尤其是 nested runtime 身份、回放样本和跨环境对照能力。
 5. 继续优化特殊文件名和无扩展名输入的语言识别策略。
 6. 保持 [README.md](../README.md)、[language-coverage.md](language-coverage.md) 与实际仓库状态同步。
 

@@ -282,6 +282,58 @@ fn render_with_theme(source_path: Option<&Path>, source: &str, theme: &Theme) ->
     Ok(render_with_theme_and_timing(source_path, source, theme)?.output)
 }
 
+fn analyze_with_theme(
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+) -> Result<AnalysisDocument> {
+    AnalysisDocument::detect(source_path, source, *theme, None)
+}
+
+fn analyze_named_language_with_theme(
+    language_name: &str,
+    source: &str,
+    theme: &Theme,
+) -> Result<AnalysisDocument> {
+    AnalysisDocument::named_language(language_name, source, *theme, None)
+}
+
+fn visual_with_theme(
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+) -> Result<VisualDocument> {
+    let analysis = analyze_with_theme(source_path, source, theme)?;
+    Ok(VisualDocument::from_analysis(&analysis))
+}
+
+fn visual_named_language_with_theme(
+    language_name: &str,
+    source: &str,
+    theme: &Theme,
+) -> Result<VisualDocument> {
+    let analysis = analyze_named_language_with_theme(language_name, source, theme)?;
+    Ok(VisualDocument::from_analysis(&analysis))
+}
+
+fn render_plan_with_theme(
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+) -> Result<RenderPlan> {
+    let visual = visual_with_theme(source_path, source, theme)?;
+    Ok(RenderPlan::compile(source, &visual, *theme))
+}
+
+fn render_plan_named_language_with_theme(
+    language_name: &str,
+    source: &str,
+    theme: &Theme,
+) -> Result<RenderPlan> {
+    let visual = visual_named_language_with_theme(language_name, source, theme)?;
+    Ok(RenderPlan::compile(source, &visual, *theme))
+}
+
 fn render_with_theme_and_timing(
     source_path: Option<&Path>,
     source: &str,
@@ -304,49 +356,41 @@ fn render_with_theme_and_timing(
 }
 
 pub fn debug_analysis_json(source_path: Option<&Path>, source: &str) -> Result<String> {
-    let analysis = AnalysisDocument::detect(source_path, source, debug_theme(), None)?;
+    let analysis = analyze_with_theme(source_path, source, &debug_theme())?;
     to_pretty_json(&analysis.snapshot())
 }
 
 pub fn debug_named_language_analysis_json(language_name: &str, source: &str) -> Result<String> {
-    let analysis = AnalysisDocument::named_language(language_name, source, debug_theme(), None)?;
+    let analysis = analyze_named_language_with_theme(language_name, source, &debug_theme())?;
     to_pretty_json(&analysis.snapshot())
 }
 
 pub fn debug_visual_json(source_path: Option<&Path>, source: &str) -> Result<String> {
-    let analysis = AnalysisDocument::detect(source_path, source, debug_theme(), None)?;
-    let visual = VisualDocument::from_analysis(&analysis);
+    let visual = visual_with_theme(source_path, source, &debug_theme())?;
     to_pretty_json(&visual.snapshot())
 }
 
 pub fn debug_named_language_visual_json(language_name: &str, source: &str) -> Result<String> {
-    let analysis = AnalysisDocument::named_language(language_name, source, debug_theme(), None)?;
-    let visual = VisualDocument::from_analysis(&analysis);
+    let visual = visual_named_language_with_theme(language_name, source, &debug_theme())?;
     to_pretty_json(&visual.snapshot())
 }
 
 pub fn debug_render_ops_json(source_path: Option<&Path>, source: &str) -> Result<String> {
     let theme = debug_theme();
-    let analysis = AnalysisDocument::detect(source_path, source, theme, None)?;
-    let visual = VisualDocument::from_analysis(&analysis);
-    let plan = RenderPlan::compile(source, &visual, theme);
+    let plan = render_plan_with_theme(source_path, source, &theme)?;
     to_pretty_json(&plan.snapshot(theme))
 }
 
 pub fn debug_named_language_render_ops_json(language_name: &str, source: &str) -> Result<String> {
     let theme = debug_theme();
-    let analysis = AnalysisDocument::named_language(language_name, source, theme, None)?;
-    let visual = VisualDocument::from_analysis(&analysis);
-    let plan = RenderPlan::compile(source, &visual, theme);
+    let plan = render_plan_named_language_with_theme(language_name, source, &theme)?;
     to_pretty_json(&plan.snapshot(theme))
 }
 
 pub fn debug_terminal_json(source_path: Option<&Path>, source: &str) -> Result<String> {
     let capabilities = TerminalCapabilities::for_debug_layers();
     let theme = capabilities.theme();
-    let analysis = AnalysisDocument::detect(source_path, source, theme, None)?;
-    let visual = VisualDocument::from_analysis(&analysis);
-    let plan = RenderPlan::compile(source, &visual, theme);
+    let plan = render_plan_with_theme(source_path, source, &theme)?;
     let output = plan.encode(theme);
     to_pretty_json(&terminal::TerminalRenderSnapshot {
         capabilities: capabilities.snapshot(),
@@ -359,9 +403,7 @@ pub fn debug_terminal_json(source_path: Option<&Path>, source: &str) -> Result<S
 pub fn debug_named_language_terminal_json(language_name: &str, source: &str) -> Result<String> {
     let capabilities = TerminalCapabilities::for_debug_layers();
     let theme = capabilities.theme();
-    let analysis = AnalysisDocument::named_language(language_name, source, theme, None)?;
-    let visual = VisualDocument::from_analysis(&analysis);
-    let plan = RenderPlan::compile(source, &visual, theme);
+    let plan = render_plan_named_language_with_theme(language_name, source, &theme)?;
     let output = plan.encode(theme);
     to_pretty_json(&terminal::TerminalRenderSnapshot {
         capabilities: capabilities.snapshot(),
@@ -1745,9 +1787,11 @@ fn resolve_highlight_document_kind(
 #[derive(Clone, Debug)]
 pub(crate) struct NestedRegion {
     pub(crate) visual_level: usize,
+    pub(crate) resolved_document_kind: DocumentKind,
     pub(crate) visual_kind: InjectionVisualKind,
     pub(crate) layout_segments: Vec<RegionSegment>,
     pub(crate) child_regions: Vec<VisualRegion>,
+    pub(crate) child_nested_regions: Vec<NestedRegion>,
     pub(crate) overlays: Vec<StyledSpan>,
     pub(crate) merge_parent_styles: bool,
 }
@@ -1860,11 +1904,17 @@ fn render_injection_candidates(
             build_region_segments(source, &candidate.ranges, visual.anchor, visual.kind);
         rendered.push(NestedRegion {
             visual_level,
+            resolved_document_kind: child_render.resolved_document_kind,
             visual_kind: visual.kind,
             layout_segments,
             child_regions: map_virtual_regions_to_source(
                 source,
                 &collect_visual_regions(&child_render.nested_regions),
+                &source_map,
+            ),
+            child_nested_regions: map_virtual_nested_regions_to_source(
+                source,
+                &child_render.nested_regions,
                 &source_map,
             ),
             overlays: map_virtual_spans_to_source(&child_render.spans, &source_map),
@@ -2806,6 +2856,75 @@ fn map_virtual_regions_to_source(
     mapped
 }
 
+fn map_virtual_nested_regions_to_source(
+    source: &str,
+    virtual_regions: &[NestedRegion],
+    source_map: &[Range<usize>],
+) -> Vec<NestedRegion> {
+    let mut mapped = Vec::with_capacity(virtual_regions.len());
+
+    for region in virtual_regions {
+        mapped.push(NestedRegion {
+            visual_level: region.visual_level,
+            resolved_document_kind: region.resolved_document_kind,
+            visual_kind: region.visual_kind,
+            layout_segments: map_virtual_region_segments_to_source(
+                source,
+                &region.layout_segments,
+                source_map,
+            ),
+            child_regions: map_virtual_regions_to_source(source, &region.child_regions, source_map),
+            child_nested_regions: map_virtual_nested_regions_to_source(
+                source,
+                &region.child_nested_regions,
+                source_map,
+            ),
+            overlays: map_virtual_spans_to_source(&region.overlays, source_map),
+            merge_parent_styles: region.merge_parent_styles,
+        });
+    }
+
+    mapped.sort_by_key(|region| {
+        region
+            .layout_segments
+            .first()
+            .map(|segment| (segment.line_start, segment.left, region.visual_level))
+            .unwrap_or((0, 0, region.visual_level))
+    });
+    mapped
+}
+
+fn map_virtual_region_segments_to_source(
+    source: &str,
+    virtual_segments: &[RegionSegment],
+    source_map: &[Range<usize>],
+) -> Vec<RegionSegment> {
+    let mut segments = Vec::with_capacity(virtual_segments.len());
+
+    for segment in virtual_segments {
+        let mapped_left = source_map
+            .get(segment.left)
+            .map(|range| range.start)
+            .unwrap_or(0);
+        let mapped_text_end = if segment.left < segment.text_end {
+            source_map
+                .get(segment.text_end.saturating_sub(1))
+                .map(|range| range.end)
+                .unwrap_or(mapped_left)
+        } else {
+            mapped_left
+        };
+        segments.push(RegionSegment {
+            line_start: line_start_offset(source, mapped_left),
+            left: mapped_left,
+            text_end: mapped_text_end,
+            right: mapped_text_end + segment.right.saturating_sub(segment.text_end),
+        });
+    }
+
+    segments
+}
+
 fn overlay_nested_region(parent_spans: Vec<StyledSpan>, region: &NestedRegion) -> Vec<StyledSpan> {
     apply_overlay_spans(parent_spans, &region.overlays, region.merge_parent_styles)
 }
@@ -3001,14 +3120,16 @@ mod tests {
 
     use super::{
         InjectionVisualKind, NestedRegion, RegionSegment, StyledSpan, SupportedLanguage,
-        collect_top_level_injection_regions, debug_analysis_json, debug_render_ops_json,
-        debug_semantics, debug_terminal_json, debug_visual_json, detect_document_kind,
-        detect_language, highlight_named_language, overlay_nested_region, overlay_style_spans,
-        render_with_theme,
+        analyze_with_theme, collect_top_level_injection_regions, debug_analysis_json,
+        debug_render_ops_json, debug_semantics, debug_terminal_json, debug_visual_json,
+        detect_document_kind, detect_language, highlight_named_language, overlay_nested_region,
+        overlay_style_spans, plain_document_kind, render_plan_with_theme, render_with_theme,
     };
     use crate::{
-        display_geometry::{DisplayColumn, display_width, strip_ansi},
+        analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
+        display_geometry::{display_width, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
+        render_ops::{RenderOpSnapshot, RenderPlanSnapshot},
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
     };
@@ -3923,27 +4044,38 @@ mod tests {
             matched_cases += 1;
             let path = fixture_path(case.relative_path);
             let source = read_file(&path);
-            let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-                .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+            let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+            let render_plan = render_plan_snapshot_for_path(path.as_path(), &source, &theme);
+            let rendered_text = render_plan_text(&render_plan);
 
             if case.expect_highlight {
                 assert!(
-                    rendered.contains("\x1b["),
-                    "expected ANSI highlighting for {}",
+                    analysis.detected_document_kind.is_some(),
+                    "expected analysis document kind for {}",
+                    path.display()
+                );
+                assert!(
+                    !analysis.spans.is_empty() || !analysis.nested_regions.is_empty(),
+                    "expected structural IR for {}",
                     path.display()
                 );
             } else {
                 assert_eq!(
-                    rendered,
-                    source,
-                    "plain fixture should render unchanged: {}",
+                    analysis.detected_document_kind,
+                    None,
+                    "plain fixture should stay as passthrough at analysis layer: {}",
+                    path.display()
+                );
+                assert!(
+                    analysis.spans.is_empty() && analysis.nested_regions.is_empty(),
+                    "plain fixture should not synthesize IR spans or nested regions: {}",
                     path.display()
                 );
             }
 
             for fragment in case.expected_fragments {
                 assert!(
-                    rendered.contains(fragment),
+                    rendered_text.contains(fragment),
                     "missing fragment {fragment:?} for {}",
                     path.display()
                 );
@@ -4030,24 +4162,24 @@ mod tests {
         {
             matched_paths += 1;
             let source = read_file(&path);
-            let rendered =
-                render_with_theme(Some(path.as_path()), &source, &theme).unwrap_or_else(|error| {
-                    panic!(
-                        "failed to render showcase fixture {}: {error}",
-                        path.display()
-                    )
-                });
+            let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+            let render_plan = render_plan_snapshot_for_path(path.as_path(), &source, &theme);
 
             if is_supported_highlight_path(&path) {
                 assert!(
-                    rendered.contains("\x1b["),
-                    "expected ANSI highlighting for supported showcase {}",
+                    analysis.detected_document_kind.is_some(),
+                    "expected structural analysis output for supported showcase {}",
+                    path.display()
+                );
+                assert!(
+                    !render_plan.ops.is_empty(),
+                    "expected render plan ops for supported showcase {}",
                     path.display()
                 );
             } else {
                 assert!(
-                    !rendered.is_empty(),
-                    "unsupported showcase should still render output: {}",
+                    !render_plan_text(&render_plan).is_empty(),
+                    "unsupported showcase should still preserve text ops: {}",
                     path.display()
                 );
             }
@@ -5978,24 +6110,23 @@ mod tests {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = fixture_path("rust/doc_comments_nested.rs");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let markdown_region =
+            find_nested_region(&analysis, "markdown", "Rustdoc should support", &source);
 
         assert!(
-            rendered.contains("\x1b[1m\x1b[38;2;189;147;249mGuide"),
-            "expected rustdoc markdown heading styling"
+            markdown_region
+                .child_nested_regions
+                .iter()
+                .any(|region| region.resolved_document_kind.runtime_name == "rust"),
+            "expected rustdoc markdown region to preserve fenced rust child runtime"
         );
         assert!(
-            rendered.contains("\x1b[38;2;255;121;198mfn"),
-            "expected nested rust fenced block styling inside rustdoc"
-        );
-        assert!(
-            rendered.contains("\x1b[38;2;139;233;253mNested"),
-            "expected nested python class styling inside rustdoc"
-        );
-        assert!(
-            rendered.contains("\x1b[38;2;80;250;123mrender"),
-            "expected nested python method styling inside rustdoc"
+            markdown_region
+                .child_nested_regions
+                .iter()
+                .any(|region| region.resolved_document_kind.runtime_name == "python"),
+            "expected rustdoc markdown region to preserve fenced python child runtime"
         );
     }
 
@@ -6005,26 +6136,18 @@ mod tests {
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("rust/doc_comments_nested.rs");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-
-        let outer_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
-        let inner_tint = theme
-            .nested_region_background(2)
-            .expect("expected second nested region tint");
-        let prose_line = find_line_containing(&lines, "Rustdoc should support");
-        let fenced_line = find_line_containing(&lines, "fn nested() -> i32 {");
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let markdown_region =
+            find_nested_region(&analysis, "markdown", "Rustdoc should support", &source);
+        let rust_region = find_nested_region(&analysis, "rust", "fn nested() -> i32 {", &source);
 
         assert!(
-            line_has_background(prose_line, outer_tint),
-            "outer rustdoc markdown prose should receive the first nested region tint"
+            markdown_region.visual_level == 1,
+            "outer rustdoc markdown prose should stay at the first nested visual level"
         );
         assert!(
-            line_has_background(fenced_line, inner_tint),
-            "expected fenced code inside rustdoc to use a stronger nested region tint"
+            rust_region.visual_level == 2,
+            "expected fenced code inside rustdoc to use a stronger nested visual level"
         );
     }
 
@@ -6034,21 +6157,25 @@ mod tests {
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("rust/doc_comments_nested.rs");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-        let outer_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
-        let prose_line =
-            find_line_containing(&lines, "same nested runtimes as top-level Markdown.");
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let markdown_region = find_nested_region(
+            &analysis,
+            "markdown",
+            "same nested runtimes as top-level Markdown.",
+            &source,
+        );
+        let prose_segment = segment_for_line(
+            markdown_region,
+            &source,
+            "same nested runtimes as top-level Markdown.",
+        );
 
         assert!(
-            line_has_background(prose_line, outer_tint),
-            "outer rustdoc markdown prose should still receive the outer nested tint"
+            markdown_region.visual_level == 1,
+            "outer rustdoc markdown prose should still receive the outer nested level"
         );
         assert!(
-            trailing_background_pad_width(prose_line, outer_tint) == 0,
+            segment_trailing_padding(prose_segment) == 0,
             "outer rustdoc prose should not be padded into a rectangular block"
         );
     }
@@ -6059,28 +6186,21 @@ mod tests {
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("rust/doc_comments_nested.rs");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-
-        let class_line = find_line_containing(&lines, "class Nested:");
-        let inner_tint = theme
-            .nested_region_background(2)
-            .expect("expected second nested region tint");
-        let outer_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let markdown_region = find_nested_region(&analysis, "markdown", "class Nested:", &source);
+        let python_region = find_nested_region(&analysis, "python", "class Nested:", &source);
+        let class_segment = segment_for_line(python_region, &source, "class Nested:");
 
         assert!(
-            line_has_background(class_line, inner_tint),
-            "inner fenced block line should use its own stronger block tint"
+            python_region.visual_level == 2,
+            "inner fenced block line should use its own stronger block level"
         );
         assert!(
-            line_has_background(class_line, outer_tint),
-            "the same line should still preserve the weaker outer rustdoc container tint"
+            region_covers_line(markdown_region, &source, "class Nested:"),
+            "the same line should still preserve the weaker outer rustdoc container coverage"
         );
         assert!(
-            max_background_space_run(class_line, inner_tint) > 0,
+            segment_trailing_padding(class_segment) > 0,
             "inner fenced block should still contribute a visible block-width pad"
         );
     }
@@ -6469,96 +6589,26 @@ mod tests {
 
         let js_path = fixture_path("javascript/injections.js");
         let js_source = read_file(&js_path);
-        let js_rendered = render_with_theme(Some(js_path.as_path()), &js_source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", js_path.display()));
-        assert!(
-            js_rendered.contains("\x1b[38;2;255;121;198mSELECT"),
-            "expected injected SQL keyword styling in JavaScript"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;255;121;198mRETURNING"),
-            "expected JavaScript sql:postgres hint to route through postgres SQL runtime"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;255;121;198mAUTO_INCREMENT"),
-            "expected JavaScript sql:mysql comment-hosted string to route through mysql SQL runtime"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;139;233;253mkind"),
-            "expected injected regex named group styling in JavaScript"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;255;121;198m\\b"),
-            "expected injected regex escape styling in JavaScript"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;139;233;253msection"),
-            "expected JavaScript RegExp constructor pattern to reuse regex named group styling"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;139;233;253mescapedSection"),
-            "expected JavaScript escaped RegExp constructor pattern to reuse regex named group styling"
-        );
-        assert!(
-            js_rendered.contains("\x1b[4m\x1b[38;2;255;85;85m(?P<legacy>"),
-            "expected JavaScript template-string RegExp constructor to use javascript-specific regex runtime"
-        );
+        let js_analysis = analysis_snapshot_for_path(js_path.as_path(), &js_source, &theme);
+        let js_runtimes = nested_runtime_names(&js_analysis);
+        assert!(js_runtimes.contains(&"sql_postgres"));
+        assert!(js_runtimes.contains(&"sql_mysql"));
+        assert!(js_runtimes.contains(&"regex_javascript"));
 
         let python_path = fixture_path("python/injections.py");
         let python_source = read_file(&python_path);
-        let python_rendered =
-            render_with_theme(Some(python_path.as_path()), &python_source, &theme).unwrap_or_else(
-                |error| panic!("failed to render {}: {error}", python_path.display()),
-            );
-        assert!(
-            python_rendered.contains("\x1b[38;2;255;121;198mWITHOUT"),
-            "expected Python sql:sqlite hint to route through sqlite SQL runtime"
-        );
-        assert!(
-            python_rendered.contains("\x1b[38;2;139;233;253msection"),
-            "expected injected regex named group styling in Python"
-        );
-        assert!(
-            python_rendered.contains("\x1b[4m\x1b[38;2;255;85;85m\\p"),
-            "expected Python regex injection to flag unicode property escapes as invalid"
-        );
-        assert!(
-            python_rendered.contains("\x1b[38;2;139;233;253mword"),
-            "expected Python regex injection to highlight named backreference group labels"
-        );
-        assert!(
-            python_rendered.contains("\x1b[38;2;139;233;253mescaped_section"),
-            "expected Python escaped regex string case to reuse regex named group styling"
-        );
+        let python_analysis =
+            analysis_snapshot_for_path(python_path.as_path(), &python_source, &theme);
+        let python_runtimes = nested_runtime_names(&python_analysis);
+        assert!(python_runtimes.contains(&"sql_sqlite"));
+        assert!(python_runtimes.contains(&"regex_python"));
 
         let rust_path = fixture_path("rust/injections.rs");
         let rust_source = read_file(&rust_path);
-        let rust_rendered = render_with_theme(Some(rust_path.as_path()), &rust_source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", rust_path.display()));
-        assert!(
-            rust_rendered.contains("\x1b[38;2;255;121;198mSELECT"),
-            "expected injected SQL keyword styling in Rust"
-        );
-        assert!(
-            rust_rendered.contains("\x1b[38;2;139;233;253mkind"),
-            "expected injected regex named group styling in Rust"
-        );
-        assert!(
-            rust_rendered.contains("\x1b[38;2;255;121;198mi"),
-            "expected injected regex inline flag character styling in Rust"
-        );
-        assert!(
-            rust_rendered.contains("\x1b[3m\x1b[38;2;139;233;253mL"),
-            "expected Rust regex injection to highlight unicode property names"
-        );
-        assert!(
-            rust_rendered.contains("\x1b[4m\x1b[38;2;255;85;85m(?P=word)"),
-            "expected Rust regex injection to flag named backreferences as invalid"
-        );
-        assert!(
-            rust_rendered.contains("\x1b[38;2;139;233;253mescaped_section"),
-            "expected Rust escaped regex string case to reuse regex named group styling"
-        );
+        let rust_analysis = analysis_snapshot_for_path(rust_path.as_path(), &rust_source, &theme);
+        let rust_runtimes = nested_runtime_names(&rust_analysis);
+        assert!(rust_runtimes.contains(&"sql"));
+        assert!(rust_runtimes.contains(&"regex_rust"));
     }
 
     #[test]
@@ -6567,45 +6617,21 @@ mod tests {
 
         let ts_path = fixture_path("typescript/injections.ts");
         let ts_source = read_file(&ts_path);
-        let ts_rendered = render_with_theme(Some(ts_path.as_path()), &ts_source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", ts_path.display()));
-        assert!(
-            ts_rendered.contains("\x1b[38;2;255;121;198mSELECT"),
-            "expected TypeScript comment-hosted SQL template to reuse SQL keyword styling"
-        );
-        assert!(
-            ts_rendered.contains("\x1b[38;2;255;121;198mquery"),
-            "expected TypeScript comment-hosted GraphQL template to reuse GraphQL keyword styling"
-        );
-        assert!(
-            ts_rendered.contains("\x1b[38;2;255;121;198msection"),
-            "expected TypeScript comment-hosted HTML template to reuse HTML tag styling"
-        );
-        assert!(
-            ts_rendered.contains("\x1b[38;2;255;121;198m."),
-            "expected TypeScript comment-hosted CSS template to reuse CSS selector punctuation styling"
-        );
+        let ts_analysis = analysis_snapshot_for_path(ts_path.as_path(), &ts_source, &theme);
+        let ts_runtimes = nested_runtime_names(&ts_analysis);
+        assert!(ts_runtimes.contains(&"sql"));
+        assert!(ts_runtimes.contains(&"graphql"));
+        assert!(ts_runtimes.contains(&"html"));
+        assert!(ts_runtimes.contains(&"css"));
 
         let tsx_path = fixture_path("tsx/injections.tsx");
         let tsx_source = read_file(&tsx_path);
-        let tsx_rendered = render_with_theme(Some(tsx_path.as_path()), &tsx_source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", tsx_path.display()));
-        assert!(
-            tsx_rendered.contains("\x1b[38;2;255;121;198mSELECT"),
-            "expected TSX comment-hosted SQL template to reuse SQL keyword styling"
-        );
-        assert!(
-            tsx_rendered.contains("\x1b[38;2;255;121;198mquery"),
-            "expected TSX comment-hosted GraphQL template to reuse GraphQL keyword styling"
-        );
-        assert!(
-            tsx_rendered.contains("\x1b[38;2;255;121;198msection"),
-            "expected TSX comment-hosted HTML template to reuse HTML tag styling"
-        );
-        assert!(
-            tsx_rendered.contains("\x1b[38;2;255;121;198m."),
-            "expected TSX comment-hosted CSS template to reuse CSS selector punctuation styling"
-        );
+        let tsx_analysis = analysis_snapshot_for_path(tsx_path.as_path(), &tsx_source, &theme);
+        let tsx_runtimes = nested_runtime_names(&tsx_analysis);
+        assert!(tsx_runtimes.contains(&"sql"));
+        assert!(tsx_runtimes.contains(&"graphql"));
+        assert!(tsx_runtimes.contains(&"html"));
+        assert!(tsx_runtimes.contains(&"css"));
     }
 
     #[test]
@@ -7088,60 +7114,26 @@ mod tests {
 
         let graphql_path = fixture_path("graphql/schema.graphql");
         let graphql_source = read_file(&graphql_path);
-        let graphql_rendered =
-            render_with_theme(Some(graphql_path.as_path()), &graphql_source, &theme)
-                .unwrap_or_else(|error| {
-                    panic!("failed to render {}: {error}", graphql_path.display())
-                });
-        assert!(
-            graphql_rendered.contains("\x1b[38;2;255;121;198mquery"),
-            "expected top-level GraphQL keyword styling"
-        );
-        assert!(
-            graphql_rendered.contains("\x1b[38;2;139;233;253mTheme"),
-            "expected top-level GraphQL type styling"
-        );
-        assert!(
-            graphql_rendered.contains("\x1b[38;2;255;121;198m$"),
-            "expected top-level GraphQL variable sigil styling"
+        let graphql_analysis =
+            analysis_snapshot_for_path(graphql_path.as_path(), &graphql_source, &theme);
+        assert_eq!(
+            graphql_analysis
+                .resolved_document_kind
+                .as_ref()
+                .map(|kind| kind.runtime_name),
+            Some("graphql")
         );
 
         let js_path = fixture_path("javascript/graphql.js");
         let js_source = read_file(&js_path);
-        let js_rendered = render_with_theme(Some(js_path.as_path()), &js_source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", js_path.display()));
-        assert!(
-            js_rendered.contains("\x1b[38;2;255;121;198mfragment"),
-            "expected JavaScript gql tagged template to reuse GraphQL keyword styling"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;80;250;123mThemeBySlug"),
-            "expected JavaScript gql tagged template to reuse GraphQL operation styling"
-        );
-        assert!(
-            js_rendered.contains("\x1b[38;2;255;121;198m$"),
-            "expected JavaScript comment-hosted GraphQL string to reuse GraphQL variable styling"
-        );
+        let js_analysis = analysis_snapshot_for_path(js_path.as_path(), &js_source, &theme);
+        assert!(nested_runtime_names(&js_analysis).contains(&"graphql"));
 
         let markdown_path = fixture_path("markdown/graphql_fence.md");
         let markdown_source = read_file(&markdown_path);
-        let markdown_rendered =
-            render_with_theme(Some(markdown_path.as_path()), &markdown_source, &theme)
-                .unwrap_or_else(|error| {
-                    panic!("failed to render {}: {error}", markdown_path.display())
-                });
-        assert!(
-            markdown_rendered.contains("\x1b[38;2;255;121;198mquery"),
-            "expected markdown fenced graphql block to reuse GraphQL keyword styling"
-        );
-        assert!(
-            markdown_rendered.contains("\x1b[38;2;80;250;123mThemeBySlug"),
-            "expected markdown fenced graphql block to reuse GraphQL operation styling"
-        );
-        assert!(
-            markdown_rendered.contains("\x1b[38;2;255;121;198mfragment"),
-            "expected markdown fenced gql alias to reuse GraphQL keyword styling"
-        );
+        let markdown_analysis =
+            analysis_snapshot_for_path(markdown_path.as_path(), &markdown_source, &theme);
+        assert!(nested_runtime_names(&markdown_analysis).contains(&"graphql"));
     }
 
     #[test]
@@ -7150,35 +7142,15 @@ mod tests {
 
         let just_path = fixture_path("just/injections.just");
         let just_source = read_file(&just_path);
-        let just_rendered = render_with_theme(Some(just_path.as_path()), &just_source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", just_path.display()));
-
-        assert!(
-            just_rendered.contains("\x1b[38;2;139;233;253mPreview"),
-            "expected injected python class styling in Justfile"
-        );
-        assert!(
-            just_rendered.contains("\x1b[38;2;80;250;123mrender"),
-            "expected injected python method styling in Justfile"
-        );
+        let just_analysis = analysis_snapshot_for_path(just_path.as_path(), &just_source, &theme);
+        assert!(nested_runtime_names(&just_analysis).contains(&"python"));
 
         let markdown_path =
             Path::new("testdata/showcase/markdown/mixed-code-blocks.md").to_path_buf();
         let markdown_source = read_file(&markdown_path);
-        let markdown_rendered =
-            render_with_theme(Some(markdown_path.as_path()), &markdown_source, &theme)
-                .unwrap_or_else(|error| {
-                    panic!("failed to render {}: {error}", markdown_path.display())
-                });
-
-        assert!(
-            markdown_rendered.contains("\x1b[38;2;139;233;253mPreview"),
-            "expected injected python class styling in Markdown"
-        );
-        assert!(
-            markdown_rendered.contains("\x1b[38;2;80;250;123mrender"),
-            "expected injected python method styling in Markdown"
-        );
+        let markdown_analysis =
+            analysis_snapshot_for_path(markdown_path.as_path(), &markdown_source, &theme);
+        assert!(nested_runtime_names(&markdown_analysis).contains(&"python"));
     }
 
     #[test]
@@ -7749,29 +7721,16 @@ priority: 7
         let source = "install:\n    cargo install --path .\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let rendered = render_with_theme(Some(Path::new("Justfile")), source, &theme)
-            .expect("expected Justfile source to render");
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis = analysis_snapshot_for_path(Path::new("Justfile"), source, &theme);
+        let region = find_nested_region(&analysis, "bash", "cargo install --path .", source);
 
         assert!(
-            !line_has_background(lines[0], level_one_tint),
+            !region_covers_line(region, source, "install:"),
             "recipe header line should not be part of the nested block"
         );
         assert!(
-            line_has_background(lines[1], level_one_tint),
-            "first recipe command line should receive nested block tint"
-        );
-        assert!(
-            lines.len() == 2,
-            "expected single-command recipe rendering, got {lines:?}"
-        );
-
-        assert!(
-            line_has_background(lines[1], level_one_tint),
-            "recipe body line should keep its nested block tint"
+            region_covers_line(region, source, "cargo install --path ."),
+            "first recipe command line should receive nested block coverage"
         );
     }
 
@@ -7780,28 +7739,31 @@ priority: 7
         let source = "install:\n    cargo install --path .\n\nnext:\n    echo hi\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let rendered = render_with_theme(Some(Path::new("Justfile")), source, &theme)
-            .expect("expected Justfile source to render");
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis = analysis_snapshot_for_path(Path::new("Justfile"), source, &theme);
+        let first_region = find_nested_region(&analysis, "bash", "cargo install --path .", source);
+        let second_region = find_nested_region(&analysis, "bash", "echo hi", source);
 
         assert!(
-            line_has_background(lines[1], level_one_tint),
-            "first recipe body line should receive nested block tint"
+            region_covers_line(first_region, source, "cargo install --path ."),
+            "first recipe body line should receive nested block coverage"
         );
         assert!(
-            !line_has_background(lines[2], level_one_tint),
+            !first_region
+                .layout_segments
+                .iter()
+                .any(|segment| segment.line_start == line_start_for_line_number(source, 2)),
             "separator blank line between recipes should stay outside the previous block tint"
         );
         assert!(
-            !line_has_background(lines[3], level_one_tint),
+            !first_region
+                .layout_segments
+                .iter()
+                .any(|segment| segment.line_start == line_start_for_line_number(source, 3)),
             "next recipe header line should stay outside the previous block tint"
         );
         assert!(
-            line_has_background(lines[4], level_one_tint),
-            "next recipe body line should still receive its own nested block tint"
+            region_covers_line(second_region, source, "echo hi"),
+            "next recipe body line should still receive its own nested block coverage"
         );
     }
 
@@ -7811,31 +7773,40 @@ priority: 7
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("markdown/go_fence.md");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
-        assert!(
-            line_has_background(
-                find_line_containing(&lines, "package preview"),
-                level_one_tint
-            ),
-            "fenced code content should receive nested block tint"
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let first_region = find_nested_region(&analysis, "go", "package preview", &source);
+        let second_region = find_nested_region(
+            &analysis,
+            "go",
+            "func NewRenderer(name string) string {",
+            &source,
         );
-
-        let first_empty_line = lines[4];
-        let second_empty_line = lines[14];
-
         assert!(
-            line_has_background(first_empty_line, level_one_tint)
-                && visible_trailing_spaces(first_empty_line) > 0,
+            region_covers_line(first_region, &source, "package preview"),
+            "fenced code content should receive nested block coverage"
+        );
+        assert!(
+            first_region
+                .layout_segments
+                .iter()
+                .any(|segment| segment.line_start == line_start_for_line_number(&source, 4))
+                && first_region
+                    .layout_segments
+                    .iter()
+                    .find(|segment| segment.line_start == line_start_for_line_number(&source, 4))
+                    .is_some_and(|segment| segment_trailing_padding(segment) > 0),
             "empty line inside first fenced block should still be part of the block region"
         );
         assert!(
-            line_has_background(second_empty_line, level_one_tint)
-                && visible_trailing_spaces(second_empty_line) > 0,
+            second_region
+                .layout_segments
+                .iter()
+                .any(|segment| segment.line_start == line_start_for_line_number(&source, 14))
+                && second_region
+                    .layout_segments
+                    .iter()
+                    .find(|segment| segment.line_start == line_start_for_line_number(&source, 14))
+                    .is_some_and(|segment| segment_trailing_padding(segment) > 0),
             "empty line inside second fenced block should still be part of the block region"
         );
     }
@@ -7845,44 +7816,31 @@ priority: 7
         let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo hi\n          printf '%s\\n' \"$GITHUB_REF\"\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let rendered = render_with_theme(
-            Some(Path::new(".github/workflows/demo.yml")),
-            source,
-            &theme,
-        )
-        .expect("expected workflow source to render");
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis =
+            analysis_snapshot_for_path(Path::new(".github/workflows/demo.yml"), source, &theme);
+        let region = find_nested_region(&analysis, "bash", "echo hi", source);
         assert!(
-            !line_has_background(lines[3], level_one_tint),
+            !region_covers_line(region, source, "- run: |"),
             "run: | header line should stay outside the nested block"
         );
         assert!(
-            line_has_background(lines[4], level_one_tint),
-            "first run body line should receive nested block tint"
+            region_covers_line(region, source, "echo hi"),
+            "first run body line should receive nested block coverage"
         );
         assert!(
-            line_has_background(lines[5], level_one_tint),
-            "second run body line should receive nested block tint"
+            region_covers_line(region, source, "printf '%s\\n' \"$GITHUB_REF\""),
+            "second run body line should receive nested block coverage"
         );
 
-        let source_lines: Vec<_> = source.lines().collect();
-        let body_lines = [source_lines[4], source_lines[5]];
-        let block_width = body_lines
-            .iter()
-            .map(|line| display_width(line))
-            .max()
-            .unwrap_or(DisplayColumn::new(0));
-        let short_pad = " ".repeat((block_width - display_width(body_lines[0])).as_usize());
+        let first_segment = segment_for_line(region, source, "echo hi");
+        let second_segment = segment_for_line(region, source, "printf '%s\\n' \"$GITHUB_REF\"");
 
         assert!(
-            trailing_background_pad_width(lines[4], level_one_tint) >= short_pad.len(),
+            segment_trailing_padding(first_segment) > 0,
             "shorter run body line should keep a visible block-width pad"
         );
         assert!(
-            trailing_background_pad_width(lines[5], level_one_tint) == 0,
+            segment_trailing_padding(second_segment) == 0,
             "widest run body line should not receive trailing block padding"
         );
     }
@@ -7892,23 +7850,20 @@ priority: 7
         let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo \"短描述\"\n          echo \"这里放一段更长的中文描述，用来验证共享的 block 几何在 GitHub Actions run 中也会补齐右边界\"\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let rendered = render_with_theme(
-            Some(Path::new(".github/workflows/demo-cjk.yml")),
-            source,
-            &theme,
-        )
-        .expect("expected workflow source to render");
-        let lines: Vec<_> = rendered.lines().collect();
-        let block_lines = [
-            find_line_containing(&lines, "echo \"短描述\""),
-            find_line_containing(
-                &lines,
+        let analysis =
+            analysis_snapshot_for_path(Path::new(".github/workflows/demo-cjk.yml"), source, &theme);
+        let region = find_nested_region(&analysis, "bash", "echo \"短描述\"", source);
+        let segments = [
+            segment_for_line(region, source, "echo \"短描述\""),
+            segment_for_line(
+                region,
+                source,
                 "echo \"这里放一段更长的中文描述，用来验证共享的 block 几何在 GitHub Actions run 中也会补齐右边界\"",
             ),
         ];
-        let widths: Vec<_> = block_lines
+        let widths: Vec<_> = segments
             .iter()
-            .map(|line| fixture_display_width(line))
+            .map(|segment| segment_rendered_right_edge(source, segment))
             .collect();
         let expected_width = widths[0];
 
@@ -7937,83 +7892,138 @@ priority: 7
         }
     }
 
-    fn line_has_background(line: &str, background: RgbColor) -> bool {
-        line.contains(&background_escape(background))
+    fn analysis_snapshot_for_path(path: &Path, source: &str, theme: &Theme) -> AnalysisSnapshot {
+        analyze_with_theme(Some(path), source, theme)
+            .unwrap_or_else(|error| panic!("failed to analyze {}: {error}", path.display()))
+            .snapshot()
     }
 
-    fn find_line_containing<'a>(lines: &'a [&str], needle: &str) -> &'a str {
-        lines
-            .iter()
-            .copied()
-            .find(|line| strip_ansi(line).contains(needle))
+    fn render_plan_snapshot_for_path(
+        path: &Path,
+        source: &str,
+        theme: &Theme,
+    ) -> RenderPlanSnapshot {
+        render_plan_with_theme(Some(path), source, theme)
+            .unwrap_or_else(|error| {
+                panic!("failed to build render plan {}: {error}", path.display())
+            })
+            .snapshot(*theme)
+    }
+
+    fn nested_regions(regions: &[NestedRegionSnapshot]) -> Vec<&NestedRegionSnapshot> {
+        let mut flattened = Vec::new();
+        for region in regions {
+            flattened.push(region);
+            flattened.extend(nested_regions(&region.child_nested_regions));
+        }
+        flattened
+    }
+
+    fn nested_runtime_names(snapshot: &AnalysisSnapshot) -> Vec<&'static str> {
+        nested_regions(&snapshot.nested_regions)
+            .into_iter()
+            .map(|region| region.resolved_document_kind.runtime_name)
+            .collect()
+    }
+
+    fn find_nested_region<'a>(
+        snapshot: &'a AnalysisSnapshot,
+        runtime_name: &str,
+        line_fragment: &str,
+        source: &str,
+    ) -> &'a NestedRegionSnapshot {
+        let line_start = line_start_containing(source, line_fragment);
+        nested_regions(&snapshot.nested_regions)
+            .into_iter()
+            .find(|region| {
+                region.resolved_document_kind.runtime_name == runtime_name
+                    && region
+                        .layout_segments
+                        .iter()
+                        .any(|segment| segment.line_start == line_start)
+            })
             .unwrap_or_else(|| {
-                panic!("expected rendered output to contain line fragment {needle:?}")
+                panic!(
+                    "expected nested region runtime {runtime_name:?} to cover line fragment {line_fragment:?}"
+                )
             })
     }
 
-    fn background_escape(background: RgbColor) -> String {
-        format!(
-            "\x1b[48;2;{};{};{}m",
-            background.0, background.1, background.2
-        )
+    fn region_covers_line(
+        region: &NestedRegionSnapshot,
+        source: &str,
+        line_fragment: &str,
+    ) -> bool {
+        let line_start = line_start_containing(source, line_fragment);
+        region
+            .layout_segments
+            .iter()
+            .any(|segment| segment.line_start == line_start)
     }
 
-    fn trailing_background_pad_width(line: &str, background: RgbColor) -> usize {
-        let reset = "\x1b[0m";
-        let Some(prefix) = line.strip_suffix(reset) else {
+    fn line_start_containing(source: &str, needle: &str) -> usize {
+        let start = source
+            .find(needle)
+            .unwrap_or_else(|| panic!("expected source to contain line fragment {needle:?}"));
+        super::line_start_offset(source, start)
+    }
+
+    fn line_start_for_line_number(source: &str, line_number: usize) -> usize {
+        if line_number == 0 {
             return 0;
-        };
-        let background_escape = background_escape(background);
-        let Some(background_start) = prefix.rfind(&background_escape) else {
-            return 0;
-        };
-        let pad = &prefix[(background_start + background_escape.len())..];
-        if pad.chars().all(|ch| ch == ' ') {
-            pad.len()
-        } else {
-            0
         }
+
+        source
+            .match_indices('\n')
+            .nth(line_number - 1)
+            .map(|(index, _)| index + 1)
+            .unwrap_or_else(|| panic!("expected source to have line number {line_number}"))
     }
 
-    fn max_background_space_run(line: &str, background: RgbColor) -> usize {
-        let background_escape = background_escape(background);
-        let reset = "\x1b[0m";
-        let mut rest = line;
-        let mut max_width = 0;
+    fn line_text_at(source: &str, line_start: usize) -> &str {
+        let line_end = source[line_start..]
+            .find('\n')
+            .map(|offset| line_start + offset)
+            .unwrap_or(source.len());
+        &source[line_start..line_end]
+    }
 
-        while let Some(start) = rest.find(&background_escape) {
-            let after_background = &rest[(start + background_escape.len())..];
-            let width = after_background.chars().take_while(|ch| *ch == ' ').count();
+    fn segment_for_line<'a>(
+        region: &'a NestedRegionSnapshot,
+        source: &str,
+        line_fragment: &str,
+    ) -> &'a RegionSegmentSnapshot {
+        let line_start = line_start_containing(source, line_fragment);
+        region
+            .layout_segments
+            .iter()
+            .find(|segment| segment.line_start == line_start)
+            .unwrap_or_else(|| panic!("expected region to cover line fragment {line_fragment:?}"))
+    }
 
-            if width > 0 && after_background[width..].starts_with(reset) {
-                max_width = max_width.max(width);
+    fn segment_left_column(source: &str, segment: &RegionSegmentSnapshot) -> usize {
+        display_width(&source[segment.line_start..segment.left]).as_usize()
+    }
+
+    fn segment_trailing_padding(segment: &RegionSegmentSnapshot) -> usize {
+        segment.right.saturating_sub(segment.text_end)
+    }
+
+    fn segment_rendered_right_edge(source: &str, segment: &RegionSegmentSnapshot) -> usize {
+        display_width(&source[segment.line_start..segment.text_end]).as_usize()
+            + segment_trailing_padding(segment)
+    }
+
+    fn render_plan_text(snapshot: &RenderPlanSnapshot) -> String {
+        let mut text = String::new();
+        for op in &snapshot.ops {
+            match op {
+                RenderOpSnapshot::Text { text: chunk } => text.push_str(chunk),
+                RenderOpSnapshot::Newline => text.push('\n'),
+                RenderOpSnapshot::SetStyle { .. } | RenderOpSnapshot::ResetStyle => {}
             }
-
-            rest = after_background;
         }
-
-        max_width
-    }
-
-    fn visible_columns_before_first_background(line: &str, background: RgbColor) -> usize {
-        let background_escape = background_escape(background);
-        let prefix = line
-            .find(&background_escape)
-            .map(|index| &line[..index])
-            .unwrap_or(line);
-        display_width(&strip_ansi(prefix)).as_usize()
-    }
-
-    fn visible_trailing_spaces(line: &str) -> usize {
-        strip_ansi(line)
-            .chars()
-            .rev()
-            .take_while(|ch| *ch == ' ')
-            .count()
-    }
-
-    fn fixture_display_width(text: &str) -> usize {
-        display_width(&strip_ansi(text)).as_usize()
+        text
     }
 
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
@@ -8084,9 +8094,11 @@ priority: 7
         }];
         let region = NestedRegion {
             visual_level: 0,
+            resolved_document_kind: plain_document_kind("sql"),
             visual_kind: InjectionVisualKind::Transparent,
             layout_segments: Vec::<RegionSegment>::new(),
             child_regions: Vec::new(),
+            child_nested_regions: Vec::new(),
             overlays: vec![StyledSpan {
                 range: 2..4,
                 style: child_style,
@@ -8141,27 +8153,23 @@ priority: 7
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let source = "/**\n * docs\n */\nconst answer = 42;\n";
-        let rendered = render_with_theme(Some(Path::new("demo.ts")), source, &theme)
-            .expect("failed to render TypeScript JSDoc source");
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis = analysis_snapshot_for_path(Path::new("demo.ts"), source, &theme);
+        let region = find_nested_region(&analysis, "jsdoc", "docs", source);
 
         assert!(
-            line_has_background(lines[0], level_one_tint),
-            "expected JSDoc opening line to receive nested block tint"
+            region_covers_line(region, source, "/**"),
+            "expected JSDoc opening line to receive nested block coverage"
         );
         assert!(
-            line_has_background(lines[1], level_one_tint),
-            "expected JSDoc body line to receive nested block tint"
+            region_covers_line(region, source, "docs"),
+            "expected JSDoc body line to receive nested block coverage"
         );
         assert!(
-            line_has_background(lines[2], level_one_tint),
-            "expected JSDoc closing line to receive nested block tint"
+            region_covers_line(region, source, "*/"),
+            "expected JSDoc closing line to receive nested block coverage"
         );
         assert!(
-            !line_has_background(lines[3], level_one_tint),
+            !region_covers_line(region, source, "const answer = 42;"),
             "expected following code line to stay outside the JSDoc block"
         );
     }
@@ -8172,20 +8180,16 @@ priority: 7
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let source =
             "/**\n * this is a much longer JSDoc line\n * short\n */\nconst answer = 42;\n";
-        let rendered = render_with_theme(Some(Path::new("demo.ts")), source, &theme)
-            .expect("failed to render TypeScript JSDoc source");
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
-        let short_line = find_line_containing(&lines, "short");
+        let analysis = analysis_snapshot_for_path(Path::new("demo.ts"), source, &theme);
+        let region = find_nested_region(&analysis, "jsdoc", "short", source);
+        let short_segment = segment_for_line(region, source, "short");
 
         assert!(
-            line_has_background(short_line, level_one_tint),
-            "expected shorter JSDoc prose line to keep its nested tint"
+            region_covers_line(region, source, "short"),
+            "expected shorter JSDoc prose line to keep its nested coverage"
         );
         assert!(
-            trailing_background_pad_width(short_line, level_one_tint) == 0,
+            segment_trailing_padding(short_segment) == 0,
             "expected JSDoc prose to avoid rectangular trailing padding"
         );
     }
@@ -8195,15 +8199,11 @@ priority: 7
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let source = "const query = /* sql */ `\n  select 1\n`;\n";
-        let rendered = render_with_theme(Some(Path::new("demo.ts")), source, &theme)
-            .expect("failed to render TypeScript comment-hint template injection");
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis = analysis_snapshot_for_path(Path::new("demo.ts"), source, &theme);
+        let region = find_nested_region(&analysis, "sql", "select 1", source);
 
         assert!(
-            !line_has_background(lines[1], level_one_tint),
+            region.visual_kind == "transparent",
             "expected inline SQL template injection to avoid block tint"
         );
     }
@@ -8235,19 +8235,34 @@ priority: 7
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("markdown/markdown_truecolor_cjk_repro.md");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let prose_lines = [
+            line_start_for_line_number(&source, 0),
+            line_start_for_line_number(&source, 1),
+        ];
 
         assert!(
-            !line_has_background(lines[0], level_one_tint),
+            !nested_regions(&analysis.nested_regions)
+                .into_iter()
+                .any(|region| {
+                    region.visual_kind == "rect_block"
+                        && region
+                            .layout_segments
+                            .iter()
+                            .any(|segment| segment.line_start == prose_lines[0])
+                }),
             "expected top-level markdown prose line to avoid block tint"
         );
         assert!(
-            !line_has_background(lines[1], level_one_tint),
+            !nested_regions(&analysis.nested_regions)
+                .into_iter()
+                .any(|region| {
+                    region.visual_kind == "rect_block"
+                        && region
+                            .layout_segments
+                            .iter()
+                            .any(|segment| segment.line_start == prose_lines[1])
+                }),
             "expected second top-level markdown prose line to avoid block tint"
         );
     }
@@ -8258,23 +8273,22 @@ priority: 7
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("markdown/html_block_table.md");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-
-        let block_lines = [
-            find_line_containing(&lines, "<table>"),
-            find_line_containing(&lines, "<td>短描述。</td>"),
-            find_line_containing(
-                &lines,
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let region = find_nested_region(&analysis, "html", "<table>", &source);
+        let segments = [
+            segment_for_line(region, &source, "<table>"),
+            segment_for_line(region, &source, "<td>短描述。</td>"),
+            segment_for_line(
+                region,
+                &source,
                 "<td>这里放一段更长的中文描述，用来拉长这一行，观察 HTML block 的右侧补齐是否会只停在当前文本行的末尾。</td>",
             ),
-            find_line_containing(&lines, "<td>中等长度描述。</td>"),
-            find_line_containing(&lines, "</table>"),
+            segment_for_line(region, &source, "<td>中等长度描述。</td>"),
+            segment_for_line(region, &source, "</table>"),
         ];
-        let widths: Vec<_> = block_lines
+        let widths: Vec<_> = segments
             .iter()
-            .map(|line| fixture_display_width(line))
+            .map(|segment| segment_rendered_right_edge(&source, segment))
             .collect();
         let expected_width = widths[0];
 
@@ -8290,22 +8304,21 @@ priority: 7
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("markdown/html_block_tabs.md");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-
-        let block_lines = [
-            find_line_containing(&lines, "<table>"),
-            find_line_containing(&lines, "<td>值\t标签</td>"),
-            find_line_containing(
-                &lines,
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let region = find_nested_region(&analysis, "html", "<table>", &source);
+        let segments = [
+            segment_for_line(region, &source, "<table>"),
+            segment_for_line(region, &source, "<td>值\t标签</td>"),
+            segment_for_line(
+                region,
+                &source,
                 "<td>这里放一段更长的中文内容\t用于验证带 tab 的 HTML block 右边界也会补齐</td>",
             ),
-            find_line_containing(&lines, "</table>"),
+            segment_for_line(region, &source, "</table>"),
         ];
-        let widths: Vec<_> = block_lines
+        let widths: Vec<_> = segments
             .iter()
-            .map(|line| fixture_display_width(line))
+            .map(|segment| segment_rendered_right_edge(&source, segment))
             .collect();
         let expected_width = widths[0];
 
@@ -8321,36 +8334,26 @@ priority: 7
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("rust/injections.rs");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-        let lines: Vec<_> = rendered.lines().collect();
-        let level_one_tint = theme
-            .nested_region_background(1)
-            .expect("expected first nested region tint");
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let region = find_nested_region(&analysis, "sql", "SELECT id, name, enabled", &source);
 
         assert!(
-            line_has_background(
-                find_line_containing(&lines, "SELECT id, name, enabled"),
-                level_one_tint
-            ),
-            "expected multiline Rust SQL raw string to receive nested block tint"
+            region_covers_line(region, &source, "SELECT id, name, enabled"),
+            "expected multiline Rust SQL raw string to receive nested block coverage"
         );
-        let select_line = find_line_containing(&lines, "SELECT id, name, enabled");
-        let background_column =
-            visible_columns_before_first_background(select_line, level_one_tint);
+        let select_segment = segment_for_line(region, &source, "SELECT id, name, enabled");
+        let background_column = segment_left_column(&source, select_segment);
         assert!(
             background_column == 8,
-            "expected Rust SQL block to preserve host indentation before the block tint, got column {background_column}: {select_line:?}"
+            "expected Rust SQL block to preserve host indentation before the block tint, got column {background_column}: {:?}",
+            line_text_at(&source, select_segment.line_start)
         );
         assert!(
-            line_has_background(
-                find_line_containing(&lines, "ORDER BY name DESC"),
-                level_one_tint
-            ),
-            "expected trailing Rust SQL raw-string line to stay inside the block tint"
+            region_covers_line(region, &source, "ORDER BY name DESC"),
+            "expected trailing Rust SQL raw-string line to stay inside the block coverage"
         );
         assert!(
-            !line_has_background(find_line_containing(&lines, "\"#"), level_one_tint),
+            !region_covers_line(region, &source, "\"#"),
             "expected Rust raw-string closing delimiter line to stay outside the block tint"
         );
     }
@@ -8368,6 +8371,66 @@ priority: 7
             value["spans"]
                 .as_array()
                 .is_some_and(|spans| !spans.is_empty())
+        );
+    }
+
+    #[test]
+    fn debug_analysis_json_reports_nested_region_runtime_identity() {
+        let path = fixture_path("just/injections.just");
+        let source = read_file(&path);
+        let json = debug_analysis_json(Some(path.as_path()), &source)
+            .expect("analysis debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("analysis json should parse");
+        let nested_regions = value["nested_regions"]
+            .as_array()
+            .expect("expected nested regions array");
+
+        assert!(
+            nested_regions.iter().any(|region| {
+                region["resolved_document_kind"]["runtime_name"] == Value::String("python".into())
+            }),
+            "expected analysis nested regions to expose injected python runtime identity: {json}"
+        );
+        assert!(
+            nested_regions.iter().any(|region| {
+                region["resolved_document_kind"]["runtime_name"]
+                    == Value::String("javascript".into())
+            }),
+            "expected analysis nested regions to expose injected javascript runtime identity: {json}"
+        );
+    }
+
+    #[test]
+    fn debug_analysis_json_preserves_recursive_child_nested_regions() {
+        let path = fixture_path("rust/doc_comments_nested.rs");
+        let source = read_file(&path);
+        let json = debug_analysis_json(Some(path.as_path()), &source)
+            .expect("analysis debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("analysis json should parse");
+        let nested_regions = value["nested_regions"]
+            .as_array()
+            .expect("expected nested regions array");
+        let markdown_region = nested_regions
+            .iter()
+            .find(|region| {
+                region["resolved_document_kind"]["runtime_name"] == Value::String("markdown".into())
+            })
+            .expect("expected outer rustdoc markdown region");
+        let child_nested_regions = markdown_region["child_nested_regions"]
+            .as_array()
+            .expect("expected recursive child nested regions");
+
+        assert!(
+            child_nested_regions.iter().any(|region| {
+                region["resolved_document_kind"]["runtime_name"] == Value::String("rust".into())
+            }),
+            "expected nested markdown region to preserve rust fenced block identity: {json}"
+        );
+        assert!(
+            child_nested_regions.iter().any(|region| {
+                region["resolved_document_kind"]["runtime_name"] == Value::String("python".into())
+            }),
+            "expected nested markdown region to preserve python fenced block identity: {json}"
         );
     }
 

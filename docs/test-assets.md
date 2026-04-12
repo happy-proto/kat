@@ -12,6 +12,8 @@
 ## 维护约定
 
 - 每个新的语言支持、检测规则或嵌套高亮场景，都应先补最小 `fixture`。
+- 默认优先让测试直接断言 `analysis` / `visual` / `render_ops` 的稳定 IR；只有确实在 terminal 编码边界才能稳定表达的问题，才继续断言最终 ANSI / PTY 结果。
+- 当测试目标是“是否复用了正确的 nested runtime / profile”，优先在 analysis snapshot 上断言递归子区域的 `document kind`，不要再通过颜色片段间接猜测。
 - 当问题只在某个渲染层稳定复现时，优先补能锁定该层语义的最小 `fixture`，再决定是否需要额外的 ANSI / PTY 回放样例。
 - 涉及 block 对齐、右侧补齐、显示列宽或 ANSI 剥离的回归时，优先补带宽字符的最小 `fixture`（至少覆盖 CJK，必要时再补 emoji / tab），并让断言复用共享的 `display_geometry` 语义以及 `ByteOffset` / `DisplayColumn` 约定，而不是在测试里重新手写一套宽度规则。
 - 需要长期观察性能回归时，把基线输入纳入 `testdata/perf/` 管理，并通过 `just perf` 复用同一套入口。

@@ -158,17 +158,20 @@ impl StyledSpanSnapshot {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub(crate) struct NestedRegionSnapshot {
     pub visual_level: usize,
+    pub resolved_document_kind: DocumentKindSnapshot,
     pub visual_kind: &'static str,
     pub merge_parent_styles: bool,
     pub layout_segments: Vec<RegionSegmentSnapshot>,
     pub overlays: Vec<StyledSpanSnapshot>,
     pub child_regions: Vec<VisualRegionSnapshot>,
+    pub child_nested_regions: Vec<NestedRegionSnapshot>,
 }
 
 impl NestedRegionSnapshot {
     fn from_region(region: &NestedRegion, color_mode: ColorMode) -> Self {
         Self {
             visual_level: region.visual_level,
+            resolved_document_kind: region.resolved_document_kind.snapshot(),
             visual_kind: region.visual_kind.snapshot_name(),
             merge_parent_styles: region.merge_parent_styles,
             layout_segments: region
@@ -186,6 +189,11 @@ impl NestedRegionSnapshot {
                 .child_regions
                 .iter()
                 .map(VisualRegionSnapshot::from_region)
+                .collect(),
+            child_nested_regions: region
+                .child_nested_regions
+                .iter()
+                .map(|region| NestedRegionSnapshot::from_region(region, color_mode))
                 .collect(),
         }
     }
