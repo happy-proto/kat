@@ -643,6 +643,14 @@ impl InjectionDecode {
 }
 
 impl InjectionVisualKind {
+    pub(crate) const fn snapshot_name(self) -> &'static str {
+        match self {
+            Self::Transparent => "transparent",
+            Self::TightBlock => "tight_block",
+            Self::RectBlock => "rect_block",
+        }
+    }
+
     fn from_query_value(value: &str) -> Self {
         match value {
             "transparent" => Self::Transparent,

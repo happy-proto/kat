@@ -1,36 +1,30 @@
-use std::env;
-
 use anstyle::{AnsiColor, Color, RgbColor, Style};
+use serde::Serialize;
 
-use crate::terminal_background::detect_nested_region_tint;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 pub enum ColorMode {
     NoColor,
     Ansi,
     TrueColor,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Theme {
     color_mode: ColorMode,
     nested_region_tint: Option<RgbColor>,
 }
 
 impl Theme {
-    pub fn detect() -> Self {
-        let color_mode = detect_color_mode();
+    pub fn new(color_mode: ColorMode, nested_region_tint: Option<RgbColor>) -> Self {
         Self {
-            nested_region_tint: detect_nested_region_tint(color_mode),
             color_mode,
+            nested_region_tint,
         }
     }
 
     #[cfg(test)]
     pub fn for_mode(color_mode: ColorMode) -> Self {
-        Self {
-            color_mode,
-            nested_region_tint: None,
-        }
+        Self::new(color_mode, None)
     }
 
     #[cfg(test)]
@@ -38,10 +32,7 @@ impl Theme {
         color_mode: ColorMode,
         nested_region_tint: Option<RgbColor>,
     ) -> Self {
-        Self {
-            color_mode,
-            nested_region_tint,
-        }
+        Self::new(color_mode, nested_region_tint)
     }
 
     #[cfg(test)]
@@ -109,6 +100,31 @@ impl Theme {
             TokenStyle::background_tint(adjust_nested_region_tint(background, level))
         })
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct TokenStyleSnapshot {
+    pub color_name: &'static str,
+    pub foreground: ColorValueSnapshot,
+    pub background: Option<RgbColorSnapshot>,
+    pub italic: bool,
+    pub bold: bool,
+    pub underline: bool,
+    pub strikethrough: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub(crate) enum ColorValueSnapshot {
+    Ansi { name: &'static str },
+    Rgb(RgbColorSnapshot),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct RgbColorSnapshot {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 fn adjust_nested_region_tint(background: RgbColor, level: usize) -> RgbColor {
@@ -323,6 +339,24 @@ impl TokenStyle {
 
         transition
     }
+
+    pub(crate) fn snapshot(self, color_mode: ColorMode) -> TokenStyleSnapshot {
+        TokenStyleSnapshot {
+            color_name: self.color.name(),
+            foreground: match color_mode {
+                ColorMode::NoColor => unreachable!("NoColor snapshots should not request styles"),
+                ColorMode::Ansi => ColorValueSnapshot::Ansi {
+                    name: self.color.to_ansi_name(),
+                },
+                ColorMode::TrueColor => ColorValueSnapshot::Rgb(self.color.to_rgb_color().into()),
+            },
+            background: self.background.map(Into::into),
+            italic: self.italic,
+            bold: self.bold,
+            underline: self.underline,
+            strikethrough: self.strikethrough,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -360,6 +394,20 @@ impl DraculaColor {
         }
     }
 
+    const fn name(self) -> &'static str {
+        match self {
+            Self::Comment => "comment",
+            Self::Foreground => "foreground",
+            Self::Red => "red",
+            Self::Orange => "orange",
+            Self::Yellow => "yellow",
+            Self::Green => "green",
+            Self::Purple => "purple",
+            Self::Cyan => "cyan",
+            Self::Pink => "pink",
+        }
+    }
+
     fn to_ansi_color(self) -> AnsiColor {
         match self {
             Self::Comment => AnsiColor::BrightBlack,
@@ -371,6 +419,20 @@ impl DraculaColor {
             Self::Purple => AnsiColor::Blue,
             Self::Cyan => AnsiColor::Cyan,
             Self::Pink => AnsiColor::Magenta,
+        }
+    }
+
+    const fn to_ansi_name(self) -> &'static str {
+        match self {
+            Self::Comment => "bright_black",
+            Self::Foreground => "white",
+            Self::Red => "red",
+            Self::Orange => "bright_yellow",
+            Self::Yellow => "yellow",
+            Self::Green => "green",
+            Self::Purple => "blue",
+            Self::Cyan => "cyan",
+            Self::Pink => "magenta",
         }
     }
 
@@ -389,55 +451,14 @@ impl DraculaColor {
     }
 }
 
-fn detect_color_mode() -> ColorMode {
-    if let Some(explicit_mode) = env::var_os("KAT_COLOR_MODE") {
-        return match explicit_mode
-            .to_string_lossy()
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "none" | "never" | "off" => ColorMode::NoColor,
-            "ansi" | "16" => ColorMode::Ansi,
-            "truecolor" | "24bit" | "rgb" => ColorMode::TrueColor,
-            _ => ColorMode::Ansi,
-        };
+impl From<RgbColor> for RgbColorSnapshot {
+    fn from(value: RgbColor) -> Self {
+        Self {
+            r: value.0,
+            g: value.1,
+            b: value.2,
+        }
     }
-
-    if env::var_os("NO_COLOR").is_some() {
-        return ColorMode::NoColor;
-    }
-
-    if env::var("TERM").is_ok_and(|term| term == "dumb") {
-        return ColorMode::NoColor;
-    }
-
-    if env::var("COLORTERM").is_ok_and(|value| {
-        let value = value.to_ascii_lowercase();
-        value.contains("truecolor") || value.contains("24bit")
-    }) {
-        return ColorMode::TrueColor;
-    }
-
-    if env::var("TERM").is_ok_and(|term| {
-        let term = term.to_ascii_lowercase();
-        term.contains("direct")
-            || term.contains("kitty")
-            || term.contains("wezterm")
-            || term.contains("ghostty")
-    }) {
-        return ColorMode::TrueColor;
-    }
-
-    if env::var("TERM_PROGRAM").is_ok_and(|program| {
-        matches!(
-            program.as_str(),
-            "WezTerm" | "iTerm.app" | "vscode" | "WarpTerminal" | "ghostty"
-        )
-    }) {
-        return ColorMode::TrueColor;
-    }
-
-    ColorMode::Ansi
 }
 
 fn token_style_for(capture: &str, text: &str) -> TokenStyle {

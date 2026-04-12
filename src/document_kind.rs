@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use serde::Serialize;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DocumentProfile {
     Plain,
@@ -7,6 +9,18 @@ pub(crate) enum DocumentProfile {
     GitHubActionMetadata,
     GitConfig,
     GitModules,
+}
+
+impl DocumentProfile {
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Plain => "plain",
+            Self::GitHubActionsWorkflow => "github_actions_workflow",
+            Self::GitHubActionMetadata => "github_action_metadata",
+            Self::GitConfig => "git_config",
+            Self::GitModules => "git_modules",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -37,6 +51,19 @@ impl DocumentKind {
     pub(crate) const fn profile(self) -> DocumentProfile {
         self.profile
     }
+
+    pub(crate) fn snapshot(self) -> DocumentKindSnapshot {
+        DocumentKindSnapshot {
+            runtime_name: self.runtime_name,
+            profile: self.profile.name(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct DocumentKindSnapshot {
+    pub runtime_name: &'static str,
+    pub profile: &'static str,
 }
 
 pub(crate) fn yaml_document_kind(source_path: Option<&Path>) -> DocumentKind {

@@ -85,9 +85,14 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 - 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`
 - CI 与发布流程以仓库里的工作流配置为准
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
+- 查看 analysis 层输出的检测结果、styled spans 和 nested regions：`kat --debug-analysis path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
+- 查看 visual 层输出的 region / block / tint 分段：`kat --debug-visual path/to/file`
+- 查看终端无关的渲染状态流：`kat --debug-render-ops path/to/file`
+- 查看 terminal 层能力与最终 ANSI 编码：`kat --debug-terminal path/to/file`
 - 查看渲染分段耗时：`kat --debug-timing --paging=never path/to/file >/dev/null`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
+- `--debug-analysis`、`--debug-visual`、`--debug-render-ops`、`--debug-terminal` 默认输出稳定 JSON，适合做 snapshot、回归和跨环境 diff
 - 长输出默认支持外部分页：`--paging=auto|always|never`，`auto` 会在 TTY 中按屏高判断是否接入 pager；pager 命令优先读 `PAGER`，未设置时默认回退到 `less -R -F -X`
 
 ## 文档入口

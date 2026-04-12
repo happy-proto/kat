@@ -215,7 +215,11 @@ fn format_cli_error(error: &anyhow::Error) -> String {
 enum OutputMode {
     Render,
     DebugAst,
+    DebugAnalysis,
     DebugSemantics,
+    DebugVisual,
+    DebugRenderOps,
+    DebugTerminal,
     Version,
 }
 
@@ -302,10 +306,18 @@ enum PagingMode {
 struct CliArgs {
     #[arg(long = "debug-ast", group = "mode")]
     debug_ast: bool,
+    #[arg(long = "debug-analysis", group = "mode")]
+    debug_analysis: bool,
     #[arg(long = "debug-semantics", group = "mode")]
     debug_semantics: bool,
     #[arg(long = "debug-shell-semantics", group = "mode")]
     debug_shell_semantics: bool,
+    #[arg(long = "debug-visual", group = "mode")]
+    debug_visual: bool,
+    #[arg(long = "debug-render-ops", group = "mode")]
+    debug_render_ops: bool,
+    #[arg(long = "debug-terminal", group = "mode")]
+    debug_terminal: bool,
     #[arg(long = "debug-timing")]
     debug_timing: bool,
     #[arg(long = "help", short = 'h', action = ArgAction::Help)]
@@ -335,8 +347,12 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
     let mut command = cli_command();
     for arg_id in [
         "debug_ast",
+        "debug_analysis",
         "debug_semantics",
         "debug_shell_semantics",
+        "debug_visual",
+        "debug_render_ops",
+        "debug_terminal",
         "debug_timing",
     ] {
         command = command.mut_arg(arg_id, |arg| arg.hide(true));
@@ -511,8 +527,16 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         OutputMode::Version
     } else if cli.debug_ast {
         OutputMode::DebugAst
+    } else if cli.debug_analysis {
+        OutputMode::DebugAnalysis
     } else if cli.debug_semantics || cli.debug_shell_semantics {
         OutputMode::DebugSemantics
+    } else if cli.debug_visual {
+        OutputMode::DebugVisual
+    } else if cli.debug_render_ops {
+        OutputMode::DebugRenderOps
+    } else if cli.debug_terminal {
+        OutputMode::DebugTerminal
     } else {
         OutputMode::Render
     };
@@ -542,6 +566,13 @@ fn render_output(
             }
             Ok(output)
         }
+        OutputMode::DebugAnalysis => render_debug_json(
+            language,
+            source_path,
+            source,
+            kat::debug_analysis_json,
+            kat::debug_named_language_analysis_json,
+        ),
         OutputMode::DebugSemantics => {
             let language_name = resolve_debug_language_name(language, source_path, source)?;
             let mut output = kat::debug_semantics(&language_name, source)?;
@@ -550,8 +581,46 @@ fn render_output(
             }
             Ok(output)
         }
+        OutputMode::DebugVisual => render_debug_json(
+            language,
+            source_path,
+            source,
+            kat::debug_visual_json,
+            kat::debug_named_language_visual_json,
+        ),
+        OutputMode::DebugRenderOps => render_debug_json(
+            language,
+            source_path,
+            source,
+            kat::debug_render_ops_json,
+            kat::debug_named_language_render_ops_json,
+        ),
+        OutputMode::DebugTerminal => render_debug_json(
+            language,
+            source_path,
+            source,
+            kat::debug_terminal_json,
+            kat::debug_named_language_terminal_json,
+        ),
         OutputMode::Version => Ok(version_output()),
     }
+}
+
+fn render_debug_json(
+    language: Option<&str>,
+    source_path: Option<&std::path::Path>,
+    source: &str,
+    auto_debug: impl Fn(Option<&std::path::Path>, &str) -> Result<String>,
+    named_debug: impl Fn(&str, &str) -> Result<String>,
+) -> Result<String> {
+    let mut output = match language {
+        Some(language_name) => named_debug(language_name, source)?,
+        None => auto_debug(source_path, source)?,
+    };
+    if !output.ends_with('\n') {
+        output.push('\n');
+    }
+    Ok(output)
 }
 
 fn render_output_with_timing(
@@ -968,6 +1037,88 @@ mod tests {
                 debug_timing: false,
                 language: Some("regex".to_owned()),
                 paths: vec![PathBuf::from("pattern.re")],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_debug_analysis_flag() {
+        let options = parse_cli_args([
+            OsString::from("--debug-analysis"),
+            OsString::from("docs/architecture.md"),
+        ])
+        .expect("failed to parse debug analysis flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::DebugAnalysis,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: None,
+                paths: vec![PathBuf::from("docs/architecture.md")],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_debug_visual_flag() {
+        let options = parse_cli_args([
+            OsString::from("--debug-visual"),
+            OsString::from("--language"),
+            OsString::from("markdown"),
+            OsString::from("notes.md"),
+        ])
+        .expect("failed to parse debug visual flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::DebugVisual,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: Some("markdown".to_owned()),
+                paths: vec![PathBuf::from("notes.md")],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_debug_render_ops_flag() {
+        let options = parse_cli_args([
+            OsString::from("--debug-render-ops"),
+            OsString::from("notes.md"),
+        ])
+        .expect("failed to parse debug render ops flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::DebugRenderOps,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: None,
+                paths: vec![PathBuf::from("notes.md")],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_debug_terminal_flag() {
+        let options = parse_cli_args([
+            OsString::from("--debug-terminal"),
+            OsString::from("notes.md"),
+        ])
+        .expect("failed to parse debug terminal flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::DebugTerminal,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: None,
+                paths: vec![PathBuf::from("notes.md")],
             }
         );
     }
