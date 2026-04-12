@@ -14,9 +14,7 @@ pub struct GrammarRegistry {
 #[derive(Debug, Deserialize)]
 pub struct GrammarSpec {
     pub name: String,
-    #[allow(dead_code)]
-    pub library_name: String,
-    #[allow(dead_code)]
+    #[cfg(test)]
     #[serde(default)]
     pub parser_source: ParserSource,
     pub extensions: Vec<String>,
@@ -24,11 +22,10 @@ pub struct GrammarSpec {
     #[serde(default)]
     pub filename_prefixes: Vec<String>,
     pub shebang_substrings: Vec<String>,
-    #[allow(dead_code)]
-    pub extra_c_flags: Vec<String>,
     pub highlight_names: Vec<String>,
 }
 
+#[cfg(test)]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ParserSource {
