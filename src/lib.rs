@@ -1489,17 +1489,18 @@ fn collect_top_level_injection_regions(
         let tree = parser
             .parse(source, None)
             .with_context(|| format!("failed to parse source for {runtime_name}"))?;
+        let candidates = prune_to_top_level_injection_regions(collect_injection_candidates(
+            document_kind,
+            language_runtime,
+            &tree,
+            source,
+        )?);
         return render_injection_candidates(
             source,
             theme,
             nested_visual_level,
             timings,
-            prune_to_top_level_injection_regions(collect_injection_candidates(
-                document_kind,
-                language_runtime,
-                &tree,
-                source,
-            )?),
+            candidates,
         );
     }
 
@@ -1512,15 +1513,10 @@ fn collect_top_level_injection_regions(
         .with_context(|| format!("failed to parse source for {runtime_name}"))?;
 
     let candidates = collect_injection_candidates(document_kind, language_runtime, &tree, source)?;
-    render_injection_candidates(
-        source,
-        theme,
-        nested_visual_level,
-        timings,
-        prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
-            source, candidates,
-        )),
-    )
+    let candidates = prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
+        source, candidates,
+    ));
+    render_injection_candidates(source, theme, nested_visual_level, timings, candidates)
 }
 
 fn render_injection_candidates(
@@ -2307,7 +2303,6 @@ fn overlay_nested_region(parent_spans: Vec<StyledSpan>, region: &NestedRegion) -
 
         push_span(&mut result, start..end, resolved_style);
     }
-
     result
 }
 
@@ -2348,7 +2343,6 @@ fn overlay_style_spans(
             .or_else(|| style_covering_span(&parent_spans, start, end));
         push_span(&mut result, start..end, style);
     }
-
     result
 }
 
@@ -5571,6 +5565,53 @@ mod tests {
         assert!(
             rust_rendered.contains("\x1b[38;2;139;233;253mescaped_section"),
             "expected Rust escaped regex string case to reuse regex named group styling"
+        );
+    }
+
+    #[test]
+    fn typescript_and_tsx_hosts_reuse_comment_led_template_injection_runtimes() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let ts_path = fixture_path("typescript/injections.ts");
+        let ts_source = read_file(&ts_path);
+        let ts_rendered = render_with_theme(Some(ts_path.as_path()), &ts_source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", ts_path.display()));
+        assert!(
+            ts_rendered.contains("\x1b[38;2;255;121;198mSELECT"),
+            "expected TypeScript comment-hosted SQL template to reuse SQL keyword styling"
+        );
+        assert!(
+            ts_rendered.contains("\x1b[38;2;255;121;198mquery"),
+            "expected TypeScript comment-hosted GraphQL template to reuse GraphQL keyword styling"
+        );
+        assert!(
+            ts_rendered.contains("\x1b[38;2;255;121;198msection"),
+            "expected TypeScript comment-hosted HTML template to reuse HTML tag styling"
+        );
+        assert!(
+            ts_rendered.contains("\x1b[38;2;255;121;198m."),
+            "expected TypeScript comment-hosted CSS template to reuse CSS selector punctuation styling"
+        );
+
+        let tsx_path = fixture_path("tsx/injections.tsx");
+        let tsx_source = read_file(&tsx_path);
+        let tsx_rendered = render_with_theme(Some(tsx_path.as_path()), &tsx_source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", tsx_path.display()));
+        assert!(
+            tsx_rendered.contains("\x1b[38;2;255;121;198mSELECT"),
+            "expected TSX comment-hosted SQL template to reuse SQL keyword styling"
+        );
+        assert!(
+            tsx_rendered.contains("\x1b[38;2;255;121;198mquery"),
+            "expected TSX comment-hosted GraphQL template to reuse GraphQL keyword styling"
+        );
+        assert!(
+            tsx_rendered.contains("\x1b[38;2;255;121;198msection"),
+            "expected TSX comment-hosted HTML template to reuse HTML tag styling"
+        );
+        assert!(
+            tsx_rendered.contains("\x1b[38;2;255;121;198m."),
+            "expected TSX comment-hosted CSS template to reuse CSS selector punctuation styling"
         );
     }
 

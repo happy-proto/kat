@@ -194,18 +194,31 @@ fn collect_host_injection_candidates(
     tree: &Tree,
     source: &str,
 ) -> Result<Vec<InjectionCandidate>> {
+    let mut candidates = Vec::new();
+
     match (document_kind.runtime_name(), document_kind.profile()) {
-        ("dockerfile", _) => {
-            collect_dockerfile_injection_candidates(language_runtime, tree, source)
-        }
+        ("dockerfile", _) => candidates.extend(collect_dockerfile_injection_candidates(
+            language_runtime,
+            tree,
+            source,
+        )?),
         (
             "yaml",
             DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata,
-        ) => Ok(collect_github_actions_yaml_injection_candidates(
+        ) => candidates.extend(collect_github_actions_yaml_injection_candidates(
             tree, source,
         )),
-        _ => Ok(Vec::new()),
+        ("javascript" | "typescript" | "tsx", _) => {
+            candidates.extend(collect_ecmascript_comment_injection_candidates(
+                document_kind.runtime_name(),
+                tree,
+                source,
+            ))
+        }
+        _ => {}
     }
+
+    Ok(candidates)
 }
 
 fn collect_dockerfile_injection_candidates(
@@ -284,6 +297,169 @@ fn collect_github_actions_yaml_injection_candidates(
     walk_github_actions_yaml_node(tree.root_node(), source, None, &mut candidates);
 
     candidates
+}
+
+fn collect_ecmascript_comment_injection_candidates(
+    runtime_name: &str,
+    tree: &Tree,
+    source: &str,
+) -> Vec<InjectionCandidate> {
+    let mut candidates = Vec::new();
+    walk_ecmascript_comment_injection_nodes(
+        runtime_name,
+        tree.root_node(),
+        source,
+        &mut candidates,
+    );
+    candidates
+}
+
+fn walk_ecmascript_comment_injection_nodes(
+    runtime_name: &str,
+    node: Node,
+    source: &str,
+    candidates: &mut Vec<InjectionCandidate>,
+) {
+    if node.kind() == "comment" {
+        collect_ecmascript_comment_injection_candidate(runtime_name, node, source, candidates);
+    }
+
+    for child in named_children(node) {
+        walk_ecmascript_comment_injection_nodes(runtime_name, child, source, candidates);
+    }
+}
+
+fn collect_ecmascript_comment_injection_candidate(
+    runtime_name: &str,
+    comment: Node,
+    source: &str,
+    candidates: &mut Vec<InjectionCandidate>,
+) {
+    let Some(language_name) =
+        ecmascript_comment_injection_language(runtime_name, &source[comment.byte_range()])
+    else {
+        return;
+    };
+    let Some(next) = comment.next_named_sibling() else {
+        return;
+    };
+
+    match runtime_name {
+        "javascript" => {
+            push_javascript_comment_injection_candidates(language_name, next, candidates)
+        }
+        "typescript" | "tsx" => {
+            push_typescript_comment_injection_candidates(language_name, next, candidates)
+        }
+        _ => {}
+    }
+}
+
+fn ecmascript_comment_injection_language(
+    runtime_name: &str,
+    comment_text: &str,
+) -> Option<&'static str> {
+    let hint = parse_block_comment_hint(comment_text)?;
+
+    match runtime_name {
+        "javascript" => match hint {
+            "html" => Some("html"),
+            "sql" => Some("sql"),
+            "sql:postgres" | "sql:postgresql" | "sql:pgsql" => Some("sql_postgres"),
+            "sql:mysql" | "sql:mariadb" => Some("sql_mysql"),
+            "sql:sqlite" | "sql:sqlite3" => Some("sql_sqlite"),
+            "gql" | "graphql" => Some("graphql"),
+            "css" => Some("css"),
+            _ => None,
+        },
+        "typescript" | "tsx" => match hint {
+            "html" => Some("html"),
+            "sql" => Some("sql"),
+            "gql" | "graphql" => Some("graphql"),
+            "css" => Some("css"),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn parse_block_comment_hint(comment_text: &str) -> Option<&str> {
+    let trimmed = comment_text.trim();
+    let inner = trimmed.strip_prefix("/*")?.strip_suffix("*/")?;
+    Some(inner.trim())
+}
+
+fn push_javascript_comment_injection_candidates(
+    language_name: &'static str,
+    node: Node,
+    candidates: &mut Vec<InjectionCandidate>,
+) {
+    match node.kind() {
+        "string" => candidates.push(build_host_injection_candidate(
+            vec![node.byte_range()],
+            language_name,
+            InjectionDecode::JavaScriptLiteral,
+        )),
+        "template_string" => {
+            for fragment in named_children(node) {
+                if fragment.kind() != "string_fragment" {
+                    continue;
+                }
+
+                let decode = if language_name == "css" {
+                    InjectionDecode::None
+                } else {
+                    InjectionDecode::JavaScriptString
+                };
+                candidates.push(build_host_injection_candidate(
+                    vec![fragment.byte_range()],
+                    language_name,
+                    decode,
+                ));
+            }
+        }
+        _ => {}
+    }
+}
+
+fn push_typescript_comment_injection_candidates(
+    language_name: &'static str,
+    node: Node,
+    candidates: &mut Vec<InjectionCandidate>,
+) {
+    if node.kind() != "template_string" {
+        return;
+    }
+
+    for fragment in named_children(node) {
+        if fragment.kind() != "string_fragment" {
+            continue;
+        }
+
+        candidates.push(build_host_injection_candidate(
+            vec![fragment.byte_range()],
+            language_name,
+            InjectionDecode::None,
+        ));
+    }
+}
+
+fn build_host_injection_candidate(
+    ranges: Vec<Range<usize>>,
+    language_name: &'static str,
+    decode: InjectionDecode,
+) -> InjectionCandidate {
+    InjectionCandidate {
+        ranges,
+        language_name: language_name.to_owned(),
+        is_combined: false,
+        merge_parent_styles: false,
+        decode,
+        highlight_github_expressions: false,
+        visual_kind: InjectionVisualKind::Transparent,
+        visual_level_bump: 0,
+        visual_anchor: InjectionVisualAnchor::Content,
+    }
 }
 
 fn walk_github_actions_yaml_node(
