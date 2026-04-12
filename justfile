@@ -1,4 +1,7 @@
 test:
+    @cargo test --quiet
+
+test-ci:
     @extra_args=""; \
     if [ "${KAT_AGENT_TEST_LOG_MODE:-}" = "quiet" ]; then \
       extra_args="--status-level fail --final-status-level fail --success-output never --show-progress none"; \
