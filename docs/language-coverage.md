@@ -159,151 +159,15 @@
 | Userscript metadata block | 🟩 已支持 | 暂未见本地 `zed` 中有同级内建支持信号。 | 当前通过 JavaScript comment injection + 独立 mini-runtime 支持，因此独立 `.js` 文件和所有嵌套 JavaScript 场景都能原生复用。 |
 | 无扩展名配置文件 / stdin | 🟨 仍较弱 | 现已对明显像 `SQL` / `GraphQL` 的无扩展名内容补上启发式识别，但其它配置类文件仍较弱。 | `zed` 可以通过语言映射设置扩展。 | 这条线已经从“完全缺失”推进到“开始有内容感知”，但离系统化 detector 还差不少。 |
 
-## 相比 `bat` 的文件类型缺口
+## 文件类型缺口
 
-下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
+这里不再维护和 `bat` 的逐项扩展名对账清单，这类内容很长、很容易漂移，而且价值通常低于当前 runtime 与 query 的真实成熟度判断。
 
-- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`、`C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`，和这次继续补齐的 `PHP` / `Scala` / `Swift` / `Dart` / `Elixir` / `Zig`、`SSH Config` / `Git Attributes` / `Git Commit` / `Git Rebase Todo` / `Requirements.txt` / `Apache Conf` / `SCSS` / `Sass`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
-- 下表从这一轮之后的真实剩余缺口继续维护；不再保留已经补齐项的旧记录。
+如果需要评估某类文件是否已支持，优先看：
 
-### 完全缺失：`kat` 还没有对应 runtime / detector 入口
-
-- `ActionScript`：`as`
-- `Ada`：`adb`、`ads`、`gpr`
-- `AppleScript`：`applescript`、`script editor`
-- `ARM Assembly`：`s`、`S`
-- `AsciiDoc (Asciidoctor)`：`adoc`、`ad`、`asciidoc`
-- `ASP`：`asa`
-- `Authorized Keys`：`authorized_keys`、`pub`、`authorized_keys2`
-- `AWK`：`awk`
-- `BibTeX`：`bib`
-- `Cabal`：`cabal`
-- `CFML`：`cfml`、`cfm`、`cfc`
-- `Clojure`：`clj`、`cljc`、`cljs`、`edn`
-- `CMake C Header`：`h.in`
-- `CMake C++ Header`：`hh.in`、`hpp.in`、`hxx.in`、`h++.in`
-- `CMakeCache`：`CMakeCache.txt`
-- `CoffeeScript`：`coffee`、`Cakefile`、`coffee.erb`、`cson`
-- `Command Help`：`cmd-help`、`help`
-- `CpuInfo`：`cpuinfo`
-- `Crontab`：`tab`、`crontab`、`cron.d`
-- `Crystal`：`cr`
-- `D`：`d`、`di`
-- `debsources`：`sources.list`
-- `Elm`：`elm`
-- `Email`：`eml`、`msg`、`mbx`、`mboxz`、`/var/spool/mail/*`、`/var/mail/*`
-- `Erlang`：`erl`、`hrl`、`Emakefile`、`emakefile`、`escript`
-- `F#`：`fs`、`fsi`、`fsx`、`*.fs`
-- `Fortran (Fixed Form)`：`f`、`F`、`f77`、`F77`、`for`、`FOR`、`fpp`、`FPP`
-- `Fortran (Modern)`：`f90`、`F90`、`f95`、`F95`、`f03`、`F03`、`f08`、`F08`
-- `Fortran Namelist`：`namelist`
-- `fstab`：`fstab`、`crypttab`、`mtab`
-- `GDScript (Godot Engine)`：`gd`
-- `Git Link`：`.git`
-- `Git Log`：`gitlog`
-- `Git Mailmap`：`.mailmap`、`mailmap`
-- `GLSL`：`vs`、`gs`、`vsh`、`fsh`、`gsh`、`vshader`、`fshader`、`gshader`、`vert`、`frag`、`geom`、`tesc`、`tese`、`comp`、`glsl`、`mesh`、`task`、`rgen`、`rint`、`rahit`、`rchit`、`rmiss`、`rcall`
-- `gnuplot`：`gp`、`gpl`、`gnuplot`、`gnu`、`plot`、`plt`
-- `Groff/troff`：`groff`、`troff`、`1`、`2`、`3`、`4`、`5`、`6`、`7`、`8`、`9`
-- `group`：`group`
-- `Haskell`：`hs`
-- `Highlight non-printables`：`show-nonprintable`
-- `Hosts File`：`hosts`
-- `HTML (ASP)`：`asp`
-- `HTML (EEx)`：`html.eex`、`html.leex`
-- `HTML (Erlang)`：`yaws`
-- `HTML (Jinja2)`：`htm.j2`、`html.j2`、`xhtml.j2`、`xml.j2`
-- `HTML (Rails)`：`rails`、`rhtml`、`erb`、`html.erb`
-- `HTML (Tcl)`：`adp`
-- `HTML (Twig)`：`twig`、`html.twig`
-- `HTTP Request and Response`：`http`
-- `Idris`：`idr`
-- `Java Server Page (JSP)`：`jsp`
-- `JavaScript`：`htc`
-- `JavaScript (Rails)`：`js.erb`
-- `jsonnet`：`jsonnet`、`libsonnet`、`libjsonnet`
-- `Julia`：`jl`
-- `Known Hosts`：`known_hosts`、`known_hosts.old`
-- `LaTeX`：`tex`、`ltx`
-- `Lean 4`：`lean`
-- `Lisp`：`lisp`、`cl`、`clisp`、`l`、`mud`、`el`、`scm`、`ss`、`lsp`、`fasl`、`sld`
-- `Literate Haskell`：`lhs`
-- `LiveScript`：`ls`、`Slakefile`、`ls.erb`
-- `LLVM`：`ll`
-- `log`：`log`
-- `Manpage`：`man`
-- `MATLAB`：`matlab`
-- `MediaWiki`：`mediawiki`、`wikipedia`、`wiki`
-- `MemInfo`：`meminfo`
-- `NAnt Build File`：`build`
-- `Nim`：`nim`、`nims`、`nimble`
-- `NSIS`：`nsi`、`nsh`、`bnsi`、`bnsh`、`nsdinc`
-- `Objective-C`：`m`
-- `Objective-C++`：`mm`
-- `OCaml`：`ml`、`mli`
-- `OCamllex`：`mll`
-- `OCamlyacc`：`mly`
-- `Odin`：`odin`
-- `orgmode`：`org`
-- `Pascal`：`pas`、`p`、`dpr`
-- `passwd`：`passwd`
-- `Perl`：`pl`、`pc`、`pm`、`pmc`、`pod`、`t`
-- `Plain Text`：`txt`
-- `Puppet`：`pp`、`epp`
-- `PureScript`：`purs`
-- `QML`：`qml`、`qmlproject`
-- `R`：`R`、`r`、`Rprofile`
-- `Racket`：`rkt`
-- `Rd (R Documentation)`：`rd`
-- `Rego`：`rego`
-- `Regular Expression`：`re`
-- `resolv`：`resolv.conf`
-- `reStructuredText`：`rst`、`rest`
-- `Robot Framework`：`robot`、`resource`
-- `Ruby Haml`：`haml`
-- `Ruby on Rails`：`rxml`、`builder`
-- `Ruby Slim`：`slim`、`skim`
-- `Salt State (SLS)`：`sls`
-- `Separated Values`：`csv`
-- `SML`：`sml`、`cm`、`sig`
-- `Solidity`：`sol`
-- `SQL (Rails)`：`erbsql`、`sql.erb`
-- `SSHD Config`：`sshd_config`
-- `Strace`：`strace`
-- `Stylus`：`styl`、`stylus`
-- `syslog`：`syslog`
-- `SystemVerilog`：`sv`、`svh`、`vh`
-- `Tab Separated Values`：`tsv`
-- `Tcl`：`tcl`
-- `TeX`：`sty`、`cls`
-- `Textile`：`textile`
-- `Todo.txt`：`todo.txt`、`done.txt`
-- `Typst`：`typ`
-- `varlink`：`varlink`
-- `Verilog`：`v`、`V`
-- `VHDL`：`vhd`、`vhdl`、`vho`、`vht`
-- `VimHelp`：`vimhelp`
-- `VimL`：`vim`、`vimrc`、`gvimrc`、`.vimrc`、`.gvimrc`、`.exrc`、`.nvimrc`、`_vimrc`、`_gvimrc`、`_exrc`
-- `Vyper`：`vy`
-- `WGSL`：`wgsl`
-- `x86_64 Assembly`：`yasm`、`nasm`、`asm`、`inc`、`mac`
-
-### 部分覆盖：已有相关 runtime，但文件识别范围仍窄于 `bat`
-
-- `Bourne Again Shell (bash)`：`kat` 已覆盖 `sh`、`bash`、`zsh`、`.bash_aliases`、`.bash_functions`、`.bash_login`、`.bash_logout`、`.bash_profile`、`.bashrc`、`.profile`、`.zlogin`、`.zlogout`、`.zprofile`、`.zshenv`、`.zshrc`；仍缺 `ash`、`.bash_completions`、`.bash_variables`、`.textmate_init`、`PKGBUILD`、`ebuild`、`eclass`、`**/bat/config`、`*.ksh`、`*.kshrc`、`/etc/os-release`、`/var/run/os-release`、`/etc/profile`、`bashrc`、`*.bashrc`、`bash_profile`、`*.bash_profile`、`bash_login`、`*.bash_login`、`bash_logout`、`*.bash_logout`、`zshrc`、`*.zshrc`、`zprofile`、`*.zprofile`、`zlogin`、`*.zlogin`、`zlogout`、`*.zlogout`、`zshenv`、`*.zshenv`
-- `CSS`：`kat` 已覆盖 `css`；仍缺 `css.erb`、`css.liquid`
-- `Dockerfile`：`kat` 已覆盖 `Dockerfile`、`dockerfile`、`Containerfile`；仍缺 `.Dockerfile`
-- `Git Ignore`：`kat` 已覆盖 `gitignore`、`.gitignore`；仍缺 `exclude`、`/home/example/.config/git/ignore`
-- `HTML`：`kat` 已覆盖 `html`、`htm`；仍缺 `shtml`、`xhtml`
-- `JavaScript (Babel)`：`kat` 已覆盖 `js`、`mjs`、`jsx`、`cjs`；仍缺 `babel`、`es6`、`*.pac`
-- `JSON`：`kat` 已覆盖 `json`、`jsonc`、`jsonl`、`ipynb` 与 `flake.lock`；仍缺 `sublime-settings`、`sublime-menu`、`sublime-keymap`、`sublime-mousemap`、`sublime-theme`、`sublime-build`、`sublime-project`、`sublime-completions`、`sublime-commands`、`sublime-macro`、`sublime-color-scheme`、`Pipfile.lock`、`*.jsonld`、`*.geojson`、`*.ndjson`、`*.sarif`
-- `Markdown`：`kat` 已覆盖 `md`、`markdown`、`mdown`、`markdn`、`mkd`
-- `Python`：`kat` 已覆盖 `py`；仍缺 `py3`、`pyw`、`pyi`、`pyx`、`pyx.in`、`pxd`、`pxd.in`、`pxi`、`pxi.in`、`rpy`、`cpy`、`SConstruct`、`Sconstruct`、`sconstruct`、`SConscript`、`gyp`、`gypi`、`Snakefile`、`vpy`、`wscript`、`bazel`、`bzl`、`*.xsh`、`*.xonshrc`
-- `Rust`：`kat` 已覆盖 `rs`；仍缺 `*.ron`
-- `SQL`：`kat` 已覆盖 `sql`、`ddl`、`dml`
-- `Terraform`：`kat` 已覆盖 `hcl`、`tf`、`tfvars`
-- `TOML`：`kat` 已覆盖 `toml`、`Cargo.lock`、`uv.lock`；仍缺 `tml`、`Gopkg.lock`、`Pipfile`、`pdm.lock`、`poetry.lock`
-- `YAML`：`kat` 已覆盖 `yaml`、`yml`、`CITATION.cff`、`.clang-format`；仍缺 `sublime-syntax`、`fish_history`
+1. 上面的语言层级和特殊场景说明；
+2. `grammars/registry.toml` 与实际 detector / runtime；
+3. 对应 `fixture` / `showcase` 是否已经落地。
 
 ## 后续细化优先级
 

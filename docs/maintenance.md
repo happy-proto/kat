@@ -42,7 +42,5 @@
 
 ## Release 与分发
 
-- 所有分支的 CI 默认只跑 `fmt` / `clippy` / 测试；只有 `master` 分支才会继续 release build matrix，并在全部通过后覆盖更新 GitHub Releases 的 `latest` prerelease channel。
-- `latest` channel 绑定一个同名 tag，并始终指向当前最新一次成功发布的 `master` commit；不要把它当作稳定版本 tag 使用。
-- 供 `cargo binstall --git` 使用的 release 资产命名与包内目录约定保持固定：资产名使用 `kat-<target>.(tgz|zip)`，包内目录使用 `kat-<target>/`，其中包含最终可执行文件 `kat` 或 `kat.exe`。
-- 如果调整了 `latest` channel 的资产命名、包结构或发布标签，要同步更新 [Cargo.toml](../Cargo.toml) 里的 `package.metadata.binstall` 与 [README.md](../README.md) 中的安装说明。
+- CI、发布与缓存的具体行为以仓库里的 workflow 和配置文件为准；文档只保留长期约定，不重复维护实现级细节。
+- 如果调整了发布资产或 `cargo binstall` 下载约定，要同步更新相关 workflow、[Cargo.toml](../Cargo.toml) 与 [README.md](../README.md)。
