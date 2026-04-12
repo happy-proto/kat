@@ -6,7 +6,7 @@ use tree_sitter::{Node, Parser};
 use crate::{
     document_kind::{DocumentKind, DocumentProfile},
     language_aliases::normalize_language_name,
-    language_runtime::runtime,
+    language_runtime::{runtime, supports_runtime},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -670,7 +670,7 @@ fn collect_github_actions_schema_spans(
         "shell" => {
             if let Some(range) = yaml_scalar_head_token_range(value, source) {
                 let token_text = &source[range.clone()];
-                if normalize_language_name(token_text).is_some_and(|name| runtime(name).is_some()) {
+                if normalize_language_name(token_text).is_some_and(supports_runtime) {
                     push_capture(spans, range, "type.builtin");
                 }
             }

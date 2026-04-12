@@ -2969,6 +2969,73 @@ mod tests {
         expected_fragments: &'static [&'static str],
     }
 
+    const FIXTURE_DATA_AND_MARKUP_FAMILIES: &[&str] = &[
+        "json",
+        "toml",
+        "yaml",
+        "markdown",
+        "html",
+        "css",
+        "vue",
+        "svelte",
+        "graphql",
+        "sql",
+        "proto",
+        "textproto",
+        "dotenv",
+        "ini",
+        "xml",
+        "plain",
+    ];
+    const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
+        "bash",
+        "fish",
+        "zsh",
+        "powershell",
+        "batch",
+        "dockerfile",
+        "just",
+        "git_config",
+        "ignore",
+        "ssh_config",
+        "gitattributes",
+        "git_commit",
+        "git_rebase",
+        "requirements",
+    ];
+    const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &["rust", "c", "cpp", "go"];
+    const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
+        "java", "kotlin", "csharp", "groovy", "scala", "swift", "dart", "elixir", "zig",
+    ];
+    const FIXTURE_SCRIPTING_AND_WEB_PROGRAMMING_FAMILIES: &[&str] = &[
+        "python",
+        "php",
+        "javascript",
+        "typescript",
+        "tsx",
+        "ruby",
+        "lua",
+    ];
+    const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
+        "hcl",
+        "properties",
+        "diff",
+        "apache",
+        "scss",
+        "sass",
+        "jq",
+        "less",
+        "dot",
+        "nginx",
+        "nix",
+        "make",
+        "cmake",
+        "ninja",
+        "jinja",
+        "twig",
+        "erb",
+    ];
+
     const FIXTURE_CASES: &[FixtureCase] = &[
         FixtureCase {
             relative_path: "json/basic.json",
@@ -3675,10 +3742,66 @@ mod tests {
     ];
 
     #[test]
-    fn fixture_suite_matches_expected_rendering_behavior() {
-        let theme = Theme::for_mode(ColorMode::TrueColor);
+    fn fixture_suite_groups_cover_all_fixtures() {
+        let covered_families = FIXTURE_DATA_AND_MARKUP_FAMILIES
+            .iter()
+            .chain(FIXTURE_SHELL_AND_CONFIG_FAMILIES.iter())
+            .chain(FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES.iter())
+            .chain(FIXTURE_MANAGED_PROGRAMMING_FAMILIES.iter())
+            .chain(FIXTURE_SCRIPTING_AND_WEB_PROGRAMMING_FAMILIES.iter())
+            .chain(FIXTURE_INFRA_AND_TEMPLATE_FAMILIES.iter())
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
 
         for case in FIXTURE_CASES {
+            let family = fixture_family(case.relative_path);
+            assert!(
+                covered_families.contains(family),
+                "fixture family {family:?} is not assigned to any fixture suite group"
+            );
+        }
+    }
+
+    #[test]
+    fn fixture_suite_matches_data_and_markup_rendering_behavior() {
+        run_fixture_suite(FIXTURE_DATA_AND_MARKUP_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_shell_and_config_rendering_behavior() {
+        run_fixture_suite(FIXTURE_SHELL_AND_CONFIG_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_systems_programming_rendering_behavior() {
+        run_fixture_suite(FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_managed_programming_rendering_behavior() {
+        run_fixture_suite(FIXTURE_MANAGED_PROGRAMMING_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_scripting_and_web_programming_rendering_behavior() {
+        run_fixture_suite(FIXTURE_SCRIPTING_AND_WEB_PROGRAMMING_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_infra_and_template_rendering_behavior() {
+        run_fixture_suite(FIXTURE_INFRA_AND_TEMPLATE_FAMILIES);
+    }
+
+    fn run_fixture_suite(families: &[&str]) {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let mut matched_cases = 0usize;
+
+        for case in FIXTURE_CASES
+            .iter()
+            .filter(|case| families.contains(&fixture_family(case.relative_path)))
+        {
+            matched_cases += 1;
             let path = fixture_path(case.relative_path);
             let source = read_file(&path);
             let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
@@ -3707,13 +3830,79 @@ mod tests {
                 );
             }
         }
+
+        assert!(
+            matched_cases > 0,
+            "fixture suite group should include at least one fixture"
+        );
+    }
+
+    const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
+        "css",
+        "graphql",
+        "hcl",
+        "html",
+        "json",
+        "markdown",
+        "proto",
+        "sql",
+        "textproto",
+        "toml",
+        "yaml",
+    ];
+    const SHOWCASE_SHELL_AND_TOOLING_FAMILIES: &[&str] = &[
+        "bash",
+        "dockerfile",
+        "fish",
+        "git_config",
+        "ignore",
+        "just",
+        "zsh",
+    ];
+    const SHOWCASE_PROGRAMMING_LANGUAGE_FAMILIES: &[&str] = &["go", "javascript", "python", "rust"];
+
+    #[test]
+    fn showcase_suite_groups_cover_all_showcase_families() {
+        let covered_families = SHOWCASE_MARKUP_AND_CONFIG_FAMILIES
+            .iter()
+            .chain(SHOWCASE_SHELL_AND_TOOLING_FAMILIES.iter())
+            .chain(SHOWCASE_PROGRAMMING_LANGUAGE_FAMILIES.iter())
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
+
+        for path in collect_files("testdata/showcase") {
+            let family = showcase_family(&path);
+            assert!(
+                covered_families.contains(family),
+                "showcase family {family:?} is not assigned to any showcase suite group"
+            );
+        }
     }
 
     #[test]
-    fn showcase_suite_renders_without_errors() {
-        let theme = Theme::for_mode(ColorMode::TrueColor);
+    fn showcase_suite_renders_markup_and_config_without_errors() {
+        run_showcase_suite(SHOWCASE_MARKUP_AND_CONFIG_FAMILIES);
+    }
 
-        for path in collect_files("testdata/showcase") {
+    #[test]
+    fn showcase_suite_renders_shell_and_tooling_without_errors() {
+        run_showcase_suite(SHOWCASE_SHELL_AND_TOOLING_FAMILIES);
+    }
+
+    #[test]
+    fn showcase_suite_renders_programming_languages_without_errors() {
+        run_showcase_suite(SHOWCASE_PROGRAMMING_LANGUAGE_FAMILIES);
+    }
+
+    fn run_showcase_suite(families: &[&str]) {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let mut matched_paths = 0usize;
+
+        for path in collect_files("testdata/showcase")
+            .into_iter()
+            .filter(|path| families.contains(&showcase_family(path)))
+        {
+            matched_paths += 1;
             let source = read_file(&path);
             let rendered =
                 render_with_theme(Some(path.as_path()), &source, &theme).unwrap_or_else(|error| {
@@ -3737,6 +3926,11 @@ mod tests {
                 );
             }
         }
+
+        assert!(
+            matched_paths > 0,
+            "showcase suite group should include at least one showcase file"
+        );
     }
 
     #[test]
@@ -7573,6 +7767,22 @@ priority: 7
 
     fn fixture_path(relative_path: &str) -> PathBuf {
         Path::new("testdata/fixtures").join(relative_path)
+    }
+
+    fn fixture_family(relative_path: &str) -> &str {
+        relative_path
+            .split('/')
+            .next()
+            .expect("fixture path should have a top-level family directory")
+    }
+
+    fn showcase_family(path: &Path) -> &str {
+        path.strip_prefix("testdata/showcase")
+            .expect("showcase path should live under testdata/showcase")
+            .components()
+            .next()
+            .and_then(|component| component.as_os_str().to_str())
+            .expect("showcase path should have a top-level family directory")
     }
 
     fn read_file(path: &Path) -> String {
