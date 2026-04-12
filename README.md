@@ -80,10 +80,7 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 
 ## 开发调试
 
-- 提交前检查入口：`prek.toml`
-- 安装 Git hooks：`prek install`
-- 手动跑提交前检查：`prek run --all-files`
-- 单独跑格式 / lint / 测试：`cargo fmt --check`、`cargo clippy --locked --all-targets --all-features -- -D warnings`、`just test`
+- 提交前检查：`prek run --all-files`
 - 跑测试：`just test`
 - 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`
 - CI 在所有分支都会并行执行和 `prek` 本地重检查对齐的 `fmt` / `clippy` / 测试；只有 `master` 分支会在这些检查全部通过后继续 release build matrix
