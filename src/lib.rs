@@ -1,5 +1,6 @@
 mod analysis;
 mod debug_progress;
+mod display_geometry;
 mod document_kind;
 mod grammar_registry;
 mod host_injections;
@@ -23,10 +24,12 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
-use unicode_width::UnicodeWidthStr;
 
 use crate::analysis::AnalysisDocument;
 use crate::debug_progress::log as progress_log;
+use crate::display_geometry::{
+    ByteOffset, DisplayColumn, display_column_for_byte_offset, display_width_from_column,
+};
 use crate::document_kind::{DocumentKind, git_config_document_kind, yaml_document_kind};
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
@@ -2246,37 +2249,36 @@ fn build_region_segments(
         return line_bounds;
     }
 
-    let region_left = line_bounds
-        .iter()
-        .filter(|line| line.left < line.text_end)
-        .map(|line| line.left.saturating_sub(line.line_start))
-        .min()
-        .unwrap_or(0);
-    let region_width = line_bounds
+    let region_right = line_bounds
         .iter()
         .map(|line| {
-            let left = (line.line_start + region_left).min(line.text_end);
-            display_width(&source[left..line.text_end])
+            let line_text = &source[line.line_start..line.text_end];
+            let left_in_line = ByteOffset::new(line.left.saturating_sub(line.line_start));
+            let left_column = display_column_for_byte_offset(line_text, left_in_line);
+            let content_width =
+                display_width_from_column(left_column, &source[line.left..line.text_end]);
+            left_column + content_width
         })
         .max()
-        .unwrap_or(0);
+        .unwrap_or(DisplayColumn::new(0));
 
     line_bounds
         .into_iter()
         .map(|line| {
-            let left = (line.line_start + region_left).min(line.text_end);
-            let content_width = display_width(&source[left..line.text_end]);
+            let line_text = &source[line.line_start..line.text_end];
+            let left_in_line = ByteOffset::new(line.left.saturating_sub(line.line_start));
+            let left_column = display_column_for_byte_offset(line_text, left_in_line);
+            let content_width =
+                display_width_from_column(left_column, &source[line.left..line.text_end]);
             RegionSegment {
-                left,
-                right: line.text_end + region_width.saturating_sub(content_width),
+                right: line.text_end
+                    + region_right
+                        .as_usize()
+                        .saturating_sub((left_column + content_width).as_usize()),
                 ..line
             }
         })
         .collect()
-}
-
-fn display_width(text: &str) -> usize {
-    UnicodeWidthStr::width(text)
 }
 
 fn build_block_region_segments(
@@ -2299,10 +2301,10 @@ fn build_block_region_segments(
             visual_anchor,
         );
     };
-    let block_left_column = covered_lines[first_content..=last_content]
+    let block_left_offset = covered_lines[first_content..=last_content]
         .iter()
         .filter(|line| line.role == CoveredLineRole::Content)
-        .map(|line| content_start_column(source, *line))
+        .map(|line| content_start_offset(source, *line))
         .min()
         .unwrap_or(0);
 
@@ -2313,7 +2315,7 @@ fn build_block_region_segments(
             line_start: line.line_start,
             left: match visual_anchor {
                 InjectionVisualAnchor::Content => {
-                    (line.line_start + block_left_column).min(line.line_end)
+                    (line.line_start + block_left_offset).min(line.line_end)
                 }
                 InjectionVisualAnchor::LineStart => line.line_start,
             },
@@ -2323,7 +2325,7 @@ fn build_block_region_segments(
         .collect()
 }
 
-fn content_start_column(source: &str, line: CoveredLine) -> usize {
+fn content_start_offset(source: &str, line: CoveredLine) -> usize {
     let indent_bytes = source[line.covered_start..line.covered_end]
         .chars()
         .take_while(|ch| matches!(ch, ' ' | '\t'))
@@ -3005,6 +3007,7 @@ mod tests {
         render_with_theme,
     };
     use crate::{
+        display_geometry::{DisplayColumn, display_width, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
@@ -7867,8 +7870,12 @@ priority: 7
 
         let source_lines: Vec<_> = source.lines().collect();
         let body_lines = [source_lines[4], source_lines[5]];
-        let block_width = body_lines.iter().map(|line| line.len()).max().unwrap_or(0);
-        let short_pad = " ".repeat(block_width - body_lines[0].len());
+        let block_width = body_lines
+            .iter()
+            .map(|line| display_width(line))
+            .max()
+            .unwrap_or(DisplayColumn::new(0));
+        let short_pad = " ".repeat((block_width - display_width(body_lines[0])).as_usize());
 
         assert!(
             trailing_background_pad_width(lines[4], level_one_tint) >= short_pad.len(),
@@ -7877,6 +7884,37 @@ priority: 7
         assert!(
             trailing_background_pad_width(lines[5], level_one_tint) == 0,
             "widest run body line should not receive trailing block padding"
+        );
+    }
+
+    #[test]
+    fn github_actions_run_block_keeps_consistent_rendered_right_edge_with_cjk_content() {
+        let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo \"短描述\"\n          echo \"这里放一段更长的中文描述，用来验证共享的 block 几何在 GitHub Actions run 中也会补齐右边界\"\n";
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let rendered = render_with_theme(
+            Some(Path::new(".github/workflows/demo-cjk.yml")),
+            source,
+            &theme,
+        )
+        .expect("expected workflow source to render");
+        let lines: Vec<_> = rendered.lines().collect();
+        let block_lines = [
+            find_line_containing(&lines, "echo \"短描述\""),
+            find_line_containing(
+                &lines,
+                "echo \"这里放一段更长的中文描述，用来验证共享的 block 几何在 GitHub Actions run 中也会补齐右边界\"",
+            ),
+        ];
+        let widths: Vec<_> = block_lines
+            .iter()
+            .map(|line| fixture_display_width(line))
+            .collect();
+        let expected_width = widths[0];
+
+        assert!(
+            widths.iter().all(|width| *width == expected_width),
+            "expected GitHub Actions run block lines to share a consistent rendered right edge, got widths {widths:?}"
         );
     }
 
@@ -7918,32 +7956,6 @@ priority: 7
             "\x1b[48;2;{};{};{}m",
             background.0, background.1, background.2
         )
-    }
-
-    fn strip_ansi(text: &str) -> String {
-        let bytes = text.as_bytes();
-        let mut stripped = String::with_capacity(text.len());
-        let mut index = 0;
-
-        while index < bytes.len() {
-            if bytes[index] == 0x1b && bytes.get(index + 1) == Some(&b'[') {
-                index += 2;
-                while index < bytes.len() {
-                    let byte = bytes[index];
-                    index += 1;
-                    if (0x40..=0x7e).contains(&byte) {
-                        break;
-                    }
-                }
-                continue;
-            }
-
-            let ch = text[index..].chars().next().unwrap_or_default();
-            stripped.push(ch);
-            index += ch.len_utf8();
-        }
-
-        stripped
     }
 
     fn trailing_background_pad_width(line: &str, background: RgbColor) -> usize {
@@ -7989,7 +8001,7 @@ priority: 7
             .find(&background_escape)
             .map(|index| &line[..index])
             .unwrap_or(line);
-        strip_ansi(prefix).chars().count()
+        display_width(&strip_ansi(prefix)).as_usize()
     }
 
     fn visible_trailing_spaces(line: &str) -> usize {
@@ -8001,7 +8013,7 @@ priority: 7
     }
 
     fn fixture_display_width(text: &str) -> usize {
-        super::display_width(&strip_ansi(text))
+        display_width(&strip_ansi(text)).as_usize()
     }
 
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
@@ -8269,6 +8281,37 @@ priority: 7
         assert!(
             widths.iter().all(|width| *width == expected_width),
             "expected HTML block lines to share a consistent rendered right edge, got widths {widths:?}"
+        );
+    }
+
+    #[test]
+    fn markdown_html_block_tabs_keep_consistent_rendered_right_edge() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("markdown/html_block_tabs.md");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+
+        let block_lines = [
+            find_line_containing(&lines, "<table>"),
+            find_line_containing(&lines, "<td>值\t标签</td>"),
+            find_line_containing(
+                &lines,
+                "<td>这里放一段更长的中文内容\t用于验证带 tab 的 HTML block 右边界也会补齐</td>",
+            ),
+            find_line_containing(&lines, "</table>"),
+        ];
+        let widths: Vec<_> = block_lines
+            .iter()
+            .map(|line| fixture_display_width(line))
+            .collect();
+        let expected_width = widths[0];
+
+        assert!(
+            widths.iter().all(|width| *width == expected_width),
+            "expected tabbed HTML block lines to share a consistent rendered right edge, got widths {widths:?}"
         );
     }
 
