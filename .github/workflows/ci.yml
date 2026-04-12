@@ -243,10 +243,6 @@ jobs:
           profile: release
           enabled: ${{ github.ref_name != 'master' }}
 
-      - name: Make linker wrapper executable
-        if: matrix.use_link_wrapper
-        run: chmod +x .github/scripts/rust-link-wrapper.sh
-
       - name: Build release binary
         shell: bash
         env:
