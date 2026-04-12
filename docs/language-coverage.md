@@ -68,6 +68,7 @@
 - `HCL` 现已作为独立配置语言 runtime 接入，覆盖 `.hcl` 与 `.nomad`；当前 query 已补齐注释、block/type、attribute key、function call、string/template、operator、布尔/数字/null。现有 fixture / showcase 以 Nomad 风格样例为主，但 runtime 定位仍保持通用 HCL。
 - `SQL`、`Regex`、`GraphQL` 已经都从“明确待补的高收益嵌入语言”推进到“独立 runtime 已接入”；`SQL` 不仅支持顶层 `.sql` 文件，还新增了 `Postgres` / `MySQL` / `SQLite` 的方言分发层与无扩展名内容检测；`Regex` 已进一步演进成 `JavaScript` / `Python` / `Rust` / `Go` / `POSIX` 这些 host-aware runtime 族，并开始服务于 `JavaScript`、`Python`、`Rust`、`Go`、`Bash` / `Justfile` 等宿主；`GraphQL` 也已复用到 `JavaScript` tagged template / comment-hosted string、member-tagged template 与 Markdown fenced code，并支持无扩展名内容检测。
 - 宿主字符串解码这层基础设施已经落地：`JavaScript` / `Python` / `Rust` / `Go` 的 raw / escaped string 不再只是按源码字面量截取，而会先经过统一 decode，再把高亮映射回原源码位置。
+- `Git Link` / `Git Mailmap` / `Git Log` 现也已作为独立 Git 生态 runtime 接入；其中 `Git Log` 会把 patch 区块直接注入共享 `diff` runtime，而 `Ignore Files` 也已补齐 `exclude` 与全局 Git ignore 的路径 detector。
 - `JSDoc` 也已经不再是纯占位，但受当前 upstream grammar 表达能力限制，参数名等细节仍没有达到和宿主语言同级的细粒度程度。
 - `Justfile` 仍是当前一个明确强项，但参考基线应改为社区扩展 [`zed-just`](https://github.com/jackTabsCode/zed-just)，而不是再写成“`zed` 没有同级支持”。
 - 对 `Justfile recipe`、Markdown fenced code、GitHub Actions `run` 这类块级 nested runtime，renderer 现在已经提供统一的 block contrast：会按共享缩进推导矩形区域并补齐较短行尾部背景；但 inline 注入和更复杂的非矩形区域还没有完全纳入同一视觉模型。
@@ -78,7 +79,10 @@
 | --- | --- | --- | --- | --- |
 | JSON | 🟩 精细 | 已支持 `.json` / `.jsonc`；fixture / showcase 已覆盖 rich 场景；当前 query 已细化到 comment、string、escape、number、boolean、null、delimiter、bracket、config-style object key。Dracula 语义上，JSON key 现按配置语言 key 使用青色，而不是退回普通 string。 | 本地 `zed` 有独立 `json` / `jsonc` grammar 包，附带 `outline`、`indents`、`textobjects`、`runnables` 等资产；其 `highlights.scm` 也把 key 单独提升为 `property.json_key`。 | 在终端高亮目标内，JSON 这一层已经基本没有明显缺口；后续再做更多工作也主要会落到编辑器层能力，而不是 query 本身。 |
 | Git Config | 🟨 基础 | 已支持 `.gitconfig`、`gitconfig`、`.gitmodules`、`.git/config`、`*/git/config` 与 `config.worktree`；当前独立 `git_config` runtime 已覆盖 section / subsection、key、comment、boolean、integer、string、path-like string，以及 `include` / `includeIf` 这类 Git 特有 section 名。fixture 已覆盖顶层 config、submodule metadata 与路径感知 detector。 | 生态里通常会把它作为独立 `git_config` grammar，而不是退回通用 INI。 | 结构入口已经独立出来；下一步若继续做深，收益主要来自按 profile 做 Git schema-aware key/value 语义，而不是重新拆基础 parser。 |
-| Ignore Files | 🟨 基础 | 已支持 `.gitignore`、`.dockerignore`、`*.dockerignore`、`.npmignore`、`.ignore`；当前独立 `ignore` runtime 已覆盖 comment、negation、directory separator、wildcard、bracket expr / char class 等高收益结构。fixture / showcase 已覆盖基础场景。 | 编辑器生态里通常会把这类文件作为专门文件类型处理，至少保证模式语法可读。 | 这一层已经脱离“纯文本”阶段，但目前仍是共享 ignore-pattern runtime；后续是否需要继续区分 Git / Docker 的语义差异，应以真实高收益差异为准。 |
+| Git Link | 🟨 基础 | 已支持 `.git` pointer file；当前独立 `git_link` mini-runtime 已覆盖 `gitdir:` directive 与目标 path，并对明显的 `gitdir:` 文本补上内容启发式识别。fixture / showcase 已覆盖 worktree pointer 场景。 | 编辑器生态里通常只把它当 Git plumbing 里的特殊文本文件，很少单独细化。 | 对终端阅读来说，单独 runtime 已足够把“仓库实际指向哪个 Git dir”这件事直接读清楚；后续若继续做深，主要是补更多 pointer key，而不是回退到通用文本。 |
+| Git Mailmap | 🟨 基础 | 已支持 `.mailmap` / `mailmap`；当前独立 `git_mailmap` runtime 已覆盖 comment、canonical/alias name 与 email 映射对。fixture / showcase 已覆盖常见 identity normalization 场景。 | Git 工具链里通常会把它视作专门的身份映射文件，而不是普通注释文本。 | 这一层已经足够支撑日常查看 contributor identity 映射；下一步更值得做的是细分 canonical/alias 角色，而不是重新设计 parser。 |
+| Git Log | 🟨 基础 | 已支持 `*.gitlog` / `gitlog`，并对以 `commit <sha>` 开头的文本补上基础内容识别；当前独立 `git_log` runtime 已覆盖 commit header、ref decoration、Author/Commit/Date metadata、indented message，并把 patch 区块注入到共享 `diff` runtime。fixture / showcase 已覆盖 metadata + patch 场景。 | 生态里通常把它视作 Git plumbing 输出，而不是稳定文档格式；成熟实现若支持，也往往直接复用已有 diff 高亮。 | 当前这层已经把“提交元数据 + patch”拆成两段结构处理，足够支撑日常审阅；后续更高收益的是继续补 decorate / stat / range-diff 一类变体，而不是把 diff 重新内建一遍。 |
+| Ignore Files | 🟨 基础 | 已支持 `.gitignore`、`.dockerignore`、`*.dockerignore`、`.npmignore`、`.ignore`，以及 Git 的 `.git/info/exclude` 与全局 `.config/git/ignore`；当前独立 `ignore` runtime 已覆盖 comment、negation、directory separator、wildcard、bracket expr / char class 等高收益结构。fixture / showcase 已覆盖基础场景。 | 编辑器生态里通常会把这类文件作为专门文件类型处理，至少保证模式语法可读。 | 这一层已经脱离“纯文本”阶段，但目前仍是共享 ignore-pattern runtime；后续是否需要继续区分 Git / Docker 的语义差异，应以真实高收益差异为准。 |
 | Dockerfile | 🟨 基础 | 已支持 `Dockerfile`、`Containerfile`、`Dockerfile.*`、`Containerfile.*` 以及 `.dockerfile` 扩展；当前独立 `dockerfile` runtime 已覆盖 instruction keyword、comment、image ref、param、string / escape、variable expansion 等基础结构，并把 `RUN`、shell-form `CMD` / `ENTRYPOINT`、`HEALTHCHECK CMD` 的 `shell_command` 注入 shell runtime；默认走 Bash，同时也已支持 `SHELL ["zsh", ...]`、`SHELL ["fish", ...]` 驱动后续 shell-form 指令切到对应 runtime。`RUN <<'EOF'` 这类 heredoc 行内容也已复用当前 shell runtime。宿主层现在还额外补了 `ARG` / `ENV` / `LABEL` key、`EXPOSE` port、`WORKDIR` / `COPY` path、常见 `--param=value` / `--mount=...` 的 name/value 语义、value 内变量展开、`--mount` 内部 key/value 与 enum / bool / number / path 这类常见 value 分类、按 key 区分的 mount family 语义，以及 JSON-form 命令数组首项、option argv、path-like executable、env-style argv 与 expansion argv 的宿主语义。fixture / showcase 已覆盖基础场景与 advanced heredoc/healthcheck/shell-dispatch/semantics/params/exec-form 场景。 | 本地 `zed` 文档也把 Dockerfile 视作独立语言，并依赖社区扩展与独立 Tree-sitter grammar。 | 这一层已经打通了“宿主 grammar + shell 注入”的关键架构；后续更值得继续抠的是更细的 param 子结构，以及 `SHELL [...]` 与 heredoc / healthcheck / JSON-form 边界的一致性细节。 |
 | Bash | 🟩 精细 | 已支持扩展名、`.bashrc`、`.bash_profile`、`.bash_login`、`.profile`、`.bash_logout`、shebang；有 fixture / showcase；Justfile recipe 默认注入 Bash；解释器驱动的 heredoc 现可递归注入 `python` / `javascript` / `bash`，且 Justfile recipe 会自动复用。当前 query 已补齐 shebang directive、regex、special variable、parameter、ansi-c string、更多 punctuation/operator；同时 shell semantic layer 已开始接管一部分 query 很难长期表达的结构语义，例如 builtin family、declaration / unset 这类命令里的变量角色，以及 subscript bracket 这类组合结构。 | 本地 `zed` 有独立 Bash grammar 包，并补了 `textobjects`、`runnables`、`redactions` 等配套资产；其 `highlights.scm` 也是当前 `kat` Bash 细化的直接参考之一。 | 对终端高亮来说，Bash 仍是仓库内样板语言；下一步更值得继续做深的是沿这条 shell semantic layer 继续补 command family 和 expansion / subscript 细节，而不是把更多规则重新塞回 highlights query。 |
 | TOML | 🟩 精细 | 已支持 `.toml`、`Cargo.toml`、`Cargo.lock` 和 `uv.lock`；Markdown `+++` frontmatter 已注入 TOML；fixture / showcase 已覆盖 quoted key、escape、datetime、inline table、array table，以及 lockfile 检测。Dracula 语义上，TOML key 现按配置语言 key 使用青色，datetime 走橙色值语义。 | 本地 `zed` 文档里有 TOML 语言支持，但当前代码树里没有像其它 grammar 那样直接暴露出可比对的 query 资产。 | 对 `kat` 而言，TOML 这层已经非常完整；现阶段很难再找到必须补的语法层缺口。 |
@@ -158,13 +162,13 @@
 | Vue 单文件组件 | 🟥 待定 | 先记录为明确想支持的一类前端文件，但当前还没有确定文件后缀、运行时归属与宿主/嵌入语言拆分策略。 | `zed` 这类成熟实现通常会把模板、脚本、样式分层处理。 | 现阶段先保留需求记录，后续再决定是否以 `.vue` 作为主入口，以及内部如何分发到 HTML / JavaScript / CSS runtime。 |
 | React 组件文件 | 🟥 待定 | 先记录为明确想支持的一类前端文件；当前仓库已经支持 `.jsx`，但 React 相关文件命名与是否纳入 `.tsx` 等后缀策略，这里先不下结论。 | 成熟实现通常会把 JSX / TSX 作为 React 生态的主要文件形态。 | 现阶段先记录方向，后续再统一决定 React 文件范围、后缀集合与 detector 策略。 |
 | Userscript metadata block | 🟩 已支持 | 暂未见本地 `zed` 中有同级内建支持信号。 | 当前通过 JavaScript comment injection + 独立 mini-runtime 支持，因此独立 `.js` 文件和所有嵌套 JavaScript 场景都能原生复用。 |
-| 无扩展名配置文件 / stdin | 🟨 仍较弱 | 现已对明显像 `SQL` / `GraphQL` 的无扩展名内容补上启发式识别，但其它配置类文件仍较弱。 | `zed` 可以通过语言映射设置扩展。 | 这条线已经从“完全缺失”推进到“开始有内容感知”，但离系统化 detector 还差不少。 |
+| 无扩展名配置文件 / stdin | 🟨 仍较弱 | 现已对明显像 `SQL` / `GraphQL` 的无扩展名内容补上启发式识别，也开始覆盖 `git log` / `.git` pointer 这类 Git plumbing 文本；但其它配置类文件仍较弱。 | `zed` 可以通过语言映射设置扩展。 | 这条线已经从“完全缺失”推进到“开始有内容感知”，但离系统化 detector 还差不少。 |
 
 ## 相比 `bat` 的文件类型缺口
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`、`C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`，和这次继续补齐的 `PHP` / `Scala` / `Swift` / `Dart` / `Elixir` / `Zig`、`SSH Config` / `Git Attributes` / `Git Commit` / `Git Rebase Todo` / `Requirements.txt` / `Apache Conf` / `SCSS` / `Sass`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml` 这批 detector 扩展。
+- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`、`C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`，和这次继续补齐的 `PHP` / `Scala` / `Swift` / `Dart` / `Elixir` / `Zig`、`SSH Config` / `Git Attributes` / `Git Commit` / `Git Rebase Todo` / `Git Link` / `Git Log` / `Git Mailmap` / `Requirements.txt` / `Apache Conf` / `SCSS` / `Sass`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml`，以及 `exclude` / 全局 Git ignore 这批 detector 扩展。
 - 下表从这一轮之后的真实剩余缺口继续维护；不再保留已经补齐项的旧记录。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
@@ -200,9 +204,6 @@
 - `Fortran Namelist`：`namelist`
 - `fstab`：`fstab`、`crypttab`、`mtab`
 - `GDScript (Godot Engine)`：`gd`
-- `Git Link`：`.git`
-- `Git Log`：`gitlog`
-- `Git Mailmap`：`.mailmap`、`mailmap`
 - `GLSL`：`vs`、`gs`、`vsh`、`fsh`、`gsh`、`vshader`、`fshader`、`gshader`、`vert`、`frag`、`geom`、`tesc`、`tese`、`comp`、`glsl`、`mesh`、`task`、`rgen`、`rint`、`rahit`、`rchit`、`rmiss`、`rcall`
 - `gnuplot`：`gp`、`gpl`、`gnuplot`、`gnu`、`plot`、`plt`
 - `Groff/troff`：`groff`、`troff`、`1`、`2`、`3`、`4`、`5`、`6`、`7`、`8`、`9`
@@ -294,7 +295,6 @@
 - `Bourne Again Shell (bash)`：`kat` 已覆盖 `sh`、`bash`、`zsh`、`.bash_aliases`、`.bash_functions`、`.bash_login`、`.bash_logout`、`.bash_profile`、`.bashrc`、`.profile`、`.zlogin`、`.zlogout`、`.zprofile`、`.zshenv`、`.zshrc`；仍缺 `ash`、`.bash_completions`、`.bash_variables`、`.textmate_init`、`PKGBUILD`、`ebuild`、`eclass`、`**/bat/config`、`*.ksh`、`*.kshrc`、`/etc/os-release`、`/var/run/os-release`、`/etc/profile`、`bashrc`、`*.bashrc`、`bash_profile`、`*.bash_profile`、`bash_login`、`*.bash_login`、`bash_logout`、`*.bash_logout`、`zshrc`、`*.zshrc`、`zprofile`、`*.zprofile`、`zlogin`、`*.zlogin`、`zlogout`、`*.zlogout`、`zshenv`、`*.zshenv`
 - `CSS`：`kat` 已覆盖 `css`；仍缺 `css.erb`、`css.liquid`
 - `Dockerfile`：`kat` 已覆盖 `Dockerfile`、`dockerfile`、`Containerfile`；仍缺 `.Dockerfile`
-- `Git Ignore`：`kat` 已覆盖 `gitignore`、`.gitignore`；仍缺 `exclude`、`/home/example/.config/git/ignore`
 - `HTML`：`kat` 已覆盖 `html`、`htm`；仍缺 `shtml`、`xhtml`
 - `JavaScript (Babel)`：`kat` 已覆盖 `js`、`mjs`、`jsx`、`cjs`；仍缺 `babel`、`es6`、`*.pac`
 - `JSON`：`kat` 已覆盖 `json`、`jsonc`、`jsonl`、`ipynb` 与 `flake.lock`；仍缺 `sublime-settings`、`sublime-menu`、`sublime-keymap`、`sublime-mousemap`、`sublime-theme`、`sublime-build`、`sublime-project`、`sublime-completions`、`sublime-commands`、`sublime-macro`、`sublime-color-scheme`、`Pipfile.lock`、`*.jsonld`、`*.geojson`、`*.ndjson`、`*.sarif`

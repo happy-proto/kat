@@ -5,6 +5,9 @@
 ## 没有可用的 crates.io grammar crate
 
 - `git_config`
+- `git_link`
+- `git_log`
+- `git_mailmap`
 - `textproto`
 - `userscript_metadata`
 - `dotenv`

@@ -60,6 +60,55 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "git_link"
+library_name = "tree-sitter-git-link"
+extensions = []
+filenames = [".git"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "punctuation.delimiter",
+  "string.special",
+]
+
+[[grammar]]
+name = "git_mailmap"
+library_name = "tree-sitter-git-mailmap"
+extensions = []
+filenames = [".mailmap", "mailmap"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "function",
+  "function.builtin",
+]
+
+[[grammar]]
+name = "git_log"
+library_name = "tree-sitter-git-log"
+extensions = ["gitlog"]
+filenames = ["gitlog"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "constant",
+  "function",
+  "function.builtin",
+  "keyword",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+]
+
+[[grammar]]
 name = "git_config"
 library_name = "tree-sitter-git-config"
 extensions = []
