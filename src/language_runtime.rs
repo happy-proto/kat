@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, sync::LazyLock};
+use std::{
+    collections::BTreeMap,
+    sync::{LazyLock, OnceLock},
+    time::Instant,
+};
 
 use anyhow::{Context, Result};
 use tree_sitter::{Language, Query};
@@ -298,6 +302,7 @@ const JINJA_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_jin
 const TWIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_twig) };
 const ERB_LANGUAGE: LanguageFn = tree_sitter_embedded_template::LANGUAGE;
 
+#[derive(Clone, Copy)]
 struct StaticLanguageAsset {
     name: &'static str,
     language_fn: LanguageFn,
@@ -311,11 +316,6 @@ pub struct LanguageRuntime {
     pub flat_configuration: HighlightConfiguration,
     pub injections_query: Option<Query>,
 }
-
-pub static RUNTIMES: LazyLock<BTreeMap<&'static str, LanguageRuntime>> = LazyLock::new(|| {
-    build_runtimes()
-        .unwrap_or_else(|error| panic!("failed to initialize language runtimes: {error:#}"))
-});
 
 const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
     StaticLanguageAsset {
@@ -887,58 +887,88 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
     },
 ];
 
+static LANGUAGE_ASSETS_BY_NAME: LazyLock<BTreeMap<&'static str, &'static StaticLanguageAsset>> =
+    LazyLock::new(|| {
+        STATIC_LANGUAGE_ASSETS
+            .iter()
+            .map(|asset| (asset.name, asset))
+            .collect()
+    });
+
+static RUNTIME_SLOTS: LazyLock<BTreeMap<&'static str, OnceLock<LanguageRuntime>>> =
+    LazyLock::new(|| {
+        STATIC_LANGUAGE_ASSETS
+            .iter()
+            .map(|asset| (asset.name, OnceLock::new()))
+            .collect()
+    });
+
 pub fn runtime(name: &str) -> Option<&'static LanguageRuntime> {
-    RUNTIMES.get(name)
+    let asset = *LANGUAGE_ASSETS_BY_NAME.get(name)?;
+    let slot = RUNTIME_SLOTS.get(name)?;
+
+    Some(slot.get_or_init(|| {
+        build_runtime(*asset).unwrap_or_else(|error| {
+            panic!(
+                "failed to initialize language runtime {}: {error:#}",
+                asset.name
+            )
+        })
+    }))
+}
+
+pub fn supports_runtime(name: &str) -> bool {
+    LANGUAGE_ASSETS_BY_NAME.contains_key(name)
 }
 
 pub fn global_highlight_name(highlight_index: usize) -> &'static str {
     HIGHLIGHT_NAMES[highlight_index]
 }
 
-fn build_runtimes() -> Result<BTreeMap<&'static str, LanguageRuntime>> {
-    let mut runtimes = BTreeMap::new();
+fn build_runtime(asset: StaticLanguageAsset) -> Result<LanguageRuntime> {
+    progress_log("runtime_init", format!("begin runtime={}", asset.name));
+    let started_at = Instant::now();
+
+    let language = Language::from(asset.language_fn);
+    let mut flat_configuration = HighlightConfiguration::new(
+        language.clone(),
+        asset.name,
+        asset.highlights_query,
+        "",
+        asset.locals_query,
+    )
+    .with_context(|| {
+        format!(
+            "failed to build flat highlight configuration for {}",
+            asset.name
+        )
+    })?;
+    flat_configuration.configure(&HIGHLIGHT_NAMES);
+
+    let runtime = LanguageRuntime {
+        language: language.clone(),
+        flat_configuration,
+        injections_query: if asset.injections_query.trim().is_empty() {
+            None
+        } else {
+            Some(
+                Query::new(&language, asset.injections_query).with_context(|| {
+                    format!("failed to build injections query for {}", asset.name)
+                })?,
+            )
+        },
+    };
+
     progress_log(
         "runtime_init",
-        format!("begin total_assets={}", STATIC_LANGUAGE_ASSETS.len()),
+        format!(
+            "done runtime={} elapsed={:.3}ms",
+            asset.name,
+            started_at.elapsed().as_secs_f64() * 1_000.0
+        ),
     );
 
-    for asset in STATIC_LANGUAGE_ASSETS {
-        let language = Language::from(asset.language_fn);
-        let mut flat_configuration = HighlightConfiguration::new(
-            language.clone(),
-            asset.name,
-            asset.highlights_query,
-            "",
-            asset.locals_query,
-        )
-        .with_context(|| {
-            format!(
-                "failed to build flat highlight configuration for {}",
-                asset.name
-            )
-        })?;
-        flat_configuration.configure(&HIGHLIGHT_NAMES);
-
-        runtimes.insert(
-            asset.name,
-            LanguageRuntime {
-                language: language.clone(),
-                flat_configuration,
-                injections_query: if asset.injections_query.trim().is_empty() {
-                    None
-                } else {
-                    Some(
-                        Query::new(&language, asset.injections_query).with_context(|| {
-                            format!("failed to build injections query for {}", asset.name)
-                        })?,
-                    )
-                },
-            },
-        );
-    }
-
-    progress_log("runtime_init", format!("done runtimes={}", runtimes.len()));
-    Ok(runtimes)
+    Ok(runtime)
 }
 
 #[cfg(test)]
@@ -946,7 +976,7 @@ mod tests {
     use super::runtime;
 
     #[test]
-    fn caches_typescript_injections_query_at_runtime_init() {
+    fn caches_typescript_injections_query_when_runtime_is_requested() {
         let typescript = runtime("typescript").expect("missing typescript runtime");
         assert!(
             typescript.injections_query.is_some(),

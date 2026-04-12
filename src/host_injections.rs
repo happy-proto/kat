@@ -6,7 +6,7 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator, Tree};
 use crate::{
     document_kind::{DocumentKind, DocumentProfile},
     language_aliases::normalize_language_name,
-    language_runtime::{LanguageRuntime, runtime},
+    language_runtime::{LanguageRuntime, supports_runtime},
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -146,7 +146,7 @@ fn collect_query_injection_candidates(
             continue;
         };
 
-        if runtime(&injection_language).is_none() || content_ranges.is_empty() {
+        if !supports_runtime(&injection_language) || content_ranges.is_empty() {
             continue;
         }
 
@@ -256,12 +256,12 @@ fn collect_dockerfile_injection_candidates(
         }
 
         if let Some(shell) = matched_shell
-            && runtime(&shell).is_some()
+            && supports_runtime(&shell)
         {
             current_shell = shell;
         }
 
-        if runtime(&current_shell).is_none() {
+        if !supports_runtime(&current_shell) {
             continue;
         }
 
@@ -525,11 +525,11 @@ fn collect_github_actions_yaml_mapping_candidates(
         let language_name = explicit_shell
             .as_deref()
             .or(inherited_shell)
-            .filter(|shell| runtime(shell).is_some())
+            .filter(|shell| supports_runtime(shell))
             .unwrap_or("bash")
             .to_owned();
 
-        if runtime(&language_name).is_some() {
+        if supports_runtime(&language_name) {
             for range in run_ranges {
                 candidates.push(InjectionCandidate {
                     ranges: vec![range],
