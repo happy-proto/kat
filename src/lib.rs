@@ -5500,10 +5500,15 @@ mod tests {
     #[test]
     fn git_ignore_extra_paths_reuse_ignore_runtime() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
-        let path = fixture_path("ignore/.git/info/exclude");
+        let path = fixture_path("ignore/git-info-exclude");
         let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let rendered = render_with_theme(Some(Path::new(".git/info/exclude")), &source, &theme)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "failed to render {} as .git/info/exclude: {error}",
+                    path.display()
+                )
+            });
 
         assert!(
             rendered.contains("\x1b[3m\x1b[38;2;98;114;164m# local-only ignore rules"),

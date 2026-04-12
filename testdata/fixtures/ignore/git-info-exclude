@@ -1,0 +1,3 @@
+# local-only ignore rules
+.direnv/
+*.local
