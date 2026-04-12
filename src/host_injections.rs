@@ -22,7 +22,8 @@ pub(crate) enum InjectionDecode {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum InjectionVisualKind {
     Transparent,
-    Block,
+    TightBlock,
+    RectBlock,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -274,7 +275,7 @@ fn collect_dockerfile_injection_candidates(
                     merge_parent_styles: false,
                     decode: InjectionDecode::None,
                     highlight_github_expressions: false,
-                    visual_kind: Some(InjectionVisualKind::Block),
+                    visual_kind: Some(InjectionVisualKind::RectBlock),
                     visual_level_bump: Some(1),
                     visual_anchor: Some(InjectionVisualAnchor::Content),
                 });
@@ -538,7 +539,7 @@ fn collect_github_actions_yaml_mapping_candidates(
                     merge_parent_styles: false,
                     decode: InjectionDecode::None,
                     highlight_github_expressions: true,
-                    visual_kind: Some(InjectionVisualKind::Block),
+                    visual_kind: Some(InjectionVisualKind::RectBlock),
                     visual_level_bump: Some(1),
                     visual_anchor: Some(InjectionVisualAnchor::Content),
                 });
@@ -644,9 +645,19 @@ impl InjectionDecode {
 impl InjectionVisualKind {
     fn from_query_value(value: &str) -> Self {
         match value {
-            "block" => Self::Block,
+            "transparent" => Self::Transparent,
+            "tight-block" => Self::TightBlock,
+            "block" => Self::RectBlock,
             _ => Self::Transparent,
         }
+    }
+
+    pub(crate) fn is_block(self) -> bool {
+        !matches!(self, Self::Transparent)
+    }
+
+    pub(crate) fn uses_rectangular_padding(self) -> bool {
+        matches!(self, Self::RectBlock)
     }
 }
 
@@ -662,7 +673,7 @@ impl InjectionVisualAnchor {
 pub(crate) fn default_visual_level_bump(visual_kind: InjectionVisualKind) -> usize {
     match visual_kind {
         InjectionVisualKind::Transparent => 0,
-        InjectionVisualKind::Block => 1,
+        InjectionVisualKind::TightBlock | InjectionVisualKind::RectBlock => 1,
     }
 }
 

@@ -1787,7 +1787,7 @@ fn resolve_injection_visual(
 
 fn infer_injection_visual_kind(source: &str, ranges: &[Range<usize>]) -> InjectionVisualKind {
     if ranges_form_standalone_block(source, ranges) {
-        InjectionVisualKind::Block
+        InjectionVisualKind::RectBlock
     } else {
         InjectionVisualKind::Transparent
     }
@@ -1798,8 +1798,7 @@ fn infer_injection_visual_anchor(
     ranges: &[Range<usize>],
     visual_kind: InjectionVisualKind,
 ) -> InjectionVisualAnchor {
-    if visual_kind == InjectionVisualKind::Block && block_visual_prefers_line_start(source, ranges)
-    {
+    if visual_kind.is_block() && block_visual_prefers_line_start(source, ranges) {
         InjectionVisualAnchor::LineStart
     } else {
         InjectionVisualAnchor::Content
@@ -2127,7 +2126,7 @@ fn build_region_segments(
     visual_kind: InjectionVisualKind,
 ) -> Vec<RegionSegment> {
     let shared_indent = shared_leading_indent(source, ranges);
-    let mut line_bounds = if visual_kind == InjectionVisualKind::Block {
+    let mut line_bounds = if visual_kind.is_block() {
         build_block_region_segments(source, ranges, visual_anchor)
     } else {
         build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
@@ -2135,6 +2134,10 @@ fn build_region_segments(
 
     line_bounds.sort_by_key(|line| (line.line_start, line.left, line.text_end));
     line_bounds.dedup();
+
+    if !visual_kind.uses_rectangular_padding() {
+        return line_bounds;
+    }
 
     let region_left = line_bounds
         .iter()
@@ -2784,7 +2787,7 @@ fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<VisualRegion> 
     let mut regions = Vec::new();
 
     for region in nested_regions {
-        if region.visual_kind == InjectionVisualKind::Block {
+        if region.visual_kind.is_block() {
             regions.push(VisualRegion {
                 visual_level: region.visual_level,
                 segments: region.layout_segments.clone(),
@@ -2853,22 +2856,25 @@ fn render_styled_spans(
         {
             segment_index += 1;
         }
+        let mut active_style = None;
 
         render_line_text(
             &mut rendered,
             source,
-            line_start,
-            line_end,
+            line_start..line_end,
             &spans[span_start_index..span_end_index],
             &flat_segments[line_segment_start..segment_index],
             theme,
+            &mut active_style,
         );
         render_line_padding(
             &mut rendered,
             line_end,
             &flat_segments[line_segment_start..segment_index],
             theme,
+            &mut active_style,
         );
+        reset_active_style(&mut rendered, &mut active_style);
 
         if line_end == source.len() {
             break;
@@ -2888,12 +2894,14 @@ fn render_styled_spans(
 fn render_line_text(
     rendered: &mut String,
     source: &str,
-    line_start: usize,
-    line_end: usize,
+    line_range: Range<usize>,
     spans: &[StyledSpan],
     line_segments: &[FlatRegionSegment],
     theme: &Theme,
+    active_style: &mut Option<TokenStyle>,
 ) {
+    let line_start = line_range.start;
+    let line_end = line_range.end;
     if line_start == line_end {
         return;
     }
@@ -2927,7 +2935,7 @@ fn render_line_text(
 
         let text = &source[start..end];
         let style = merged_visual_style(spans, line_segments, &mut span_cursor, start, end, theme);
-        push_rendered_segment(rendered, text, style, theme);
+        push_rendered_segment(rendered, text, style, theme, active_style);
     }
 }
 
@@ -2936,6 +2944,7 @@ fn render_line_padding(
     line_end: usize,
     line_segments: &[FlatRegionSegment],
     theme: &Theme,
+    active_style: &mut Option<TokenStyle>,
 ) {
     let mut boundaries = vec![line_end];
     for segment in line_segments {
@@ -2959,7 +2968,13 @@ fn render_line_padding(
 
         let style = top_region_style(line_segments, start, end, theme);
         if let Some(style) = style {
-            push_rendered_segment(rendered, &" ".repeat(end - start), Some(style), theme);
+            push_rendered_segment(
+                rendered,
+                &" ".repeat(end - start),
+                Some(style),
+                theme,
+                active_style,
+            );
         }
     }
 }
@@ -2988,13 +3003,27 @@ fn push_rendered_segment(
     text: &str,
     style: Option<TokenStyle>,
     theme: &Theme,
+    active_style: &mut Option<TokenStyle>,
 ) {
-    if let Some(style) = style {
-        rendered.push_str(&style.to_style(theme.color_mode()).render().to_string());
-        rendered.push_str(text);
+    let style = style.filter(|style| !style.renders_as_plain_text(theme.color_mode()));
+
+    match style {
+        Some(next_style) => {
+            let transition = next_style.render_transition_from(*active_style, theme.color_mode());
+            if !transition.is_empty() {
+                rendered.push_str(&transition);
+            }
+            *active_style = Some(next_style);
+        }
+        None => reset_active_style(rendered, active_style),
+    }
+
+    rendered.push_str(text);
+}
+
+fn reset_active_style(rendered: &mut String, active_style: &mut Option<TokenStyle>) {
+    if active_style.take().is_some() {
         rendered.push_str("\x1b[0m");
-    } else {
-        rendered.push_str(text);
     }
 }
 
@@ -4793,7 +4822,7 @@ mod tests {
             "expected zsh builtin command styling"
         );
         assert!(
-            zsh_rendered.contains("\x1b[38;2;248;248;242m[["),
+            strip_ansi(&zsh_rendered).contains("[[ $theme_name"),
             "expected zsh test command bracket styling"
         );
         assert!(
@@ -4813,7 +4842,7 @@ mod tests {
             "expected zsh read target variable styling"
         );
         assert!(
-            zsh_rendered.contains("\x1b[38;2;248;248;242m["),
+            strip_ansi(&zsh_rendered).contains("$palette[1]"),
             "expected zsh subscript bracket styling"
         );
         assert!(
@@ -5293,6 +5322,7 @@ mod tests {
         let source = read_file(&path);
         let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
             .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let stripped = strip_ansi(&rendered);
 
         assert!(
             rendered.contains("layout"),
@@ -5351,11 +5381,12 @@ mod tests {
             "expected markdown link title styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;248;248;242m|"),
+            stripped.contains("| Column | Value |")
+                && stripped.contains("| Code | `let value = 42` |"),
             "expected markdown pipe table delimiter styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;248;248;242m```rust"),
+            stripped.contains("```rust"),
             "expected markdown fenced code delimiter line styling"
         );
         assert!(
@@ -5968,6 +5999,31 @@ mod tests {
     }
 
     #[test]
+    fn rustdoc_outer_markdown_prose_uses_tint_without_rectangular_padding() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("rust/doc_comments_nested.rs");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+        let outer_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+        let prose_line =
+            find_line_containing(&lines, "same nested runtimes as top-level Markdown.");
+
+        assert!(
+            line_has_background(prose_line, outer_tint),
+            "outer rustdoc markdown prose should still receive the outer nested tint"
+        );
+        assert!(
+            trailing_background_pad_width(prose_line, outer_tint) == 0,
+            "outer rustdoc prose should not be padded into a rectangular block"
+        );
+    }
+
+    #[test]
     fn rustdoc_inner_fenced_block_keeps_its_own_block_width() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
@@ -6008,7 +6064,7 @@ mod tests {
             .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
 
         assert!(
-            rendered.contains("\x1b[38;2;248;248;242m rendered "),
+            strip_ansi(&rendered).contains(" rendered "),
             "expected rustdoc fenced rust local binding to keep foreground styling"
         );
         assert!(
@@ -6780,7 +6836,7 @@ mod tests {
             "expected class definition styling for ThemePreview"
         );
         assert!(
-            rich_rendered.contains("\x1b[38;2;248;248;242m#theme"),
+            strip_ansi(&rich_rendered).contains("#theme"),
             "expected private field property styling for #theme"
         );
         assert!(
@@ -6920,10 +6976,6 @@ mod tests {
         assert!(
             rendered.contains("\x1b[38;2;255;121;198m@param"),
             "expected jsdoc tag styling for @param"
-        );
-        assert!(
-            rendered.contains("\x1b[38;2;248;248;242m["),
-            "expected jsdoc optional parameter bracket styling"
         );
         assert!(
             rendered.contains("\x1b[38;2;255;121;198m="),
@@ -7196,7 +7248,7 @@ mod tests {
             "expected JSON escape sequence styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;248;248;242m{"),
+            strip_ansi(&rendered).contains("{\n"),
             "expected JSON bracket punctuation styling"
         );
         assert!(
@@ -7254,7 +7306,7 @@ mod tests {
             "expected Bash read target variable styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;248;248;242m["),
+            strip_ansi(&rendered).contains("palettes[0]"),
             "expected Bash subscript bracket styling"
         );
         assert!(
@@ -7285,7 +7337,7 @@ mod tests {
             "expected TOML datetime styling"
         );
         assert!(
-            rich_rendered.contains("\x1b[38;2;248;248;242m{"),
+            strip_ansi(&rich_rendered).contains("{ enabled = true"),
             "expected TOML inline-table bracket styling"
         );
         assert!(
@@ -7400,7 +7452,7 @@ mod tests {
             "expected shell: python run block to reuse Python builtin styling"
         );
         assert!(
-            workflow_rendered.contains("\x1b[38;2;248;248;242mgithub"),
+            strip_ansi(&workflow_rendered).contains("github.ref"),
             "expected GitHub Actions expressions to highlight context identifiers"
         );
         assert!(
@@ -7657,7 +7709,7 @@ priority: 7
             "expected Rust self styling"
         );
         assert!(
-            rendered.contains("\x1b[38;2;248;248;242m preview "),
+            strip_ansi(&rendered).contains(" preview "),
             "expected Rust local variable bindings to keep foreground styling"
         );
     }
@@ -7921,6 +7973,10 @@ priority: 7
             .count()
     }
 
+    fn count_occurrences(haystack: &str, needle: &str) -> usize {
+        haystack.match_indices(needle).count()
+    }
+
     fn relative_luminance(color: RgbColor) -> f32 {
         0.2126 * color.0 as f32 + 0.7152 * color.1 as f32 + 0.0722 * color.2 as f32
     }
@@ -8068,6 +8124,30 @@ priority: 7
     }
 
     #[test]
+    fn typescript_jsdoc_prose_does_not_use_rectangular_trailing_padding() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let source =
+            "/**\n * this is a much longer JSDoc line\n * short\n */\nconst answer = 42;\n";
+        let rendered = render_with_theme(Some(Path::new("demo.ts")), source, &theme)
+            .expect("failed to render TypeScript JSDoc source");
+        let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+        let short_line = find_line_containing(&lines, "short");
+
+        assert!(
+            line_has_background(short_line, level_one_tint),
+            "expected shorter JSDoc prose line to keep its nested tint"
+        );
+        assert!(
+            trailing_background_pad_width(short_line, level_one_tint) == 0,
+            "expected JSDoc prose to avoid rectangular trailing padding"
+        );
+    }
+
+    #[test]
     fn typescript_comment_hint_template_injection_stays_inline() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
@@ -8082,6 +8162,50 @@ priority: 7
         assert!(
             !line_has_background(lines[1], level_one_tint),
             "expected inline SQL template injection to avoid block tint"
+        );
+    }
+
+    #[test]
+    fn markdown_truecolor_cjk_repro_avoids_excessive_reset_churn() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("markdown/markdown_truecolor_cjk_repro.md");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        let reset_count = count_occurrences(&rendered, "\x1b[0m");
+        let default_fg_count = count_occurrences(&rendered, "\x1b[38;2;248;248;242m");
+
+        assert!(
+            reset_count <= 7,
+            "expected compact truecolor output for the markdown CJK repro fixture, got {reset_count} resets: {rendered:?}"
+        );
+        assert!(
+            default_fg_count <= 6,
+            "expected markdown CJK repro fixture to avoid repeatedly re-entering the default foreground, got {default_fg_count}: {rendered:?}"
+        );
+    }
+
+    #[test]
+    fn markdown_top_level_prose_does_not_pick_up_block_tint_from_inline_injections() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("markdown/markdown_truecolor_cjk_repro.md");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+
+        assert!(
+            !line_has_background(lines[0], level_one_tint),
+            "expected top-level markdown prose line to avoid block tint"
+        );
+        assert!(
+            !line_has_background(lines[1], level_one_tint),
+            "expected second top-level markdown prose line to avoid block tint"
         );
     }
 

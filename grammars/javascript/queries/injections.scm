@@ -1,6 +1,7 @@
 (((comment) @_jsdoc_comment
   (#match? @_jsdoc_comment "(?s)^/[*][*][^*].*[*]/$")) @injection.content
-  (#set! injection.language "jsdoc"))
+  (#set! injection.language "jsdoc")
+  (#set! kat.visual "tight-block"))
 
 ((comment) @injection.content
   (#match? @injection.content "^//\\s*==/?UserScript==\\s*$")

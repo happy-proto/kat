@@ -259,6 +259,70 @@ impl TokenStyle {
 
         style
     }
+
+    pub(crate) fn same_render_state(self, other: Self) -> bool {
+        self.color == other.color
+            && self.background == other.background
+            && self.italic == other.italic
+            && self.bold == other.bold
+            && self.underline == other.underline
+            && self.strikethrough == other.strikethrough
+    }
+
+    pub(crate) fn renders_as_plain_text(self, color_mode: ColorMode) -> bool {
+        color_mode == ColorMode::TrueColor
+            && self.color == DraculaColor::Foreground
+            && self.background.is_none()
+            && !self.italic
+            && !self.bold
+            && !self.underline
+            && !self.strikethrough
+    }
+
+    pub(crate) fn render_transition_from(
+        self,
+        previous: Option<Self>,
+        color_mode: ColorMode,
+    ) -> String {
+        let Some(previous) = previous else {
+            return self.to_style(color_mode).render().to_string();
+        };
+
+        if self.same_render_state(previous) {
+            return String::new();
+        }
+
+        let mut transition = String::new();
+
+        if previous.italic && !self.italic {
+            transition.push_str("\x1b[23m");
+        }
+        if previous.bold && !self.bold {
+            transition.push_str("\x1b[22m");
+        }
+        if previous.underline && !self.underline {
+            transition.push_str("\x1b[24m");
+        }
+        if previous.strikethrough && !self.strikethrough {
+            transition.push_str("\x1b[29m");
+        }
+        if previous.background.is_some() && self.background.is_none() {
+            transition.push_str("\x1b[49m");
+        }
+
+        let needs_style_render = self.color != previous.color
+            || self.background != previous.background
+            || (!previous.italic && self.italic)
+            || (!previous.bold && self.bold)
+            || (!previous.underline && self.underline)
+            || (!previous.strikethrough && self.strikethrough);
+
+        if needs_style_render {
+            transition.push_str(&self.to_style(color_mode).render().to_string());
+        }
+
+        transition
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

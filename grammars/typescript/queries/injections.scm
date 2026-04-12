@@ -3,7 +3,8 @@
 
 (((comment) @_jsdoc_comment
   (#match? @_jsdoc_comment "(?s)^/[*][*][^*].*[*]/$")) @injection.content
-  (#set! injection.language "jsdoc"))
+  (#set! injection.language "jsdoc")
+  (#set! kat.visual "tight-block"))
 
 (((comment) @_reference
   (#match? @_reference "^///\\s+<reference\\s+types=\"\\S+\"\\s*/>\\s*$")) @injection.content
