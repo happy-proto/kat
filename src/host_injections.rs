@@ -78,7 +78,7 @@ fn collect_query_injection_candidates(
     let mut cursor = QueryCursor::new();
     let mut candidates = Vec::new();
 
-    let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+    let mut matches = cursor.matches(query, tree.root_node(), source.as_bytes());
     while {
         matches.advance();
         matches.get().is_some()
@@ -232,7 +232,7 @@ fn collect_dockerfile_injection_candidates(
     let mut current_shell = String::from("bash");
     let mut candidates = Vec::new();
 
-    let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+    let mut matches = cursor.matches(query, tree.root_node(), source.as_bytes());
     while {
         matches.advance();
         matches.get().is_some()
