@@ -80,9 +80,14 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 
 ## 开发调试
 
+- 提交前检查入口：`prek.toml`
+- 安装 Git hooks：`prek install`（默认同时安装 `pre-commit` / `pre-push`）
+- 手动跑提交前检查：`prek run --all-files`
+- 手动跑推送前重检查：`prek run --all-files --hook-stage pre-push`
+- 单独跑格式 / lint / 测试：`cargo fmt --check`、`cargo clippy --locked --all-targets --all-features -- -D warnings`、`just test`
 - 跑测试：`just test`
 - 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`
-- CI 在所有分支都会并行执行 `cargo fmt --check`、`cargo clippy` 和 `cargo nextest run` 测试；只有 `master` 分支会在这些检查全部通过后继续 release build matrix
+- CI 在所有分支都会并行执行和 `prek` 本地重检查对齐的 `fmt` / `clippy` / 测试；只有 `master` 分支会在这些检查全部通过后继续 release build matrix
 - `master` 分支在 release build matrix 全部通过后，会覆盖更新 GitHub Releases 的 `latest` prerelease channel，并上传供 `cargo binstall --git` 使用的预编译包
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`

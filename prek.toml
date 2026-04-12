@@ -1,0 +1,48 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+
+minimum_prek_version = "0.3.8"
+default_install_hook_types = ["pre-commit", "pre-push"]
+
+[[repos]]
+repo = "builtin"
+hooks = [
+    { id = "check-merge-conflict", stages = ["pre-commit", "manual"] },
+    { id = "detect-private-key", stages = ["pre-commit", "manual"] },
+    { id = "check-toml", stages = ["pre-commit", "manual"] },
+    { id = "check-yaml", stages = ["pre-commit", "manual"] },
+]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "fmt-check"
+name = "cargo fmt --check"
+language = "system"
+entry = "cargo fmt --check"
+always_run = true
+pass_filenames = false
+stages = ["pre-commit", "manual"]
+priority = 10
+
+[[repos.hooks]]
+id = "clippy"
+name = "cargo clippy"
+language = "system"
+entry = "cargo clippy --locked --all-targets --all-features -- -D warnings"
+always_run = true
+pass_filenames = false
+stages = ["pre-push", "manual"]
+priority = 20
+
+[[repos.hooks]]
+id = "test"
+name = "cargo nextest run"
+language = "system"
+entry = "cargo nextest run --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass"
+always_run = true
+pass_filenames = false
+stages = ["pre-push", "manual"]
+priority = 30

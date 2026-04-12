@@ -31,7 +31,15 @@
 - 升级已有 grammar 或 query 时，要同步更新 [THIRD_PARTY.md](../THIRD_PARTY.md) 中的来源、revision 与本地改编说明；如果升级带来了行为层面的新结论或边界变化，也要同步更新相关文档。
 - 添加或更新语言支持、文件识别规则或相关路线图时，要同步更新 [language-coverage.md](language-coverage.md)。
 - 有意义的进展和已经确认的决策要记录到对应文档中，不要只留在聊天历史里。
-- 如果仓库工作流发生变化，要同步更新 `AGENTS.md`、[README.md](../README.md) 与相关任务运行器或配置文件。
+- 如果仓库工作流发生变化，要同步更新 [README.md](../README.md)、`prek.toml` 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`。
+
+## 提交前检查
+
+- 本地提交前检查统一收敛到根目录的 `prek.toml`。
+- 安装 Git hooks 使用 `prek install`；当前默认同时安装 `pre-commit` 与 `pre-push`。
+- `pre-commit` 负责快速且稳定的本地检查：基础配置校验、冲突/私钥扫描，以及 `cargo fmt --check`。
+- `pre-push` 负责较重但应与 CI 保持一致的检查：`cargo clippy --locked --all-targets --all-features -- -D warnings`，以及当前 nextest 入口对应的 `cargo nextest run --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass`。
+- 如果调整了提交前检查的范围或分层，优先修改 `prek.toml`，再同步 README、相关任务入口与 CI 说明，避免把“检查清单”重新散落回提示词或文档提醒里。
 
 ## Release 与分发
 
