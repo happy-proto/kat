@@ -30,9 +30,11 @@
 ((inline) @injection.content
   (#set! injection.include-children)
   (#set! kat.merge-parent)
+  (#set! kat.visual "transparent")
   (#set! injection.language "markdown_inline"))
 
 ((pipe_table_cell) @injection.content
   (#set! injection.include-children)
   (#set! kat.merge-parent)
+  (#set! kat.visual "transparent")
   (#set! injection.language "markdown_inline"))

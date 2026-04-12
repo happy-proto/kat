@@ -112,12 +112,12 @@
   (doc_comment) @injection.content)
  (#set! injection.combined)
  (#set! injection.language "markdown")
- (#set! kat.visual "block")
+ (#set! kat.visual "tight-block")
  (#set! kat.visual-anchor "line-start"))
 
 ((block_comment
   (doc_comment) @injection.content)
  (#set! injection.combined)
  (#set! injection.language "markdown")
- (#set! kat.visual "block")
+ (#set! kat.visual "tight-block")
  (#set! kat.visual-anchor "line-start"))
