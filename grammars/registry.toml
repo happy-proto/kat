@@ -1999,3 +1999,120 @@ highlight_names = [
   "type.class",
   "variable",
 ]
+
+[[grammar]]
+name = "todotxt"
+library_name = "tree-sitter-todotxt"
+extensions = []
+filenames = ["todo.txt", "done.txt", "TODO.txt", "DONE.txt"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "string",
+  "type",
+]
+
+[[grammar]]
+name = "vhdl"
+library_name = "tree-sitter-vhdl"
+parser_source = "crate"
+extensions = ["vhd", "vhdl", "vho", "vht", "VHD", "VHDL", "VHO", "VHT"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "attribute.builtin",
+  "boolean",
+  "character",
+  "comment",
+  "comment.documentation",
+  "comment.error",
+  "comment.warning",
+  "constant",
+  "constant.builtin",
+  "constant.macro",
+  "constructor",
+  "function",
+  "function.builtin",
+  "function.method",
+  "keyword",
+  "keyword.conditional",
+  "keyword.conditional.ternary",
+  "keyword.coroutine",
+  "keyword.debug",
+  "keyword.directive",
+  "keyword.function",
+  "keyword.import",
+  "keyword.modifier",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "label",
+  "module",
+  "module.builtin",
+  "number",
+  "number.float",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "type",
+  "type.builtin",
+  "type.definition",
+  "variable",
+  "variable.member",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "vim"
+library_name = "tree-sitter-vim"
+parser_source = "crate"
+extensions = ["vim"]
+filenames = ["vimrc", "gvimrc", ".vimrc", ".gvimrc", ".exrc", ".nvimrc", "_vimrc", "_gvimrc", "_exrc", "init.vim"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "character.special",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "function",
+  "function.call",
+  "function.macro",
+  "keyword",
+  "keyword.conditional",
+  "keyword.conditional.ternary",
+  "keyword.directive",
+  "keyword.exception",
+  "keyword.function",
+  "keyword.operator",
+  "keyword.repeat",
+  "label",
+  "module",
+  "number",
+  "number.float",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.regexp",
+  "string.special",
+  "string.special.path",
+  "type",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]

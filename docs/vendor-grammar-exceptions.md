@@ -19,6 +19,7 @@
 - `requirements`
 - `apache`
 - `sass`
+- `todotxt`
 
 ## 已有 crate，但仍依赖旧版 `tree-sitter`，暂时无法和当前 0.26 系列共存
 
