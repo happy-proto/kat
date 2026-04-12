@@ -48,11 +48,10 @@
   - 测试样例约定写入 [docs/test-assets.md](docs/test-assets.md)；
 - 仓库只维护根 [README.md](README.md) 这一份中文入口文档，不再维护平行语言版本的 README；
 - 默认不要新增按日期组织的阶段性开发过程文档；如果只是过程记录而非当前有效约定，默认不保留；
-- 如果仓库工作流发生变化，要同步更新 `AGENTS.md`、README 与相关任务运行器或配置文件；
-- 当前 GitHub Actions workflow 默认应先完成 `fmt` / `clippy` / 测试检查；release build matrix 只在 `master` 分支继续执行；
-- `master` 分支当前还会在 release build matrix 全部通过后，覆盖更新 GitHub Releases 的 `latest` prerelease channel；供 `cargo binstall --git` 使用的资产命名与包结构必须和 `Cargo.toml` 里的 `package.metadata.binstall` 保持一致；
-- 当前 CI 的缓存默认模型是：保留 Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 `.build-cache/tree-sitter-cache/`；不要再把 `target/` 目录当作跨 job 主缓存；
-- 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用本地 `.build-cache/tree-sitter-cache/`；CI 也会缓存这一目录，但 `master` 分支默认只写不读，其他分支 / PR 运行可读写；同时继续保留相关 profiling 日志，避免只观察 Rust 编译层；
+- 如果仓库工作流发生变化，要同步更新 README、`prek.toml` 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`；
+- 创建 PR 时，默认使用中文标题和中文描述；除非用户当次明确要求使用其它语言。
+- CI、发布、缓存与 `cargo binstall` 相关的具体行为，以仓库里的 workflow、配置文件和 `Cargo.toml` 为准；不要在文档里重复维护易漂移的细节。
+- 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用仓库级构建缓存，而不是继续把复杂度压回到单次构建路径里。
 - 仓库内需要复用的 GitHub Actions 优先放在 `.github/actions/` 下本地维护；若外部 action 的 runtime 或维护状态不理想，优先内建最小可维护实现；
 - 需要分析 CI 构建瓶颈时，优先保留并利用 Cargo timings 与 linker timing 这类直接观测数据，而不是依赖额外缓存命中率做推断；
 - 一旦仓库存在 `justfile`，就使用 `just test` 作为标准测试入口。

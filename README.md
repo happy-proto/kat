@@ -70,28 +70,25 @@ echo 'COMPLETE=fish kat | source' >> ~/.config/fish/completions/kat.fish
 cargo build
 ```
 
-如果想直接安装 `master` 当前最新一次成功 CI 产出的预编译包，可以用：
+如果想直接安装当前仓库配置对应的预编译包，可以用：
 
 ```bash
 cargo binstall --git https://github.com/happy-proto/kat --force kat
 ```
 
-这条命令会读取仓库里的 `cargo-binstall` 元数据，并从 GitHub Releases 的 `latest` channel 下载对应平台的预编译资产。因为 `latest` 会随着 `master` 持续覆盖更新，升级时也建议继续带 `--force`。
+这条命令会读取仓库里的 `cargo-binstall` 元数据，并从 GitHub Releases 下载对应平台的预编译资产。
 
 ## 开发调试
 
+- 提交前检查：`prek run --all-files`
 - 跑测试：`just test`
 - 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`
-- CI 在所有分支都会并行执行 `cargo fmt --check`、`cargo clippy` 和 `cargo nextest run` 测试；只有 `master` 分支会在这些检查全部通过后继续 release build matrix
-- `master` 分支在 release build matrix 全部通过后，会覆盖更新 GitHub Releases 的 `latest` prerelease channel，并上传供 `cargo binstall --git` 使用的预编译包
+- CI 与发布流程以仓库里的工作流配置为准
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
 - 查看渲染分段耗时：`kat --debug-timing --paging=never path/to/file >/dev/null`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
 - 长输出默认支持外部分页：`--paging=auto|always|never`，`auto` 会在 TTY 中按屏高判断是否接入 pager；pager 命令优先读 `PAGER`，未设置时默认回退到 `less -R -F -X`
-- Tree-sitter 构建中间产物在本地会落到仓库级 `.build-cache/tree-sitter-cache/`，用于复用 `build.rs` 生成出来的 grammar 资产
-- CI 当前保留 Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 `.build-cache/tree-sitter-cache/`。其中 tree-sitter build cache 在 `master` 分支上默认只写不读，其他分支 / PR 运行可读写，用来加速开发中的 grammar 生成与 parser 源码复用
-- CI 的 release 构建会额外上传 Cargo timings HTML、linker timing 日志和 tree-sitter build profile，用于判断瓶颈是否落在最终链接阶段还是 `build.rs`
 
 ## 文档入口
 

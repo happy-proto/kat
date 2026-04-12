@@ -28,22 +28,20 @@
 - `build.rs` 对 vendored grammar 在构建期通过 `tree-sitter-generate` 生成 parser C 源码。
 - vendored grammar 的 `parser.c` 会与仓库内 `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
-- Tree-sitter 中间产物在本地会缓存到仓库级 `.build-cache/tree-sitter-cache/`，与 Cargo 的 `target/` 产物目录解耦，以便在不同 Cargo 命令之间复用。
-- CI 保留 Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 tree-sitter build cache；`target/` 仍不是跨 job 缓存对象。
+- 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
 
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
-- CLI 输出层默认仍以“renderer 产出完整 ANSI 文本”为边界；长输出分页优先通过外部 pager 承接，而不是把 renderer 直接改造成内建 TUI。当前 `--paging=auto` 只在 stdout 为 TTY 且内容超过一屏时接入 pager，优先读取 `PAGER`，未设置时默认回退到 `less -R -F -X`。
-- 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。当前 profile 至少已覆盖普通 YAML、GitHub Actions workflow YAML、`action.yml` 这类 GitHub Action metadata YAML。
+- CLI 输出层仍以“renderer 产出完整 ANSI 文本”为边界；长输出优先交给外部分页器，而不是继续向内建 TUI 演进。
+- 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
-- 对 `Justfile` recipe、Markdown fenced code、GitHub Actions `run` block 这类明显是“块级运行时区域”的注入，renderer 现在会基于注入 range 和共享缩进推导矩形 block range，而不是只给每一行已有文本上色。
-- 这套 block region renderer 会在较短行尾部补带背景色的空格，把同一个嵌套区域渲染成视觉上连续的矩形块；这是当前设计的一部分，不再假设输出一定逐字节保留原始行尾。
-- 注入区域的视觉策略默认由 runtime 统一推导：像多行文档注释、fence、block scalar 这类“块级嵌套”会自动落到 block tint；明显的行内片段仍保持透明叠加。query / host resolver 只在需要覆盖默认判断时显式设置 `kat.visual` / `kat.visual-anchor`。
-- 对 shell、Regex、SQL、JSDoc 以及 GitHub Actions expression 这类仅靠 highlights query 难以长期稳定表达局部结构语义的语言 / profile，允许在基础 capture 之后叠加一层轻量 semantic overlay；这层仍建立在 AST 或局部语法扫描之上，而不是把特判塞进 renderer。GitHub Actions 这层 overlay 现在既作用于 YAML 宿主上的 expression，也可叠加到 `run` block 注入出来的 shell / Python 子语言上。
+- 对块级嵌套区域，renderer 会按共享缩进和注入 range 推导统一的 block 视觉区域，而不是只给已有文本逐行上色。
+- 注入区域的视觉策略默认由 runtime 统一推导；块级区域和行内片段走不同的默认视觉模型。
+- 对 shell、Regex、SQL、JSDoc 以及 GitHub Actions expression 这类仅靠 highlights query 难以长期稳定表达局部结构语义的语言 / profile，允许在基础 capture 之后叠加轻量 semantic overlay。
 - 共享 runtime 只承接真正共享 AST / 语义模型的语言；像 Protocol Buffers schema (`.proto`) 与 Protocol Buffers text format (`.textproto` / `.pbtxt`) 这种虽然同属一个生态、但语法角色不同的文件类型，应拆成独立 runtime，而不是在同一 grammar 上叠加 profile 特判。
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
-- 终端背景色查询被收敛在 [terminal_background.rs](../src/terminal_background.rs) 这一层；当前用 `terminal-colorsaurus` 作为临时 OSC 11 后端，只负责给 nested region tint 提供基础背景色输入，未来应迁移到仓库自己的统一 terminal API 层。
+- 终端背景色查询被收敛在 [terminal_background.rs](../src/terminal_background.rs) 这一层，后续仍应继续向统一 terminal API 层收口。
 - SQL 方言、Regex host-aware runtime、Justfile shell dispatch、Dockerfile shell dispatch、GitHub Actions `run`/`shell` dispatch 等能力都建立在这套共享 runtime + document profile + host resolver 模型之上。
 
 ## 维护约定
