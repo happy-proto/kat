@@ -2447,7 +2447,8 @@ fn render_styled_spans(
     let mut rendered = String::with_capacity(source.len() + source.len() / 8);
     let mut line_start = 0;
     let flat_segments = flatten_region_segments(regions);
-    let mut span_index = 0;
+    let mut span_start_index = 0;
+    let mut span_end_index = 0;
     let mut segment_index = 0;
     let total_lines = source.bytes().filter(|byte| *byte == b'\n').count() + 1;
     progress_log(
@@ -2466,12 +2467,12 @@ fn render_styled_spans(
             .find('\n')
             .map(|offset| line_start + offset)
             .unwrap_or(source.len());
-        while span_index < spans.len() && spans[span_index].range.end <= line_start {
-            span_index += 1;
+        while span_start_index < spans.len() && spans[span_start_index].range.end <= line_start {
+            span_start_index += 1;
         }
-        let line_span_start = span_index;
-        while span_index < spans.len() && spans[span_index].range.start < line_end {
-            span_index += 1;
+        span_end_index = span_end_index.max(span_start_index);
+        while span_end_index < spans.len() && spans[span_end_index].range.start < line_end {
+            span_end_index += 1;
         }
 
         while segment_index < flat_segments.len()
@@ -2493,7 +2494,7 @@ fn render_styled_spans(
             source,
             line_start,
             line_end,
-            &spans[line_span_start..span_index],
+            &spans[span_start_index..span_end_index],
             &flat_segments[line_segment_start..segment_index],
             theme,
         );
@@ -7194,6 +7195,27 @@ priority: 7
                     style: parent_style,
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn typescript_multiline_block_comments_keep_comment_style_on_following_lines() {
+        let theme = Theme::for_mode(ColorMode::Ansi);
+        let rendered = highlight_named_language("typescript", "/* hi\nworld\n*/\n", &theme)
+            .expect("failed to highlight multiline TypeScript block comment");
+        let lines = rendered.lines().collect::<Vec<_>>();
+
+        assert!(
+            lines
+                .get(1)
+                .is_some_and(|line| line.starts_with("\x1b[3m\x1b[90mworld")),
+            "expected second block-comment line to keep comment style: {rendered:?}"
+        );
+        assert!(
+            lines
+                .get(2)
+                .is_some_and(|line| line.starts_with("\x1b[3m\x1b[90m*/")),
+            "expected closing block-comment line to keep comment style: {rendered:?}"
         );
     }
 
