@@ -82,7 +82,6 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 
 - 提交前检查：`prek run --all-files`
 - 跑测试：`just test`
-- 跑和 CI / `prek` 对齐的隔离测试入口：`just test-ci`
 - 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`
 - CI 与发布流程以仓库里的工作流配置为准
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
