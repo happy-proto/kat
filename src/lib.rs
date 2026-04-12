@@ -57,6 +57,9 @@ enum SupportedLanguage {
     GitAttributes,
     GitCommit,
     GitConfig,
+    GitLink,
+    GitLog,
+    GitMailmap,
     GitRebase,
     Go,
     GoMod,
@@ -183,6 +186,9 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "batch" => SupportedLanguage::Batch,
         "dockerfile" => SupportedLanguage::Dockerfile,
         "fish" => SupportedLanguage::Fish,
+        "git_link" => SupportedLanguage::GitLink,
+        "git_log" => SupportedLanguage::GitLog,
+        "git_mailmap" => SupportedLanguage::GitMailmap,
         "git_config" => SupportedLanguage::GitConfig,
         "zsh" => SupportedLanguage::Zsh,
         "toml" => SupportedLanguage::Toml,
@@ -290,6 +296,18 @@ pub fn highlight_query(source: &str) -> Result<String> {
 
 pub fn highlight_ignore(source: &str) -> Result<String> {
     highlight_named_language("ignore", source, &Theme::detect())
+}
+
+pub fn highlight_git_link(source: &str) -> Result<String> {
+    highlight_named_language("git_link", source, &Theme::detect())
+}
+
+pub fn highlight_git_mailmap(source: &str) -> Result<String> {
+    highlight_named_language("git_mailmap", source, &Theme::detect())
+}
+
+pub fn highlight_git_log(source: &str) -> Result<String> {
+    highlight_named_language("git_log", source, &Theme::detect())
 }
 
 pub fn highlight_git_config(source: &str) -> Result<String> {
@@ -617,6 +635,9 @@ fn plain_document_kind(language_name: &str) -> DocumentKind {
         "json" => DocumentKind::plain("json"),
         "query" => DocumentKind::plain("query"),
         "ignore" => DocumentKind::plain("ignore"),
+        "git_link" => DocumentKind::plain("git_link"),
+        "git_mailmap" => DocumentKind::plain("git_mailmap"),
+        "git_log" => DocumentKind::plain("git_log"),
         "git_config" => DocumentKind::plain("git_config"),
         "dockerfile" => DocumentKind::plain("dockerfile"),
         "bash" => DocumentKind::plain("bash"),
@@ -1303,8 +1324,23 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     }
 
     let ignore = grammar("ignore");
-    if matches_path(ignore, source_path) {
+    if matches_path(ignore, source_path) || is_ignore_path(source_path) {
         return Some(DocumentKind::plain("ignore"));
+    }
+
+    let git_link = grammar("git_link");
+    if matches_path(git_link, source_path) || looks_like_git_link(source) {
+        return Some(DocumentKind::plain("git_link"));
+    }
+
+    let git_mailmap = grammar("git_mailmap");
+    if matches_path(git_mailmap, source_path) {
+        return Some(DocumentKind::plain("git_mailmap"));
+    }
+
+    let git_log = grammar("git_log");
+    if matches_path(git_log, source_path) || looks_like_git_log(source) {
+        return Some(DocumentKind::plain("git_log"));
     }
 
     let dockerfile = grammar("dockerfile");
@@ -1398,6 +1434,22 @@ fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
     matches!(components.as_slice(), [.., ".ssh", "config"])
 }
 
+fn is_ignore_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(
+        components.as_slice(),
+        [.., ".git", "info", "exclude"] | [.., ".config", "git", "ignore"] | [.., "git", "ignore"]
+    )
+}
+
 fn is_gitattributes_path(source_path: Option<&Path>) -> bool {
     let Some(path) = source_path else {
         return false;
@@ -1412,6 +1464,35 @@ fn is_gitattributes_path(source_path: Option<&Path>) -> bool {
         components.as_slice(),
         [.., ".config", "git", "attributes"] | [.., "git", "attributes"]
     )
+}
+
+fn looks_like_git_link(source: &str) -> bool {
+    source
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| line.trim_start().starts_with("gitdir:"))
+}
+
+fn looks_like_git_log(source: &str) -> bool {
+    let Some(first_line) = source.lines().find(|line| !line.trim().is_empty()) else {
+        return false;
+    };
+
+    if !first_line.starts_with("commit ") {
+        return false;
+    }
+
+    let mut lines = source.lines().skip_while(|line| line.trim().is_empty());
+    let _ = lines.next();
+    lines.any(|line| {
+        matches!(
+            line,
+            line if line.starts_with("Author: ")
+                || line.starts_with("Commit: ")
+                || line.starts_with("Date: ")
+                || line.starts_with("diff --git ")
+        )
+    })
 }
 
 fn is_apache_path(source_path: Option<&Path>) -> bool {
@@ -3027,6 +3108,9 @@ mod tests {
         "just",
         "git_config",
         "ignore",
+        "git_link",
+        "git_mailmap",
+        "git_log",
         "ssh_config",
         "gitattributes",
         "git_commit",
@@ -3606,6 +3690,27 @@ mod tests {
             expected_fragments: &["rs", "text", "binary", "linguist-generated"],
         },
         FixtureCase {
+            relative_path: "git_link/worktree.gitdir",
+            expect_highlight: true,
+            expected_fragments: &["gitdir", ".git/worktrees/git-language-support"],
+        },
+        FixtureCase {
+            relative_path: "git_mailmap/.mailmap",
+            expect_highlight: true,
+            expected_fragments: &["DCjanus", "codex@openai.com", "OpenAI Codex"],
+        },
+        FixtureCase {
+            relative_path: "git_log/history.gitlog",
+            expect_highlight: true,
+            expected_fragments: &[
+                "commit",
+                "Author:",
+                "a/src/lib.rs b/src/lib.rs",
+                "@@",
+                "Add git metadata",
+            ],
+        },
+        FixtureCase {
             relative_path: "git_commit/COMMIT_EDITMSG",
             expect_highlight: true,
             expected_fragments: &[
@@ -3891,6 +3996,9 @@ mod tests {
         "dockerfile",
         "fish",
         "git_config",
+        "git_link",
+        "git_mailmap",
+        "git_log",
         "ignore",
         "just",
         "zsh",
@@ -4071,6 +4179,16 @@ mod tests {
             detect_language(Some(Path::new(".npmignore")), "dist/\n"),
             Some(SupportedLanguage::Ignore)
         ));
+        assert_eq!(
+            detect_document_kind(Some(Path::new(".git/info/exclude")), ".direnv/\n")
+                .map(|kind| kind.runtime_name()),
+            Some("ignore")
+        );
+        assert_eq!(
+            detect_document_kind(Some(Path::new(".config/git/ignore")), "*.local\n")
+                .map(|kind| kind.runtime_name()),
+            Some("ignore")
+        );
         assert!(matches!(
             detect_language(Some(Path::new(".gitconfig")), "[core]\n  editor = nvim\n"),
             Some(SupportedLanguage::GitConfig)
@@ -4464,6 +4582,30 @@ mod tests {
             ),
             Some(SupportedLanguage::GitAttributes)
         ));
+        assert_eq!(
+            detect_document_kind(
+                Some(Path::new(".git")),
+                "gitdir: /Users/dcjanus/Code/kat/.git/worktrees/git-language-support\n"
+            )
+            .map(|kind| kind.runtime_name()),
+            Some("git_link")
+        );
+        assert_eq!(
+            detect_document_kind(
+                Some(Path::new(".mailmap")),
+                "DCjanus <DCjanus@dcjanus.com>\n"
+            )
+            .map(|kind| kind.runtime_name()),
+            Some("git_mailmap")
+        );
+        assert_eq!(
+            detect_document_kind(
+                Some(Path::new("history.gitlog")),
+                "commit deadbeef\nAuthor: DCjanus <DCjanus@dcjanus.com>\n"
+            )
+            .map(|kind| kind.runtime_name()),
+            Some("git_log")
+        );
         assert!(matches!(
             detect_language(Some(Path::new("COMMIT_EDITMSG")), "Add support\n"),
             Some(SupportedLanguage::GitCommit)
@@ -5352,6 +5494,92 @@ mod tests {
         assert!(
             rendered.contains("\x1b[38;2;189;147;249mtrue"),
             "expected boolean values to receive builtin constant styling"
+        );
+    }
+
+    #[test]
+    fn git_ignore_extra_paths_reuse_ignore_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("ignore/.git/info/exclude");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[3m\x1b[38;2;98;114;164m# local-only ignore rules"),
+            "expected exclude comments to reuse ignore comment styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;241;250;140m.direnv"),
+            "expected local exclude patterns to reuse ignore string styling"
+        );
+    }
+
+    #[test]
+    fn git_link_files_are_detected_and_highlight_gitdir_paths() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("git_link/worktree.gitdir");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[38;2;255;121;198mgitdir"),
+            "expected gitdir keys to receive keyword styling"
+        );
+        assert!(
+            rendered.contains(
+                "\x1b[38;2;241;250;140m/Users/dcjanus/Code/kat/.git/worktrees/git-language-support"
+            ),
+            "expected gitdir targets to receive path-oriented string styling"
+        );
+    }
+
+    #[test]
+    fn git_mailmap_files_are_detected_and_highlight_names_and_emails() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("git_mailmap/.mailmap");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[38;2;80;250;123mDCjanus"),
+            "expected canonical names to receive tag-like styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253m<DCjanus@dcjanus.com>"),
+            "expected email addresses to receive builtin-like styling"
+        );
+        assert!(
+            rendered.contains("\x1b[3m\x1b[38;2;98;114;164m# canonical identities"),
+            "expected mailmap comments to reuse comment styling"
+        );
+    }
+
+    #[test]
+    fn git_log_files_are_detected_and_highlight_metadata_and_diff_blocks() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("git_log/history.gitlog");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[38;2;255;121;198mcommit"),
+            "expected commit headers to receive keyword styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;255;121;198mAuthor:"),
+            "expected metadata keys to receive keyword styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253m<DCjanus@dcjanus.com>"),
+            "expected metadata emails to receive builtin-like styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;80;250;123muse std::ffi::OsStr;"),
+            "expected embedded diff hunks to reuse diff addition styling"
         );
     }
 

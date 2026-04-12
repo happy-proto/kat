@@ -1,0 +1,15 @@
+commit 1a2b3c4d5e6f7890abcdef1234567890abcdef12 (HEAD -> feat/git-language-support, origin/master)
+Author: DCjanus <DCjanus@dcjanus.com>
+Date:   Sat Apr 12 10:00:00 2026 +0800
+
+    Add git metadata language support
+    Keep long-term structure explicit.
+
+diff --git a/src/lib.rs b/src/lib.rs
+index 1234567..89abcde 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,3 +1,4 @@
+ use std::path::Path;
++use std::ffi::OsStr;
+ fn render() {}

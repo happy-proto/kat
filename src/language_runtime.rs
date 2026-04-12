@@ -30,6 +30,11 @@ const SQL_SQLITE_HIGHLIGHTS_QUERY: &str = concat!(
 const JSON_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/json/queries/highlights.scm");
 const QUERY_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/query/queries/highlights.scm");
 const IGNORE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ignore/queries/highlights.scm");
+const GIT_LINK_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/git_link/queries/highlights.scm");
+const GIT_MAILMAP_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/git_mailmap/queries/highlights.scm");
+const GIT_LOG_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/git_log/queries/highlights.scm");
+const GIT_LOG_INJECTIONS_QUERY: &str = include_str!("../grammars/git_log/queries/injections.scm");
 const GIT_CONFIG_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/git_config/queries/highlights.scm");
 const DOCKERFILE_HIGHLIGHTS_QUERY: &str =
@@ -194,6 +199,9 @@ const ERB_INJECTIONS_QUERY: &str = include_str!("../grammars/erb/queries/injecti
 unsafe extern "C" {
     fn tree_sitter_ignore() -> *const ();
     fn tree_sitter_query() -> *const ();
+    fn tree_sitter_git_link() -> *const ();
+    fn tree_sitter_git_mailmap() -> *const ();
+    fn tree_sitter_git_log() -> *const ();
     fn tree_sitter_git_config() -> *const ();
     fn tree_sitter_dockerfile() -> *const ();
     fn tree_sitter_fish() -> *const ();
@@ -230,6 +238,9 @@ unsafe extern "C" {
 const JSON_LANGUAGE: LanguageFn = tree_sitter_json::LANGUAGE;
 const QUERY_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_query) };
 const IGNORE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_ignore) };
+const GIT_LINK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_link) };
+const GIT_MAILMAP_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_mailmap) };
+const GIT_LOG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_log) };
 const GIT_CONFIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_config) };
 const DOCKERFILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dockerfile) };
 const BASH_LANGUAGE: LanguageFn = tree_sitter_bash::LANGUAGE;
@@ -340,6 +351,27 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: IGNORE_LANGUAGE,
         highlights_query: IGNORE_HIGHLIGHTS_QUERY,
         injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "git_link",
+        language_fn: GIT_LINK_LANGUAGE,
+        highlights_query: GIT_LINK_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "git_mailmap",
+        language_fn: GIT_MAILMAP_LANGUAGE,
+        highlights_query: GIT_MAILMAP_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "git_log",
+        language_fn: GIT_LOG_LANGUAGE,
+        highlights_query: GIT_LOG_HIGHLIGHTS_QUERY,
+        injections_query: GIT_LOG_INJECTIONS_QUERY,
         locals_query: "",
     },
     StaticLanguageAsset {
