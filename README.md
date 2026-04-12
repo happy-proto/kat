@@ -81,9 +81,8 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 ## 开发调试
 
 - 提交前检查入口：`prek.toml`
-- 安装 Git hooks：`prek install`（默认同时安装 `pre-commit` / `pre-push`）
+- 安装 Git hooks：`prek install`
 - 手动跑提交前检查：`prek run --all-files`
-- 手动跑推送前重检查：`prek run --all-files --hook-stage pre-push`
 - 单独跑格式 / lint / 测试：`cargo fmt --check`、`cargo clippy --locked --all-targets --all-features -- -D warnings`、`just test`
 - 跑测试：`just test`
 - 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`

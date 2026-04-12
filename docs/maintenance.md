@@ -36,10 +36,9 @@
 ## 提交前检查
 
 - 本地提交前检查统一收敛到根目录的 `prek.toml`。
-- 安装 Git hooks 使用 `prek install`；当前默认同时安装 `pre-commit` 与 `pre-push`。
-- `pre-commit` 负责快速且稳定的本地检查：基础配置校验、冲突/私钥扫描，以及 `cargo fmt --check`。
-- `pre-push` 负责较重但应与 CI 保持一致的检查：`cargo clippy --locked --all-targets --all-features -- -D warnings`，以及当前 nextest 入口对应的 `cargo nextest run --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass`。
-- 如果调整了提交前检查的范围或分层，优先修改 `prek.toml`，再同步 README、相关任务入口与 CI 说明，避免把“检查清单”重新散落回提示词或文档提醒里。
+- 安装 Git hooks 使用 `prek install`；默认使用 `pre-commit` 的标准入口。
+- 当前检查统一通过默认 `prek run` 执行，覆盖基础配置校验、冲突/私钥扫描、`cargo fmt --check`、`cargo clippy --locked --all-targets --all-features -- -D warnings`，以及当前 nextest 入口对应的 `cargo nextest run --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass`。
+- 如果调整了提交前检查范围，优先修改 `prek.toml`，再同步 README、相关任务入口与 CI 说明，避免把“检查清单”重新散落回提示词或文档提醒里。
 
 ## Release 与分发
 

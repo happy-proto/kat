@@ -49,6 +49,7 @@
 - 仓库只维护根 [README.md](README.md) 这一份中文入口文档，不再维护平行语言版本的 README；
 - 默认不要新增按日期组织的阶段性开发过程文档；如果只是过程记录而非当前有效约定，默认不保留；
 - 如果仓库工作流发生变化，要同步更新 README、`prek.toml` 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`；
+- 创建 PR 时，默认使用中文标题和中文描述；除非用户当次明确要求使用其它语言。
 - `master` 分支当前还会在 release build matrix 全部通过后，覆盖更新 GitHub Releases 的 `latest` prerelease channel；供 `cargo binstall --git` 使用的资产命名与包结构必须和 `Cargo.toml` 里的 `package.metadata.binstall` 保持一致；
 - 当前 CI 的缓存默认模型是：保留 Cargo `registry` / `index` 缓存、基于 GitHub Actions cache backend 的 `sccache`，以及 `.build-cache/tree-sitter-cache/`；不要再把 `target/` 目录当作跨 job 主缓存；
 - 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用本地 `.build-cache/tree-sitter-cache/`；CI 也会缓存这一目录，但 `master` 分支默认只写不读，其他分支 / PR 运行可读写；同时继续保留相关 profiling 日志，避免只观察 Rust 编译层；
