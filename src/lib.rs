@@ -7694,6 +7694,36 @@ priority: 7
     }
 
     #[test]
+    fn just_recipe_trailing_separator_blank_line_stays_outside_block_region() {
+        let source = "install:\n    cargo install --path .\n\nnext:\n    echo hi\n";
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let rendered = render_with_theme(Some(Path::new("Justfile")), source, &theme)
+            .expect("expected Justfile source to render");
+        let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+
+        assert!(
+            line_has_background(lines[1], level_one_tint),
+            "first recipe body line should receive nested block tint"
+        );
+        assert!(
+            !line_has_background(lines[2], level_one_tint),
+            "separator blank line between recipes should stay outside the previous block tint"
+        );
+        assert!(
+            !line_has_background(lines[3], level_one_tint),
+            "next recipe header line should stay outside the previous block tint"
+        );
+        assert!(
+            line_has_background(lines[4], level_one_tint),
+            "next recipe body line should still receive its own nested block tint"
+        );
+    }
+
+    #[test]
     fn markdown_fenced_code_uses_block_region_tint_only_inside_fence_body() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
