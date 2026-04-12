@@ -1,0 +1,3 @@
+(A) 2026-04-12 Finish VHDL support +kat @chip due:2026-04-13
+(B) 2026-04-12 Wire VimL injections +kat @editor
+x 2026-04-11 2026-04-10 Review TODO.txt query +kat @github

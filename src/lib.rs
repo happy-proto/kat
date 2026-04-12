@@ -111,11 +111,14 @@ enum SupportedLanguage {
     Svelte,
     Swift,
     Textproto,
+    TodoTxt,
     Toml,
     Tsx,
     TypeScript,
     Twig,
     Vue,
+    Vhdl,
+    Vim,
     Xml,
     Yaml,
     Zig,
@@ -241,6 +244,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "graphql" => SupportedLanguage::Graphql,
         "sql" => SupportedLanguage::Sql,
         "textproto" => SupportedLanguage::Textproto,
+        "todotxt" => SupportedLanguage::TodoTxt,
         "html" => SupportedLanguage::Html,
         "vue" => SupportedLanguage::Vue,
         "svelte" => SupportedLanguage::Svelte,
@@ -263,6 +267,8 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "jinja" => SupportedLanguage::Jinja,
         "twig" => SupportedLanguage::Twig,
         "erb" => SupportedLanguage::Erb,
+        "vhdl" => SupportedLanguage::Vhdl,
+        "vim" => SupportedLanguage::Vim,
         other => panic!("unsupported test language mapping for {other}"),
     })
 }
@@ -609,6 +615,10 @@ pub fn highlight_textproto(source: &str) -> Result<String> {
     highlight_named_language("textproto", source, &detected_theme())
 }
 
+pub fn highlight_todotxt(source: &str) -> Result<String> {
+    highlight_named_language("todotxt", source, &detected_theme())
+}
+
 pub fn highlight_javascript(source: &str) -> Result<String> {
     highlight_named_language("javascript", source, &detected_theme())
 }
@@ -663,6 +673,14 @@ pub fn highlight_twig(source: &str) -> Result<String> {
 
 pub fn highlight_erb(source: &str) -> Result<String> {
     highlight_named_language("erb", source, &detected_theme())
+}
+
+pub fn highlight_vhdl(source: &str) -> Result<String> {
+    highlight_named_language("vhdl", source, &detected_theme())
+}
+
+pub fn highlight_vim(source: &str) -> Result<String> {
+    highlight_named_language("vim", source, &detected_theme())
 }
 
 pub fn debug_named_language_tree(language_name: &str, source: &str) -> Result<String> {
@@ -755,6 +773,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "sql_mysql" => DocumentKind::plain("sql_mysql"),
         "sql_sqlite" => DocumentKind::plain("sql_sqlite"),
         "textproto" => DocumentKind::plain("textproto"),
+        "todotxt" => DocumentKind::plain("todotxt"),
         "html" => DocumentKind::plain("html"),
         "vue" => DocumentKind::plain("vue"),
         "svelte" => DocumentKind::plain("svelte"),
@@ -784,6 +803,8 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "jinja" => DocumentKind::plain("jinja"),
         "twig" => DocumentKind::plain("twig"),
         "erb" => DocumentKind::plain("erb"),
+        "vhdl" => DocumentKind::plain("vhdl"),
+        "vim" => DocumentKind::plain("vim"),
         other => panic!("unsupported runtime name {other}"),
     }
 }
@@ -1168,6 +1189,16 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(DocumentKind::plain("zig"));
     }
 
+    let vhdl = grammar("vhdl");
+    if matches_path(vhdl, source_path) {
+        return Some(DocumentKind::plain("vhdl"));
+    }
+
+    let vim = grammar("vim");
+    if matches_path(vim, source_path) {
+        return Some(DocumentKind::plain("vim"));
+    }
+
     let ssh_config = grammar("ssh_config");
     if matches_path(ssh_config, source_path) || is_ssh_config_path(source_path) {
         return Some(DocumentKind::plain("ssh_config"));
@@ -1191,6 +1222,11 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     let requirements = grammar("requirements");
     if matches_path(requirements, source_path) {
         return Some(DocumentKind::plain("requirements"));
+    }
+
+    let todotxt = grammar("todotxt");
+    if matches_path(todotxt, source_path) {
+        return Some(DocumentKind::plain("todotxt"));
     }
 
     let apache = grammar("apache");
@@ -2984,6 +3020,7 @@ mod tests {
         "sql",
         "proto",
         "textproto",
+        "todotxt",
         "dotenv",
         "ini",
         "xml",
@@ -3007,8 +3044,9 @@ mod tests {
         "git_commit",
         "git_rebase",
         "requirements",
+        "todotxt",
     ];
-    const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &["rust", "c", "cpp", "go"];
+    const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &["rust", "c", "cpp", "go", "vhdl"];
     const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
         "java", "kotlin", "csharp", "groovy", "scala", "swift", "dart", "elixir", "zig",
     ];
@@ -3020,6 +3058,7 @@ mod tests {
         "tsx",
         "ruby",
         "lua",
+        "vim",
     ];
     const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
         "hcl",
@@ -3571,6 +3610,28 @@ mod tests {
             expected_fragments: &["const", "@import", "std", "main", "debug"],
         },
         FixtureCase {
+            relative_path: "vhdl/theme_preview.vhd",
+            expect_highlight: true,
+            expected_fragments: &[
+                "library",
+                "entity",
+                "theme_preview",
+                "rising_edge",
+                "std_logic_vector",
+            ],
+        },
+        FixtureCase {
+            relative_path: "vim/theme_preview.vim",
+            expect_highlight: true,
+            expected_fragments: &[
+                "let",
+                "RenderTheme",
+                "autocmd",
+                "echohl",
+                "embedded lua from vim",
+            ],
+        },
+        FixtureCase {
             relative_path: "ssh_config/.ssh/config",
             expect_highlight: true,
             expected_fragments: &["Host", "HostName", "IdentityFile", "Match", "Port"],
@@ -3620,6 +3681,18 @@ mod tests {
             relative_path: "requirements/requirements.txt",
             expect_highlight: true,
             expected_fragments: &["-r", "httpx", "0.27", "python_version", "example.com"],
+        },
+        FixtureCase {
+            relative_path: "todotxt/todo.txt",
+            expect_highlight: true,
+            expected_fragments: &[
+                "(A)",
+                "Finish",
+                "+syntax",
+                "@terminal",
+                "project:kat",
+                "x 2026-04-11",
+            ],
         },
         FixtureCase {
             relative_path: "apache/httpd.conf",
@@ -3880,6 +3953,7 @@ mod tests {
         "sql",
         "textproto",
         "toml",
+        "todotxt",
         "yaml",
     ];
     const SHOWCASE_SHELL_AND_TOOLING_FAMILIES: &[&str] = &[
@@ -3892,9 +3966,11 @@ mod tests {
         "git_log",
         "ignore",
         "just",
+        "todotxt",
         "zsh",
     ];
-    const SHOWCASE_PROGRAMMING_LANGUAGE_FAMILIES: &[&str] = &["go", "javascript", "python", "rust"];
+    const SHOWCASE_PROGRAMMING_LANGUAGE_FAMILIES: &[&str] =
+        &["go", "javascript", "python", "rust", "vhdl", "vim"];
 
     #[test]
     fn showcase_suite_groups_cover_all_showcase_families() {
@@ -4514,6 +4590,24 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("todo.txt")),
+                "(A) 2026-04-12 Finish kat +syntax @terminal due:2026-04-13\n"
+            ),
+            Some(SupportedLanguage::TodoTxt)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme_preview.vhd")),
+                "entity theme_preview is\nend entity theme_preview;\n"
+            ),
+            Some(SupportedLanguage::Vhdl)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".vimrc")), "let g:kat_theme = 'dracula'\n"),
+            Some(SupportedLanguage::Vim)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("/etc/apache2/sites-enabled/kat.conf")),
                 "ServerName kat.example.com\n"
             ),
@@ -4768,6 +4862,65 @@ mod tests {
         assert!(
             batch_rendered.contains("\x1b[3m\x1b[38;2;80;250;123m:eof"),
             "expected batch :eof targets to receive directive styling"
+        );
+    }
+
+    #[test]
+    fn vhdl_vim_and_todotxt_highlight_language_specific_constructs() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let vhdl_path = fixture_path("vhdl/theme_preview.vhd");
+        let vhdl_source = read_file(&vhdl_path);
+        let vhdl_rendered = render_with_theme(Some(vhdl_path.as_path()), &vhdl_source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", vhdl_path.display()));
+        assert!(
+            vhdl_rendered.contains("\x1b[38;2;255;121;198mentity"),
+            "expected VHDL entity keyword styling"
+        );
+        assert!(
+            vhdl_rendered.contains("\x1b[38;2;139;233;253mstd_logic_vector"),
+            "expected VHDL builtin type styling"
+        );
+        assert!(
+            vhdl_rendered.contains("\x1b[38;2;139;233;253mrising_edge"),
+            "expected VHDL builtin function styling"
+        );
+
+        let vim_path = fixture_path("vim/theme_preview.vim");
+        let vim_source = read_file(&vim_path);
+        let vim_rendered = render_with_theme(Some(vim_path.as_path()), &vim_source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", vim_path.display()));
+        assert!(
+            vim_rendered.contains("\x1b[38;2;255;121;198mlet"),
+            "expected Vim let command styling"
+        );
+        assert!(
+            vim_rendered.contains("\x1b[38;2;80;250;123mRenderTheme"),
+            "expected Vim function declaration styling"
+        );
+        assert!(
+            vim_rendered.contains("embedded lua from vim"),
+            "expected Vim embedded Lua chunk to render"
+        );
+
+        let todotxt_path = fixture_path("todotxt/todo.txt");
+        let todotxt_source = read_file(&todotxt_path);
+        let todotxt_rendered =
+            render_with_theme(Some(todotxt_path.as_path()), &todotxt_source, &theme)
+                .unwrap_or_else(|error| {
+                    panic!("failed to render {}: {error}", todotxt_path.display())
+                });
+        assert!(
+            todotxt_rendered.contains("\x1b[38;2;255;121;198m(A)"),
+            "expected todo.txt priority styling"
+        );
+        assert!(
+            todotxt_rendered.contains("\x1b[38;2;241;250;140m+syntax"),
+            "expected todo.txt project styling"
+        );
+        assert!(
+            todotxt_rendered.contains("\x1b[38;2;139;233;253m@terminal"),
+            "expected todo.txt context styling"
         );
     }
 

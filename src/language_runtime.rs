@@ -104,6 +104,10 @@ const REQUIREMENTS_HIGHLIGHTS_QUERY: &str =
 const APACHE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/apache/queries/highlights.scm");
 const SCSS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/scss/queries/highlights.scm");
 const SASS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/sass/queries/highlights.scm");
+const TODOTXT_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/todotxt/queries/highlights.scm");
+const VHDL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/vhdl/queries/highlights.scm");
+const VIM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/vim/queries/highlights.scm");
+const VIM_INJECTIONS_QUERY: &str = include_str!("../grammars/vim/queries/injections.scm");
 const JQ_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jq/queries/highlights.scm");
 const LESS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/less/queries/highlights.scm");
 const DOT_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dot/queries/highlights.scm");
@@ -233,6 +237,7 @@ unsafe extern "C" {
     fn tree_sitter_requirements() -> *const ();
     fn tree_sitter_apache() -> *const ();
     fn tree_sitter_sass() -> *const ();
+    fn tree_sitter_todotxt() -> *const ();
 }
 
 const JSON_LANGUAGE: LanguageFn = tree_sitter_json::LANGUAGE;
@@ -276,6 +281,11 @@ const GIT_REBASE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitte
 const REQUIREMENTS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_requirements) };
 const APACHE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_apache) };
 const SASS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_sass) };
+const TODOTXT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_todotxt) };
+const VHDL_LANGUAGE: LanguageFn = tree_sitter_vhdl::LANGUAGE;
+// `tree-sitter-vim` still exposes `fn language() -> Language` instead of `LanguageFn`.
+// The runtime bridge below special-cases this asset name and ignores the placeholder.
+const VIM_LANGUAGE_PLACEHOLDER: LanguageFn = JSON_LANGUAGE;
 const JQ_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_jq) };
 const LESS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_less) };
 const DOT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dot) };
@@ -610,6 +620,27 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: SASS_LANGUAGE,
         highlights_query: SASS_HIGHLIGHTS_QUERY,
         injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "todotxt",
+        language_fn: TODOTXT_LANGUAGE,
+        highlights_query: TODOTXT_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "vhdl",
+        language_fn: VHDL_LANGUAGE,
+        highlights_query: VHDL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "vim",
+        language_fn: VIM_LANGUAGE_PLACEHOLDER,
+        highlights_query: VIM_HIGHLIGHTS_QUERY,
+        injections_query: VIM_INJECTIONS_QUERY,
         locals_query: "",
     },
     StaticLanguageAsset {
@@ -971,7 +1002,10 @@ fn build_runtime(asset: StaticLanguageAsset) -> Result<LanguageRuntime> {
     progress_log("runtime_init", format!("begin runtime={}", asset.name));
     let started_at = Instant::now();
 
-    let language = Language::from(asset.language_fn);
+    let language = match asset.name {
+        "vim" => tree_sitter_vim::language(),
+        _ => Language::from(asset.language_fn),
+    };
     let mut flat_configuration = HighlightConfiguration::new(
         language.clone(),
         asset.name,

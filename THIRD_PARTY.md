@@ -153,6 +153,11 @@ Included sources:
 - `grammars/sass/grammar.js`
 - `grammars/sass/queries/highlights.scm`
 - `grammars/sass/scanner.c`
+- `grammars/todotxt/grammar.js`
+- `grammars/todotxt/queries/highlights.scm`
+- `grammars/vhdl/queries/highlights.scm`
+- `grammars/vim/queries/highlights.scm`
+- `grammars/vim/queries/injections.scm`
 - `grammars/csharp/queries/highlights.scm`
 - `grammars/groovy/queries/highlights.scm`
 - `grammars/diff/queries/highlights.scm`
@@ -662,6 +667,25 @@ Upstream projects:
   Revision: `fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8`
   License: MIT
   Notes: repository-local copy of the upstream Sass grammar, scanner and highlights query.
+
+- `grammars/todotxt/*`
+  Source: [arnarg/tree-sitter-todotxt](https://github.com/arnarg/tree-sitter-todotxt)
+  Revision: `3937c5cd105ec4127448651a21aef45f52d19609`
+  License: MIT
+  Notes: repository-local copy of the upstream todo.txt grammar and highlights query, kept as a dedicated runtime for `todo.txt` / `done.txt` style task lists.
+
+- `grammars/vhdl/queries/highlights.scm`
+  Source: [jpt13653903/tree-sitter-vhdl](https://github.com/jpt13653903/tree-sitter-vhdl)
+  Revision: `9df4e7a9543699e10e08aa1232a9ec8076b948cf`
+  License: MIT
+  Notes: repository-local copy of the upstream Neovim-oriented VHDL highlights query. Parser code is linked from the Rust crate `tree-sitter-vhdl`.
+
+- `grammars/vim/queries/highlights.scm`
+- `grammars/vim/queries/injections.scm`
+  Source: [tree-sitter-grammars/tree-sitter-vim](https://github.com/tree-sitter-grammars/tree-sitter-vim)
+  Revision: crate release `0.4.0`
+  License: MIT
+  Notes: repository-local copies of the upstream Vim highlights and injections queries. Parser code is linked from the Rust crate `tree-sitter-vim`.
 
 - `grammars/csharp/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-c-sharp](https://github.com/tree-sitter/tree-sitter-c-sharp)
