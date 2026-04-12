@@ -2969,6 +2969,82 @@ mod tests {
         expected_fragments: &'static [&'static str],
     }
 
+    const FIXTURE_DATA_AND_MARKUP_FAMILIES: &[&str] = &[
+        "json",
+        "toml",
+        "yaml",
+        "markdown",
+        "html",
+        "css",
+        "vue",
+        "svelte",
+        "graphql",
+        "sql",
+        "proto",
+        "textproto",
+        "dotenv",
+        "ini",
+        "xml",
+        "plain",
+    ];
+    const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
+        "bash",
+        "fish",
+        "zsh",
+        "powershell",
+        "batch",
+        "dockerfile",
+        "just",
+        "git_config",
+        "ignore",
+        "ssh_config",
+        "gitattributes",
+        "git_commit",
+        "git_rebase",
+        "requirements",
+    ];
+    const FIXTURE_PROGRAMMING_LANGUAGE_FAMILIES: &[&str] = &[
+        "rust",
+        "python",
+        "c",
+        "cpp",
+        "java",
+        "kotlin",
+        "csharp",
+        "groovy",
+        "php",
+        "scala",
+        "swift",
+        "dart",
+        "elixir",
+        "zig",
+        "javascript",
+        "typescript",
+        "tsx",
+        "go",
+        "ruby",
+        "lua",
+    ];
+    const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
+        "hcl",
+        "properties",
+        "diff",
+        "apache",
+        "scss",
+        "sass",
+        "jq",
+        "less",
+        "dot",
+        "nginx",
+        "nix",
+        "make",
+        "cmake",
+        "ninja",
+        "jinja",
+        "twig",
+        "erb",
+    ];
+
     const FIXTURE_CASES: &[FixtureCase] = &[
         FixtureCase {
             relative_path: "json/basic.json",
@@ -3675,10 +3751,54 @@ mod tests {
     ];
 
     #[test]
-    fn fixture_suite_matches_expected_rendering_behavior() {
-        let theme = Theme::for_mode(ColorMode::TrueColor);
+    fn fixture_suite_groups_cover_all_fixtures() {
+        let covered_families = FIXTURE_DATA_AND_MARKUP_FAMILIES
+            .iter()
+            .chain(FIXTURE_SHELL_AND_CONFIG_FAMILIES.iter())
+            .chain(FIXTURE_PROGRAMMING_LANGUAGE_FAMILIES.iter())
+            .chain(FIXTURE_INFRA_AND_TEMPLATE_FAMILIES.iter())
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
 
         for case in FIXTURE_CASES {
+            let family = fixture_family(case.relative_path);
+            assert!(
+                covered_families.contains(family),
+                "fixture family {family:?} is not assigned to any fixture suite group"
+            );
+        }
+    }
+
+    #[test]
+    fn fixture_suite_matches_data_and_markup_rendering_behavior() {
+        run_fixture_suite(FIXTURE_DATA_AND_MARKUP_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_shell_and_config_rendering_behavior() {
+        run_fixture_suite(FIXTURE_SHELL_AND_CONFIG_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_programming_language_rendering_behavior() {
+        run_fixture_suite(FIXTURE_PROGRAMMING_LANGUAGE_FAMILIES);
+    }
+
+    #[test]
+    fn fixture_suite_matches_infra_and_template_rendering_behavior() {
+        run_fixture_suite(FIXTURE_INFRA_AND_TEMPLATE_FAMILIES);
+    }
+
+    fn run_fixture_suite(families: &[&str]) {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let mut matched_cases = 0usize;
+
+        for case in FIXTURE_CASES
+            .iter()
+            .filter(|case| families.contains(&fixture_family(case.relative_path)))
+        {
+            matched_cases += 1;
             let path = fixture_path(case.relative_path);
             let source = read_file(&path);
             let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
@@ -3707,6 +3827,11 @@ mod tests {
                 );
             }
         }
+
+        assert!(
+            matched_cases > 0,
+            "fixture suite group should include at least one fixture"
+        );
     }
 
     #[test]
@@ -7573,6 +7698,13 @@ priority: 7
 
     fn fixture_path(relative_path: &str) -> PathBuf {
         Path::new("testdata/fixtures").join(relative_path)
+    }
+
+    fn fixture_family(relative_path: &str) -> &str {
+        relative_path
+            .split('/')
+            .next()
+            .expect("fixture path should have a top-level family directory")
     }
 
     fn read_file(path: &Path) -> String {
