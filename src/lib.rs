@@ -23,6 +23,7 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
+use unicode_width::UnicodeWidthStr;
 
 use crate::analysis::AnalysisDocument;
 use crate::debug_progress::log as progress_log;
@@ -2253,18 +2254,29 @@ fn build_region_segments(
         .unwrap_or(0);
     let region_width = line_bounds
         .iter()
-        .map(|line| line.text_end.saturating_sub(line.line_start + region_left))
+        .map(|line| {
+            let left = (line.line_start + region_left).min(line.text_end);
+            display_width(&source[left..line.text_end])
+        })
         .max()
         .unwrap_or(0);
 
     line_bounds
         .into_iter()
-        .map(|line| RegionSegment {
-            left: (line.line_start + region_left).min(line.text_end),
-            right: line.line_start + region_left + region_width,
-            ..line
+        .map(|line| {
+            let left = (line.line_start + region_left).min(line.text_end);
+            let content_width = display_width(&source[left..line.text_end]);
+            RegionSegment {
+                left,
+                right: line.text_end + region_width.saturating_sub(content_width),
+                ..line
+            }
         })
         .collect()
+}
+
+fn display_width(text: &str) -> usize {
+    UnicodeWidthStr::width(text)
 }
 
 fn build_block_region_segments(
@@ -7988,6 +8000,10 @@ priority: 7
             .count()
     }
 
+    fn fixture_display_width(text: &str) -> usize {
+        super::display_width(&strip_ansi(text))
+    }
+
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
         haystack.match_indices(needle).count()
     }
@@ -8221,6 +8237,38 @@ priority: 7
         assert!(
             !line_has_background(lines[1], level_one_tint),
             "expected second top-level markdown prose line to avoid block tint"
+        );
+    }
+
+    #[test]
+    fn markdown_html_block_table_keeps_consistent_rendered_right_edge_with_cjk_content() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("markdown/html_block_table.md");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+
+        let block_lines = [
+            find_line_containing(&lines, "<table>"),
+            find_line_containing(&lines, "<td>短描述。</td>"),
+            find_line_containing(
+                &lines,
+                "<td>这里放一段更长的中文描述，用来拉长这一行，观察 HTML block 的右侧补齐是否会只停在当前文本行的末尾。</td>",
+            ),
+            find_line_containing(&lines, "<td>中等长度描述。</td>"),
+            find_line_containing(&lines, "</table>"),
+        ];
+        let widths: Vec<_> = block_lines
+            .iter()
+            .map(|line| fixture_display_width(line))
+            .collect();
+        let expected_width = widths[0];
+
+        assert!(
+            widths.iter().all(|width| *width == expected_width),
+            "expected HTML block lines to share a consistent rendered right edge, got widths {widths:?}"
         );
     }
 

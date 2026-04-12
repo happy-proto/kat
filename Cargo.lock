@@ -738,6 +738,7 @@ dependencies = [
  "tree-sitter-yaml",
  "tree-sitter-zig",
  "tree-sitter-zsh",
+ "unicode-width 0.2.2",
  "walkdir",
 ]
 
