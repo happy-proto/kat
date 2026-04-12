@@ -1,13 +1,17 @@
+mod analysis;
 mod debug_progress;
 mod document_kind;
 mod grammar_registry;
 mod host_injections;
 mod language_aliases;
 mod language_runtime;
+mod render_ops;
 mod semantic_overlays;
 mod sql_dialect;
+mod terminal;
 mod terminal_background;
 mod theme;
+mod visual;
 
 use std::{
     ops::Range,
@@ -16,9 +20,11 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use serde::Serialize;
 use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
+use crate::analysis::AnalysisDocument;
 use crate::debug_progress::log as progress_log;
 use crate::document_kind::{DocumentKind, git_config_document_kind, yaml_document_kind};
 use crate::grammar_registry::grammar;
@@ -28,12 +34,15 @@ use crate::host_injections::{
 };
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
+use crate::render_ops::RenderPlan;
 use crate::semantic_overlays::{
     debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
     github_actions_expression_spans, semantic_capture_spans,
 };
 use crate::sql_dialect::resolve_sql_runtime;
+use crate::terminal::TerminalCapabilities;
 use crate::theme::{Theme, TokenStyle};
+use crate::visual::VisualDocument;
 
 #[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -137,7 +146,7 @@ impl RenderTimings {
             + self.render_styled_spans
     }
 
-    fn record_detect(&mut self, started_at: Instant) {
+    pub(crate) fn record_detect(&mut self, started_at: Instant) {
         self.detect_document_kind += started_at.elapsed();
     }
 
@@ -169,7 +178,8 @@ pub struct RenderOutput {
 }
 
 pub fn render_with_timing(source_path: Option<&Path>, source: &str) -> Result<RenderOutput> {
-    render_with_theme_and_timing(source_path, source, &Theme::detect())
+    let theme = detected_theme();
+    render_with_theme_and_timing(source_path, source, &theme)
 }
 
 pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
@@ -268,314 +278,391 @@ fn render_with_theme_and_timing(
     theme: &Theme,
 ) -> Result<RenderOutput> {
     let mut timings = RenderTimings::default();
-    let detect_started_at = Instant::now();
-    let document_kind = detect_document_kind(source_path, source);
-    timings.record_detect(detect_started_at);
+    let analysis = AnalysisDocument::detect(source_path, source, *theme, Some(&mut timings))?;
 
-    let output = match document_kind {
-        Some(document_kind) => highlight_document(
-            document_kind,
-            source_path,
-            source,
-            theme,
-            Some(&mut timings),
-        )?,
-        None => source.to_owned(),
+    let output = if analysis.is_plain_passthrough() {
+        source.to_owned()
+    } else {
+        let visual = VisualDocument::from_analysis(&analysis);
+        let render_started_at = Instant::now();
+        let output = RenderPlan::compile(source, &visual, *theme).encode(*theme);
+        timings.record_render_styled_spans(render_started_at);
+        output
     };
 
     Ok(RenderOutput { output, timings })
 }
 
+pub fn debug_analysis_json(source_path: Option<&Path>, source: &str) -> Result<String> {
+    let analysis = AnalysisDocument::detect(source_path, source, debug_theme(), None)?;
+    to_pretty_json(&analysis.snapshot())
+}
+
+pub fn debug_named_language_analysis_json(language_name: &str, source: &str) -> Result<String> {
+    let analysis = AnalysisDocument::named_language(language_name, source, debug_theme(), None)?;
+    to_pretty_json(&analysis.snapshot())
+}
+
+pub fn debug_visual_json(source_path: Option<&Path>, source: &str) -> Result<String> {
+    let analysis = AnalysisDocument::detect(source_path, source, debug_theme(), None)?;
+    let visual = VisualDocument::from_analysis(&analysis);
+    to_pretty_json(&visual.snapshot())
+}
+
+pub fn debug_named_language_visual_json(language_name: &str, source: &str) -> Result<String> {
+    let analysis = AnalysisDocument::named_language(language_name, source, debug_theme(), None)?;
+    let visual = VisualDocument::from_analysis(&analysis);
+    to_pretty_json(&visual.snapshot())
+}
+
+pub fn debug_render_ops_json(source_path: Option<&Path>, source: &str) -> Result<String> {
+    let theme = debug_theme();
+    let analysis = AnalysisDocument::detect(source_path, source, theme, None)?;
+    let visual = VisualDocument::from_analysis(&analysis);
+    let plan = RenderPlan::compile(source, &visual, theme);
+    to_pretty_json(&plan.snapshot(theme))
+}
+
+pub fn debug_named_language_render_ops_json(language_name: &str, source: &str) -> Result<String> {
+    let theme = debug_theme();
+    let analysis = AnalysisDocument::named_language(language_name, source, theme, None)?;
+    let visual = VisualDocument::from_analysis(&analysis);
+    let plan = RenderPlan::compile(source, &visual, theme);
+    to_pretty_json(&plan.snapshot(theme))
+}
+
+pub fn debug_terminal_json(source_path: Option<&Path>, source: &str) -> Result<String> {
+    let capabilities = TerminalCapabilities::for_debug_layers();
+    let theme = capabilities.theme();
+    let analysis = AnalysisDocument::detect(source_path, source, theme, None)?;
+    let visual = VisualDocument::from_analysis(&analysis);
+    let plan = RenderPlan::compile(source, &visual, theme);
+    let output = plan.encode(theme);
+    to_pretty_json(&terminal::TerminalRenderSnapshot {
+        capabilities: capabilities.snapshot(),
+        render_plan: plan.snapshot(theme),
+        encoded_output: terminal::escape_control_sequences(&output),
+        encoded_bytes: output.len(),
+    })
+}
+
+pub fn debug_named_language_terminal_json(language_name: &str, source: &str) -> Result<String> {
+    let capabilities = TerminalCapabilities::for_debug_layers();
+    let theme = capabilities.theme();
+    let analysis = AnalysisDocument::named_language(language_name, source, theme, None)?;
+    let visual = VisualDocument::from_analysis(&analysis);
+    let plan = RenderPlan::compile(source, &visual, theme);
+    let output = plan.encode(theme);
+    to_pretty_json(&terminal::TerminalRenderSnapshot {
+        capabilities: capabilities.snapshot(),
+        render_plan: plan.snapshot(theme),
+        encoded_output: terminal::escape_control_sequences(&output),
+        encoded_bytes: output.len(),
+    })
+}
+
+fn detected_theme() -> Theme {
+    TerminalCapabilities::detect().theme()
+}
+
+fn debug_theme() -> Theme {
+    TerminalCapabilities::for_debug_layers().theme()
+}
+
+fn to_pretty_json<T: Serialize>(value: &T) -> Result<String> {
+    Ok(serde_json::to_string_pretty(value)?)
+}
+
 pub fn highlight_json(source: &str) -> Result<String> {
-    highlight_named_language("json", source, &Theme::detect())
+    highlight_named_language("json", source, &detected_theme())
 }
 
 pub fn highlight_query(source: &str) -> Result<String> {
-    highlight_named_language("query", source, &Theme::detect())
+    highlight_named_language("query", source, &detected_theme())
 }
 
 pub fn highlight_ignore(source: &str) -> Result<String> {
-    highlight_named_language("ignore", source, &Theme::detect())
+    highlight_named_language("ignore", source, &detected_theme())
 }
 
 pub fn highlight_git_link(source: &str) -> Result<String> {
-    highlight_named_language("git_link", source, &Theme::detect())
+    highlight_named_language("git_link", source, &detected_theme())
 }
 
 pub fn highlight_git_mailmap(source: &str) -> Result<String> {
-    highlight_named_language("git_mailmap", source, &Theme::detect())
+    highlight_named_language("git_mailmap", source, &detected_theme())
 }
 
 pub fn highlight_git_log(source: &str) -> Result<String> {
-    highlight_named_language("git_log", source, &Theme::detect())
+    highlight_named_language("git_log", source, &detected_theme())
 }
 
 pub fn highlight_git_config(source: &str) -> Result<String> {
-    highlight_named_language("git_config", source, &Theme::detect())
+    highlight_named_language("git_config", source, &detected_theme())
 }
 
 pub fn highlight_bash(source: &str) -> Result<String> {
-    highlight_named_language("bash", source, &Theme::detect())
+    highlight_named_language("bash", source, &detected_theme())
 }
 
 pub fn highlight_batch(source: &str) -> Result<String> {
-    highlight_named_language("batch", source, &Theme::detect())
+    highlight_named_language("batch", source, &detected_theme())
 }
 
 pub fn highlight_dockerfile(source: &str) -> Result<String> {
-    highlight_named_language("dockerfile", source, &Theme::detect())
+    highlight_named_language("dockerfile", source, &detected_theme())
 }
 
 pub fn highlight_toml(source: &str) -> Result<String> {
-    highlight_named_language("toml", source, &Theme::detect())
+    highlight_named_language("toml", source, &detected_theme())
 }
 
 pub fn highlight_fish(source: &str) -> Result<String> {
-    highlight_named_language("fish", source, &Theme::detect())
+    highlight_named_language("fish", source, &detected_theme())
 }
 
 pub fn highlight_zsh(source: &str) -> Result<String> {
-    highlight_named_language("zsh", source, &Theme::detect())
+    highlight_named_language("zsh", source, &detected_theme())
 }
 
 pub fn highlight_powershell(source: &str) -> Result<String> {
-    highlight_named_language("powershell", source, &Theme::detect())
+    highlight_named_language("powershell", source, &detected_theme())
 }
 
 pub fn highlight_yaml(source: &str) -> Result<String> {
-    highlight_named_language("yaml", source, &Theme::detect())
+    highlight_named_language("yaml", source, &detected_theme())
 }
 
 pub fn highlight_hcl(source: &str) -> Result<String> {
-    highlight_named_language("hcl", source, &Theme::detect())
+    highlight_named_language("hcl", source, &detected_theme())
 }
 
 pub fn highlight_rust(source: &str) -> Result<String> {
-    highlight_named_language("rust", source, &Theme::detect())
+    highlight_named_language("rust", source, &detected_theme())
 }
 
 pub fn highlight_just(source: &str) -> Result<String> {
-    highlight_named_language("just", source, &Theme::detect())
+    highlight_named_language("just", source, &detected_theme())
 }
 
 pub fn highlight_python(source: &str) -> Result<String> {
-    highlight_named_language("python", source, &Theme::detect())
+    highlight_named_language("python", source, &detected_theme())
 }
 
 pub fn highlight_c(source: &str) -> Result<String> {
-    highlight_named_language("c", source, &Theme::detect())
+    highlight_named_language("c", source, &detected_theme())
 }
 
 pub fn highlight_cpp(source: &str) -> Result<String> {
-    highlight_named_language("cpp", source, &Theme::detect())
+    highlight_named_language("cpp", source, &detected_theme())
 }
 
 pub fn highlight_java(source: &str) -> Result<String> {
-    highlight_named_language("java", source, &Theme::detect())
+    highlight_named_language("java", source, &detected_theme())
 }
 
 pub fn highlight_kotlin(source: &str) -> Result<String> {
-    highlight_named_language("kotlin", source, &Theme::detect())
+    highlight_named_language("kotlin", source, &detected_theme())
 }
 
 pub fn highlight_csharp(source: &str) -> Result<String> {
-    highlight_named_language("csharp", source, &Theme::detect())
+    highlight_named_language("csharp", source, &detected_theme())
 }
 
 pub fn highlight_groovy(source: &str) -> Result<String> {
-    highlight_named_language("groovy", source, &Theme::detect())
+    highlight_named_language("groovy", source, &detected_theme())
 }
 
 pub fn highlight_diff(source: &str) -> Result<String> {
-    highlight_named_language("diff", source, &Theme::detect())
+    highlight_named_language("diff", source, &detected_theme())
 }
 
 pub fn highlight_properties(source: &str) -> Result<String> {
-    highlight_named_language("properties", source, &Theme::detect())
+    highlight_named_language("properties", source, &detected_theme())
 }
 
 pub fn highlight_php(source: &str) -> Result<String> {
-    highlight_named_language("php", source, &Theme::detect())
+    highlight_named_language("php", source, &detected_theme())
 }
 
 pub fn highlight_scala(source: &str) -> Result<String> {
-    highlight_named_language("scala", source, &Theme::detect())
+    highlight_named_language("scala", source, &detected_theme())
 }
 
 pub fn highlight_swift(source: &str) -> Result<String> {
-    highlight_named_language("swift", source, &Theme::detect())
+    highlight_named_language("swift", source, &detected_theme())
 }
 
 pub fn highlight_dart(source: &str) -> Result<String> {
-    highlight_named_language("dart", source, &Theme::detect())
+    highlight_named_language("dart", source, &detected_theme())
 }
 
 pub fn highlight_elixir(source: &str) -> Result<String> {
-    highlight_named_language("elixir", source, &Theme::detect())
+    highlight_named_language("elixir", source, &detected_theme())
 }
 
 pub fn highlight_zig(source: &str) -> Result<String> {
-    highlight_named_language("zig", source, &Theme::detect())
+    highlight_named_language("zig", source, &detected_theme())
 }
 
 pub fn highlight_ssh_config(source: &str) -> Result<String> {
-    highlight_named_language("ssh_config", source, &Theme::detect())
+    highlight_named_language("ssh_config", source, &detected_theme())
 }
 
 pub fn highlight_gitattributes(source: &str) -> Result<String> {
-    highlight_named_language("gitattributes", source, &Theme::detect())
+    highlight_named_language("gitattributes", source, &detected_theme())
 }
 
 pub fn highlight_git_commit(source: &str) -> Result<String> {
-    highlight_named_language("git_commit", source, &Theme::detect())
+    highlight_named_language("git_commit", source, &detected_theme())
 }
 
 pub fn highlight_git_rebase(source: &str) -> Result<String> {
-    highlight_named_language("git_rebase", source, &Theme::detect())
+    highlight_named_language("git_rebase", source, &detected_theme())
 }
 
 pub fn highlight_requirements(source: &str) -> Result<String> {
-    highlight_named_language("requirements", source, &Theme::detect())
+    highlight_named_language("requirements", source, &detected_theme())
 }
 
 pub fn highlight_apache(source: &str) -> Result<String> {
-    highlight_named_language("apache", source, &Theme::detect())
+    highlight_named_language("apache", source, &detected_theme())
 }
 
 pub fn highlight_scss(source: &str) -> Result<String> {
-    highlight_named_language("scss", source, &Theme::detect())
+    highlight_named_language("scss", source, &detected_theme())
 }
 
 pub fn highlight_sass(source: &str) -> Result<String> {
-    highlight_named_language("sass", source, &Theme::detect())
+    highlight_named_language("sass", source, &detected_theme())
 }
 
 pub fn highlight_jq(source: &str) -> Result<String> {
-    highlight_named_language("jq", source, &Theme::detect())
+    highlight_named_language("jq", source, &detected_theme())
 }
 
 pub fn highlight_less(source: &str) -> Result<String> {
-    highlight_named_language("less", source, &Theme::detect())
+    highlight_named_language("less", source, &detected_theme())
 }
 
 pub fn highlight_dot(source: &str) -> Result<String> {
-    highlight_named_language("dot", source, &Theme::detect())
+    highlight_named_language("dot", source, &detected_theme())
 }
 
 pub fn highlight_nginx(source: &str) -> Result<String> {
-    highlight_named_language("nginx", source, &Theme::detect())
+    highlight_named_language("nginx", source, &detected_theme())
 }
 
 pub fn highlight_typescript(source: &str) -> Result<String> {
-    highlight_named_language("typescript", source, &Theme::detect())
+    highlight_named_language("typescript", source, &detected_theme())
 }
 
 pub fn highlight_tsx(source: &str) -> Result<String> {
-    highlight_named_language("tsx", source, &Theme::detect())
+    highlight_named_language("tsx", source, &detected_theme())
 }
 
 pub fn highlight_go(source: &str) -> Result<String> {
-    highlight_named_language("go", source, &Theme::detect())
+    highlight_named_language("go", source, &detected_theme())
 }
 
 pub fn highlight_gomod(source: &str) -> Result<String> {
-    highlight_named_language("gomod", source, &Theme::detect())
+    highlight_named_language("gomod", source, &detected_theme())
 }
 
 pub fn highlight_gowork(source: &str) -> Result<String> {
-    highlight_named_language("gowork", source, &Theme::detect())
+    highlight_named_language("gowork", source, &detected_theme())
 }
 
 pub fn highlight_gosum(source: &str) -> Result<String> {
-    highlight_named_language("gosum", source, &Theme::detect())
+    highlight_named_language("gosum", source, &detected_theme())
 }
 
 pub fn highlight_sql(source: &str) -> Result<String> {
-    highlight_named_language("sql", source, &Theme::detect())
+    highlight_named_language("sql", source, &detected_theme())
 }
 
 pub fn highlight_html(source: &str) -> Result<String> {
-    highlight_named_language("html", source, &Theme::detect())
+    highlight_named_language("html", source, &detected_theme())
 }
 
 pub fn highlight_vue(source: &str) -> Result<String> {
-    highlight_named_language("vue", source, &Theme::detect())
+    highlight_named_language("vue", source, &detected_theme())
 }
 
 pub fn highlight_svelte(source: &str) -> Result<String> {
-    highlight_named_language("svelte", source, &Theme::detect())
+    highlight_named_language("svelte", source, &detected_theme())
 }
 
 pub fn highlight_css(source: &str) -> Result<String> {
-    highlight_named_language("css", source, &Theme::detect())
+    highlight_named_language("css", source, &detected_theme())
 }
 
 pub fn highlight_graphql(source: &str) -> Result<String> {
-    highlight_named_language("graphql", source, &Theme::detect())
+    highlight_named_language("graphql", source, &detected_theme())
 }
 
 pub fn highlight_proto(source: &str) -> Result<String> {
-    highlight_named_language("proto", source, &Theme::detect())
+    highlight_named_language("proto", source, &detected_theme())
 }
 
 pub fn highlight_textproto(source: &str) -> Result<String> {
-    highlight_named_language("textproto", source, &Theme::detect())
+    highlight_named_language("textproto", source, &detected_theme())
 }
 
 pub fn highlight_javascript(source: &str) -> Result<String> {
-    highlight_named_language("javascript", source, &Theme::detect())
+    highlight_named_language("javascript", source, &detected_theme())
 }
 
 pub fn highlight_markdown(source: &str) -> Result<String> {
-    highlight_named_language("markdown", source, &Theme::detect())
+    highlight_named_language("markdown", source, &detected_theme())
 }
 
 pub fn highlight_ruby(source: &str) -> Result<String> {
-    highlight_named_language("ruby", source, &Theme::detect())
+    highlight_named_language("ruby", source, &detected_theme())
 }
 
 pub fn highlight_lua(source: &str) -> Result<String> {
-    highlight_named_language("lua", source, &Theme::detect())
+    highlight_named_language("lua", source, &detected_theme())
 }
 
 pub fn highlight_nix(source: &str) -> Result<String> {
-    highlight_named_language("nix", source, &Theme::detect())
+    highlight_named_language("nix", source, &detected_theme())
 }
 
 pub fn highlight_dotenv(source: &str) -> Result<String> {
-    highlight_named_language("dotenv", source, &Theme::detect())
+    highlight_named_language("dotenv", source, &detected_theme())
 }
 
 pub fn highlight_ini(source: &str) -> Result<String> {
-    highlight_named_language("ini", source, &Theme::detect())
+    highlight_named_language("ini", source, &detected_theme())
 }
 
 pub fn highlight_xml(source: &str) -> Result<String> {
-    highlight_named_language("xml", source, &Theme::detect())
+    highlight_named_language("xml", source, &detected_theme())
 }
 
 pub fn highlight_make(source: &str) -> Result<String> {
-    highlight_named_language("make", source, &Theme::detect())
+    highlight_named_language("make", source, &detected_theme())
 }
 
 pub fn highlight_cmake(source: &str) -> Result<String> {
-    highlight_named_language("cmake", source, &Theme::detect())
+    highlight_named_language("cmake", source, &detected_theme())
 }
 
 pub fn highlight_ninja(source: &str) -> Result<String> {
-    highlight_named_language("ninja", source, &Theme::detect())
+    highlight_named_language("ninja", source, &detected_theme())
 }
 
 pub fn highlight_jinja(source: &str) -> Result<String> {
-    highlight_named_language("jinja", source, &Theme::detect())
+    highlight_named_language("jinja", source, &detected_theme())
 }
 
 pub fn highlight_twig(source: &str) -> Result<String> {
-    highlight_named_language("twig", source, &Theme::detect())
+    highlight_named_language("twig", source, &detected_theme())
 }
 
 pub fn highlight_erb(source: &str) -> Result<String> {
-    highlight_named_language("erb", source, &Theme::detect())
+    highlight_named_language("erb", source, &detected_theme())
 }
 
 pub fn debug_named_language_tree(language_name: &str, source: &str) -> Result<String> {
@@ -588,26 +675,6 @@ pub fn debug_semantics(language_name: &str, source: &str) -> Result<String> {
 
 pub fn debug_shell_semantics(language_name: &str, source: &str) -> Result<String> {
     debug_semantics(language_name, source)
-}
-
-fn highlight_document(
-    document_kind: DocumentKind,
-    source_path: Option<&Path>,
-    source: &str,
-    theme: &Theme,
-    timings: Option<&mut RenderTimings>,
-) -> Result<String> {
-    if document_kind.runtime_name() == "sql" {
-        return highlight_named_language_with_path(
-            document_kind,
-            source_path,
-            source,
-            theme,
-            timings,
-        );
-    }
-
-    highlight_document_kind(document_kind, source_path, source, theme, timings)
 }
 
 fn highlight_named_language(language_name: &str, source: &str, theme: &Theme) -> Result<String> {
@@ -630,7 +697,7 @@ fn highlight_document_kind(
     highlight_named_language_with_path(document_kind, source_path, source, theme, timings)
 }
 
-fn plain_document_kind(language_name: &str) -> DocumentKind {
+pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
     match language_name {
         "json" => DocumentKind::plain("json"),
         "query" => DocumentKind::plain("query"),
@@ -728,50 +795,52 @@ fn highlight_named_language_with_path(
     theme: &Theme,
     mut timings: Option<&mut RenderTimings>,
 ) -> Result<String> {
-    let render_data = highlight_named_language_render_data(
+    let analysis = AnalysisDocument::document_kind(
         document_kind,
         source_path,
         source,
-        theme,
+        *theme,
         timings.as_deref_mut(),
     )?;
+    let visual = VisualDocument::from_analysis(&analysis);
     let render_started_at = Instant::now();
-    let output = render_styled_spans(source, &render_data.spans, &render_data.regions, theme);
+    let output = render_styled_spans(source, visual.spans(), visual.regions(), theme);
     if let Some(timings) = timings {
         timings.record_render_styled_spans(render_started_at);
     }
     Ok(output)
 }
 
-struct HighlightRenderData {
-    spans: Vec<StyledSpan>,
-    regions: Vec<VisualRegion>,
+pub(crate) struct HighlightRenderData {
+    pub(crate) resolved_document_kind: DocumentKind,
+    pub(crate) spans: Vec<StyledSpan>,
+    pub(crate) nested_regions: Vec<NestedRegion>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct VisualRegion {
-    visual_level: usize,
-    segments: Vec<RegionSegment>,
+pub(crate) struct VisualRegion {
+    pub(crate) visual_level: usize,
+    pub(crate) segments: Vec<RegionSegment>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct RegionSegment {
-    line_start: usize,
-    left: usize,
-    text_end: usize,
-    right: usize,
+pub(crate) struct RegionSegment {
+    pub(crate) line_start: usize,
+    pub(crate) left: usize,
+    pub(crate) text_end: usize,
+    pub(crate) right: usize,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct FlatRegionSegment {
-    visual_level: usize,
-    line_start: usize,
-    left: usize,
-    text_end: usize,
-    right: usize,
+pub(crate) struct FlatRegionSegment {
+    pub(crate) visual_level: usize,
+    pub(crate) line_start: usize,
+    pub(crate) left: usize,
+    pub(crate) text_end: usize,
+    pub(crate) right: usize,
 }
 
-fn highlight_named_language_render_data(
+pub(crate) fn highlight_named_language_render_data(
     document_kind: DocumentKind,
     source_path: Option<&Path>,
     source: &str,
@@ -901,8 +970,9 @@ fn highlight_named_language_render_data_with_depth(
     }
 
     Ok(HighlightRenderData {
-        regions: collect_visual_regions(&nested_regions),
+        resolved_document_kind,
         spans,
+        nested_regions,
     })
 }
 
@@ -1632,20 +1702,20 @@ fn resolve_highlight_document_kind(
     }
 }
 
-#[derive(Debug)]
-struct NestedRegion {
-    visual_level: usize,
-    visual_kind: InjectionVisualKind,
-    layout_segments: Vec<RegionSegment>,
-    child_regions: Vec<VisualRegion>,
-    overlays: Vec<StyledSpan>,
-    merge_parent_styles: bool,
+#[derive(Clone, Debug)]
+pub(crate) struct NestedRegion {
+    pub(crate) visual_level: usize,
+    pub(crate) visual_kind: InjectionVisualKind,
+    pub(crate) layout_segments: Vec<RegionSegment>,
+    pub(crate) child_regions: Vec<VisualRegion>,
+    pub(crate) overlays: Vec<StyledSpan>,
+    pub(crate) merge_parent_styles: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct StyledSpan {
-    range: Range<usize>,
-    style: Option<TokenStyle>,
+pub(crate) struct StyledSpan {
+    pub(crate) range: Range<usize>,
+    pub(crate) style: Option<TokenStyle>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1754,7 +1824,7 @@ fn render_injection_candidates(
             layout_segments,
             child_regions: map_virtual_regions_to_source(
                 source,
-                &child_render.regions,
+                &collect_visual_regions(&child_render.nested_regions),
                 &source_map,
             ),
             overlays: map_virtual_spans_to_source(&child_render.spans, &source_map),
@@ -2783,7 +2853,7 @@ fn resolve_overlay_style(
     }
 }
 
-fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<VisualRegion> {
+pub(crate) fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<VisualRegion> {
     let mut regions = Vec::new();
 
     for region in nested_regions {
@@ -2812,78 +2882,18 @@ fn render_styled_spans(
     regions: &[VisualRegion],
     theme: &Theme,
 ) -> String {
-    let mut rendered = String::with_capacity(source.len() + source.len() / 8);
-    let mut line_start = 0;
-    let flat_segments = flatten_region_segments(regions);
-    let mut span_start_index = 0;
-    let mut span_end_index = 0;
-    let mut segment_index = 0;
     let total_lines = source.bytes().filter(|byte| *byte == b'\n').count() + 1;
     progress_log(
         "render",
         format!(
-            "begin lines={} spans={} regions={} flat_segments={}",
+            "begin lines={} spans={} regions={}",
             total_lines,
             spans.len(),
             regions.len(),
-            flat_segments.len()
         ),
     );
-
-    while line_start <= source.len() {
-        let line_end = source[line_start..]
-            .find('\n')
-            .map(|offset| line_start + offset)
-            .unwrap_or(source.len());
-        while span_start_index < spans.len() && spans[span_start_index].range.end <= line_start {
-            span_start_index += 1;
-        }
-        span_end_index = span_end_index.max(span_start_index);
-        while span_end_index < spans.len() && spans[span_end_index].range.start < line_end {
-            span_end_index += 1;
-        }
-
-        while segment_index < flat_segments.len()
-            && (flat_segments[segment_index].line_start < line_start
-                || (flat_segments[segment_index].line_start == line_start
-                    && flat_segments[segment_index].right <= line_start))
-        {
-            segment_index += 1;
-        }
-        let line_segment_start = segment_index;
-        while segment_index < flat_segments.len()
-            && flat_segments[segment_index].line_start == line_start
-        {
-            segment_index += 1;
-        }
-        let mut active_style = None;
-
-        render_line_text(
-            &mut rendered,
-            source,
-            line_start..line_end,
-            &spans[span_start_index..span_end_index],
-            &flat_segments[line_segment_start..segment_index],
-            theme,
-            &mut active_style,
-        );
-        render_line_padding(
-            &mut rendered,
-            line_end,
-            &flat_segments[line_segment_start..segment_index],
-            theme,
-            &mut active_style,
-        );
-        reset_active_style(&mut rendered, &mut active_style);
-
-        if line_end == source.len() {
-            break;
-        }
-
-        rendered.push('\n');
-        line_start = line_end + 1;
-    }
-
+    let visual = VisualDocument::from_parts(theme.color_mode(), spans.to_vec(), regions.to_vec());
+    let rendered = RenderPlan::compile(source, &visual, *theme).encode(*theme);
     progress_log(
         "render",
         format!("done lines={} output_bytes={}", total_lines, rendered.len()),
@@ -2891,157 +2901,7 @@ fn render_styled_spans(
     rendered
 }
 
-fn render_line_text(
-    rendered: &mut String,
-    source: &str,
-    line_range: Range<usize>,
-    spans: &[StyledSpan],
-    line_segments: &[FlatRegionSegment],
-    theme: &Theme,
-    active_style: &mut Option<TokenStyle>,
-) {
-    let line_start = line_range.start;
-    let line_end = line_range.end;
-    if line_start == line_end {
-        return;
-    }
-
-    let mut boundaries = vec![line_start, line_end];
-
-    for span in spans {
-        if span.range.start < line_end && span.range.end > line_start {
-            boundaries.push(span.range.start.max(line_start));
-            boundaries.push(span.range.end.min(line_end));
-        }
-    }
-
-    for segment in line_segments {
-        if segment.left < line_end && segment.text_end > line_start {
-            boundaries.push(segment.left.max(line_start));
-            boundaries.push(segment.text_end.min(line_end));
-        }
-    }
-
-    boundaries.sort_unstable();
-    boundaries.dedup();
-    let mut span_cursor = 0;
-
-    for window in boundaries.windows(2) {
-        let start = window[0];
-        let end = window[1];
-        if start == end {
-            continue;
-        }
-
-        let text = &source[start..end];
-        let style = merged_visual_style(spans, line_segments, &mut span_cursor, start, end, theme);
-        push_rendered_segment(rendered, text, style, theme, active_style);
-    }
-}
-
-fn render_line_padding(
-    rendered: &mut String,
-    line_end: usize,
-    line_segments: &[FlatRegionSegment],
-    theme: &Theme,
-    active_style: &mut Option<TokenStyle>,
-) {
-    let mut boundaries = vec![line_end];
-    for segment in line_segments {
-        if segment.right > line_end {
-            boundaries.push(segment.right);
-        }
-    }
-    boundaries.sort_unstable();
-    boundaries.dedup();
-
-    if boundaries.len() <= 1 {
-        return;
-    }
-
-    for window in boundaries.windows(2) {
-        let start = window[0];
-        let end = window[1];
-        if start == end {
-            continue;
-        }
-
-        let style = top_region_style(line_segments, start, end, theme);
-        if let Some(style) = style {
-            push_rendered_segment(
-                rendered,
-                &" ".repeat(end - start),
-                Some(style),
-                theme,
-                active_style,
-            );
-        }
-    }
-}
-
-fn merged_visual_style(
-    spans: &[StyledSpan],
-    line_segments: &[FlatRegionSegment],
-    span_cursor: &mut usize,
-    start: usize,
-    end: usize,
-    theme: &Theme,
-) -> Option<TokenStyle> {
-    let foreground = style_covering_span_from(spans, span_cursor, start, end);
-    let background = top_region_style(line_segments, start, end, theme);
-
-    match (foreground, background) {
-        (Some(foreground), Some(background)) => Some(foreground.with_background_under(background)),
-        (Some(foreground), None) => Some(foreground),
-        (None, Some(background)) => Some(background),
-        (None, None) => None,
-    }
-}
-
-fn push_rendered_segment(
-    rendered: &mut String,
-    text: &str,
-    style: Option<TokenStyle>,
-    theme: &Theme,
-    active_style: &mut Option<TokenStyle>,
-) {
-    let style = style.filter(|style| !style.renders_as_plain_text(theme.color_mode()));
-
-    match style {
-        Some(next_style) => {
-            let transition = next_style.render_transition_from(*active_style, theme.color_mode());
-            if !transition.is_empty() {
-                rendered.push_str(&transition);
-            }
-            *active_style = Some(next_style);
-        }
-        None => reset_active_style(rendered, active_style),
-    }
-
-    rendered.push_str(text);
-}
-
-fn reset_active_style(rendered: &mut String, active_style: &mut Option<TokenStyle>) {
-    if active_style.take().is_some() {
-        rendered.push_str("\x1b[0m");
-    }
-}
-
-fn top_region_style(
-    line_segments: &[FlatRegionSegment],
-    start: usize,
-    end: usize,
-    theme: &Theme,
-) -> Option<TokenStyle> {
-    line_segments
-        .iter()
-        .filter(|segment| segment.left <= start && segment.right >= end)
-        .map(|segment| segment.visual_level)
-        .max()
-        .and_then(|level| theme.nested_region_tint(level))
-}
-
-fn flatten_region_segments(regions: &[VisualRegion]) -> Vec<FlatRegionSegment> {
+pub(crate) fn flatten_region_segments(regions: &[VisualRegion]) -> Vec<FlatRegionSegment> {
     let mut flat_segments = Vec::new();
 
     for region in regions {
@@ -3067,7 +2927,7 @@ fn flatten_region_segments(regions: &[VisualRegion]) -> Vec<FlatRegionSegment> {
     flat_segments
 }
 
-fn style_covering_span_from(
+pub(crate) fn style_covering_span_from(
     spans: &[StyledSpan],
     cursor: &mut usize,
     start: usize,
@@ -3091,7 +2951,8 @@ mod tests {
 
     use super::{
         InjectionVisualKind, NestedRegion, RegionSegment, StyledSpan, SupportedLanguage,
-        collect_top_level_injection_regions, debug_semantics, detect_document_kind,
+        collect_top_level_injection_regions, debug_analysis_json, debug_render_ops_json,
+        debug_semantics, debug_terminal_json, debug_visual_json, detect_document_kind,
         detect_language, highlight_named_language, overlay_nested_region, overlay_style_spans,
         render_with_theme,
     };
@@ -3101,6 +2962,7 @@ mod tests {
         theme::{ColorMode, Theme},
     };
     use anstyle::RgbColor;
+    use serde_json::Value;
 
     struct FixtureCase {
         relative_path: &'static str,
@@ -8246,6 +8108,67 @@ priority: 7
         assert!(
             !line_has_background(find_line_containing(&lines, "\"#"), level_one_tint),
             "expected Rust raw-string closing delimiter line to stay outside the block tint"
+        );
+    }
+
+    #[test]
+    fn debug_analysis_json_reports_markdown_document_kind() {
+        let path = fixture_path("markdown/markdown_truecolor_cjk_repro.md");
+        let source = read_file(&path);
+        let json = debug_analysis_json(Some(path.as_path()), &source)
+            .expect("analysis debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("analysis json should parse");
+
+        assert_eq!(value["detected_document_kind"]["runtime_name"], "markdown");
+        assert!(
+            value["spans"]
+                .as_array()
+                .is_some_and(|spans| !spans.is_empty())
+        );
+    }
+
+    #[test]
+    fn debug_visual_json_reports_regions_array() {
+        let path = fixture_path("markdown/markdown_truecolor_cjk_repro.md");
+        let source = read_file(&path);
+        let json = debug_visual_json(Some(path.as_path()), &source)
+            .expect("visual debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("visual json should parse");
+
+        assert!(value["regions"].is_array());
+    }
+
+    #[test]
+    fn debug_render_ops_json_reports_text_ops() {
+        let path = fixture_path("markdown/markdown_truecolor_cjk_repro.md");
+        let source = read_file(&path);
+        let json = debug_render_ops_json(Some(path.as_path()), &source)
+            .expect("render-op debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("render-op json should parse");
+
+        assert!(
+            value["ops"]
+                .as_array()
+                .is_some_and(|ops| ops.iter().any(|op| op["op"] == "text"))
+        );
+    }
+
+    #[test]
+    fn debug_terminal_json_reports_encoded_output() {
+        let path = fixture_path("markdown/markdown_truecolor_cjk_repro.md");
+        let source = read_file(&path);
+        let json = debug_terminal_json(Some(path.as_path()), &source)
+            .expect("terminal debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("terminal json should parse");
+
+        assert!(
+            value["encoded_output"]
+                .as_str()
+                .is_some_and(|output| !output.is_empty())
+        );
+        assert_eq!(
+            value["capabilities"]["background_queries_enabled"],
+            Value::Bool(false)
         );
     }
 

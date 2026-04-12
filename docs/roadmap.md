@@ -7,7 +7,7 @@
 1. 继续收敛 Dracula 主题与 capture 语义映射，观察是否需要更清晰的分层主题模型。
 2. 继续优化大型 grammar 的冷构建成本，尤其是 parser generation 最重的语言。
 3. 在 Linux 上补跑包含 `scanner.cc` 的完整构建验证。
-4. 继续评估 nested region renderer 的扩展方向，同时保持抽象统一，而不是回退到宿主特判。
+4. 在新的 `analysis -> visual -> render_ops -> terminal` 分层上继续补更细的 snapshot、回放和跨环境对照能力。
 5. 继续优化特殊文件名和无扩展名输入的语言识别策略。
 6. 保持 [README.md](../README.md)、[language-coverage.md](language-coverage.md) 与实际仓库状态同步。
 
@@ -57,5 +57,5 @@
 
 - `Vue` / `Svelte` runtime 已落地；前端文件方向里当前仍保留需求记录的，主要是 React 生态剩余 detector 与更深入的宿主表达式模型。
 - 当需要跨多个相邻字符串做语义级拼接时，再评估 combined injection 与 decode 是否需要进一步统一建模。
-- nested region tint 相关的终端能力后续仍应继续收口到统一 terminal API 层。
-- 如果后续要继续尝试更弱侵入的边界装饰，也应等统一 terminal 抽象稳定后再评估。
+- terminal 能力探测已经收口到统一 terminal 层；后续主要是继续补 transport transcript、PTY replay 和更多真实终端对照测试。
+- 如果后续要继续尝试更弱侵入的边界装饰，也应继续基于现有 visual / render IR 分层评估，而不是回退到宿主特判。

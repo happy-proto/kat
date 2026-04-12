@@ -686,6 +686,7 @@ dependencies = [
  "clap_complete",
  "miette",
  "serde",
+ "serde_json",
  "shadow-rs",
  "shlex",
  "terminal-colorsaurus",

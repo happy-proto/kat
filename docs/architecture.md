@@ -33,16 +33,35 @@
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
-- CLI 输出层仍以“renderer 产出完整 ANSI 文本”为边界；长输出优先交给外部分页器，而不是继续向内建 TUI 演进。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
-- 对块级嵌套区域，renderer 会按共享缩进和注入 range 推导统一的 block 视觉区域，而不是只给已有文本逐行上色。
-- 注入区域的视觉策略默认由 runtime 统一推导；块级区域和行内片段走不同的默认视觉模型。
 - 对 shell、Regex、SQL、JSDoc 以及 GitHub Actions expression 这类仅靠 highlights query 难以长期稳定表达局部结构语义的语言 / profile，允许在基础 capture 之后叠加轻量 semantic overlay。
 - 共享 runtime 只承接真正共享 AST / 语义模型的语言；像 Protocol Buffers schema (`.proto`) 与 Protocol Buffers text format (`.textproto` / `.pbtxt`) 这种虽然同属一个生态、但语法角色不同的文件类型，应拆成独立 runtime，而不是在同一 grammar 上叠加 profile 特判。
-- 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
-- 终端背景色查询被收敛在 [terminal_background.rs](../src/terminal_background.rs) 这一层，后续仍应继续向统一 terminal API 层收口。
 - SQL 方言、Regex host-aware runtime、Justfile shell dispatch、Dockerfile shell dispatch、GitHub Actions `run`/`shell` dispatch 等能力都建立在这套共享 runtime + document profile + host resolver 模型之上。
+
+### 渲染分层
+
+当前渲染链路明确拆成 4 层：
+
+1. `analysis`
+   - 负责 document kind 检测、基础 highlight、semantic overlay、injection region 收集。
+   - 这一层内部仍保留 detect / highlight / semantic / injections 的细分，不会因为外层抽象而把 parser 与高亮逻辑重新揉平。
+2. `visual`
+   - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、block/tight-block/transparent 的区域结果。
+   - 对块级嵌套区域，会按共享缩进和注入 range 推导统一的视觉区域，而不是只给已有文本逐行上色。
+3. `render_ops`
+   - 负责把视觉模型编译成终端无关的渲染状态流，而不是直接拼 ANSI 字符串。
+   - 这层输出的是稳定 IR，适合做 snapshot、回归和跨环境 diff。
+4. `terminal`
+   - 负责终端能力探测、背景查询开关和 ANSI 编码视图。
+   - CLI 输出层仍以“terminal 层编码出完整 ANSI 文本”为边界；长输出优先交给外部分页器，而不是继续向内建 TUI 演进。
+
+### 视觉与终端约定
+
+- 注入区域的视觉策略默认由 runtime 统一推导；块级区域和行内片段走不同的默认视觉模型。
+- 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
+- 终端背景色查询不再由 `theme` 直接触发，而是通过 `terminal` 层能力探测统一接入；当前 OSC 11 后端仍落在 [terminal_background.rs](../src/terminal_background.rs)。
+- `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、render IR 和 terminal 编码层。
 
 ## 维护约定
 
