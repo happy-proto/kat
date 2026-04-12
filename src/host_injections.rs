@@ -39,9 +39,9 @@ pub(crate) struct InjectionCandidate {
     pub(crate) merge_parent_styles: bool,
     pub(crate) decode: InjectionDecode,
     pub(crate) highlight_github_expressions: bool,
-    pub(crate) visual_kind: InjectionVisualKind,
-    pub(crate) visual_level_bump: usize,
-    pub(crate) visual_anchor: InjectionVisualAnchor,
+    pub(crate) visual_kind: Option<InjectionVisualKind>,
+    pub(crate) visual_level_bump: Option<usize>,
+    pub(crate) visual_anchor: Option<InjectionVisualAnchor>,
 }
 
 pub(crate) fn collect_injection_candidates(
@@ -115,23 +115,20 @@ fn collect_query_injection_candidates(
             .iter()
             .find(|property| property.key.as_ref() == "kat.visual")
             .and_then(|property| property.value.as_deref())
-            .map(InjectionVisualKind::from_query_value)
-            .unwrap_or(InjectionVisualKind::Transparent);
+            .map(InjectionVisualKind::from_query_value);
         let visual_level_bump = query
             .property_settings(query_match.pattern_index)
             .iter()
             .find(|property| property.key.as_ref() == "kat.visual-level")
             .and_then(|property| property.value.as_deref())
             .map(parse_visual_level_bump)
-            .transpose()?
-            .unwrap_or_else(|| default_visual_level_bump(visual_kind));
+            .transpose()?;
         let visual_anchor = query
             .property_settings(query_match.pattern_index)
             .iter()
             .find(|property| property.key.as_ref() == "kat.visual-anchor")
             .and_then(|property| property.value.as_deref())
-            .map(InjectionVisualAnchor::from_query_value)
-            .unwrap_or(InjectionVisualAnchor::Content);
+            .map(InjectionVisualAnchor::from_query_value);
 
         for capture in query_match.captures {
             let capture_name = capture_names[capture.index as usize];
@@ -277,9 +274,9 @@ fn collect_dockerfile_injection_candidates(
                     merge_parent_styles: false,
                     decode: InjectionDecode::None,
                     highlight_github_expressions: false,
-                    visual_kind: InjectionVisualKind::Block,
-                    visual_level_bump: 1,
-                    visual_anchor: InjectionVisualAnchor::Content,
+                    visual_kind: Some(InjectionVisualKind::Block),
+                    visual_level_bump: Some(1),
+                    visual_anchor: Some(InjectionVisualAnchor::Content),
                 });
             }
         }
@@ -456,9 +453,9 @@ fn build_host_injection_candidate(
         merge_parent_styles: false,
         decode,
         highlight_github_expressions: false,
-        visual_kind: InjectionVisualKind::Transparent,
-        visual_level_bump: 0,
-        visual_anchor: InjectionVisualAnchor::Content,
+        visual_kind: Some(InjectionVisualKind::Transparent),
+        visual_level_bump: Some(0),
+        visual_anchor: Some(InjectionVisualAnchor::Content),
     }
 }
 
@@ -541,9 +538,9 @@ fn collect_github_actions_yaml_mapping_candidates(
                     merge_parent_styles: false,
                     decode: InjectionDecode::None,
                     highlight_github_expressions: true,
-                    visual_kind: InjectionVisualKind::Block,
-                    visual_level_bump: 1,
-                    visual_anchor: InjectionVisualAnchor::Content,
+                    visual_kind: Some(InjectionVisualKind::Block),
+                    visual_level_bump: Some(1),
+                    visual_anchor: Some(InjectionVisualAnchor::Content),
                 });
             }
         }
@@ -662,7 +659,7 @@ impl InjectionVisualAnchor {
     }
 }
 
-fn default_visual_level_bump(visual_kind: InjectionVisualKind) -> usize {
+pub(crate) fn default_visual_level_bump(visual_kind: InjectionVisualKind) -> usize {
     match visual_kind {
         InjectionVisualKind::Transparent => 0,
         InjectionVisualKind::Block => 1,

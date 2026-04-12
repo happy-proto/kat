@@ -24,7 +24,7 @@ use crate::document_kind::{DocumentKind, git_config_document_kind, yaml_document
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
     InjectionCandidate, InjectionDecode, InjectionVisualAnchor, InjectionVisualKind,
-    collect_injection_candidates,
+    collect_injection_candidates, default_visual_level_bump,
 };
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
@@ -1538,6 +1538,13 @@ struct StyledSpan {
     style: Option<TokenStyle>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ResolvedInjectionVisual {
+    kind: InjectionVisualKind,
+    level_bump: usize,
+    anchor: InjectionVisualAnchor,
+}
+
 fn collect_top_level_injection_regions(
     document_kind: DocumentKind,
     source: &str,
@@ -1597,7 +1604,8 @@ fn render_injection_candidates(
 
     for candidate in top_level.drain(..) {
         let normalized = candidate.language_name.as_str();
-        let visual_level = parent_visual_level.saturating_add(candidate.visual_level_bump);
+        let visual = resolve_injection_visual(source, &candidate);
+        let visual_level = parent_visual_level.saturating_add(visual.level_bump);
         let (virtual_source, source_map) = build_virtual_source(
             source,
             &candidate.ranges,
@@ -1612,11 +1620,10 @@ fn render_injection_candidates(
             visual_level,
             timings.as_deref_mut(),
         )?;
-        let layout_segments =
-            build_region_segments(source, &candidate.ranges, candidate.visual_anchor);
+        let layout_segments = build_region_segments(source, &candidate.ranges, visual.anchor);
         rendered.push(NestedRegion {
             visual_level,
-            visual_kind: candidate.visual_kind,
+            visual_kind: visual.kind,
             layout_segments,
             child_regions: map_virtual_regions_to_source(
                 source,
@@ -1628,6 +1635,123 @@ fn render_injection_candidates(
         });
     }
     Ok(rendered)
+}
+
+fn resolve_injection_visual(
+    source: &str,
+    candidate: &InjectionCandidate,
+) -> ResolvedInjectionVisual {
+    let kind = candidate
+        .visual_kind
+        .unwrap_or_else(|| infer_injection_visual_kind(source, &candidate.ranges));
+    let anchor = candidate
+        .visual_anchor
+        .unwrap_or_else(|| infer_injection_visual_anchor(source, &candidate.ranges, kind));
+    let level_bump = candidate
+        .visual_level_bump
+        .unwrap_or_else(|| default_visual_level_bump(kind));
+
+    ResolvedInjectionVisual {
+        kind,
+        level_bump,
+        anchor,
+    }
+}
+
+fn infer_injection_visual_kind(source: &str, ranges: &[Range<usize>]) -> InjectionVisualKind {
+    if ranges_form_standalone_block(source, ranges) {
+        InjectionVisualKind::Block
+    } else {
+        InjectionVisualKind::Transparent
+    }
+}
+
+fn infer_injection_visual_anchor(
+    source: &str,
+    ranges: &[Range<usize>],
+    visual_kind: InjectionVisualKind,
+) -> InjectionVisualAnchor {
+    if visual_kind == InjectionVisualKind::Block && block_visual_prefers_line_start(source, ranges)
+    {
+        InjectionVisualAnchor::LineStart
+    } else {
+        InjectionVisualAnchor::Content
+    }
+}
+
+fn ranges_form_standalone_block(source: &str, ranges: &[Range<usize>]) -> bool {
+    let mut covered_line_count = 0usize;
+
+    for (line_start, covered_start, covered_end, line_end) in covered_line_ranges(source, ranges) {
+        if covered_start >= covered_end {
+            continue;
+        }
+
+        covered_line_count += 1;
+
+        if covered_end != line_end {
+            return false;
+        }
+
+        let prefix = &source[line_start..covered_start];
+        if !prefix.chars().all(|ch| matches!(ch, ' ' | '\t')) {
+            return false;
+        }
+    }
+
+    covered_line_count > 1
+}
+
+fn block_visual_prefers_line_start(source: &str, ranges: &[Range<usize>]) -> bool {
+    let mut saw_text = false;
+
+    for (_, covered_start, covered_end, _) in covered_line_ranges(source, ranges) {
+        if covered_start >= covered_end {
+            continue;
+        }
+
+        let line_text = &source[covered_start..covered_end];
+        let trimmed = line_text.trim_start_matches([' ', '\t']);
+        let Some(first) = trimmed.chars().next() else {
+            continue;
+        };
+        saw_text = true;
+
+        if !matches!(first, '/' | '*' | '#') {
+            return false;
+        }
+    }
+
+    saw_text
+}
+
+fn covered_line_ranges<'a>(
+    source: &'a str,
+    ranges: &'a [Range<usize>],
+) -> impl Iterator<Item = (usize, usize, usize, usize)> + 'a {
+    ranges.iter().flat_map(|range| {
+        let mut segments = Vec::new();
+        let mut line_start = line_start_offset(source, range.start);
+        let line_end_limit = range.end;
+
+        while line_start < line_end_limit {
+            let line_end = source[line_start..]
+                .find('\n')
+                .map(|offset| line_start + offset)
+                .unwrap_or(source.len());
+            let covered_start = range.start.max(line_start).min(line_end);
+            let covered_end = range.end.min(line_end);
+            segments.push((line_start, covered_start, covered_end, line_end));
+
+            if line_end >= line_end_limit || line_end == source.len() {
+                break;
+            }
+
+            line_start = line_end + 1;
+        }
+
+        segments
+    })
 }
 
 fn render_virtual_injection_render_data(
@@ -7216,6 +7340,54 @@ priority: 7
                 .get(2)
                 .is_some_and(|line| line.starts_with("\x1b[3m\x1b[90m*/")),
             "expected closing block-comment line to keep comment style: {rendered:?}"
+        );
+    }
+
+    #[test]
+    fn typescript_jsdoc_uses_block_region_tint() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let source = "/**\n * docs\n */\nconst answer = 42;\n";
+        let rendered = render_with_theme(Some(Path::new("demo.ts")), source, &theme)
+            .expect("failed to render TypeScript JSDoc source");
+        let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+
+        assert!(
+            line_has_background(lines[0], level_one_tint),
+            "expected JSDoc opening line to receive nested block tint"
+        );
+        assert!(
+            line_has_background(lines[1], level_one_tint),
+            "expected JSDoc body line to receive nested block tint"
+        );
+        assert!(
+            line_has_background(lines[2], level_one_tint),
+            "expected JSDoc closing line to receive nested block tint"
+        );
+        assert!(
+            !line_has_background(lines[3], level_one_tint),
+            "expected following code line to stay outside the JSDoc block"
+        );
+    }
+
+    #[test]
+    fn typescript_comment_hint_template_injection_stays_inline() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let source = "const query = /* sql */ `\n  select 1\n`;\n";
+        let rendered = render_with_theme(Some(Path::new("demo.ts")), source, &theme)
+            .expect("failed to render TypeScript comment-hint template injection");
+        let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+
+        assert!(
+            !line_has_background(lines[1], level_one_tint),
+            "expected inline SQL template injection to avoid block tint"
         );
     }
 
