@@ -1545,6 +1545,22 @@ struct ResolvedInjectionVisual {
     anchor: InjectionVisualAnchor,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CoveredLineRole {
+    Content,
+    Blank,
+    Wrapper,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct CoveredLine {
+    line_start: usize,
+    covered_start: usize,
+    covered_end: usize,
+    line_end: usize,
+    role: CoveredLineRole,
+}
+
 fn collect_top_level_injection_regions(
     document_kind: DocumentKind,
     source: &str,
@@ -1620,7 +1636,8 @@ fn render_injection_candidates(
             visual_level,
             timings.as_deref_mut(),
         )?;
-        let layout_segments = build_region_segments(source, &candidate.ranges, visual.anchor);
+        let layout_segments =
+            build_region_segments(source, &candidate.ranges, visual.anchor, visual.kind);
         rendered.push(NestedRegion {
             visual_level,
             visual_kind: visual.kind,
@@ -1680,26 +1697,69 @@ fn infer_injection_visual_anchor(
 }
 
 fn ranges_form_standalone_block(source: &str, ranges: &[Range<usize>]) -> bool {
-    let mut covered_line_count = 0usize;
+    let covered_lines = classify_covered_lines(source, ranges);
+    let content_indices = covered_lines
+        .iter()
+        .enumerate()
+        .filter_map(|(index, line)| (line.role == CoveredLineRole::Content).then_some(index))
+        .collect::<Vec<_>>();
+    let (Some(&first_content), Some(&last_content)) =
+        (content_indices.first(), content_indices.last())
+    else {
+        return false;
+    };
 
-    for (line_start, covered_start, covered_end, line_end) in covered_line_ranges(source, ranges) {
-        if covered_start >= covered_end {
-            continue;
-        }
+    if content_indices.len() < 2 {
+        return false;
+    }
 
-        covered_line_count += 1;
-
-        if covered_end != line_end {
+    for line in &covered_lines[first_content..=last_content] {
+        if line.role == CoveredLineRole::Wrapper {
             return false;
         }
 
-        let prefix = &source[line_start..covered_start];
+        let prefix = &source[line.line_start..line.covered_start];
         if !prefix.chars().all(|ch| matches!(ch, ' ' | '\t')) {
+            return false;
+        }
+
+        if line.role == CoveredLineRole::Content
+            && source[line.covered_end..line.line_end]
+                .chars()
+                .any(|ch| !ch.is_whitespace())
+        {
             return false;
         }
     }
 
-    covered_line_count > 1
+    true
+}
+
+fn classify_covered_lines(source: &str, ranges: &[Range<usize>]) -> Vec<CoveredLine> {
+    covered_line_ranges(source, ranges)
+        .map(|(line_start, covered_start, covered_end, line_end)| {
+            let prefix = &source[line_start..covered_start];
+            let covered = &source[covered_start..covered_end];
+            let suffix = &source[covered_end..line_end];
+            let role = if covered.chars().any(|ch| !ch.is_whitespace()) {
+                CoveredLineRole::Content
+            } else if prefix.chars().any(|ch| !ch.is_whitespace())
+                || suffix.chars().any(|ch| !ch.is_whitespace())
+            {
+                CoveredLineRole::Wrapper
+            } else {
+                CoveredLineRole::Blank
+            };
+
+            CoveredLine {
+                line_start,
+                covered_start,
+                covered_end,
+                line_end,
+                role,
+            }
+        })
+        .collect()
 }
 
 fn block_visual_prefers_line_start(source: &str, ranges: &[Range<usize>]) -> bool {
@@ -1954,45 +2014,14 @@ fn build_region_segments(
     source: &str,
     ranges: &[Range<usize>],
     visual_anchor: InjectionVisualAnchor,
+    visual_kind: InjectionVisualKind,
 ) -> Vec<RegionSegment> {
     let shared_indent = shared_leading_indent(source, ranges);
-    let mut line_bounds = Vec::new();
-
-    for range in ranges {
-        let mut line_start = line_start_offset(source, range.start);
-        let line_end_limit = range.end;
-
-        while line_start < line_end_limit {
-            let line_end = source[line_start..]
-                .find('\n')
-                .map(|offset| line_start + offset)
-                .unwrap_or(source.len());
-            let range_start_on_line = range.start.max(line_start).min(line_end);
-            let indent_bytes = source[range_start_on_line..line_end]
-                .chars()
-                .take_while(|ch| matches!(ch, ' ' | '\t'))
-                .map(char::len_utf8)
-                .take(shared_indent)
-                .sum::<usize>();
-            let left = match visual_anchor {
-                InjectionVisualAnchor::Content => {
-                    (range_start_on_line + indent_bytes).min(line_end)
-                }
-                InjectionVisualAnchor::LineStart => line_start,
-            };
-            line_bounds.push(RegionSegment {
-                line_start,
-                left,
-                text_end: line_end,
-                right: line_end,
-            });
-
-            if line_end >= line_end_limit || line_end == source.len() {
-                break;
-            }
-            line_start = line_end + 1;
-        }
-    }
+    let mut line_bounds = if visual_kind == InjectionVisualKind::Block {
+        build_block_region_segments(source, ranges, visual_anchor)
+    } else {
+        build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
+    };
 
     line_bounds.sort_by_key(|line| (line.line_start, line.left, line.text_end));
     line_bounds.dedup();
@@ -2017,6 +2046,108 @@ fn build_region_segments(
             ..line
         })
         .collect()
+}
+
+fn build_block_region_segments(
+    source: &str,
+    ranges: &[Range<usize>],
+    visual_anchor: InjectionVisualAnchor,
+) -> Vec<RegionSegment> {
+    let covered_lines = classify_covered_lines(source, ranges);
+    let first_content = covered_lines
+        .iter()
+        .position(|line| line.role == CoveredLineRole::Content);
+    let last_content = covered_lines
+        .iter()
+        .rposition(|line| line.role == CoveredLineRole::Content);
+    let (Some(first_content), Some(last_content)) = (first_content, last_content) else {
+        return build_region_segment_bounds(
+            source,
+            ranges,
+            shared_leading_indent(source, ranges),
+            visual_anchor,
+        );
+    };
+    let block_left_column = covered_lines[first_content..=last_content]
+        .iter()
+        .filter(|line| line.role == CoveredLineRole::Content)
+        .map(|line| content_start_column(source, *line))
+        .min()
+        .unwrap_or(0);
+
+    covered_lines[first_content..=last_content]
+        .iter()
+        .filter(|line| line.role != CoveredLineRole::Wrapper)
+        .map(|line| RegionSegment {
+            line_start: line.line_start,
+            left: match visual_anchor {
+                InjectionVisualAnchor::Content => {
+                    (line.line_start + block_left_column).min(line.line_end)
+                }
+                InjectionVisualAnchor::LineStart => line.line_start,
+            },
+            text_end: line.line_end,
+            right: line.line_end,
+        })
+        .collect()
+}
+
+fn content_start_column(source: &str, line: CoveredLine) -> usize {
+    let indent_bytes = source[line.covered_start..line.covered_end]
+        .chars()
+        .take_while(|ch| matches!(ch, ' ' | '\t'))
+        .map(char::len_utf8)
+        .sum::<usize>();
+    line.covered_start + indent_bytes - line.line_start
+}
+
+fn build_region_segment_bounds(
+    source: &str,
+    ranges: &[Range<usize>],
+    shared_indent: usize,
+    visual_anchor: InjectionVisualAnchor,
+) -> Vec<RegionSegment> {
+    covered_line_ranges(source, ranges)
+        .map(|(line_start, covered_start, covered_end, line_end)| {
+            build_region_segment_for_line(
+                source,
+                CoveredLine {
+                    line_start,
+                    covered_start,
+                    covered_end,
+                    line_end,
+                    role: CoveredLineRole::Content,
+                },
+                shared_indent,
+                visual_anchor,
+            )
+        })
+        .collect()
+}
+
+fn build_region_segment_for_line(
+    source: &str,
+    line: CoveredLine,
+    shared_indent: usize,
+    visual_anchor: InjectionVisualAnchor,
+) -> RegionSegment {
+    let indent_bytes = source[line.covered_start..line.line_end]
+        .chars()
+        .take_while(|ch| matches!(ch, ' ' | '\t'))
+        .map(char::len_utf8)
+        .take(shared_indent)
+        .sum::<usize>();
+    let left = match visual_anchor {
+        InjectionVisualAnchor::Content => (line.covered_start + indent_bytes).min(line.line_end),
+        InjectionVisualAnchor::LineStart => line.line_start,
+    };
+
+    RegionSegment {
+        line_start: line.line_start,
+        left,
+        text_end: line.line_end,
+        right: line.line_end,
+    }
 }
 
 fn line_start_offset(source: &str, offset: usize) -> usize {
@@ -7219,6 +7350,15 @@ priority: 7
         max_width
     }
 
+    fn visible_columns_before_first_background(line: &str, background: RgbColor) -> usize {
+        let background_escape = background_escape(background);
+        let prefix = line
+            .find(&background_escape)
+            .map(|index| &line[..index])
+            .unwrap_or(line);
+        strip_ansi(prefix).chars().count()
+    }
+
     fn visible_trailing_spaces(line: &str) -> usize {
         strip_ansi(line)
             .chars()
@@ -7388,6 +7528,46 @@ priority: 7
         assert!(
             !line_has_background(lines[1], level_one_tint),
             "expected inline SQL template injection to avoid block tint"
+        );
+    }
+
+    #[test]
+    fn rust_multiline_raw_string_sql_uses_block_region_tint() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("rust/injections.rs");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+        let lines: Vec<_> = rendered.lines().collect();
+        let level_one_tint = theme
+            .nested_region_background(1)
+            .expect("expected first nested region tint");
+
+        assert!(
+            line_has_background(
+                find_line_containing(&lines, "SELECT id, name, enabled"),
+                level_one_tint
+            ),
+            "expected multiline Rust SQL raw string to receive nested block tint"
+        );
+        let select_line = find_line_containing(&lines, "SELECT id, name, enabled");
+        let background_column =
+            visible_columns_before_first_background(select_line, level_one_tint);
+        assert!(
+            background_column == 8,
+            "expected Rust SQL block to preserve host indentation before the block tint, got column {background_column}: {select_line:?}"
+        );
+        assert!(
+            line_has_background(
+                find_line_containing(&lines, "ORDER BY name DESC"),
+                level_one_tint
+            ),
+            "expected trailing Rust SQL raw-string line to stay inside the block tint"
+        );
+        assert!(
+            !line_has_background(find_line_containing(&lines, "\"#"), level_one_tint),
+            "expected Rust raw-string closing delimiter line to stay outside the block tint"
         );
     }
 
