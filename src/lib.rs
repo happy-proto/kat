@@ -1,3 +1,4 @@
+mod debug_progress;
 mod document_kind;
 mod grammar_registry;
 mod host_injections;
@@ -18,6 +19,7 @@ use anyhow::{Context, Result};
 use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
+use crate::debug_progress::log as progress_log;
 use crate::document_kind::{DocumentKind, git_config_document_kind, yaml_document_kind};
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
@@ -732,6 +734,15 @@ struct RegionSegment {
     right: usize,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct FlatRegionSegment {
+    visual_level: usize,
+    line_start: usize,
+    left: usize,
+    text_end: usize,
+    right: usize,
+}
+
 fn highlight_named_language_render_data(
     document_kind: DocumentKind,
     source_path: Option<&Path>,
@@ -760,6 +771,18 @@ fn highlight_named_language_render_data_with_depth(
     let resolved_document_kind =
         resolve_highlight_document_kind(document_kind, source_path, source);
     let resolved_runtime_name = resolved_document_kind.runtime_name();
+    let log_progress = source_path.is_some();
+    if log_progress {
+        progress_log(
+            "highlight",
+            format!(
+                "begin runtime={} depth={} bytes={}",
+                resolved_runtime_name,
+                nested_depth,
+                source.len()
+            ),
+        );
+    }
     let language_runtime = runtime(resolved_runtime_name)
         .with_context(|| format!("missing language runtime for {resolved_runtime_name}"))?;
     let highlight_started_at = Instant::now();
@@ -774,12 +797,34 @@ fn highlight_named_language_render_data_with_depth(
         .context("failed to highlight source")?;
 
     let mut spans = collect_styled_spans(source, events, theme)?;
+    if log_progress {
+        progress_log(
+            "highlight",
+            format!(
+                "highlight_done runtime={} spans={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                spans.len(),
+                highlight_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
+    }
     if let Some(timings) = timings.as_deref_mut() {
         timings.record_highlight(highlight_started_at);
     }
 
     let semantic_started_at = Instant::now();
     spans = overlay_semantic_captures(resolved_document_kind, source, spans, theme)?;
+    if log_progress {
+        progress_log(
+            "semantic",
+            format!(
+                "done runtime={} spans={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                spans.len(),
+                semantic_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
+    }
     if let Some(timings) = timings.as_deref_mut() {
         timings.record_semantic_overlays(semantic_started_at);
     }
@@ -792,6 +837,17 @@ fn highlight_named_language_render_data_with_depth(
         nested_depth,
         timings.as_deref_mut(),
     )?;
+    if log_progress {
+        progress_log(
+            "injections",
+            format!(
+                "regions_done runtime={} regions={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                nested_regions.len(),
+                injections_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
+    }
     if let Some(timings) = timings.as_deref_mut() {
         timings.record_injection_regions(injections_started_at);
     }
@@ -799,6 +855,18 @@ fn highlight_named_language_render_data_with_depth(
     let nested_overlay_started_at = Instant::now();
     for region in &nested_regions {
         spans = overlay_nested_region(spans, region);
+    }
+    if log_progress {
+        progress_log(
+            "nested_overlays",
+            format!(
+                "done runtime={} spans={} regions={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                spans.len(),
+                nested_regions.len(),
+                nested_overlay_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
     }
     if let Some(timings) = timings {
         timings.record_nested_region_overlays(nested_overlay_started_at);
@@ -1458,7 +1526,6 @@ fn resolve_highlight_document_kind(
 struct NestedRegion {
     visual_level: usize,
     visual_kind: InjectionVisualKind,
-    source_ranges: Vec<Range<usize>>,
     layout_segments: Vec<RegionSegment>,
     child_regions: Vec<VisualRegion>,
     overlays: Vec<StyledSpan>,
@@ -1551,7 +1618,6 @@ fn render_injection_candidates(
             visual_level,
             visual_kind: candidate.visual_kind,
             layout_segments,
-            source_ranges: candidate.ranges,
             child_regions: map_virtual_regions_to_source(
                 source,
                 &child_render.regions,
@@ -1561,7 +1627,6 @@ fn render_injection_candidates(
             merge_parent_styles: candidate.merge_parent_styles,
         });
     }
-
     Ok(rendered)
 }
 
@@ -2254,102 +2319,14 @@ fn map_virtual_regions_to_source(
 }
 
 fn overlay_nested_region(parent_spans: Vec<StyledSpan>, region: &NestedRegion) -> Vec<StyledSpan> {
-    let source_len = parent_spans.last().map_or(0, |span| span.range.end);
-    let mut boundaries = vec![0, source_len];
-
-    for span in &parent_spans {
-        boundaries.push(span.range.start);
-        boundaries.push(span.range.end);
-    }
-
-    for range in &region.source_ranges {
-        boundaries.push(range.start);
-        boundaries.push(range.end);
-    }
-
-    for span in &region.overlays {
-        boundaries.push(span.range.start);
-        boundaries.push(span.range.end);
-    }
-
-    boundaries.sort_unstable();
-    boundaries.dedup();
-
-    let mut result = Vec::new();
-
-    for window in boundaries.windows(2) {
-        let start = window[0];
-        let end = window[1];
-        if start == end {
-            continue;
-        }
-
-        let parent_style = style_covering_span(&parent_spans, start, end);
-        let resolved_style = if point_in_ranges(start, &region.source_ranges)
-            && point_in_ranges(end.saturating_sub(1), &region.source_ranges)
-        {
-            let child_style = style_covering_span(&region.overlays, start, end);
-            match (region.merge_parent_styles, parent_style, child_style) {
-                (true, Some(parent), Some(child)) => Some(parent.merge(child)),
-                (true, Some(parent), None) => Some(parent),
-                (true, None, Some(child)) => Some(child),
-                (true, None, None) => None,
-                (false, _, Some(child)) => Some(child),
-                (false, parent, None) => parent,
-            }
-        } else {
-            parent_style
-        };
-
-        push_span(&mut result, start..end, resolved_style);
-    }
-    result
+    apply_overlay_spans(parent_spans, &region.overlays, region.merge_parent_styles)
 }
 
 fn overlay_style_spans(
     parent_spans: Vec<StyledSpan>,
     overlay_spans: Vec<StyledSpan>,
 ) -> Vec<StyledSpan> {
-    if overlay_spans.is_empty() {
-        return parent_spans;
-    }
-
-    let source_len = parent_spans.last().map_or(0, |span| span.range.end);
-    let mut boundaries = vec![0, source_len];
-
-    for span in &parent_spans {
-        boundaries.push(span.range.start);
-        boundaries.push(span.range.end);
-    }
-
-    for span in &overlay_spans {
-        boundaries.push(span.range.start);
-        boundaries.push(span.range.end);
-    }
-
-    boundaries.sort_unstable();
-    boundaries.dedup();
-
-    let mut result = Vec::new();
-
-    for window in boundaries.windows(2) {
-        let start = window[0];
-        let end = window[1];
-        if start == end {
-            continue;
-        }
-
-        let style = style_covering_span(&overlay_spans, start, end)
-            .or_else(|| style_covering_span(&parent_spans, start, end));
-        push_span(&mut result, start..end, style);
-    }
-    result
-}
-
-fn point_in_ranges(point: usize, ranges: &[Range<usize>]) -> bool {
-    ranges
-        .iter()
-        .any(|range| point >= range.start && point < range.end)
+    apply_overlay_spans(parent_spans, &overlay_spans, false)
 }
 
 fn style_covering_span(spans: &[StyledSpan], start: usize, end: usize) -> Option<TokenStyle> {
@@ -2357,6 +2334,85 @@ fn style_covering_span(spans: &[StyledSpan], start: usize, end: usize) -> Option
         .iter()
         .find(|span| span.range.start <= start && span.range.end >= end)
         .and_then(|span| span.style)
+}
+
+fn apply_overlay_spans(
+    parent_spans: Vec<StyledSpan>,
+    overlay_spans: &[StyledSpan],
+    merge_parent_styles: bool,
+) -> Vec<StyledSpan> {
+    if overlay_spans.is_empty() {
+        return parent_spans;
+    }
+
+    let mut result = Vec::with_capacity(parent_spans.len().saturating_add(overlay_spans.len()));
+    let mut overlay_index = 0;
+
+    for parent in parent_spans {
+        let parent_start = parent.range.start;
+        let parent_end = parent.range.end;
+        let mut cursor = parent_start;
+
+        while overlay_index < overlay_spans.len()
+            && overlay_spans[overlay_index].range.end <= cursor
+        {
+            overlay_index += 1;
+        }
+
+        let mut active_overlay_index = overlay_index;
+        while active_overlay_index < overlay_spans.len()
+            && overlay_spans[active_overlay_index].range.start < parent_end
+        {
+            let overlay = &overlay_spans[active_overlay_index];
+            if cursor < overlay.range.start {
+                push_span(
+                    &mut result,
+                    cursor..overlay.range.start.min(parent_end),
+                    parent.style,
+                );
+                cursor = overlay.range.start.min(parent_end);
+            }
+
+            let start = cursor.max(overlay.range.start);
+            let end = parent_end.min(overlay.range.end);
+            if start < end {
+                push_span(
+                    &mut result,
+                    start..end,
+                    resolve_overlay_style(parent.style, overlay.style, merge_parent_styles),
+                );
+                cursor = end;
+            }
+
+            if overlay.range.end <= parent_end {
+                active_overlay_index += 1;
+                overlay_index = active_overlay_index;
+            } else {
+                break;
+            }
+        }
+
+        if cursor < parent_end {
+            push_span(&mut result, cursor..parent_end, parent.style);
+        }
+    }
+
+    result
+}
+
+fn resolve_overlay_style(
+    parent_style: Option<TokenStyle>,
+    overlay_style: Option<TokenStyle>,
+    merge_parent_styles: bool,
+) -> Option<TokenStyle> {
+    match (merge_parent_styles, parent_style, overlay_style) {
+        (true, Some(parent), Some(overlay)) => Some(parent.merge(overlay)),
+        (true, Some(parent), None) => Some(parent),
+        (true, None, Some(overlay)) => Some(overlay),
+        (true, None, None) => None,
+        (false, _, Some(overlay)) => Some(overlay),
+        (false, parent, None) => parent,
+    }
 }
 
 fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<VisualRegion> {
@@ -2390,23 +2446,63 @@ fn render_styled_spans(
 ) -> String {
     let mut rendered = String::with_capacity(source.len() + source.len() / 8);
     let mut line_start = 0;
+    let flat_segments = flatten_region_segments(regions);
+    let mut span_index = 0;
+    let mut segment_index = 0;
+    let total_lines = source.bytes().filter(|byte| *byte == b'\n').count() + 1;
+    progress_log(
+        "render",
+        format!(
+            "begin lines={} spans={} regions={} flat_segments={}",
+            total_lines,
+            spans.len(),
+            regions.len(),
+            flat_segments.len()
+        ),
+    );
 
     while line_start <= source.len() {
         let line_end = source[line_start..]
             .find('\n')
             .map(|offset| line_start + offset)
             .unwrap_or(source.len());
+        while span_index < spans.len() && spans[span_index].range.end <= line_start {
+            span_index += 1;
+        }
+        let line_span_start = span_index;
+        while span_index < spans.len() && spans[span_index].range.start < line_end {
+            span_index += 1;
+        }
+
+        while segment_index < flat_segments.len()
+            && (flat_segments[segment_index].line_start < line_start
+                || (flat_segments[segment_index].line_start == line_start
+                    && flat_segments[segment_index].right <= line_start))
+        {
+            segment_index += 1;
+        }
+        let line_segment_start = segment_index;
+        while segment_index < flat_segments.len()
+            && flat_segments[segment_index].line_start == line_start
+        {
+            segment_index += 1;
+        }
 
         render_line_text(
             &mut rendered,
             source,
             line_start,
             line_end,
-            spans,
-            regions,
+            &spans[line_span_start..span_index],
+            &flat_segments[line_segment_start..segment_index],
             theme,
         );
-        render_line_padding(&mut rendered, line_start, line_end, regions, theme);
+        render_line_padding(
+            &mut rendered,
+            line_end,
+            &flat_segments[line_segment_start..segment_index],
+            theme,
+        );
 
         if line_end == source.len() {
             break;
@@ -2416,6 +2512,10 @@ fn render_styled_spans(
         line_start = line_end + 1;
     }
 
+    progress_log(
+        "render",
+        format!("done lines={} output_bytes={}", total_lines, rendered.len()),
+    );
     rendered
 }
 
@@ -2425,7 +2525,7 @@ fn render_line_text(
     line_start: usize,
     line_end: usize,
     spans: &[StyledSpan],
-    regions: &[VisualRegion],
+    line_segments: &[FlatRegionSegment],
     theme: &Theme,
 ) {
     if line_start == line_end {
@@ -2441,20 +2541,16 @@ fn render_line_text(
         }
     }
 
-    for region in regions {
-        for segment in &region.segments {
-            if segment.line_start != line_start {
-                continue;
-            }
-            if segment.left < line_end && segment.text_end > line_start {
-                boundaries.push(segment.left.max(line_start));
-                boundaries.push(segment.text_end.min(line_end));
-            }
+    for segment in line_segments {
+        if segment.left < line_end && segment.text_end > line_start {
+            boundaries.push(segment.left.max(line_start));
+            boundaries.push(segment.text_end.min(line_end));
         }
     }
 
     boundaries.sort_unstable();
     boundaries.dedup();
+    let mut span_cursor = 0;
 
     for window in boundaries.windows(2) {
         let start = window[0];
@@ -2464,24 +2560,21 @@ fn render_line_text(
         }
 
         let text = &source[start..end];
-        let style = merged_visual_style(spans, regions, line_start, start, end, theme);
+        let style = merged_visual_style(spans, line_segments, &mut span_cursor, start, end, theme);
         push_rendered_segment(rendered, text, style, theme);
     }
 }
 
 fn render_line_padding(
     rendered: &mut String,
-    line_start: usize,
     line_end: usize,
-    regions: &[VisualRegion],
+    line_segments: &[FlatRegionSegment],
     theme: &Theme,
 ) {
     let mut boundaries = vec![line_end];
-    for region in regions {
-        for segment in &region.segments {
-            if segment.line_start == line_start && segment.right > line_end {
-                boundaries.push(segment.right);
-            }
+    for segment in line_segments {
+        if segment.right > line_end {
+            boundaries.push(segment.right);
         }
     }
     boundaries.sort_unstable();
@@ -2498,7 +2591,7 @@ fn render_line_padding(
             continue;
         }
 
-        let style = top_region_style(regions, line_start, start, end, theme);
+        let style = top_region_style(line_segments, start, end, theme);
         if let Some(style) = style {
             push_rendered_segment(rendered, &" ".repeat(end - start), Some(style), theme);
         }
@@ -2507,14 +2600,14 @@ fn render_line_padding(
 
 fn merged_visual_style(
     spans: &[StyledSpan],
-    regions: &[VisualRegion],
-    line_start: usize,
+    line_segments: &[FlatRegionSegment],
+    span_cursor: &mut usize,
     start: usize,
     end: usize,
     theme: &Theme,
 ) -> Option<TokenStyle> {
-    let foreground = style_covering_span(spans, start, end);
-    let background = top_region_style(regions, line_start, start, end, theme);
+    let foreground = style_covering_span_from(spans, span_cursor, start, end);
+    let background = top_region_style(line_segments, start, end, theme);
 
     match (foreground, background) {
         (Some(foreground), Some(background)) => Some(foreground.with_background_under(background)),
@@ -2540,27 +2633,59 @@ fn push_rendered_segment(
 }
 
 fn top_region_style(
-    regions: &[VisualRegion],
-    line_start: usize,
+    line_segments: &[FlatRegionSegment],
     start: usize,
     end: usize,
     theme: &Theme,
 ) -> Option<TokenStyle> {
-    regions
+    line_segments
         .iter()
-        .filter_map(|region| {
-            region
-                .segments
-                .iter()
-                .find(|segment| {
-                    segment.line_start == line_start
-                        && segment.left <= start
-                        && segment.right >= end
-                })
-                .map(|_| region.visual_level)
-        })
+        .filter(|segment| segment.left <= start && segment.right >= end)
+        .map(|segment| segment.visual_level)
         .max()
         .and_then(|level| theme.nested_region_tint(level))
+}
+
+fn flatten_region_segments(regions: &[VisualRegion]) -> Vec<FlatRegionSegment> {
+    let mut flat_segments = Vec::new();
+
+    for region in regions {
+        for segment in &region.segments {
+            flat_segments.push(FlatRegionSegment {
+                visual_level: region.visual_level,
+                line_start: segment.line_start,
+                left: segment.left,
+                text_end: segment.text_end,
+                right: segment.right,
+            });
+        }
+    }
+
+    flat_segments.sort_by_key(|segment| {
+        (
+            segment.line_start,
+            segment.left,
+            segment.right,
+            segment.visual_level,
+        )
+    });
+    flat_segments
+}
+
+fn style_covering_span_from(
+    spans: &[StyledSpan],
+    cursor: &mut usize,
+    start: usize,
+    end: usize,
+) -> Option<TokenStyle> {
+    while *cursor < spans.len() && spans[*cursor].range.end <= start {
+        *cursor += 1;
+    }
+
+    spans
+        .get(*cursor)
+        .filter(|span| span.range.start <= start && span.range.end >= end)
+        .and_then(|span| span.style)
 }
 #[cfg(test)]
 mod tests {
@@ -2570,8 +2695,10 @@ mod tests {
     };
 
     use super::{
-        SupportedLanguage, collect_top_level_injection_regions, debug_semantics,
-        detect_document_kind, detect_language, highlight_named_language, render_with_theme,
+        InjectionVisualKind, NestedRegion, RegionSegment, StyledSpan, SupportedLanguage,
+        collect_top_level_injection_regions, debug_semantics, detect_document_kind,
+        detect_language, highlight_named_language, overlay_nested_region, overlay_style_spans,
+        render_with_theme,
     };
     use crate::{
         document_kind::{DocumentProfile, yaml_document_kind},
@@ -6977,6 +7104,97 @@ priority: 7
 
     fn relative_luminance(color: RgbColor) -> f32 {
         0.2126 * color.0 as f32 + 0.7152 * color.1 as f32 + 0.0722 * color.2 as f32
+    }
+
+    #[test]
+    fn overlay_style_spans_only_splits_overlapping_ranges() {
+        let theme = Theme::for_mode(ColorMode::Ansi);
+        let parent_style = theme.token_style_for("string", "value");
+        let overlay_style = theme.token_style_for("comment", "//");
+        let parent_spans = vec![StyledSpan {
+            range: 0..10,
+            style: parent_style,
+        }];
+        let overlay_spans = vec![
+            StyledSpan {
+                range: 2..4,
+                style: overlay_style,
+            },
+            StyledSpan {
+                range: 6..8,
+                style: overlay_style,
+            },
+        ];
+
+        let result = overlay_style_spans(parent_spans, overlay_spans);
+
+        assert_eq!(
+            result,
+            vec![
+                StyledSpan {
+                    range: 0..2,
+                    style: parent_style,
+                },
+                StyledSpan {
+                    range: 2..4,
+                    style: overlay_style,
+                },
+                StyledSpan {
+                    range: 4..6,
+                    style: parent_style,
+                },
+                StyledSpan {
+                    range: 6..8,
+                    style: overlay_style,
+                },
+                StyledSpan {
+                    range: 8..10,
+                    style: parent_style,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn overlay_nested_region_merges_parent_style_only_inside_child_overlays() {
+        let theme = Theme::for_mode(ColorMode::Ansi);
+        let parent_style = None;
+        let child_style = theme.token_style_for("comment", "//");
+        let parent_spans = vec![StyledSpan {
+            range: 0..10,
+            style: parent_style,
+        }];
+        let region = NestedRegion {
+            visual_level: 0,
+            visual_kind: InjectionVisualKind::Transparent,
+            layout_segments: Vec::<RegionSegment>::new(),
+            child_regions: Vec::new(),
+            overlays: vec![StyledSpan {
+                range: 2..4,
+                style: child_style,
+            }],
+            merge_parent_styles: true,
+        };
+
+        let result = overlay_nested_region(parent_spans, &region);
+
+        assert_eq!(
+            result,
+            vec![
+                StyledSpan {
+                    range: 0..2,
+                    style: parent_style,
+                },
+                StyledSpan {
+                    range: 2..4,
+                    style: child_style,
+                },
+                StyledSpan {
+                    range: 4..10,
+                    style: parent_style,
+                },
+            ]
+        );
     }
 
     fn fixture_path(relative_path: &str) -> PathBuf {

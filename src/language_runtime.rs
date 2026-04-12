@@ -5,6 +5,7 @@ use tree_sitter::{Language, Query};
 use tree_sitter_highlight::HighlightConfiguration;
 use tree_sitter_language::LanguageFn;
 
+use crate::debug_progress::log as progress_log;
 use crate::grammar_registry::HIGHLIGHT_NAMES;
 
 const SQL_POSTGRES_HIGHLIGHTS_QUERY: &str = concat!(
@@ -896,6 +897,10 @@ pub fn global_highlight_name(highlight_index: usize) -> &'static str {
 
 fn build_runtimes() -> Result<BTreeMap<&'static str, LanguageRuntime>> {
     let mut runtimes = BTreeMap::new();
+    progress_log(
+        "runtime_init",
+        format!("begin total_assets={}", STATIC_LANGUAGE_ASSETS.len()),
+    );
 
     for asset in STATIC_LANGUAGE_ASSETS {
         let language = Language::from(asset.language_fn);
@@ -932,6 +937,7 @@ fn build_runtimes() -> Result<BTreeMap<&'static str, LanguageRuntime>> {
         );
     }
 
+    progress_log("runtime_init", format!("done runtimes={}", runtimes.len()));
     Ok(runtimes)
 }
 
