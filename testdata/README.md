@@ -6,6 +6,7 @@ manual rendering checks.
 ## Layout
 
 - `fixtures/`: small and stable inputs for automated tests.
+- `perf/`: repository-local performance baseline manifests.
 - `showcase/`: richer examples for visually checking syntax highlighting output.
 
 ## Conventions

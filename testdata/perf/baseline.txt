@@ -1,0 +1,7 @@
+# Repository-local performance baseline corpus.
+testdata/fixtures/typescript/rich.ts
+testdata/showcase/javascript/rich.js
+testdata/showcase/markdown/mixed-code-blocks.md
+testdata/showcase/dockerfile/Dockerfile.advanced
+testdata/showcase/rust/injections.rs
+testdata/showcase/yaml/github-actions-workflow-advanced.yaml

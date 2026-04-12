@@ -39,6 +39,7 @@
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
 - 对 `Justfile` recipe、Markdown fenced code、GitHub Actions `run` block 这类明显是“块级运行时区域”的注入，renderer 现在会基于注入 range 和共享缩进推导矩形 block range，而不是只给每一行已有文本上色。
 - 这套 block region renderer 会在较短行尾部补带背景色的空格，把同一个嵌套区域渲染成视觉上连续的矩形块；这是当前设计的一部分，不再假设输出一定逐字节保留原始行尾。
+- 注入区域的视觉策略默认由 runtime 统一推导：像多行文档注释、fence、block scalar 这类“块级嵌套”会自动落到 block tint；明显的行内片段仍保持透明叠加。query / host resolver 只在需要覆盖默认判断时显式设置 `kat.visual` / `kat.visual-anchor`。
 - 对 shell、Regex、SQL、JSDoc 以及 GitHub Actions expression 这类仅靠 highlights query 难以长期稳定表达局部结构语义的语言 / profile，允许在基础 capture 之后叠加一层轻量 semantic overlay；这层仍建立在 AST 或局部语法扫描之上，而不是把特判塞进 renderer。GitHub Actions 这层 overlay 现在既作用于 YAML 宿主上的 expression，也可叠加到 `run` block 注入出来的 shell / Python 子语言上。
 - 共享 runtime 只承接真正共享 AST / 语义模型的语言；像 Protocol Buffers schema (`.proto`) 与 Protocol Buffers text format (`.textproto` / `.pbtxt`) 这种虽然同属一个生态、但语法角色不同的文件类型，应拆成独立 runtime，而不是在同一 grammar 上叠加 profile 特判。
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
