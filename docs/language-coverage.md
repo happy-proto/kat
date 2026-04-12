@@ -161,13 +161,114 @@
 
 ## 文件类型缺口
 
-这里不再维护和 `bat` 的逐项扩展名对账清单，这类内容很长、很容易漂移，而且价值通常低于当前 runtime 与 query 的真实成熟度判断。
+这里不再维护和 `bat` 的完整逐项扩展名对账清单，但仍保留“尚未实现的语言”列表，方便判断仓库当前还没有进入实现范围的方向。
 
 如果需要评估某类文件是否已支持，优先看：
 
 1. 上面的语言层级和特殊场景说明；
 2. `grammars/registry.toml` 与实际 detector / runtime；
 3. 对应 `fixture` / `showcase` 是否已经落地。
+
+### 尚未实现的语言
+
+- `ActionScript`
+- `Ada`
+- `AppleScript`
+- `ARM Assembly`
+- `AsciiDoc`
+- `ASP`
+- `Authorized Keys`
+- `AWK`
+- `BibTeX`
+- `Cabal`
+- `CFML`
+- `Clojure`
+- `CMakeCache`
+- `CoffeeScript`
+- `Command Help`
+- `CpuInfo`
+- `Crontab`
+- `Crystal`
+- `D`
+- `debsources`
+- `Elm`
+- `Email`
+- `Erlang`
+- `F#`
+- `Fortran`
+- `fstab`
+- `GDScript`
+- `Git Link`
+- `Git Log`
+- `Git Mailmap`
+- `GLSL`
+- `gnuplot`
+- `Groff/troff`
+- `group`
+- `Haskell`
+- `Highlight non-printables`
+- `Hosts File`
+- `HTTP Request and Response`
+- `Idris`
+- `Java Server Page (JSP)`
+- `jsonnet`
+- `Julia`
+- `Known Hosts`
+- `LaTeX`
+- `Lean 4`
+- `Lisp`
+- `LLVM`
+- `log`
+- `Manpage`
+- `MATLAB`
+- `MediaWiki`
+- `MemInfo`
+- `NAnt Build File`
+- `Nim`
+- `NSIS`
+- `Objective-C`
+- `Objective-C++`
+- `OCaml`
+- `Odin`
+- `orgmode`
+- `Pascal`
+- `passwd`
+- `Perl`
+- `Plain Text`
+- `Puppet`
+- `PureScript`
+- `QML`
+- `R`
+- `Racket`
+- `Rd`
+- `Rego`
+- `reStructuredText`
+- `Robot Framework`
+- `Ruby Haml`
+- `Ruby Slim`
+- `Salt State (SLS)`
+- `Separated Values`
+- `SML`
+- `Solidity`
+- `SSHD Config`
+- `Strace`
+- `Stylus`
+- `syslog`
+- `SystemVerilog`
+- `Tab Separated Values`
+- `Tcl`
+- `TeX`
+- `Textile`
+- `Todo.txt`
+- `Typst`
+- `varlink`
+- `Verilog`
+- `VHDL`
+- `VimHelp`
+- `VimL`
+- `Vyper`
+- `WGSL`
+- `x86_64 Assembly`
 
 ## 后续细化优先级
 
