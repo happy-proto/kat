@@ -93,6 +93,7 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 - 查看渲染分段耗时：`kat --debug-timing --paging=never path/to/file >/dev/null`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
 - `--debug-analysis`、`--debug-visual`、`--debug-render-ops`、`--debug-terminal` 默认输出稳定 JSON，适合做 snapshot、回归和跨环境 diff
+- 仓库内自动化测试默认优先断言 `analysis` / `visual` / `render_ops` 这几层的稳定 IR；最终 ANSI / terminal 编码只保留最小必要的兼容与回归覆盖
 - 长输出默认支持外部分页：`--paging=auto|always|never`，`auto` 会在 TTY 中按屏高判断是否接入 pager；pager 命令优先读 `PAGER`，未设置时默认回退到 `less -R -F -X`
 
 ## 文档入口

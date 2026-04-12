@@ -46,6 +46,7 @@
 1. `analysis`
    - 负责 document kind 检测、基础 highlight、semantic overlay、injection region 收集。
    - 这一层内部仍保留 detect / highlight / semantic / injections 的细分，不会因为外层抽象而把 parser 与高亮逻辑重新揉平。
+   - nested region 的 snapshot 需要保留递归子区域以及各自解析到的 `document kind` / runtime 身份，方便宿主感知注入、方言分发和 runtime 复用直接在 IR 上断言，而不是退回最终 ANSI。
 2. `visual`
    - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、block/tight-block/transparent 的区域结果。
    - 对块级嵌套区域，会按共享缩进和注入 range 推导统一的视觉区域，而不是只给已有文本逐行上色。
@@ -66,6 +67,7 @@
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
 - 终端背景色查询不再由 `theme` 直接触发，而是通过 `terminal` 层能力探测统一接入；当前 OSC 11 后端仍落在 [terminal_background.rs](../src/terminal_background.rs)。
 - `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、render IR 和 terminal 编码层。
+- 测试策略默认以 `analysis` / `visual` / `render_ops` 作为主契约层：语言识别、嵌套 runtime 复用、block 几何、右侧补齐和 render state 都应优先断言 IR；terminal / ANSI 只保留编码、reset churn 和能力探测这类终端边界回归。
 
 ## 维护约定
 
