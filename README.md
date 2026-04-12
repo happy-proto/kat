@@ -44,6 +44,12 @@ just install
 kat path/to/file
 ```
 
+查看当前文件在 `kat` 内部各阶段的耗时：
+
+```bash
+kat --debug-timing --paging=never path/to/file >/dev/null
+```
+
 查看当前构建的版本与构建元信息：
 
 ```bash
@@ -75,10 +81,12 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 ## 开发调试
 
 - 跑测试：`just test`
+- 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`
 - CI 会并行执行 `cargo fmt --check`、`cargo clippy` 和 `cargo nextest run` 测试；全部通过后再继续 release build matrix
 - `master` 分支在 release build matrix 全部通过后，会覆盖更新 GitHub Releases 的 `latest` prerelease channel，并上传供 `cargo binstall --git` 使用的预编译包
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
 - 查看 semantic overlay 命中的结构语义：`kat --debug-semantics --language sql_postgres path/to/file`
+- 查看渲染分段耗时：`kat --debug-timing --paging=never path/to/file >/dev/null`
 - `--debug-shell-semantics` 仍保留为兼容别名，但现在输出的是通用 semantic overlay 结果
 - 长输出默认支持外部分页：`--paging=auto|always|never`，`auto` 会在 TTY 中按屏高判断是否接入 pager；pager 命令优先读 `PAGER`，未设置时默认回退到 `less -R -F -X`
 - Tree-sitter 构建中间产物在本地会落到仓库级 `.build-cache/tree-sitter-cache/`，用于复用 `build.rs` 生成出来的 grammar 资产

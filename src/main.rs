@@ -6,6 +6,7 @@ use std::{
     io::{self, IsTerminal, Read, Write},
     path::PathBuf,
     process::{Command, ExitCode, Stdio},
+    time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, bail};
@@ -119,8 +120,18 @@ fn env_completer(name: &std::path::Path) -> clap::error::Result<Box<dyn EnvCompl
 
 fn try_main() -> Result<()> {
     let options = parse_cli_args(env::args_os().skip(1))?;
-    let output = build_output(&options)?;
-    write_output(&output, &options)
+    let total_started_at = Instant::now();
+    let mut built_output = build_output(&options)?;
+    let write_started_at = Instant::now();
+    write_output(&built_output.output, &options)?;
+
+    if let Some(timings) = built_output.timings.as_mut() {
+        timings.write_output += write_started_at.elapsed();
+        timings.total = total_started_at.elapsed();
+        eprintln!("{}", timings.format());
+    }
+
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -212,8 +223,66 @@ enum OutputMode {
 struct CliOptions {
     mode: OutputMode,
     paging: PagingMode,
+    debug_timing: bool,
     language: Option<String>,
     paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, Default)]
+struct DebugTimingStats {
+    files: usize,
+    input_bytes: usize,
+    output_bytes: usize,
+    read_source: Duration,
+    render_pipeline: kat::RenderTimings,
+    write_output: Duration,
+    total: Duration,
+}
+
+impl DebugTimingStats {
+    fn format(&self) -> String {
+        format!(
+            concat!(
+                "kat timing",
+                " files={}",
+                " input_bytes={}",
+                " output_bytes={}",
+                " read={}",
+                " detect={}",
+                " highlight={}",
+                " semantic={}",
+                " injections={}",
+                " nested_overlays={}",
+                " ansi_render={}",
+                " pipeline={}",
+                " write={}",
+                " total={}"
+            ),
+            self.files,
+            self.input_bytes,
+            self.output_bytes,
+            format_duration(self.read_source),
+            format_duration(self.render_pipeline.detect_document_kind),
+            format_duration(self.render_pipeline.highlight),
+            format_duration(self.render_pipeline.semantic_overlays),
+            format_duration(self.render_pipeline.injection_regions),
+            format_duration(self.render_pipeline.nested_region_overlays),
+            format_duration(self.render_pipeline.render_styled_spans),
+            format_duration(self.render_pipeline.total_render_pipeline()),
+            format_duration(self.write_output),
+            format_duration(self.total),
+        )
+    }
+}
+
+#[derive(Debug)]
+struct BuiltOutput {
+    output: String,
+    timings: Option<DebugTimingStats>,
+}
+
+fn format_duration(duration: Duration) -> String {
+    format!("{:.3}ms", duration.as_secs_f64() * 1_000.0)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -237,6 +306,8 @@ struct CliArgs {
     debug_semantics: bool,
     #[arg(long = "debug-shell-semantics", group = "mode")]
     debug_shell_semantics: bool,
+    #[arg(long = "debug-timing")]
+    debug_timing: bool,
     #[arg(long = "help", short = 'h', action = ArgAction::Help)]
     help: Option<bool>,
     #[arg(long = "version", short = 'V', group = "mode")]
@@ -262,7 +333,12 @@ fn completion_command() -> clap::Command {
 
 fn completion_command_for(args: &[OsString]) -> clap::Command {
     let mut command = cli_command();
-    for arg_id in ["debug_ast", "debug_semantics", "debug_shell_semantics"] {
+    for arg_id in [
+        "debug_ast",
+        "debug_semantics",
+        "debug_shell_semantics",
+        "debug_timing",
+    ] {
         command = command.mut_arg(arg_id, |arg| arg.hide(true));
     }
 
@@ -444,6 +520,7 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
     Ok(CliOptions {
         mode,
         paging: cli.paging,
+        debug_timing: cli.debug_timing,
         language: cli.language,
         paths: cli.paths,
     })
@@ -475,6 +552,36 @@ fn render_output(
         }
         OutputMode::Version => Ok(version_output()),
     }
+}
+
+fn render_output_with_timing(
+    options: &CliOptions,
+    source_path: Option<&std::path::Path>,
+    source: &str,
+    timings: Option<&mut DebugTimingStats>,
+) -> Result<String> {
+    if matches!(options.mode, OutputMode::Render) {
+        let render_output = kat::render_with_timing(source_path, source)?;
+        if let Some(timings) = timings {
+            timings.render_pipeline.detect_document_kind +=
+                render_output.timings.detect_document_kind;
+            timings.render_pipeline.highlight += render_output.timings.highlight;
+            timings.render_pipeline.semantic_overlays += render_output.timings.semantic_overlays;
+            timings.render_pipeline.injection_regions += render_output.timings.injection_regions;
+            timings.render_pipeline.nested_region_overlays +=
+                render_output.timings.nested_region_overlays;
+            timings.render_pipeline.render_styled_spans +=
+                render_output.timings.render_styled_spans;
+        }
+        return Ok(render_output.output);
+    }
+
+    render_output(
+        options.mode,
+        options.language.as_deref(),
+        source_path,
+        source,
+    )
 }
 
 fn resolve_debug_language_name(
@@ -605,14 +712,27 @@ fn page_output_via_command(output: &str, pager: &PagerCommand) -> Result<()> {
     Ok(())
 }
 
-fn build_output(options: &CliOptions) -> Result<String> {
+fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
     if matches!(options.mode, OutputMode::Version) {
-        return Ok(version_output());
+        return Ok(BuiltOutput {
+            output: version_output(),
+            timings: options.debug_timing.then_some(DebugTimingStats::default()),
+        });
     }
+
+    let mut timings = options.debug_timing.then_some(DebugTimingStats::default());
 
     if options.paths.is_empty() {
         let stdin = read_stdin().context("failed to read stdin")?;
-        return render_output(options.mode, options.language.as_deref(), None, &stdin);
+        if let Some(timings) = timings.as_mut() {
+            timings.files += 1;
+            timings.input_bytes += stdin.len();
+        }
+        let output = render_output_with_timing(options, None, &stdin, timings.as_mut())?;
+        if let Some(timings) = timings.as_mut() {
+            timings.output_bytes = output.len();
+        }
+        return Ok(BuiltOutput { output, timings });
     }
 
     let mut output = String::new();
@@ -621,31 +741,45 @@ fn build_output(options: &CliOptions) -> Result<String> {
     for (index, path) in options.paths.iter().enumerate() {
         if path.as_os_str() == OsStr::new("-") {
             let stdin = read_stdin().context("failed to read stdin")?;
+            if let Some(timings) = timings.as_mut() {
+                timings.files += 1;
+                timings.input_bytes += stdin.len();
+            }
             if multiple_paths {
                 push_header(&mut output, "-", index > 0);
             }
-            output.push_str(&render_output(
-                options.mode,
-                options.language.as_deref(),
+            output.push_str(&render_output_with_timing(
+                options,
                 None,
                 &stdin,
+                timings.as_mut(),
             )?);
             continue;
         }
 
+        let read_started_at = Instant::now();
         let source = read_source_from_path(path)?;
+        if let Some(timings) = timings.as_mut() {
+            timings.files += 1;
+            timings.input_bytes += source.len();
+            timings.read_source += read_started_at.elapsed();
+        }
         if multiple_paths {
             push_header(&mut output, &path.display().to_string(), index > 0);
         }
-        output.push_str(&render_output(
-            options.mode,
-            options.language.as_deref(),
+        output.push_str(&render_output_with_timing(
+            options,
             Some(path.as_path()),
             &source,
+            timings.as_mut(),
         )?);
     }
 
-    Ok(output)
+    if let Some(timings) = timings.as_mut() {
+        timings.output_bytes = output.len();
+    }
+
+    Ok(BuiltOutput { output, timings })
 }
 
 fn write_output(output: &str, options: &CliOptions) -> Result<()> {
@@ -726,16 +860,17 @@ mod tests {
         ffi::OsString,
         fs,
         path::PathBuf,
-        time::{SystemTime, UNIX_EPOCH},
+        time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
     use clap_complete::engine::complete;
     use std::path::Path;
 
     use super::{
-        CliOptions, OutputMode, PagerCommand, PagingMode, cli_command, completion_command_for,
-        format_cli_error, page_output_via_command, parse_cli_args, read_source_from_path,
-        render_output, resolve_pager_command, should_page_output, version_output,
+        CliOptions, DebugTimingStats, OutputMode, PagerCommand, PagingMode, cli_command,
+        completion_command_for, format_cli_error, page_output_via_command, parse_cli_args,
+        read_source_from_path, render_output, resolve_pager_command, should_page_output,
+        version_output,
     };
 
     #[test]
@@ -809,6 +944,7 @@ mod tests {
             CliOptions {
                 mode: OutputMode::DebugSemantics,
                 paging: PagingMode::Auto,
+                debug_timing: false,
                 language: Some("fish".to_owned()),
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
             }
@@ -829,6 +965,7 @@ mod tests {
             CliOptions {
                 mode: OutputMode::DebugSemantics,
                 paging: PagingMode::Auto,
+                debug_timing: false,
                 language: Some("regex".to_owned()),
                 paths: vec![PathBuf::from("pattern.re")],
             }
@@ -850,6 +987,7 @@ mod tests {
             CliOptions {
                 mode: OutputMode::Render,
                 paging: PagingMode::Never,
+                debug_timing: false,
                 language: Some("rust".to_owned()),
                 paths: vec![PathBuf::from("src/main.rs")],
             }
@@ -866,8 +1004,29 @@ mod tests {
             CliOptions {
                 mode: OutputMode::Version,
                 paging: PagingMode::Auto,
+                debug_timing: false,
                 language: None,
                 paths: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_debug_timing_flag() {
+        let options = parse_cli_args([
+            OsString::from("--debug-timing"),
+            OsString::from("src/main.rs"),
+        ])
+        .expect("failed to parse debug timing flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::Render,
+                paging: PagingMode::Auto,
+                debug_timing: true,
+                language: None,
+                paths: vec![PathBuf::from("src/main.rs")],
             }
         );
     }
@@ -884,6 +1043,49 @@ mod tests {
                 && output.contains("git-clean:"),
             "unexpected version output: {output}"
         );
+    }
+
+    #[test]
+    fn debug_timing_format_is_machine_readable() {
+        let report = DebugTimingStats {
+            files: 2,
+            input_bytes: 128,
+            output_bytes: 256,
+            read_source: Duration::from_millis(1),
+            render_pipeline: kat::RenderTimings {
+                detect_document_kind: Duration::from_millis(2),
+                highlight: Duration::from_millis(3),
+                semantic_overlays: Duration::from_millis(4),
+                injection_regions: Duration::from_millis(5),
+                nested_region_overlays: Duration::from_millis(6),
+                render_styled_spans: Duration::from_millis(7),
+            },
+            write_output: Duration::from_millis(8),
+            total: Duration::from_millis(36),
+        };
+
+        let output = report.format();
+        for fragment in [
+            "kat timing",
+            "files=2",
+            "input_bytes=128",
+            "output_bytes=256",
+            "read=1.000ms",
+            "detect=2.000ms",
+            "highlight=3.000ms",
+            "semantic=4.000ms",
+            "injections=5.000ms",
+            "nested_overlays=6.000ms",
+            "ansi_render=7.000ms",
+            "pipeline=27.000ms",
+            "write=8.000ms",
+            "total=36.000ms",
+        ] {
+            assert!(
+                output.contains(fragment),
+                "expected debug timing output to contain {fragment}: {output}"
+            );
+        }
     }
 
     #[test]

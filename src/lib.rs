@@ -8,7 +8,11 @@ mod sql_dialect;
 mod terminal_background;
 mod theme;
 
-use std::{ops::Range, path::Path};
+use std::{
+    ops::Range,
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Context, Result};
 use tree_sitter::Parser;
@@ -104,7 +108,62 @@ enum SupportedLanguage {
 }
 
 pub fn render(source_path: Option<&Path>, source: &str) -> Result<String> {
-    render_with_theme(source_path, source, &Theme::detect())
+    Ok(render_with_timing(source_path, source)?.output)
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RenderTimings {
+    pub detect_document_kind: Duration,
+    pub highlight: Duration,
+    pub semantic_overlays: Duration,
+    pub injection_regions: Duration,
+    pub nested_region_overlays: Duration,
+    pub render_styled_spans: Duration,
+}
+
+impl RenderTimings {
+    pub fn total_render_pipeline(&self) -> Duration {
+        self.detect_document_kind
+            + self.highlight
+            + self.semantic_overlays
+            + self.injection_regions
+            + self.nested_region_overlays
+            + self.render_styled_spans
+    }
+
+    fn record_detect(&mut self, started_at: Instant) {
+        self.detect_document_kind += started_at.elapsed();
+    }
+
+    fn record_highlight(&mut self, started_at: Instant) {
+        self.highlight += started_at.elapsed();
+    }
+
+    fn record_semantic_overlays(&mut self, started_at: Instant) {
+        self.semantic_overlays += started_at.elapsed();
+    }
+
+    fn record_injection_regions(&mut self, started_at: Instant) {
+        self.injection_regions += started_at.elapsed();
+    }
+
+    fn record_nested_region_overlays(&mut self, started_at: Instant) {
+        self.nested_region_overlays += started_at.elapsed();
+    }
+
+    fn record_render_styled_spans(&mut self, started_at: Instant) {
+        self.render_styled_spans += started_at.elapsed();
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RenderOutput {
+    pub output: String,
+    pub timings: RenderTimings,
+}
+
+pub fn render_with_timing(source_path: Option<&Path>, source: &str) -> Result<RenderOutput> {
+    render_with_theme_and_timing(source_path, source, &Theme::detect())
 }
 
 pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
@@ -188,11 +247,33 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
     })
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 fn render_with_theme(source_path: Option<&Path>, source: &str, theme: &Theme) -> Result<String> {
-    match detect_document_kind(source_path, source) {
-        Some(document_kind) => highlight_document(document_kind, source_path, source, theme),
-        None => Ok(source.to_owned()),
-    }
+    Ok(render_with_theme_and_timing(source_path, source, theme)?.output)
+}
+
+fn render_with_theme_and_timing(
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+) -> Result<RenderOutput> {
+    let mut timings = RenderTimings::default();
+    let detect_started_at = Instant::now();
+    let document_kind = detect_document_kind(source_path, source);
+    timings.record_detect(detect_started_at);
+
+    let output = match document_kind {
+        Some(document_kind) => highlight_document(
+            document_kind,
+            source_path,
+            source,
+            theme,
+            Some(&mut timings),
+        )?,
+        None => source.to_owned(),
+    };
+
+    Ok(RenderOutput { output, timings })
 }
 
 pub fn highlight_json(source: &str) -> Result<String> {
@@ -488,16 +569,29 @@ fn highlight_document(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
+    timings: Option<&mut RenderTimings>,
 ) -> Result<String> {
     if document_kind.runtime_name() == "sql" {
-        return highlight_named_language_with_path(document_kind, source_path, source, theme);
+        return highlight_named_language_with_path(
+            document_kind,
+            source_path,
+            source,
+            theme,
+            timings,
+        );
     }
 
-    highlight_document_kind(document_kind, source_path, source, theme)
+    highlight_document_kind(document_kind, source_path, source, theme, timings)
 }
 
 fn highlight_named_language(language_name: &str, source: &str, theme: &Theme) -> Result<String> {
-    highlight_document_kind(plain_document_kind(language_name), None, source, theme)
+    highlight_document_kind(
+        plain_document_kind(language_name),
+        None,
+        source,
+        theme,
+        None,
+    )
 }
 
 fn highlight_document_kind(
@@ -505,8 +599,9 @@ fn highlight_document_kind(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
+    timings: Option<&mut RenderTimings>,
 ) -> Result<String> {
-    highlight_named_language_with_path(document_kind, source_path, source, theme)
+    highlight_named_language_with_path(document_kind, source_path, source, theme, timings)
 }
 
 fn plain_document_kind(language_name: &str) -> DocumentKind {
@@ -601,15 +696,21 @@ fn highlight_named_language_with_path(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
+    mut timings: Option<&mut RenderTimings>,
 ) -> Result<String> {
-    let render_data =
-        highlight_named_language_render_data(document_kind, source_path, source, theme)?;
-    Ok(render_styled_spans(
+    let render_data = highlight_named_language_render_data(
+        document_kind,
+        source_path,
         source,
-        &render_data.spans,
-        &render_data.regions,
         theme,
-    ))
+        timings.as_deref_mut(),
+    )?;
+    let render_started_at = Instant::now();
+    let output = render_styled_spans(source, &render_data.spans, &render_data.regions, theme);
+    if let Some(timings) = timings {
+        timings.record_render_styled_spans(render_started_at);
+    }
+    Ok(output)
 }
 
 struct HighlightRenderData {
@@ -636,8 +737,16 @@ fn highlight_named_language_render_data(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
+    timings: Option<&mut RenderTimings>,
 ) -> Result<HighlightRenderData> {
-    highlight_named_language_render_data_with_depth(document_kind, source_path, source, theme, 0)
+    highlight_named_language_render_data_with_depth(
+        document_kind,
+        source_path,
+        source,
+        theme,
+        0,
+        timings,
+    )
 }
 
 fn highlight_named_language_render_data_with_depth(
@@ -646,12 +755,14 @@ fn highlight_named_language_render_data_with_depth(
     source: &str,
     theme: &Theme,
     nested_depth: usize,
+    mut timings: Option<&mut RenderTimings>,
 ) -> Result<HighlightRenderData> {
     let resolved_document_kind =
         resolve_highlight_document_kind(document_kind, source_path, source);
     let resolved_runtime_name = resolved_document_kind.runtime_name();
     let language_runtime = runtime(resolved_runtime_name)
         .with_context(|| format!("missing language runtime for {resolved_runtime_name}"))?;
+    let highlight_started_at = Instant::now();
     let mut highlighter = Highlighter::new();
     let events = highlighter
         .highlight(
@@ -663,12 +774,34 @@ fn highlight_named_language_render_data_with_depth(
         .context("failed to highlight source")?;
 
     let mut spans = collect_styled_spans(source, events, theme)?;
-    spans = overlay_semantic_captures(resolved_document_kind, source, spans, theme)?;
-    let nested_regions =
-        collect_top_level_injection_regions(resolved_document_kind, source, theme, nested_depth)?;
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.record_highlight(highlight_started_at);
+    }
 
+    let semantic_started_at = Instant::now();
+    spans = overlay_semantic_captures(resolved_document_kind, source, spans, theme)?;
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.record_semantic_overlays(semantic_started_at);
+    }
+
+    let injections_started_at = Instant::now();
+    let nested_regions = collect_top_level_injection_regions(
+        resolved_document_kind,
+        source,
+        theme,
+        nested_depth,
+        timings.as_deref_mut(),
+    )?;
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.record_injection_regions(injections_started_at);
+    }
+
+    let nested_overlay_started_at = Instant::now();
     for region in &nested_regions {
         spans = overlay_nested_region(spans, region);
+    }
+    if let Some(timings) = timings {
+        timings.record_nested_region_overlays(nested_overlay_started_at);
     }
 
     Ok(HighlightRenderData {
@@ -1343,11 +1476,12 @@ fn collect_top_level_injection_regions(
     source: &str,
     theme: &Theme,
     nested_visual_level: usize,
+    timings: Option<&mut RenderTimings>,
 ) -> Result<Vec<NestedRegion>> {
     let runtime_name = document_kind.runtime_name();
     let language_runtime = runtime(runtime_name)
         .with_context(|| format!("missing language runtime for {runtime_name}"))?;
-    if language_runtime.injections_query.trim().is_empty() {
+    if language_runtime.injections_query.is_none() {
         let mut parser = Parser::new();
         parser
             .set_language(&language_runtime.language)
@@ -1359,6 +1493,7 @@ fn collect_top_level_injection_regions(
             source,
             theme,
             nested_visual_level,
+            timings,
             prune_to_top_level_injection_regions(collect_injection_candidates(
                 document_kind,
                 language_runtime,
@@ -1381,6 +1516,7 @@ fn collect_top_level_injection_regions(
         source,
         theme,
         nested_visual_level,
+        timings,
         prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
             source, candidates,
         )),
@@ -1391,6 +1527,7 @@ fn render_injection_candidates(
     source: &str,
     theme: &Theme,
     parent_visual_level: usize,
+    mut timings: Option<&mut RenderTimings>,
     mut top_level: Vec<InjectionCandidate>,
 ) -> Result<Vec<NestedRegion>> {
     let mut rendered = Vec::with_capacity(top_level.len());
@@ -1410,6 +1547,7 @@ fn render_injection_candidates(
             candidate.highlight_github_expressions,
             theme,
             visual_level,
+            timings.as_deref_mut(),
         )?;
         let layout_segments =
             build_region_segments(source, &candidate.ranges, candidate.visual_anchor);
@@ -1437,6 +1575,7 @@ fn render_virtual_injection_render_data(
     highlight_github_expressions: bool,
     theme: &Theme,
     nested_visual_level: usize,
+    timings: Option<&mut RenderTimings>,
 ) -> Result<HighlightRenderData> {
     let mut render_data = highlight_named_language_render_data_with_depth(
         plain_document_kind(language_name),
@@ -1444,6 +1583,7 @@ fn render_virtual_injection_render_data(
         source,
         theme,
         nested_visual_level,
+        timings,
     )?;
 
     if highlight_github_expressions {
@@ -6290,6 +6430,7 @@ mod tests {
             &workflow_source,
             &theme,
             1,
+            None,
         )
         .expect("expected GitHub Actions workflow injections to resolve");
         assert!(
@@ -6360,6 +6501,7 @@ mod tests {
             &workflow_source,
             &theme,
             1,
+            None,
         )
         .expect("expected advanced GitHub Actions workflow injections to resolve");
 

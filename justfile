@@ -5,6 +5,14 @@ test:
     fi; \
     cargo nextest run --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass $extra_args
 
+perf iterations="3":
+    @cargo build --release --quiet
+    @KAT_PERF_ITERATIONS="{{iterations}}" ./scripts/perf-baseline.sh
+
+perf-file path iterations="3":
+    @cargo build --release --quiet
+    @KAT_PERF_ITERATIONS="{{iterations}}" ./scripts/perf-baseline.sh "{{path}}"
+
 showcase path="":
     @cargo build --quiet
     @bin=target/debug/kat; \

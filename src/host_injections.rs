@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use anyhow::{Context, Result};
-use tree_sitter::{Node, Query, QueryCursor, StreamingIterator, Tree};
+use tree_sitter::{Node, QueryCursor, StreamingIterator, Tree};
 
 use crate::{
     document_kind::{DocumentKind, DocumentProfile},
@@ -69,17 +69,11 @@ fn collect_query_injection_candidates(
     language_runtime: &LanguageRuntime,
     tree: &Tree,
     source: &str,
-    runtime_name: &str,
+    _runtime_name: &str,
 ) -> Result<Vec<InjectionCandidate>> {
-    if language_runtime.injections_query.trim().is_empty() {
+    let Some(query) = language_runtime.injections_query.as_ref() else {
         return Ok(Vec::new());
-    }
-
-    let query = Query::new(
-        &language_runtime.language,
-        language_runtime.injections_query,
-    )
-    .with_context(|| format!("failed to compile injections query for {runtime_name}"))?;
+    };
     let capture_names = query.capture_names();
     let mut cursor = QueryCursor::new();
     let mut candidates = Vec::new();
@@ -219,11 +213,10 @@ fn collect_dockerfile_injection_candidates(
     tree: &Tree,
     source: &str,
 ) -> Result<Vec<InjectionCandidate>> {
-    let query = Query::new(
-        &language_runtime.language,
-        language_runtime.injections_query,
-    )
-    .context("failed to compile dockerfile injections query")?;
+    let query = language_runtime
+        .injections_query
+        .as_ref()
+        .context("missing cached dockerfile injections query")?;
     let capture_names = query.capture_names();
     let mut cursor = QueryCursor::new();
     let mut current_shell = String::from("bash");

@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::LazyLock};
 
 use anyhow::{Context, Result};
-use tree_sitter::Language;
+use tree_sitter::{Language, Query};
 use tree_sitter_highlight::HighlightConfiguration;
 use tree_sitter_language::LanguageFn;
 
@@ -308,7 +308,7 @@ struct StaticLanguageAsset {
 pub struct LanguageRuntime {
     pub language: Language,
     pub flat_configuration: HighlightConfiguration,
-    pub injections_query: &'static str,
+    pub injections_query: Option<Query>,
 }
 
 pub static RUNTIMES: LazyLock<BTreeMap<&'static str, LanguageRuntime>> = LazyLock::new(|| {
@@ -917,12 +917,43 @@ fn build_runtimes() -> Result<BTreeMap<&'static str, LanguageRuntime>> {
         runtimes.insert(
             asset.name,
             LanguageRuntime {
-                language,
+                language: language.clone(),
                 flat_configuration,
-                injections_query: asset.injections_query,
+                injections_query: if asset.injections_query.trim().is_empty() {
+                    None
+                } else {
+                    Some(
+                        Query::new(&language, asset.injections_query).with_context(|| {
+                            format!("failed to build injections query for {}", asset.name)
+                        })?,
+                    )
+                },
             },
         );
     }
 
     Ok(runtimes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::runtime;
+
+    #[test]
+    fn caches_typescript_injections_query_at_runtime_init() {
+        let typescript = runtime("typescript").expect("missing typescript runtime");
+        assert!(
+            typescript.injections_query.is_some(),
+            "expected TypeScript runtime to cache its injections query"
+        );
+    }
+
+    #[test]
+    fn omits_cached_injections_query_for_plain_runtime() {
+        let json = runtime("json").expect("missing json runtime");
+        assert!(
+            json.injections_query.is_none(),
+            "expected JSON runtime to skip empty injections query compilation"
+        );
+    }
 }
