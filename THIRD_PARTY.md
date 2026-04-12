@@ -5,6 +5,8 @@ This repository includes selected upstream Tree-sitter grammar source files.
 Included sources:
 
 - `grammars/json/queries/highlights.scm`
+- `grammars/query/grammar.js`
+- `grammars/query/queries/highlights.scm`
 - `grammars/ignore/grammar.js`
 - `grammars/ignore/queries/highlights.scm`
 - `grammars/git_config/grammar.js`
@@ -175,6 +177,18 @@ Upstream projects:
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
   Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. JSON parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-json](https://crates.io/crates/tree-sitter-json).
+
+- `grammars/query/grammar.js`
+  Source: [nvim-treesitter/tree-sitter-query](https://github.com/nvim-treesitter/tree-sitter-query)
+  Revision: `not recorded during the initial import`
+  License: Apache-2.0
+  Notes: vendored Tree-sitter query grammar source used by kat's local build pipeline.
+
+- `grammars/query/queries/highlights.scm`
+  Source: local integration query built around [nvim-treesitter/tree-sitter-query](https://github.com/nvim-treesitter/tree-sitter-query)
+  Revision: not recorded during the initial import
+  License: Apache-2.0
+  Notes: repository-local highlights query for Tree-sitter query files, maintained in-repo alongside the vendored grammar source.
 
 - `grammars/ignore/*`
   Source: [shunsambongi/tree-sitter-gitignore](https://github.com/shunsambongi/tree-sitter-gitignore)

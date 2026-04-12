@@ -87,6 +87,7 @@ enum SupportedLanguage {
     Proto,
     Powershell,
     Python,
+    Query,
     Requirements,
     Ruby,
     Sass,
@@ -177,6 +178,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
     let document_kind = detect_document_kind(source_path, source)?;
     Some(match document_kind.runtime_name() {
         "json" => SupportedLanguage::Json,
+        "query" => SupportedLanguage::Query,
         "bash" => SupportedLanguage::Bash,
         "batch" => SupportedLanguage::Batch,
         "dockerfile" => SupportedLanguage::Dockerfile,
@@ -280,6 +282,10 @@ fn render_with_theme_and_timing(
 
 pub fn highlight_json(source: &str) -> Result<String> {
     highlight_named_language("json", source, &Theme::detect())
+}
+
+pub fn highlight_query(source: &str) -> Result<String> {
+    highlight_named_language("query", source, &Theme::detect())
 }
 
 pub fn highlight_ignore(source: &str) -> Result<String> {
@@ -609,6 +615,7 @@ fn highlight_document_kind(
 fn plain_document_kind(language_name: &str) -> DocumentKind {
     match language_name {
         "json" => DocumentKind::plain("json"),
+        "query" => DocumentKind::plain("query"),
         "ignore" => DocumentKind::plain("ignore"),
         "git_config" => DocumentKind::plain("git_config"),
         "dockerfile" => DocumentKind::plain("dockerfile"),
@@ -958,6 +965,10 @@ fn collect_styled_spans<'a>(
 }
 
 fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<DocumentKind> {
+    if is_tree_sitter_query_path(source_path) {
+        return Some(DocumentKind::plain("query"));
+    }
+
     let just = grammar("just");
     if matches_path(just, source_path) {
         return Some(DocumentKind::plain("just"));
@@ -1354,6 +1365,24 @@ fn is_git_config_path(source_path: Option<&Path>) -> bool {
         components.as_slice(),
         [.., ".git", "config"] | [.., "git", "config"]
     )
+}
+
+fn is_tree_sitter_query_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    components.windows(4).any(|window| {
+        matches!(
+            window,
+            ["grammars", _, "queries", filename] if filename.ends_with(".scm")
+        )
+    })
 }
 
 fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
@@ -2971,6 +3000,7 @@ mod tests {
 
     const FIXTURE_DATA_AND_MARKUP_FAMILIES: &[&str] = &[
         "json",
+        "query",
         "toml",
         "yaml",
         "markdown",
@@ -3046,6 +3076,11 @@ mod tests {
             relative_path: "json/rich.json",
             expect_highlight: true,
             expected_fragments: &["\"theme\"", "\"Dracula\"", "true", "null", "second"],
+        },
+        FixtureCase {
+            relative_path: "query/grammars/lua/queries/highlights.scm",
+            expect_highlight: true,
+            expected_fragments: &["function_item", "@function", "eq?", "\"lua\""],
         },
         FixtureCase {
             relative_path: "bash/script.sh",
@@ -3845,6 +3880,7 @@ mod tests {
         "json",
         "markdown",
         "proto",
+        "query",
         "sql",
         "textproto",
         "toml",
@@ -4458,6 +4494,67 @@ mod tests {
             detect_language(Some(Path::new("theme.sass")), "$color: #fff\n"),
             Some(SupportedLanguage::Sass)
         ));
+    }
+
+    #[test]
+    fn tree_sitter_query_files_detect_by_grammar_queries_path() {
+        let source = read_file(&fixture_path("query/grammars/lua/queries/highlights.scm"));
+
+        assert_eq!(
+            crate::detected_language_name(
+                Some(Path::new("grammars/lua/queries/highlights.scm")),
+                &source
+            ),
+            Some("query")
+        );
+        assert_eq!(
+            crate::detected_language_name(
+                Some(Path::new("grammars/lua/queries/injections.scm")),
+                &source
+            ),
+            Some("query")
+        );
+        assert_eq!(
+            crate::detected_language_name(
+                Some(Path::new("grammars/lua/queries/locals.scm")),
+                &source
+            ),
+            Some("query")
+        );
+        assert_eq!(
+            crate::detected_language_name(Some(Path::new("queries/highlights.scm")), &source),
+            None
+        );
+    }
+
+    #[test]
+    fn tree_sitter_query_files_highlight_captures_predicates_and_comments() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("query/grammars/lua/queries/highlights.scm");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[3m\x1b[38;2;98;114;164m; Tree-sitter query fixture for kat"),
+            "expected query fixture comment styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253mfunction_item"),
+            "expected query node names to use type styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;80;250;123m@function"),
+            "expected query capture names to use function-like styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253meq?"),
+            "expected query predicates to use builtin-function styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;241;250;140m\"lua\""),
+            "expected query string parameters to keep string styling"
+        );
     }
 
     #[test]

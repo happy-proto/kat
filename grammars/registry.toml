@@ -19,6 +19,28 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "query"
+library_name = "tree-sitter-query"
+extensions = []
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "function.builtin",
+  "function.special",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+]
+
+[[grammar]]
 name = "ignore"
 library_name = "tree-sitter-ignore"
 extensions = ["gitignore", "dockerignore", "npmignore", "ignore"]

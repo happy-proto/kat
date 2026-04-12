@@ -28,6 +28,7 @@ const SQL_SQLITE_HIGHLIGHTS_QUERY: &str = concat!(
     include_str!("../grammars/sql/queries/highlights-sqlite.scm")
 );
 const JSON_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/json/queries/highlights.scm");
+const QUERY_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/query/queries/highlights.scm");
 const IGNORE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ignore/queries/highlights.scm");
 const GIT_CONFIG_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/git_config/queries/highlights.scm");
@@ -192,6 +193,7 @@ const ERB_INJECTIONS_QUERY: &str = include_str!("../grammars/erb/queries/injecti
 
 unsafe extern "C" {
     fn tree_sitter_ignore() -> *const ();
+    fn tree_sitter_query() -> *const ();
     fn tree_sitter_git_config() -> *const ();
     fn tree_sitter_dockerfile() -> *const ();
     fn tree_sitter_fish() -> *const ();
@@ -226,6 +228,7 @@ unsafe extern "C" {
 }
 
 const JSON_LANGUAGE: LanguageFn = tree_sitter_json::LANGUAGE;
+const QUERY_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_query) };
 const IGNORE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_ignore) };
 const GIT_CONFIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_config) };
 const DOCKERFILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dockerfile) };
@@ -322,6 +325,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "json",
         language_fn: JSON_LANGUAGE,
         highlights_query: JSON_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "query",
+        language_fn: QUERY_LANGUAGE,
+        highlights_query: QUERY_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },
