@@ -26,6 +26,15 @@ pass_filenames = false
 priority = 10
 
 [[repos.hooks]]
+id = "validate-grammar-registry"
+name = "validate grammar registry"
+language = "system"
+entry = "cargo run --quiet --locked --bin validate-grammar-registry"
+always_run = true
+pass_filenames = false
+priority = 15
+
+[[repos.hooks]]
 id = "clippy"
 name = "cargo clippy"
 language = "system"

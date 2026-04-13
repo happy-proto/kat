@@ -14,6 +14,8 @@ mod terminal_background;
 mod theme;
 mod visual;
 
+pub use crate::grammar_registry::validate_repository_layout_at_manifest_dir as validate_grammar_registry_at_manifest_dir;
+
 use std::{
     ops::Range,
     path::Path,

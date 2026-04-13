@@ -88,6 +88,7 @@ cargo binstall --git https://github.com/happy-proto/kat --force kat
 
 - 提交前检查：`prek run --all-files`
 - 跑测试：`just test`
+- 校验 `grammars/registry.toml` 与本地 grammar 资产布局：`cargo run --quiet --bin validate-grammar-registry`
 - 跑仓库内性能基线：`just perf`，单文件性能基线可用 `just perf-file path/to/file`
 - CI 与发布流程以仓库里的工作流配置为准
 - 查看某门语言的 AST：`kat --debug-ast --language fish path/to/file`
