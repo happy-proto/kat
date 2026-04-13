@@ -156,13 +156,353 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "actionscript"
+library_name = "tree-sitter-actionscript"
+extensions = ["as"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "spell",
+]
+
+[[grammar]]
+name = "ada"
+library_name = "tree-sitter-ada"
+parser_source = "crate"
+extensions = ["adb", "ads", "gpr"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "comment.documentation",
+  "conditional",
+  "definition.function",
+  "definition.import",
+  "definition.type",
+  "definition.var",
+  "error",
+  "exception",
+  "function",
+  "function.spec",
+  "include",
+  "keyword",
+  "keyword.function",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "namespace",
+  "number",
+  "preproc",
+  "reference",
+  "repeat",
+  "scope",
+  "spell",
+  "storageclass",
+  "string",
+]
+
+[[grammar]]
+name = "applescript"
+library_name = "tree-sitter-applescript"
+extensions = ["applescript"]
+filenames = ["script editor", "Script Editor"]
+filename_prefixes = []
+shebang_substrings = ["osascript"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "constant.builtin.boolean",
+  "constant.numeric.float",
+  "constant.numeric.integer",
+  "function",
+  "function.builtin",
+  "function.call",
+  "function.method",
+  "keyword",
+  "keyword.control",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.special",
+  "type",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "asm"
+library_name = "tree-sitter-asm"
+extensions = ["s", "S"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "function.builtin",
+  "keyword",
+  "label",
+  "number",
+  "number.float",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "spell",
+  "string",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "asciidoc"
+library_name = "tree-sitter-asciidoc"
+extensions = ["adoc", "ad", "asciidoc"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "attribute.builtin",
+  "boolean",
+  "character",
+  "character.special",
+  "comment",
+  "comment.documentation",
+  "comment.error",
+  "comment.note",
+  "comment.todo",
+  "comment.warning",
+  "conceal",
+  "conditional",
+  "conditional.ternary",
+  "constant",
+  "constant.builtin",
+  "constant.macro",
+  "constructor",
+  "debug",
+  "define",
+  "definition",
+  "definition.associated",
+  "definition.constant",
+  "definition.enum",
+  "definition.field",
+  "definition.function",
+  "definition.import",
+  "definition.macro",
+  "definition.method",
+  "definition.namespace",
+  "definition.parameter",
+  "definition.type",
+  "definition.var",
+  "diff.delta",
+  "diff.minus",
+  "diff.plus",
+  "error",
+  "exception",
+  "field",
+  "float",
+  "function",
+  "function.builtin",
+  "function.call",
+  "function.macro",
+  "function.method",
+  "function.method.call",
+  "image",
+  "include",
+  "keyword",
+  "keyword.conditional",
+  "keyword.conditional.ternary",
+  "keyword.coroutine",
+  "keyword.debug",
+  "keyword.directive",
+  "keyword.directive.define",
+  "keyword.exception",
+  "keyword.function",
+  "keyword.import",
+  "keyword.modifier",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "label",
+  "label.caution",
+  "label.important",
+  "label.note",
+  "label.tip",
+  "label.warning",
+  "markup.heading",
+  "markup.heading.1",
+  "markup.heading.2",
+  "markup.heading.3",
+  "markup.heading.4",
+  "markup.heading.5",
+  "markup.heading.6",
+  "markup.italic",
+  "markup.link",
+  "markup.link.label",
+  "markup.link.url",
+  "markup.list",
+  "markup.list.checked",
+  "markup.list.unchecked",
+  "markup.math",
+  "markup.quote",
+  "markup.raw",
+  "markup.raw.block",
+  "markup.strikethrough",
+  "markup.strong",
+  "markup.underline",
+  "method",
+  "method.call",
+  "module",
+  "module.builtin",
+  "namespace",
+  "none",
+  "nospell",
+  "number",
+  "number.float",
+  "operator",
+  "parameter",
+  "preproc",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "reference",
+  "repeat",
+  "scope",
+  "spell",
+  "storageclass",
+  "string",
+  "string.documentation",
+  "string.escape",
+  "string.regex",
+  "string.regexp",
+  "string.special",
+  "string.special.path",
+  "string.special.symbol",
+  "string.special.url",
+  "symbol",
+  "tag",
+  "tag.attribute",
+  "tag.builtin",
+  "tag.delimiter",
+  "text",
+  "text.danger",
+  "text.diff.add",
+  "text.diff.delete",
+  "text.emphasis",
+  "text.environment",
+  "text.environment.name",
+  "text.highlight",
+  "text.literal",
+  "text.literal.block",
+  "text.math",
+  "text.note",
+  "text.quote",
+  "text.reference",
+  "text.strike",
+  "text.strong",
+  "text.title",
+  "text.todo",
+  "text.underline",
+  "text.uri",
+  "text.warning",
+  "type",
+  "type.builtin",
+  "type.definition",
+  "type.qualifier",
+  "variable",
+  "variable.builtin",
+  "variable.member",
+  "variable.parameter",
+  "variable.parameter.builtin",
+]
+
+[[grammar]]
+name = "authorized_keys"
+library_name = "tree-sitter-authorized-keys"
+extensions = []
+filenames = ["authorized_keys", "authorized_keys2"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "string.special",
+  "type",
+]
+
+[[grammar]]
+name = "awk"
+library_name = "tree-sitter-awk"
+extensions = ["awk"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = ["awk", "gawk", "mawk", "nawk"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "function",
+  "include",
+  "keyword",
+  "load",
+  "namespace",
+  "number",
+  "operator",
+  "regexp",
+  "string",
+  "variable",
+]
+
+[[grammar]]
+name = "bibtex"
+library_name = "tree-sitter-bibtex"
+extensions = ["bib"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "function.builtin",
+  "keyword",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
 name = "bash"
 library_name = "tree-sitter-bash"
 parser_source = "crate"
-extensions = ["sh", "bash"]
-filenames = [".bashrc", ".bash_profile", ".bash_login", ".profile", ".bash_logout", ".bash_aliases", ".bash_functions", ".envrc"]
+extensions = ["sh", "bash", "ash", "ksh", "kshrc", "bashrc", "bash_profile", "bash_login", "bash_logout", "ebuild", "eclass"]
+filenames = [".bashrc", ".bash_profile", ".bash_login", ".profile", ".bash_logout", ".bash_aliases", ".bash_functions", ".bash_completions", ".bash_variables", ".textmate_init", ".envrc", "PKGBUILD", "bashrc", "bash_profile", "bash_login", "bash_logout"]
 filename_prefixes = []
-shebang_substrings = ["bash", "sh"]
+shebang_substrings = ["bash", "sh", "ash", "ksh", "mksh"]
 extra_c_flags = ["-Wno-unused-value"]
 highlight_names = [
   "comment",
@@ -218,8 +558,8 @@ highlight_names = [
 name = "zsh"
 library_name = "tree-sitter-zsh"
 parser_source = "crate"
-extensions = ["zsh", "zsh-theme"]
-filenames = [".zshrc", ".zprofile", ".zlogin", ".zlogout", ".zshenv", ".zsh_aliases", ".zsh_functions", ".zshrc.local", ".zprofile.local", ".zlogin.local"]
+extensions = ["zsh", "zsh-theme", "zshrc", "zprofile", "zlogin", "zlogout", "zshenv"]
+filenames = [".zshrc", ".zprofile", ".zlogin", ".zlogout", ".zshenv", ".zsh_aliases", ".zsh_functions", ".zshrc.local", ".zprofile.local", ".zlogin.local", "zshrc", "zprofile", "zlogin", "zlogout", "zshenv"]
 filename_prefixes = []
 shebang_substrings = ["zsh"]
 extra_c_flags = ["-Wno-unused-value", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-unused-variable"]
@@ -1651,7 +1991,7 @@ highlight_names = [
 name = "asp"
 library_name = "tree-sitter-embedded-template"
 parser_source = "crate"
-extensions = ["asp"]
+extensions = ["asp", "asa"]
 filenames = []
 shebang_substrings = []
 extra_c_flags = []

@@ -9,7 +9,7 @@
 当前技术方向已经收敛为：
 
 - 基于 Tree-sitter 做语法识别和高亮；
-- 默认在仓库内维护最小 grammar 资产；只有当某个 grammar 的冷构建生成成本明显高到影响整体构建体验时，才允许切换到预生成 parser 的 Rust grammar crate；
+- 默认优先使用 crate-backed parser；只有当上游 crate 不可用、许可证不合适，或仓库确实需要本地 grammar/scanner 改造时，才保留 vendored grammar 资产；
 - 用统一 runtime 和 injection 基础设施承接嵌套高亮、方言分发和宿主感知子语言；
 - 让 grammar、query、detector 和 build 行为都由仓库内约定直接描述。
 
@@ -17,7 +17,7 @@
 
 ### Grammar 资产模型
 
-- `grammars/<name>/` 默认只保留项目集成必需的最小源码资产：
+- `grammars/<name>/` 默认只保留项目集成必需的最小资产：
   `grammar.js`、`queries/*.scm`，以及可选的 `scanner.*` 或必要 support 文件。
 - 不提交生成出来的 parser 产物，例如 `parser.c`、`grammar.json`、`node-types.json`。
 - `grammars/registry.toml` 是 grammar 注册、parser 来源、构建参数和运行时识别规则的单一事实来源。
@@ -90,5 +90,5 @@
 - 只有仓库里已经注册并构建的 runtime 才能作为可高亮的注入目标。
 - 无扩展名内容检测目前仍是有限启发式，不是完整内容识别系统。
 - 部分共享 grammar 的表达能力仍然限制了 query 可细化的上限，例如 SQL、Regex、JSDoc 一类场景。
-- vendored 大型 grammar 的首次 parser 生成成本仍然偏高；需要继续权衡是保持 vendored 还是转成 crate-backed。
+- 少数 vendored 大型 grammar 的首次 parser 生成成本仍然偏高；这类语言应优先继续评估能否迁回 crate-backed。
 - `scanner.cc` 路线已经在当前环境验证过，但仍需要补 Linux 构建确认。

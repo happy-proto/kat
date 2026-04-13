@@ -59,7 +59,7 @@
 
 ; Function and class definitions.
 (function_definition
-  name: (identifier) @function.definition)
+  name: (identifier) @function)
 
 (class_definition
   name: (identifier) @type.class.definition)

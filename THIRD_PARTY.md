@@ -1,6 +1,6 @@
 # Third-Party Sources
 
-This repository includes selected upstream Tree-sitter grammar source files.
+This repository includes selected upstream Tree-sitter grammar source files and queries, plus a small number of repository-local grammar assets when no suitable upstream source is vendored.
 
 Included sources:
 
@@ -148,6 +148,34 @@ Included sources:
 - `grammars/requirements/queries/highlights.scm`
 - `grammars/apache/grammar.js`
 - `grammars/apache/queries/highlights.scm`
+- `grammars/actionscript/grammar.js`
+- `grammars/actionscript/queries/highlights.scm`
+- `grammars/ada/queries/highlights.scm`
+- `grammars/ada/queries/locals.scm`
+- `grammars/applescript/grammar.js`
+- `grammars/applescript/scanner.c`
+- `grammars/applescript/queries/highlights.scm`
+- `grammars/asm/grammar.js`
+- `grammars/asm/queries/highlights.scm`
+- `grammars/asciidoc/grammar.js`
+- `grammars/asciidoc/common/grammar.js`
+- `grammars/asciidoc/scanner.c`
+- `grammars/asciidoc/queries/highlights.scm`
+- `grammars/asciidoc/tree_sitter_asciidoc/chars.c`
+- `grammars/asciidoc/tree_sitter_asciidoc/chars.h`
+- `grammars/asciidoc/tree_sitter_asciidoc/markers.h`
+- `grammars/asciidoc/tree_sitter_asciidoc/marker_types.h`
+- `grammars/asciidoc/tree_sitter_asciidoc/scanner.c`
+- `grammars/asciidoc/tree_sitter_asciidoc/scanner.h`
+- `grammars/asciidoc/tree_sitter_asciidoc/tokens.h`
+- `grammars/authorized_keys/grammar.js`
+- `grammars/authorized_keys/queries/highlights.scm`
+- `grammars/awk/grammar.js`
+- `grammars/awk/scanner.c`
+- `grammars/awk/queries/highlights.scm`
+- `grammars/bibtex/grammar.js`
+- `grammars/bibtex/queries/highlights.scm`
+- `grammars/bibtex/queries/locals.scm`
 - `grammars/scss/grammar.js`
 - `grammars/scss/queries/highlights.scm`
 - `grammars/scss/scanner.c`
@@ -659,6 +687,55 @@ Upstream projects:
   Revision: n/a
   License: project-local
   Notes: repository-local minimal grammar and highlights query for Apache-style configuration files.
+
+- `grammars/actionscript/*`
+  Source: [jcs090218/tree-sitter-actionscript](https://github.com/jcs090218/tree-sitter-actionscript)
+  Revision: `12fc0c4c822c6edd924c13b328a93fe69454b299`
+  License: MIT
+  Notes: repository-local copy of the upstream ActionScript grammar and highlights query, kept as a dedicated runtime for `.as` source files.
+
+- `grammars/ada/queries/highlights.scm`
+- `grammars/ada/queries/locals.scm`
+  Source: [briot/tree-sitter-ada](https://github.com/briot/tree-sitter-ada)
+  Revision: `6b58259a08b1a22ba0247a7ce30be384db618da6`
+  License: MIT
+  Notes: repository-local copies of the upstream Ada query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on `tree-sitter-ada`.
+
+- `grammars/applescript/*`
+  Source: [waddie/tree-sitter-applescript](https://github.com/waddie/tree-sitter-applescript)
+  Revision: `adff3f4de87033350050232c8dd23947c7b34850`
+  License: MIT
+  Notes: repository-local copy of the upstream AppleScript grammar, scanner and highlights query.
+
+- `grammars/asm/*`
+  Source: [RubixDev/tree-sitter-asm](https://github.com/RubixDev/tree-sitter-asm)
+  Revision: `839741fef4dab5128952334624905c82b40c7133`
+  License: MIT
+  Notes: repository-local copy of the upstream assembly grammar and highlights query, currently used for `.s` / `.S` source files.
+
+- `grammars/asciidoc/*`
+  Source: [cpkio/tree-sitter-asciidoc](https://github.com/cpkio/tree-sitter-asciidoc)
+  Revision: `a00a91dd44cd6c228f3bc10b3e548f651058e0db`
+  License: MIT
+  Notes: repository-local copy of the upstream AsciiDoc grammar, scanner, required support files and highlights query. The vendored `tree_sitter_asciidoc/*` support sources are kept because the scanner depends on them at build time.
+
+- `grammars/authorized_keys/*`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for `authorized_keys` / `.pub` style SSH public key files.
+
+- `grammars/awk/*`
+  Source: [Beaglefoot/tree-sitter-awk](https://github.com/Beaglefoot/tree-sitter-awk)
+  Revision: `34bbdc7cce8e803096f47b625979e34c1be38127`
+  License: MIT
+  Notes: repository-local copy of the upstream AWK grammar, scanner and highlights query.
+
+- `grammars/bibtex/*`
+  Source: [latex-lsp/tree-sitter-bibtex](https://github.com/latex-lsp/tree-sitter-bibtex)
+  Revision: `8d04ed27b3bc7929f14b7df9236797dab9f3fa66`
+  License: MIT
+  Notes: repository-local copy of the upstream BibTeX grammar, highlights query and locals query.
 
 - `grammars/scss/*`
   Source: [tree-sitter-grammars/tree-sitter-scss](https://github.com/tree-sitter-grammars/tree-sitter-scss)

@@ -54,10 +54,18 @@ use crate::visual::VisualDocument;
 #[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SupportedLanguage {
+    ActionScript,
+    Ada,
     Adp,
+    AppleScript,
+    AsciiDoc,
     Asp,
+    Asm,
+    AuthorizedKeys,
+    Awk,
     Bash,
     Batch,
+    Bibtex,
     C,
     Csharp,
     Cmake,
@@ -206,8 +214,16 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
     Some(match document_kind.runtime_name() {
         "json" => SupportedLanguage::Json,
         "query" => SupportedLanguage::Query,
+        "actionscript" => SupportedLanguage::ActionScript,
+        "ada" => SupportedLanguage::Ada,
+        "applescript" => SupportedLanguage::AppleScript,
+        "asm" => SupportedLanguage::Asm,
+        "asciidoc" => SupportedLanguage::AsciiDoc,
+        "authorized_keys" => SupportedLanguage::AuthorizedKeys,
+        "awk" => SupportedLanguage::Awk,
         "bash" => SupportedLanguage::Bash,
         "batch" => SupportedLanguage::Batch,
+        "bibtex" => SupportedLanguage::Bibtex,
         "dockerfile" => SupportedLanguage::Dockerfile,
         "fish" => SupportedLanguage::Fish,
         "git_link" => SupportedLanguage::GitLink,
@@ -792,6 +808,13 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
     match language_name {
         "json" => DocumentKind::plain("json"),
         "query" => DocumentKind::plain("query"),
+        "actionscript" => DocumentKind::plain("actionscript"),
+        "ada" => DocumentKind::plain("ada"),
+        "applescript" => DocumentKind::plain("applescript"),
+        "asm" => DocumentKind::plain("asm"),
+        "asciidoc" => DocumentKind::plain("asciidoc"),
+        "authorized_keys" => DocumentKind::plain("authorized_keys"),
+        "awk" => DocumentKind::plain("awk"),
         "ignore" => DocumentKind::plain("ignore"),
         "git_link" => DocumentKind::plain("git_link"),
         "git_mailmap" => DocumentKind::plain("git_mailmap"),
@@ -800,6 +823,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "dockerfile" => DocumentKind::plain("dockerfile"),
         "bash" => DocumentKind::plain("bash"),
         "batch" => DocumentKind::plain("batch"),
+        "bibtex" => DocumentKind::plain("bibtex"),
         "fish" => DocumentKind::plain("fish"),
         "powershell" => DocumentKind::plain("powershell"),
         "zsh" => DocumentKind::plain("zsh"),
@@ -1184,6 +1208,48 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     let hcl = grammar("hcl");
     if matches_path(hcl, source_path) {
         return Some(DocumentKind::plain("hcl"));
+    }
+
+    let actionscript = grammar("actionscript");
+    if matches_path(actionscript, source_path) {
+        return Some(DocumentKind::plain("actionscript"));
+    }
+
+    let ada = grammar("ada");
+    if matches_path(ada, source_path) {
+        return Some(DocumentKind::plain("ada"));
+    }
+
+    let applescript = grammar("applescript");
+    if matches_path(applescript, source_path) || matches_shebang(applescript, source) {
+        return Some(DocumentKind::plain("applescript"));
+    }
+
+    let asm = grammar("asm");
+    if matches_path(asm, source_path) {
+        return Some(DocumentKind::plain("asm"));
+    }
+
+    let asciidoc = grammar("asciidoc");
+    if matches_path(asciidoc, source_path) {
+        return Some(DocumentKind::plain("asciidoc"));
+    }
+
+    let authorized_keys = grammar("authorized_keys");
+    if matches_path(authorized_keys, source_path)
+        || is_authorized_keys_pub_path(source_path, source)
+    {
+        return Some(DocumentKind::plain("authorized_keys"));
+    }
+
+    let awk = grammar("awk");
+    if matches_path(awk, source_path) || matches_shebang(awk, source) {
+        return Some(DocumentKind::plain("awk"));
+    }
+
+    let bibtex = grammar("bibtex");
+    if matches_path(bibtex, source_path) {
+        return Some(DocumentKind::plain("bibtex"));
     }
 
     let rust = grammar("rust");
@@ -1588,7 +1654,12 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     }
 
     let bash = grammar("bash");
-    if matches_path(bash, source_path) || matches_shebang(bash, source) {
+    if matches_path(bash, source_path)
+        || matches_shebang(bash, source)
+        || is_bat_config_path(source_path)
+        || is_shell_profile_path(source_path)
+        || is_os_release_path(source_path)
+    {
         return Some(DocumentKind::plain("bash"));
     }
 
@@ -1665,6 +1736,55 @@ fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
     matches!(components.as_slice(), [.., ".ssh", "config"])
 }
 
+fn is_authorized_keys_pub_path(source_path: Option<&Path>, source: &str) -> bool {
+    source_path.is_some_and(|path| {
+        path.extension().and_then(|extension| extension.to_str()) == Some("pub")
+            && looks_like_authorized_keys(source)
+    })
+}
+
+fn is_bat_config_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(components.as_slice(), [.., "bat", "config"])
+}
+
+fn is_shell_profile_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(components.as_slice(), [.., "etc", "profile"])
+}
+
+fn is_os_release_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(
+        components.as_slice(),
+        [.., "etc", "os-release"] | [.., "var", "run", "os-release"]
+    )
+}
+
 fn is_ignore_path(source_path: Option<&Path>) -> bool {
     let Some(path) = source_path else {
         return false;
@@ -1724,6 +1844,124 @@ fn looks_like_git_log(source: &str) -> bool {
                 || line.starts_with("diff --git ")
         )
     })
+}
+
+fn looks_like_authorized_keys(source: &str) -> bool {
+    let mut saw_key = false;
+
+    for line in source.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        if !looks_like_authorized_keys_line(line) {
+            return false;
+        }
+
+        saw_key = true;
+    }
+
+    saw_key
+}
+
+fn looks_like_authorized_keys_line(line: &str) -> bool {
+    let fields = split_ssh_fields(line);
+
+    match fields.as_slice() {
+        [key_type, key_blob, ..] if is_ssh_key_type(key_type) && is_ssh_key_blob(key_blob) => true,
+        [options, key_type, key_blob, ..]
+            if looks_like_authorized_keys_options(options)
+                && is_ssh_key_type(key_type)
+                && is_ssh_key_blob(key_blob) =>
+        {
+            true
+        }
+        _ => false,
+    }
+}
+
+fn split_ssh_fields(line: &str) -> Vec<&str> {
+    let mut fields = Vec::new();
+    let mut start = None;
+    let mut in_quotes = false;
+    let mut escaped = false;
+
+    for (index, ch) in line.char_indices() {
+        if in_quotes {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_quotes = false;
+            }
+            continue;
+        }
+
+        if ch == '"' {
+            in_quotes = true;
+            start.get_or_insert(index);
+            continue;
+        }
+
+        if ch == ' ' || ch == '\t' {
+            if let Some(field_start) = start.take() {
+                fields.push(&line[field_start..index]);
+            }
+            continue;
+        }
+
+        start.get_or_insert(index);
+    }
+
+    if let Some(field_start) = start {
+        fields.push(&line[field_start..]);
+    }
+
+    fields
+}
+
+fn looks_like_authorized_keys_options(field: &str) -> bool {
+    field.contains('=')
+        || field.contains(',')
+        || matches!(
+            field,
+            "restrict"
+                | "cert-authority"
+                | "pty"
+                | "port-forwarding"
+                | "agent-forwarding"
+                | "user-rc"
+                | "x11-forwarding"
+                | "tunnel"
+                | "no-port-forwarding"
+                | "no-agent-forwarding"
+                | "no-x11-forwarding"
+                | "no-pty"
+                | "no-user-rc"
+        )
+}
+
+fn is_ssh_key_type(field: &str) -> bool {
+    matches!(
+        field,
+        "ssh-rsa"
+            | "ssh-dss"
+            | "ssh-ed25519"
+            | "ssh-xmss"
+            | "sk-ssh-ed25519@openssh.com"
+            | "sk-ecdsa-sha2-nistp256@openssh.com"
+    ) || field.starts_with("ecdsa-sha2-")
+        || field.starts_with("ssh-ed25519-cert-")
+        || field.starts_with("ssh-rsa-cert-")
+}
+
+fn is_ssh_key_blob(field: &str) -> bool {
+    !field.is_empty()
+        && field
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'/' | b'='))
 }
 
 fn is_apache_path(source_path: Option<&Path>) -> bool {
@@ -3235,6 +3473,8 @@ mod tests {
         "toml",
         "yaml",
         "markdown",
+        "asciidoc",
+        "bibtex",
         "html",
         "css",
         "vue",
@@ -3262,6 +3502,7 @@ mod tests {
         "git_link",
         "git_mailmap",
         "git_log",
+        "authorized_keys",
         "ssh_config",
         "gitattributes",
         "git_commit",
@@ -3269,9 +3510,19 @@ mod tests {
         "requirements",
         "todotxt",
     ];
-    const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &["rust", "c", "cpp", "go", "vhdl"];
+    const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] =
+        &["rust", "c", "cpp", "go", "vhdl", "ada", "asm"];
     const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
-        "java", "kotlin", "csharp", "groovy", "scala", "swift", "dart", "elixir", "zig",
+        "java",
+        "kotlin",
+        "csharp",
+        "groovy",
+        "scala",
+        "swift",
+        "dart",
+        "elixir",
+        "zig",
+        "actionscript",
     ];
     const FIXTURE_SCRIPTING_AND_WEB_PROGRAMMING_FAMILIES: &[&str] = &[
         "python",
@@ -3281,6 +3532,8 @@ mod tests {
         "tsx",
         "ruby",
         "lua",
+        "applescript",
+        "awk",
         "vim",
     ];
     const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
@@ -3438,6 +3691,21 @@ mod tests {
             relative_path: "rust/doc_comments_nested.rs",
             expect_highlight: true,
             expected_fragments: &["Guide", "nested", "Nested", "return", "42"],
+        },
+        FixtureCase {
+            relative_path: "actionscript/ThemePreview.as",
+            expect_highlight: true,
+            expected_fragments: &["package", "class", "function", "return"],
+        },
+        FixtureCase {
+            relative_path: "ada/theme_preview.adb",
+            expect_highlight: true,
+            expected_fragments: &["procedure", "Theme_Preview", "begin", "Put_Line"],
+        },
+        FixtureCase {
+            relative_path: "asm/theme.s",
+            expect_highlight: true,
+            expected_fragments: &["theme_preview:", "mov", "x0", "#42"],
         },
         FixtureCase {
             relative_path: "python/main.py",
@@ -3703,6 +3971,16 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "asciidoc/guide.adoc",
+            expect_highlight: true,
+            expected_fragments: &["= Kat", "*strong*", "https://example.com", "NOTE:"],
+        },
+        FixtureCase {
+            relative_path: "bibtex/references.bib",
+            expect_highlight: true,
+            expected_fragments: &["@article", "kat", "title", "Dracula"],
+        },
+        FixtureCase {
             relative_path: "markdown/nested_runtime.md",
             expect_highlight: true,
             expected_fragments: &[
@@ -3910,6 +4188,11 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "authorized_keys/authorized_keys",
+            expect_highlight: true,
+            expected_fragments: &["restrict", "command=", "ssh-ed25519", "kat@example"],
+        },
+        FixtureCase {
             relative_path: "git_commit/COMMIT_EDITMSG",
             expect_highlight: true,
             expected_fragments: &[
@@ -3986,6 +4269,16 @@ mod tests {
             relative_path: "ruby/theme_preview.rb",
             expect_highlight: true,
             expected_fragments: &["class", "DEFAULT_THEME", "initialize", "@name", "puts"],
+        },
+        FixtureCase {
+            relative_path: "applescript/theme.applescript",
+            expect_highlight: true,
+            expected_fragments: &["on run", "display dialog", "\"kat\"", "end run"],
+        },
+        FixtureCase {
+            relative_path: "awk/theme.awk",
+            expect_highlight: true,
+            expected_fragments: &["BEGIN", "function render", "printf", "theme"],
         },
         FixtureCase {
             relative_path: "lua/theme_preview.lua",
@@ -4104,6 +4397,11 @@ mod tests {
             relative_path: "asp/page.asp",
             expect_highlight: true,
             expected_fragments: &["section", "<%=", "title", "%>"],
+        },
+        FixtureCase {
+            relative_path: "asp/global.asa",
+            expect_highlight: true,
+            expected_fragments: &["OBJECT", "RUNAT", "Session", "Theme"],
         },
         FixtureCase {
             relative_path: "adp/page.adp",
@@ -4397,11 +4695,71 @@ mod tests {
             Some(SupportedLanguage::Bash)
         ));
         assert!(matches!(
+            detect_language(
+                Some(Path::new(".bash_completions")),
+                "complete -W 'render' kat\n"
+            ),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("bashrc")), "export KAT_THEME=dracula\n"),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.bashrc")),
+                "export KAT_THEME=dracula\n"
+            ),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("PKGBUILD")), "pkgname=kat\n"),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("pkg/kat.ebuild")), "src_install() { :; }\n"),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("pkg/eclass/kat.eclass")),
+                "EXPORT_FUNCTIONS src_install\n"
+            ),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("/etc/profile")),
+                "export PATH=$PATH:/opt/kat\n"
+            ),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("/etc/os-release")), "NAME=\"katOS\"\n"),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("/var/run/os-release")), "ID=kat\n"),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new(".config/bat/config")), "--theme=Dracula\n"),
+            Some(SupportedLanguage::Bash)
+        ));
+        assert!(matches!(
             detect_language(Some(Path::new("config.fish")), "set theme Dracula\n"),
             Some(SupportedLanguage::Fish)
         ));
         assert!(matches!(
             detect_language(Some(Path::new(".zshrc")), "emulate -L zsh\n"),
+            Some(SupportedLanguage::Zsh)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("zshrc")), "emulate -L zsh\n"),
+            Some(SupportedLanguage::Zsh)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.zshrc")), "emulate -L zsh\n"),
             Some(SupportedLanguage::Zsh)
         ));
         assert!(matches!(
@@ -4768,6 +5126,13 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("templates/global.asa")),
+                "<OBJECT RUNAT=Server SCOPE=Session ID=Theme></OBJECT>\n",
+            ),
+            Some(SupportedLanguage::Asp)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("templates/page.adp")),
                 "<section><%= title %></section>\n",
             ),
@@ -4862,6 +5227,88 @@ mod tests {
 
     #[test]
     fn newer_languages_and_special_files_detect_by_path() {
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("ThemePreview.as")),
+                "package { public class ThemePreview { public function render():String { return \"kat\"; } } }\n",
+            ),
+            Some(SupportedLanguage::ActionScript)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme_preview.adb")),
+                "procedure Theme_Preview is begin null; end Theme_Preview;\n",
+            ),
+            Some(SupportedLanguage::Ada)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.ads")),
+                "package Theme is end Theme;\n"
+            ),
+            Some(SupportedLanguage::Ada)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("kat.gpr")), "project Kat is end Kat;\n"),
+            Some(SupportedLanguage::Ada)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.applescript")),
+                "on run\n  display dialog \"kat\"\nend run\n",
+            ),
+            Some(SupportedLanguage::AppleScript)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("Script Editor")),
+                "tell application \"Finder\" to activate\n",
+            ),
+            Some(SupportedLanguage::AppleScript)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.s")),
+                "theme_preview:\n  mov x0, #42\n",
+            ),
+            Some(SupportedLanguage::Asm)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("guide.adoc")),
+                "= Kat\n\nNOTE: render all the things.\n",
+            ),
+            Some(SupportedLanguage::AsciiDoc)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new(".ssh/authorized_keys")),
+                "restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKb0pQ1wTq8mC9oG0qD1nVwXnQ7lYQd+O4Wn6H2YfA kat@example\n",
+            ),
+            Some(SupportedLanguage::AuthorizedKeys)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("id_ed25519.pub")),
+                "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKb0pQ1wTq8mC9oG0qD1nVwXnQ7lYQd+O4Wn6H2YfA kat@example\n",
+            ),
+            Some(SupportedLanguage::AuthorizedKeys)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.awk")), "BEGIN { print \"kat\" }\n"),
+            Some(SupportedLanguage::Awk)
+        ));
+        assert!(matches!(
+            detect_language(None, "#!/usr/bin/env awk -f\nBEGIN { print \"kat\" }\n"),
+            Some(SupportedLanguage::Awk)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("references.bib")),
+                "@article{kat, title = {Dracula}}\n",
+            ),
+            Some(SupportedLanguage::Bibtex)
+        ));
         assert!(matches!(
             detect_language(Some(Path::new("ThemePreview.php")), "<?php echo 'kat';\n"),
             Some(SupportedLanguage::Php)
