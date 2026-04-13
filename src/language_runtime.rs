@@ -56,6 +56,38 @@ const BASH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/bash/queries/highl
 const BASH_INJECTIONS_QUERY: &str = include_str!("../grammars/bash/queries/injections.scm");
 const BIBTEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/bibtex/queries/highlights.scm");
 const BIBTEX_LOCALS_QUERY: &str = include_str!("../grammars/bibtex/queries/locals.scm");
+const CABAL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cabal/queries/highlights.scm");
+const CFML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cfml/queries/highlights.scm");
+const CFML_INJECTIONS_QUERY: &str = include_str!("../grammars/cfml/queries/injections.scm");
+const CLOJURE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/clojure/queries/highlights.scm");
+const CMAKECACHE_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/cmakecache/queries/highlights.scm");
+const COMMAND_HELP_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/command_help/queries/highlights.scm");
+const CPUINFO_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cpuinfo/queries/highlights.scm");
+const CRONTAB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/crontab/queries/highlights.scm");
+const D_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/d/queries/highlights.scm");
+const D_INJECTIONS_QUERY: &str = include_str!("../grammars/d/queries/injections.scm");
+const DEBSOURCES_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/debsources/queries/highlights.scm");
+const ELM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/elm/queries/highlights.scm");
+const ELM_INJECTIONS_QUERY: &str = include_str!("../grammars/elm/queries/injections.scm");
+const ELM_LOCALS_QUERY: &str = include_str!("../grammars/elm/queries/locals.scm");
+const EMAIL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/email/queries/highlights.scm");
+const ERLANG_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/erlang/queries/highlights.scm");
+const FORTRAN_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fortran/queries/highlights.scm");
+const FORTRAN_NAMELIST_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/fortran_namelist/queries/highlights.scm");
+const FSHARP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fsharp/queries/highlights.scm");
+const FSHARP_INJECTIONS_QUERY: &str = include_str!("../grammars/fsharp/queries/injections.scm");
+const FSHARP_LOCALS_QUERY: &str = include_str!("../grammars/fsharp/queries/locals.scm");
+const FSHARP_SIGNATURE_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/fsharp_signature/queries/highlights.scm");
+const FSHARP_SIGNATURE_INJECTIONS_QUERY: &str =
+    include_str!("../grammars/fsharp_signature/queries/injections.scm");
+const FSHARP_SIGNATURE_LOCALS_QUERY: &str =
+    include_str!("../grammars/fsharp_signature/queries/locals.scm");
+const FSTAB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fstab/queries/highlights.scm");
 const FISH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fish/queries/highlights.scm");
 const ZSH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/zsh/queries/highlights.scm");
 const ZSH_INJECTIONS_QUERY: &str = include_str!("../grammars/zsh/queries/injections.scm");
@@ -229,11 +261,20 @@ unsafe extern "C" {
     fn tree_sitter_authorized_keys() -> *const ();
     fn tree_sitter_awk() -> *const ();
     fn tree_sitter_bibtex() -> *const ();
+    fn tree_sitter_cabal() -> *const ();
+    fn tree_sitter_cmakecache() -> *const ();
+    fn tree_sitter_command_help() -> *const ();
+    fn tree_sitter_cpuinfo() -> *const ();
+    fn tree_sitter_crontab() -> *const ();
+    fn tree_sitter_debsources() -> *const ();
     fn tree_sitter_fish() -> *const ();
+    fn tree_sitter_fstab() -> *const ();
+    fn tree_sitter_fortran_namelist() -> *const ();
     fn tree_sitter_hcl() -> *const ();
     fn tree_sitter_gomod() -> *const ();
     fn tree_sitter_gowork() -> *const ();
     fn tree_sitter_gosum() -> *const ();
+    fn tree_sitter_mail() -> *const ();
     fn tree_sitter_vue() -> *const ();
     fn tree_sitter_svelte() -> *const ();
     fn tree_sitter_scss() -> *const ();
@@ -279,7 +320,25 @@ const AUTHORIZED_KEYS_LANGUAGE: LanguageFn =
 const AWK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_awk) };
 const BASH_LANGUAGE: LanguageFn = tree_sitter_bash::LANGUAGE;
 const BIBTEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_bibtex) };
+const CABAL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_cabal) };
+const CFML_LANGUAGE: LanguageFn = tree_sitter_cfml::LANGUAGE_CFML;
+const CLOJURE_LANGUAGE: LanguageFn = tree_sitter_clojure_orchard::LANGUAGE;
+const CMAKECACHE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_cmakecache) };
+const COMMAND_HELP_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_command_help) };
+const CPUINFO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_cpuinfo) };
+const CRONTAB_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_crontab) };
+const D_LANGUAGE: LanguageFn = tree_sitter_d::LANGUAGE;
+const DEBSOURCES_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_debsources) };
+const ELM_LANGUAGE: LanguageFn = tree_sitter_elm::LANGUAGE;
+const EMAIL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_mail) };
+const ERLANG_LANGUAGE: LanguageFn = tree_sitter_erlang::LANGUAGE;
 const FISH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_fish) };
+const FORTRAN_LANGUAGE: LanguageFn = tree_sitter_fortran::LANGUAGE;
+const FORTRAN_NAMELIST_LANGUAGE: LanguageFn =
+    unsafe { LanguageFn::from_raw(tree_sitter_fortran_namelist) };
+const FSHARP_LANGUAGE: LanguageFn = tree_sitter_fsharp::LANGUAGE_FSHARP;
+const FSHARP_SIGNATURE_LANGUAGE: LanguageFn = tree_sitter_fsharp::LANGUAGE_SIGNATURE;
+const FSTAB_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_fstab) };
 const ZSH_LANGUAGE: LanguageFn = tree_sitter_zsh::LANGUAGE;
 const POWERSHELL_LANGUAGE: LanguageFn = tree_sitter_powershell::LANGUAGE;
 const BATCH_LANGUAGE: LanguageFn = tree_sitter_batch::LANGUAGE;
@@ -492,9 +551,128 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         locals_query: BIBTEX_LOCALS_QUERY,
     },
     StaticLanguageAsset {
+        name: "cabal",
+        language_fn: CABAL_LANGUAGE,
+        highlights_query: CABAL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "cfml",
+        language_fn: CFML_LANGUAGE,
+        highlights_query: CFML_HIGHLIGHTS_QUERY,
+        injections_query: CFML_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "clojure",
+        language_fn: CLOJURE_LANGUAGE,
+        highlights_query: CLOJURE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "cmakecache",
+        language_fn: CMAKECACHE_LANGUAGE,
+        highlights_query: CMAKECACHE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "command_help",
+        language_fn: COMMAND_HELP_LANGUAGE,
+        highlights_query: COMMAND_HELP_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "cpuinfo",
+        language_fn: CPUINFO_LANGUAGE,
+        highlights_query: CPUINFO_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "crontab",
+        language_fn: CRONTAB_LANGUAGE,
+        highlights_query: CRONTAB_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "d",
+        language_fn: D_LANGUAGE,
+        highlights_query: D_HIGHLIGHTS_QUERY,
+        injections_query: D_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "debsources",
+        language_fn: DEBSOURCES_LANGUAGE,
+        highlights_query: DEBSOURCES_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "elm",
+        language_fn: ELM_LANGUAGE,
+        highlights_query: ELM_HIGHLIGHTS_QUERY,
+        injections_query: ELM_INJECTIONS_QUERY,
+        locals_query: ELM_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "email",
+        language_fn: EMAIL_LANGUAGE,
+        highlights_query: EMAIL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "erlang",
+        language_fn: ERLANG_LANGUAGE,
+        highlights_query: ERLANG_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
         name: "fish",
         language_fn: FISH_LANGUAGE,
         highlights_query: FISH_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "fortran",
+        language_fn: FORTRAN_LANGUAGE,
+        highlights_query: FORTRAN_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "fortran_namelist",
+        language_fn: FORTRAN_NAMELIST_LANGUAGE,
+        highlights_query: FORTRAN_NAMELIST_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "fsharp",
+        language_fn: FSHARP_LANGUAGE,
+        highlights_query: FSHARP_HIGHLIGHTS_QUERY,
+        injections_query: FSHARP_INJECTIONS_QUERY,
+        locals_query: FSHARP_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "fsharp_signature",
+        language_fn: FSHARP_SIGNATURE_LANGUAGE,
+        highlights_query: FSHARP_SIGNATURE_HIGHLIGHTS_QUERY,
+        injections_query: FSHARP_SIGNATURE_INJECTIONS_QUERY,
+        locals_query: FSHARP_SIGNATURE_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "fstab",
+        language_fn: FSTAB_LANGUAGE,
+        highlights_query: FSTAB_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },

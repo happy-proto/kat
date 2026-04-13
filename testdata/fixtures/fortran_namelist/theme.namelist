@@ -1,0 +1,4 @@
+&theme
+name = 'Dracula',
+enabled = .true.
+/

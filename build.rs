@@ -234,7 +234,7 @@ fn compile_grammar(
         || !parser_artifacts_exist(&cache_paths.parser_src_dir)
     {
         let stage_started_at = Instant::now();
-        regenerate_parser_sources(&grammar_dir, &grammar_json_path, &cache_paths);
+        regenerate_parser_sources(&grammar_json_path, &cache_paths);
         write_fingerprint(&cache_paths.parser_fingerprint_path, &parser_fingerprint);
         profiler.log_stage(
             &grammar.name,
@@ -469,11 +469,7 @@ fn regenerate_grammar_json(grammar_dir: &Path, cache_paths: &GrammarCachePaths) 
     remove_dir_if_exists(&cache_paths.grammar_json_staging_dir);
 }
 
-fn regenerate_parser_sources(
-    grammar_dir: &Path,
-    grammar_json_path: &Path,
-    cache_paths: &GrammarCachePaths,
-) {
+fn regenerate_parser_sources(grammar_json_path: &Path, cache_paths: &GrammarCachePaths) {
     remove_dir_if_exists(&cache_paths.parser_src_staging_dir);
     fs::create_dir_all(&cache_paths.parser_src_staging_dir).unwrap_or_else(|error| {
         panic!(
@@ -483,7 +479,7 @@ fn regenerate_parser_sources(
     });
 
     generate_parser_in_directory(
-        grammar_dir,
+        grammar_json_path,
         Some(cache_paths.parser_src_staging_dir.clone()),
         Some(grammar_json_path.to_path_buf()),
         ABI_VERSION_MIN,

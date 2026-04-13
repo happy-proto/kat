@@ -60,6 +60,12 @@ jobs:
         with:
           components: clippy
 
+      - name: Validate grammar registry layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --quiet --locked -p validate-grammar-registry
+
       - name: Set up sccache
         uses: ./.github/actions/sccache
 
@@ -78,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           "${SCCACHE_PATH}" --zero-stats
-          cargo clippy --locked --all-targets --all-features -- -D warnings
+          cargo clippy --workspace --locked --all-targets --all-features -- -D warnings
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
@@ -118,6 +124,12 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Validate grammar registry layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --quiet --locked -p validate-grammar-registry
+
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -142,6 +154,7 @@ jobs:
           set -euo pipefail
           "${SCCACHE_PATH}" --zero-stats
           cargo nextest run \
+            --workspace \
             --config-file .config/nextest.toml \
             --cargo-quiet \
             --failure-output final \
@@ -229,6 +242,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Validate grammar registry layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --quiet --locked -p validate-grammar-registry
 
       - name: Set up sccache
         if: matrix.use_sccache

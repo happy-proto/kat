@@ -26,10 +26,19 @@ pass_filenames = false
 priority = 10
 
 [[repos.hooks]]
+id = "validate-grammar-registry"
+name = "validate grammar registry"
+language = "system"
+entry = "cargo run --quiet --locked -p validate-grammar-registry"
+always_run = true
+pass_filenames = false
+priority = 15
+
+[[repos.hooks]]
 id = "clippy"
 name = "cargo clippy"
 language = "system"
-entry = "cargo clippy --locked --all-targets --all-features -- -D warnings"
+entry = "cargo clippy --workspace --locked --all-targets --all-features -- -D warnings"
 always_run = true
 pass_filenames = false
 priority = 20
@@ -38,7 +47,7 @@ priority = 20
 id = "test"
 name = "cargo nextest run"
 language = "system"
-entry = "cargo nextest run --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass"
+entry = "cargo nextest run --workspace --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass"
 always_run = true
 pass_filenames = false
 priority = 30

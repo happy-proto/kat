@@ -3,7 +3,7 @@ test:
     if [ "${KAT_AGENT_TEST_LOG_MODE:-}" = "quiet" ]; then \
       extra_args="--status-level fail --final-status-level fail --success-output never --show-progress none"; \
     fi; \
-    cargo nextest run --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass $extra_args
+    cargo nextest run --workspace --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass $extra_args
 
 perf iterations="3":
     @cargo build --release --quiet

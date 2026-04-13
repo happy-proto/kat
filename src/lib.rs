@@ -66,12 +66,21 @@ enum SupportedLanguage {
     Bash,
     Batch,
     Bibtex,
+    Cabal,
     C,
+    Cfml,
     Csharp,
+    Clojure,
+    CmakeCache,
     Cmake,
+    CommandHelp,
+    CpuInfo,
+    Crontab,
     Css,
     Cpp,
     Apache,
+    D,
+    Debsources,
     Diff,
     Dockerfile,
     Dot,
@@ -81,6 +90,10 @@ enum SupportedLanguage {
     Erb,
     Elixir,
     Fish,
+    Fortran,
+    FortranNamelist,
+    Fsharp,
+    Fstab,
     GitAttributes,
     GitCommit,
     GitConfig,
@@ -142,6 +155,9 @@ enum SupportedLanguage {
     Yaml,
     Zig,
     Zsh,
+    Elm,
+    Email,
+    Erlang,
 }
 
 pub fn render(source_path: Option<&Path>, source: &str) -> Result<String> {
@@ -224,8 +240,24 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "bash" => SupportedLanguage::Bash,
         "batch" => SupportedLanguage::Batch,
         "bibtex" => SupportedLanguage::Bibtex,
+        "cabal" => SupportedLanguage::Cabal,
+        "cfml" => SupportedLanguage::Cfml,
+        "clojure" => SupportedLanguage::Clojure,
+        "cmakecache" => SupportedLanguage::CmakeCache,
+        "command_help" => SupportedLanguage::CommandHelp,
+        "cpuinfo" => SupportedLanguage::CpuInfo,
+        "crontab" => SupportedLanguage::Crontab,
+        "d" => SupportedLanguage::D,
+        "debsources" => SupportedLanguage::Debsources,
+        "elm" => SupportedLanguage::Elm,
+        "email" => SupportedLanguage::Email,
+        "erlang" => SupportedLanguage::Erlang,
         "dockerfile" => SupportedLanguage::Dockerfile,
         "fish" => SupportedLanguage::Fish,
+        "fortran" => SupportedLanguage::Fortran,
+        "fortran_namelist" => SupportedLanguage::FortranNamelist,
+        "fsharp" | "fsharp_signature" => SupportedLanguage::Fsharp,
+        "fstab" => SupportedLanguage::Fstab,
         "git_link" => SupportedLanguage::GitLink,
         "git_log" => SupportedLanguage::GitLog,
         "git_mailmap" => SupportedLanguage::GitMailmap,
@@ -824,7 +856,24 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "bash" => DocumentKind::plain("bash"),
         "batch" => DocumentKind::plain("batch"),
         "bibtex" => DocumentKind::plain("bibtex"),
+        "cabal" => DocumentKind::plain("cabal"),
+        "cfml" => DocumentKind::plain("cfml"),
+        "clojure" => DocumentKind::plain("clojure"),
+        "cmakecache" => DocumentKind::plain("cmakecache"),
+        "command_help" => DocumentKind::plain("command_help"),
+        "cpuinfo" => DocumentKind::plain("cpuinfo"),
+        "crontab" => DocumentKind::plain("crontab"),
+        "d" => DocumentKind::plain("d"),
+        "debsources" => DocumentKind::plain("debsources"),
+        "elm" => DocumentKind::plain("elm"),
+        "email" => DocumentKind::plain("email"),
+        "erlang" => DocumentKind::plain("erlang"),
         "fish" => DocumentKind::plain("fish"),
+        "fortran" => DocumentKind::plain("fortran"),
+        "fortran_namelist" => DocumentKind::plain("fortran_namelist"),
+        "fsharp" => DocumentKind::plain("fsharp"),
+        "fsharp_signature" => DocumentKind::plain("fsharp_signature"),
+        "fstab" => DocumentKind::plain("fstab"),
         "powershell" => DocumentKind::plain("powershell"),
         "zsh" => DocumentKind::plain("zsh"),
         "toml" => DocumentKind::plain("toml"),
@@ -1250,6 +1299,95 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     let bibtex = grammar("bibtex");
     if matches_path(bibtex, source_path) {
         return Some(DocumentKind::plain("bibtex"));
+    }
+
+    let cabal = grammar("cabal");
+    if matches_path(cabal, source_path) {
+        return Some(DocumentKind::plain("cabal"));
+    }
+
+    let cfml = grammar("cfml");
+    if matches_path(cfml, source_path) {
+        return Some(DocumentKind::plain("cfml"));
+    }
+
+    let clojure = grammar("clojure");
+    if matches_path(clojure, source_path) {
+        return Some(DocumentKind::plain("clojure"));
+    }
+
+    let cmakecache = grammar("cmakecache");
+    if matches_path(cmakecache, source_path) {
+        return Some(DocumentKind::plain("cmakecache"));
+    }
+
+    let command_help = grammar("command_help");
+    if matches_path(command_help, source_path) {
+        return Some(DocumentKind::plain("command_help"));
+    }
+
+    let cpuinfo = grammar("cpuinfo");
+    if matches_path(cpuinfo, source_path) {
+        return Some(DocumentKind::plain("cpuinfo"));
+    }
+
+    let crontab = grammar("crontab");
+    if matches_path(crontab, source_path) || is_cron_d_path(source_path) {
+        return Some(DocumentKind::plain("crontab"));
+    }
+
+    let d = grammar("d");
+    if matches_path(d, source_path) {
+        return Some(DocumentKind::plain("d"));
+    }
+
+    let debsources = grammar("debsources");
+    if matches_path(debsources, source_path) {
+        return Some(DocumentKind::plain("debsources"));
+    }
+
+    let elm = grammar("elm");
+    if matches_path(elm, source_path) {
+        return Some(DocumentKind::plain("elm"));
+    }
+
+    let email = grammar("email");
+    if matches_path(email, source_path) || is_mail_spool_path(source_path) {
+        return Some(DocumentKind::plain("email"));
+    }
+
+    let erlang = grammar("erlang");
+    if matches_path(erlang, source_path) || matches_shebang(erlang, source) {
+        return Some(DocumentKind::plain("erlang"));
+    }
+
+    let fortran = grammar("fortran");
+    if matches_path(fortran, source_path) {
+        return Some(DocumentKind::plain("fortran"));
+    }
+
+    let fortran_namelist = grammar("fortran_namelist");
+    if matches_path(fortran_namelist, source_path) {
+        return Some(DocumentKind::plain("fortran_namelist"));
+    }
+
+    let fsharp_signature = grammar("fsharp_signature");
+    if matches_path(fsharp_signature, source_path) {
+        return Some(DocumentKind::plain("fsharp_signature"));
+    }
+
+    let fsharp = grammar("fsharp");
+    if matches_path(fsharp, source_path) {
+        return Some(DocumentKind::plain("fsharp"));
+    }
+
+    let fstab = grammar("fstab");
+    if matches_path(fstab, source_path) {
+        return Some(DocumentKind::plain("fstab"));
+    }
+
+    if let Some(document_kind) = cmake_template_document_kind(source_path) {
+        return Some(document_kind);
     }
 
     let rust = grammar("rust");
@@ -1689,6 +1827,19 @@ fn matches_path(grammar: &grammar_registry::GrammarSpec, source_path: Option<&Pa
     })
 }
 
+fn cmake_template_document_kind(source_path: Option<&Path>) -> Option<DocumentKind> {
+    let file_name = source_path?.file_name()?.to_str()?.to_ascii_lowercase();
+
+    if file_name.ends_with(".h.in") {
+        return Some(DocumentKind::plain("c"));
+    }
+
+    [".hh.in", ".hpp.in", ".hxx.in", ".h++.in"]
+        .iter()
+        .any(|suffix| file_name.ends_with(suffix))
+        .then_some(DocumentKind::plain("cpp"))
+}
+
 fn is_git_config_path(source_path: Option<&Path>) -> bool {
     let Some(path) = source_path else {
         return false;
@@ -1721,6 +1872,35 @@ fn is_tree_sitter_query_path(source_path: Option<&Path>) -> bool {
             ["grammars", _, "queries", filename] if filename.ends_with(".scm")
         )
     })
+}
+
+fn is_cron_d_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(components.as_slice(), [.., "cron.d", _])
+}
+
+fn is_mail_spool_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+
+    let components = path
+        .iter()
+        .filter_map(|component| component.to_str())
+        .collect::<Vec<_>>();
+
+    matches!(
+        components.as_slice(),
+        [.., "var", "spool", "mail", _] | [.., "var", "mail", _]
+    )
 }
 
 fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
@@ -3468,6 +3648,8 @@ mod tests {
     }
 
     const FIXTURE_DATA_AND_MARKUP_FAMILIES: &[&str] = &[
+        "cabal",
+        "email",
         "json",
         "query",
         "toml",
@@ -3507,11 +3689,19 @@ mod tests {
         "gitattributes",
         "git_commit",
         "git_rebase",
+        "cmakecache",
+        "command_help",
+        "cpuinfo",
+        "crontab",
+        "debsources",
+        "fortran_namelist",
+        "fstab",
         "requirements",
         "todotxt",
     ];
-    const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] =
-        &["rust", "c", "cpp", "go", "vhdl", "ada", "asm"];
+    const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &[
+        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "d", "fortran", "fsharp",
+    ];
     const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
         "java",
         "kotlin",
@@ -3523,8 +3713,12 @@ mod tests {
         "elixir",
         "zig",
         "actionscript",
+        "erlang",
     ];
     const FIXTURE_SCRIPTING_AND_WEB_PROGRAMMING_FAMILIES: &[&str] = &[
+        "cfml",
+        "clojure",
+        "elm",
         "python",
         "php",
         "javascript",
@@ -3708,6 +3902,66 @@ mod tests {
             expected_fragments: &["theme_preview:", "mov", "x0", "#42"],
         },
         FixtureCase {
+            relative_path: "cabal/kat.cabal",
+            expect_highlight: true,
+            expected_fragments: &["name:", "kat", "build-depends", "base"],
+        },
+        FixtureCase {
+            relative_path: "cfml/theme.cfm",
+            expect_highlight: true,
+            expected_fragments: &["<cfset", "renderTheme", "<cfoutput>", "#theme#"],
+        },
+        FixtureCase {
+            relative_path: "clojure/theme.clj",
+            expect_highlight: true,
+            expected_fragments: &["defn", "render-theme", ":theme/name", "println"],
+        },
+        FixtureCase {
+            relative_path: "cmakecache/CMakeCache.txt",
+            expect_highlight: true,
+            expected_fragments: &["KAT_THEME", "STRING", "Dracula", "ON"],
+        },
+        FixtureCase {
+            relative_path: "command_help/kat.help",
+            expect_highlight: true,
+            expected_fragments: &["NAME", "SYNOPSIS", "kat render", "--theme"],
+        },
+        FixtureCase {
+            relative_path: "cpuinfo/cpuinfo",
+            expect_highlight: true,
+            expected_fragments: &["processor", "cpu MHz", "2400.000", "model name"],
+        },
+        FixtureCase {
+            relative_path: "crontab/root.tab",
+            expect_highlight: true,
+            expected_fragments: &["*/5", "PATH=/usr/local/bin", "kat render", "MAILTO"],
+        },
+        FixtureCase {
+            relative_path: "d/theme.d",
+            expect_highlight: true,
+            expected_fragments: &["module", "ThemePreview", "string", "writeln"],
+        },
+        FixtureCase {
+            relative_path: "debsources/sources.list",
+            expect_highlight: true,
+            expected_fragments: &["deb", "bookworm", "main", "deb.debian.org"],
+        },
+        FixtureCase {
+            relative_path: "elm/Main.elm",
+            expect_highlight: true,
+            expected_fragments: &["module", "main", "ThemePreview", "text"],
+        },
+        FixtureCase {
+            relative_path: "email/theme.eml",
+            expect_highlight: true,
+            expected_fragments: &["From:", "Subject:", "<dcjanus@dcjanus.com>", "Dracula"],
+        },
+        FixtureCase {
+            relative_path: "erlang/theme.erl",
+            expect_highlight: true,
+            expected_fragments: &["-module", "render", "io:format", "\"kat~n\""],
+        },
+        FixtureCase {
             relative_path: "python/main.py",
             expect_highlight: true,
             expected_fragments: &["class", "def", "return", "42"],
@@ -3745,6 +3999,11 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "c/theme_config.h.in",
+            expect_highlight: true,
+            expected_fragments: &["#define", "KAT_THEME", "\"Dracula\""],
+        },
+        FixtureCase {
             relative_path: "cpp/rich.cpp",
             expect_highlight: true,
             expected_fragments: &[
@@ -3754,6 +4013,11 @@ mod tests {
                 "R\"(theme:dracula)\"",
                 "std",
             ],
+        },
+        FixtureCase {
+            relative_path: "cpp/theme_config.hpp.in",
+            expect_highlight: true,
+            expected_fragments: &["namespace", "kat", "inline", "theme_name"],
         },
         FixtureCase {
             relative_path: "java/ThemePreview.java",
@@ -3840,6 +4104,26 @@ mod tests {
                 "h1",
                 "+incompatible",
             ],
+        },
+        FixtureCase {
+            relative_path: "fortran/theme.f90",
+            expect_highlight: true,
+            expected_fragments: &["program", "theme_preview", "print", "end program"],
+        },
+        FixtureCase {
+            relative_path: "fortran_namelist/theme.namelist",
+            expect_highlight: true,
+            expected_fragments: &["&theme", "name", ".true.", "/"],
+        },
+        FixtureCase {
+            relative_path: "fsharp/Theme.fs",
+            expect_highlight: true,
+            expected_fragments: &["module", "let", "render", "printfn"],
+        },
+        FixtureCase {
+            relative_path: "fstab/fstab",
+            expect_highlight: true,
+            expected_fragments: &["UUID=0123-ABCD", "/", "ext4", "defaults"],
         },
         FixtureCase {
             relative_path: "html/index.html",
@@ -5308,6 +5592,135 @@ mod tests {
                 "@article{kat, title = {Dracula}}\n",
             ),
             Some(SupportedLanguage::Bibtex)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("kat.cabal")), "name: kat\n"),
+            Some(SupportedLanguage::Cabal)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.cfm")), "<cfset theme = \"kat\">\n"),
+            Some(SupportedLanguage::Cfml)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.clj")),
+                "(defn render-theme [] (println \"kat\"))\n",
+            ),
+            Some(SupportedLanguage::Clojure)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("ThemeCache/CMakeCache.txt")),
+                "KAT_THEME:STRING=kat\n",
+            ),
+            Some(SupportedLanguage::CmakeCache)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("kat.help")), "NAME\n  kat render\n"),
+            Some(SupportedLanguage::CommandHelp)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.cpuinfo")), "processor : 0\n"),
+            Some(SupportedLanguage::CpuInfo)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("root.tab")), "*/5 * * * * kat render\n"),
+            Some(SupportedLanguage::Crontab)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("/etc/cron.d/kat")),
+                "*/5 * * * * root kat render\n",
+            ),
+            Some(SupportedLanguage::Crontab)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.d")), "module theme;\n"),
+            Some(SupportedLanguage::D)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("sources.list")),
+                "deb https://deb.debian.org/debian bookworm main\n",
+            ),
+            Some(SupportedLanguage::Debsources)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("Main.elm")), "module Main exposing (main)\n"),
+            Some(SupportedLanguage::Elm)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.eml")), "From: theme@example.com\n"),
+            Some(SupportedLanguage::Email)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("/var/mail/dcjanus")),
+                "From: theme@example.com\n"
+            ),
+            Some(SupportedLanguage::Email)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.erl")), "-module(theme).\n"),
+            Some(SupportedLanguage::Erlang)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("Emakefile")), "{deps, []}.\n"),
+            Some(SupportedLanguage::Erlang)
+        ));
+        assert!(matches!(
+            detect_language(None, "#!/usr/bin/env escript\nmain(_) -> ok.\n"),
+            Some(SupportedLanguage::Erlang)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("Theme.fs")),
+                "module Theme\nlet render = printfn \"kat\"\n",
+            ),
+            Some(SupportedLanguage::Fsharp)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("Theme.fsi")),
+                "module Theme\nval render: unit -> unit\n",
+            ),
+            Some(SupportedLanguage::Fsharp)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.f90")),
+                "program theme_preview\nend program theme_preview\n",
+            ),
+            Some(SupportedLanguage::Fortran)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.f")),
+                "      program theme_preview\n      end\n",
+            ),
+            Some(SupportedLanguage::Fortran)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.namelist")), "&theme\n/\n"),
+            Some(SupportedLanguage::FortranNamelist)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("fstab")),
+                "UUID=0123-ABCD / ext4 defaults 0 1\n",
+            ),
+            Some(SupportedLanguage::Fstab)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme_config.h.in")),
+                "#define KAT_THEME \"kat\"\n",
+            ),
+            Some(SupportedLanguage::C)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme_config.hpp.in")), "namespace kat {}\n"),
+            Some(SupportedLanguage::Cpp)
         ));
         assert!(matches!(
             detect_language(Some(Path::new("ThemePreview.php")), "<?php echo 'kat';\n"),

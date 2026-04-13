@@ -1,0 +1,8 @@
+NAME
+  kat render
+
+SYNOPSIS
+  kat render [--theme Dracula]
+
+OPTIONS
+  --theme  Select output theme.

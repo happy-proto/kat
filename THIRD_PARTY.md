@@ -176,6 +176,41 @@ Included sources:
 - `grammars/bibtex/grammar.js`
 - `grammars/bibtex/queries/highlights.scm`
 - `grammars/bibtex/queries/locals.scm`
+- `grammars/cabal/grammar.js`
+- `grammars/cabal/queries/highlights.scm`
+- `grammars/cabal/scanner.c`
+- `grammars/cfml/queries/highlights.scm`
+- `grammars/cfml/queries/injections.scm`
+- `grammars/clojure/queries/highlights.scm`
+- `grammars/cmakecache/grammar.js`
+- `grammars/cmakecache/queries/highlights.scm`
+- `grammars/command_help/grammar.js`
+- `grammars/command_help/queries/highlights.scm`
+- `grammars/cpuinfo/grammar.js`
+- `grammars/cpuinfo/queries/highlights.scm`
+- `grammars/crontab/grammar.js`
+- `grammars/crontab/queries/highlights.scm`
+- `grammars/d/queries/highlights.scm`
+- `grammars/d/queries/injections.scm`
+- `grammars/debsources/grammar.js`
+- `grammars/debsources/queries/highlights.scm`
+- `grammars/elm/queries/highlights.scm`
+- `grammars/elm/queries/injections.scm`
+- `grammars/elm/queries/locals.scm`
+- `grammars/email/grammar.js`
+- `grammars/email/queries/highlights.scm`
+- `grammars/erlang/queries/highlights.scm`
+- `grammars/fortran/queries/highlights.scm`
+- `grammars/fortran_namelist/grammar.js`
+- `grammars/fortran_namelist/queries/highlights.scm`
+- `grammars/fsharp/queries/highlights.scm`
+- `grammars/fsharp/queries/injections.scm`
+- `grammars/fsharp/queries/locals.scm`
+- `grammars/fsharp_signature/queries/highlights.scm`
+- `grammars/fsharp_signature/queries/injections.scm`
+- `grammars/fsharp_signature/queries/locals.scm`
+- `grammars/fstab/grammar.js`
+- `grammars/fstab/queries/highlights.scm`
 - `grammars/scss/grammar.js`
 - `grammars/scss/queries/highlights.scm`
 - `grammars/scss/scanner.c`
@@ -736,6 +771,103 @@ Upstream projects:
   Revision: `8d04ed27b3bc7929f14b7df9236797dab9f3fa66`
   License: MIT
   Notes: repository-local copy of the upstream BibTeX grammar, highlights query and locals query.
+
+- `grammars/cabal/*`
+  Source: [thomasvergne/tree-sitter-cabal](https://github.com/thomasvergne/tree-sitter-cabal)
+  Revision: `1762ded13e5351c0bc662a2273d523b80d314b4e`
+  License: MIT
+  Notes: repository-local copy of the upstream Cabal grammar and scanner, plus a kat-local highlights query maintained against that AST.
+
+- `grammars/cfml/queries/*`
+  Source: [cfmleditor/tree-sitter-cfml](https://github.com/cfmleditor/tree-sitter-cfml)
+  Revision: `4628d0be345c033330acc8e8b36d7c6eaf201c87`
+  License: MIT
+  Notes: parser now comes from the Rust crate [tree-sitter-cfml](https://crates.io/crates/tree-sitter-cfml); the repository only keeps the upstream highlights and injections queries as integration assets.
+
+- `grammars/clojure/queries/highlights.scm`
+  Source: [grammar-orchard/tree-sitter-clojure-orchard](https://codeberg.org/grammar-orchard/tree-sitter-clojure-orchard)
+  Revision: `40dc14c61c46e48d39166b3cc60cdb16256e3384`
+  License: MIT
+  Notes: parser now comes from the Rust crate [tree-sitter-clojure-orchard](https://crates.io/crates/tree-sitter-clojure-orchard); the repository only keeps the bundled highlights query.
+
+- `grammars/cmakecache/*`
+  Source: repository-local
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for `CMakeCache.txt`.
+
+- `grammars/command_help/*`
+  Source: repository-local
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for command help text files.
+
+- `grammars/cpuinfo/*`
+  Source: repository-local
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for `cpuinfo`-style key/value files.
+
+- `grammars/crontab/*`
+  Source: [slqy123/tree-sitter-crontab](https://github.com/slqy123/tree-sitter-crontab)
+  Revision: `70b5628278756c3dc429fac6545fe7b2e8c553a0`
+  License: MIT
+  Notes: repository-local copy of the upstream crontab grammar and highlights query.
+
+- `grammars/d/queries/*`
+  Source: [gdamore/tree-sitter-d](https://github.com/gdamore/tree-sitter-d)
+  Revision: `fb028c8f14f4188286c2eef143f105def6fbf24f`
+  License: MIT
+  Notes: parser now comes from the Rust crate [tree-sitter-d](https://crates.io/crates/tree-sitter-d); the repository only keeps the upstream highlights and injections queries as integration assets.
+
+- `grammars/debsources/*`
+  Source: repository-local
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for Debian `sources.list` files.
+
+- `grammars/elm/queries/*`
+  Source: [elm-tooling/tree-sitter-elm](https://github.com/elm-tooling/tree-sitter-elm)
+  Revision: `6d9511c28181db66daee4e883f811f6251220943`
+  License: MIT
+  Notes: parser now comes from the Rust crate [tree-sitter-elm](https://crates.io/crates/tree-sitter-elm); the repository only keeps the upstream highlights, injections and locals queries as integration assets.
+
+- `grammars/email/*`
+  Source: [stevenxxiu/tree-sitter-mail](https://github.com/stevenxxiu/tree-sitter-mail)
+  Revision: `8d2905d06a15586652c3a73387b4170424201e1a`
+  License: MIT
+  Notes: repository-local copy of the upstream mail grammar and highlights query, adapted to the repository build pipeline.
+
+- `grammars/erlang/queries/highlights.scm`
+  Source: [WhatsApp/tree-sitter-erlang](https://github.com/WhatsApp/tree-sitter-erlang)
+  Revision: `1d78195c4fbb1fc027eb3e4220427f1eb8bfc89e`
+  License: Apache-2.0
+  Notes: parser now comes from the Rust crate [tree-sitter-erlang](https://crates.io/crates/tree-sitter-erlang); the repository only keeps the upstream highlights query as an integration asset.
+
+- `grammars/fortran/queries/highlights.scm`
+  Source: [stadelmanma/tree-sitter-fortran](https://github.com/stadelmanma/tree-sitter-fortran)
+  Revision: `be30d90dc7dfa4080b9c4abed3f400c9163a88df`
+  License: MIT
+  Notes: parser now comes from the Rust crate [tree-sitter-fortran](https://crates.io/crates/tree-sitter-fortran); the repository only keeps the upstream highlights query as an integration asset.
+
+- `grammars/fortran_namelist/*`
+  Source: repository-local
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for Fortran namelist files.
+
+- `grammars/fsharp/queries/*`
+- `grammars/fsharp_signature/queries/*`
+  Source: [ionide/tree-sitter-fsharp](https://github.com/ionide/tree-sitter-fsharp)
+  Revision: `594c500ecace8618db32dd1144307897277db067`
+  License: MIT
+  Notes: parser now comes from the Rust crate [tree-sitter-fsharp](https://crates.io/crates/tree-sitter-fsharp); the repository only keeps the upstream highlights, injections and locals queries as integration assets for both source and signature runtimes.
+
+- `grammars/fstab/*`
+  Source: repository-local
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for `fstab` / `crypttab` / `mtab` style files.
 
 - `grammars/scss/*`
   Source: [tree-sitter-grammars/tree-sitter-scss](https://github.com/tree-sitter-grammars/tree-sitter-scss)
