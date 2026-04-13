@@ -30,7 +30,10 @@ use crate::debug_progress::log as progress_log;
 use crate::display_geometry::{
     ByteOffset, DisplayColumn, display_column_for_byte_offset, display_width_from_column,
 };
-use crate::document_kind::{DocumentKind, git_config_document_kind, yaml_document_kind};
+use crate::document_kind::{
+    DocumentKind, DocumentProfile, git_config_document_kind, template_document_kind,
+    yaml_document_kind,
+};
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
     InjectionCandidate, InjectionDecode, InjectionVisualAnchor, InjectionVisualKind,
@@ -51,6 +54,8 @@ use crate::visual::VisualDocument;
 #[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SupportedLanguage {
+    Adp,
+    Asp,
     Bash,
     Batch,
     C,
@@ -64,6 +69,7 @@ enum SupportedLanguage {
     Dot,
     Dotenv,
     Dart,
+    Eex,
     Erb,
     Elixir,
     Fish,
@@ -90,6 +96,7 @@ enum SupportedLanguage {
     Jq,
     Just,
     Json,
+    Jsp,
     Kotlin,
     Less,
     Lua,
@@ -233,6 +240,8 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "git_rebase" => SupportedLanguage::GitRebase,
         "requirements" => SupportedLanguage::Requirements,
         "apache" => SupportedLanguage::Apache,
+        "adp" => SupportedLanguage::Adp,
+        "asp" => SupportedLanguage::Asp,
         "scss" => SupportedLanguage::Scss,
         "sass" => SupportedLanguage::Sass,
         "jq" => SupportedLanguage::Jq,
@@ -270,7 +279,9 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "ninja" => SupportedLanguage::Ninja,
         "jinja" => SupportedLanguage::Jinja,
         "twig" => SupportedLanguage::Twig,
+        "eex" => SupportedLanguage::Eex,
         "erb" => SupportedLanguage::Erb,
+        "jsp" => SupportedLanguage::Jsp,
         "vhdl" => SupportedLanguage::Vhdl,
         "vim" => SupportedLanguage::Vim,
         other => panic!("unsupported test language mapping for {other}"),
@@ -713,12 +724,28 @@ pub fn highlight_jinja(source: &str) -> Result<String> {
     highlight_named_language("jinja", source, &detected_theme())
 }
 
+pub fn highlight_eex(source: &str) -> Result<String> {
+    highlight_named_language("eex", source, &detected_theme())
+}
+
 pub fn highlight_twig(source: &str) -> Result<String> {
     highlight_named_language("twig", source, &detected_theme())
 }
 
 pub fn highlight_erb(source: &str) -> Result<String> {
     highlight_named_language("erb", source, &detected_theme())
+}
+
+pub fn highlight_jsp(source: &str) -> Result<String> {
+    highlight_named_language("jsp", source, &detected_theme())
+}
+
+pub fn highlight_asp(source: &str) -> Result<String> {
+    highlight_named_language("asp", source, &detected_theme())
+}
+
+pub fn highlight_adp(source: &str) -> Result<String> {
+    highlight_named_language("adp", source, &detected_theme())
 }
 
 pub fn highlight_vhdl(source: &str) -> Result<String> {
@@ -847,8 +874,12 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "cmake" => DocumentKind::plain("cmake"),
         "ninja" => DocumentKind::plain("ninja"),
         "jinja" => DocumentKind::plain("jinja"),
+        "eex" => DocumentKind::plain("eex"),
         "twig" => DocumentKind::plain("twig"),
         "erb" => DocumentKind::plain("erb"),
+        "jsp" => DocumentKind::plain("jsp"),
+        "asp" => DocumentKind::plain("asp"),
+        "adp" => DocumentKind::plain("adp"),
         "vhdl" => DocumentKind::plain("vhdl"),
         "vim" => DocumentKind::plain("vim"),
         other => panic!("unsupported runtime name {other}"),
@@ -1457,17 +1488,65 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
 
     let jinja = grammar("jinja");
     if matches_path(jinja, source_path) {
-        return Some(DocumentKind::plain("jinja"));
+        return Some(template_document_kind(
+            "jinja",
+            source_path,
+            DocumentProfile::TemplateHtml,
+        ));
+    }
+
+    let eex = grammar("eex");
+    if matches_path(eex, source_path) {
+        return Some(template_document_kind(
+            "eex",
+            source_path,
+            DocumentProfile::TemplateHtml,
+        ));
     }
 
     let twig = grammar("twig");
     if matches_path(twig, source_path) {
-        return Some(DocumentKind::plain("twig"));
+        return Some(template_document_kind(
+            "twig",
+            source_path,
+            DocumentProfile::TemplateHtml,
+        ));
     }
 
     let erb = grammar("erb");
     if matches_path(erb, source_path) {
-        return Some(DocumentKind::plain("erb"));
+        return Some(template_document_kind(
+            "erb",
+            source_path,
+            DocumentProfile::TemplateHtml,
+        ));
+    }
+
+    let jsp = grammar("jsp");
+    if matches_path(jsp, source_path) {
+        return Some(template_document_kind(
+            "jsp",
+            source_path,
+            DocumentProfile::TemplateHtml,
+        ));
+    }
+
+    let asp = grammar("asp");
+    if matches_path(asp, source_path) {
+        return Some(template_document_kind(
+            "asp",
+            source_path,
+            DocumentProfile::TemplateHtml,
+        ));
+    }
+
+    let adp = grammar("adp");
+    if matches_path(adp, source_path) {
+        return Some(template_document_kind(
+            "adp",
+            source_path,
+            DocumentProfile::TemplateHtml,
+        ));
     }
 
     let json = grammar("json");
@@ -2147,7 +2226,7 @@ fn prune_to_top_level_injection_regions(
 
     for candidate in candidates {
         if let Some(last) = pruned.last()
-            && candidate_extent(&candidate.ranges).start < candidate_extent(&last.ranges).end
+            && candidates_overlap(&candidate, last)
         {
             continue;
         }
@@ -2156,6 +2235,14 @@ fn prune_to_top_level_injection_regions(
     }
 
     pruned
+}
+
+fn candidates_overlap(left: &InjectionCandidate, right: &InjectionCandidate) -> bool {
+    left.ranges.iter().any(|left_range| {
+        right.ranges.iter().any(|right_range| {
+            left_range.start < right_range.end && right_range.start < left_range.end
+        })
+    })
 }
 
 fn merge_adjacent_combined_candidates(
@@ -3197,6 +3284,9 @@ mod tests {
         "vim",
     ];
     const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
+        "adp",
+        "asp",
+        "eex",
         "hcl",
         "properties",
         "diff",
@@ -3212,6 +3302,7 @@ mod tests {
         "cmake",
         "ninja",
         "jinja",
+        "jsp",
         "twig",
         "erb",
     ];
@@ -3501,6 +3592,26 @@ mod tests {
             relative_path: "html/rich.html",
             expect_highlight: true,
             expected_fragments: &["Tom", "&amp;", "theme-card", "accent", "Dracula"],
+        },
+        FixtureCase {
+            relative_path: "html/page.xhtml",
+            expect_highlight: true,
+            expected_fragments: &["section", "data-theme", "const", "title"],
+        },
+        FixtureCase {
+            relative_path: "html/page.shtml",
+            expect_highlight: true,
+            expected_fragments: &["section", "panel", "SSI host"],
+        },
+        FixtureCase {
+            relative_path: "html/component.htc",
+            expect_highlight: true,
+            expected_fragments: &["PUBLIC:COMPONENT", "script", "function", "attach"],
+        },
+        FixtureCase {
+            relative_path: "html/template.yaws",
+            expect_highlight: true,
+            expected_fragments: &["section", "panel", "YAWS host"],
         },
         FixtureCase {
             relative_path: "vue/component.vue",
@@ -3970,14 +4081,49 @@ mod tests {
             expected_fragments: &["section", "{{", "title", "{%", "endif"],
         },
         FixtureCase {
+            relative_path: "jinja/feed.xml.j2",
+            expect_highlight: true,
+            expected_fragments: &["feed", "title", "{{", "title", "}}"],
+        },
+        FixtureCase {
             relative_path: "twig/page.html.twig",
             expect_highlight: true,
             expected_fragments: &["section", "{{", "title", "{%", "endif"],
         },
         FixtureCase {
+            relative_path: "eex/page.html.eex",
+            expect_highlight: true,
+            expected_fragments: &["section", "<%=", "@title", "%>"],
+        },
+        FixtureCase {
+            relative_path: "jsp/page.jsp",
+            expect_highlight: true,
+            expected_fragments: &["section", "<%=", "title", "%>"],
+        },
+        FixtureCase {
+            relative_path: "asp/page.asp",
+            expect_highlight: true,
+            expected_fragments: &["section", "<%=", "title", "%>"],
+        },
+        FixtureCase {
+            relative_path: "adp/page.adp",
+            expect_highlight: true,
+            expected_fragments: &["section", "<%=", "title", "%>"],
+        },
+        FixtureCase {
             relative_path: "erb/page.html.erb",
             expect_highlight: true,
             expected_fragments: &["section", "<%=", "title", "<%", "Preview"],
+        },
+        FixtureCase {
+            relative_path: "erb/app.js.erb",
+            expect_highlight: true,
+            expected_fragments: &["const", "theme_name", "document", "dataset"],
+        },
+        FixtureCase {
+            relative_path: "erb/theme.css.erb",
+            expect_highlight: true,
+            expected_fragments: &["--accent", "accent", ":root"],
         },
     ];
 
@@ -4542,6 +4688,28 @@ mod tests {
             Some(SupportedLanguage::Xml)
         ));
         assert!(matches!(
+            detect_language(Some(Path::new("page.xhtml")), "<section />\n"),
+            Some(SupportedLanguage::Html)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("page.shtml")), "<section />\n"),
+            Some(SupportedLanguage::Html)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("legacy/component.htc")),
+                "<PUBLIC:COMPONENT></PUBLIC:COMPONENT>\n",
+            ),
+            Some(SupportedLanguage::Html)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/page.yaws")),
+                "<section></section>\n",
+            ),
+            Some(SupportedLanguage::Html)
+        ));
+        assert!(matches!(
             detect_language(Some(Path::new("Makefile")), "build:\n\tcargo test\n"),
             Some(SupportedLanguage::Make)
         ));
@@ -4565,6 +4733,13 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("templates/feed.xml.j2")),
+                "<feed>{{ title }}</feed>\n",
+            ),
+            Some(SupportedLanguage::Jinja)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("templates/page.html.twig")),
                 "<section>{{ title }}</section>\n",
             ),
@@ -4572,8 +4747,50 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("templates/page.html.eex")),
+                "<section><%= @title %></section>\n",
+            ),
+            Some(SupportedLanguage::Eex)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/page.jsp")),
+                "<section><%= title %></section>\n",
+            ),
+            Some(SupportedLanguage::Jsp)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/page.asp")),
+                "<section><%= title %></section>\n",
+            ),
+            Some(SupportedLanguage::Asp)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/page.adp")),
+                "<section><%= title %></section>\n",
+            ),
+            Some(SupportedLanguage::Adp)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("templates/page.html.erb")),
                 "<section><%= title %></section>\n",
+            ),
+            Some(SupportedLanguage::Erb)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/app.js.erb")),
+                "const theme = \"<%= theme_name %>\";\n",
+            ),
+            Some(SupportedLanguage::Erb)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("templates/theme.css.erb")),
+                ":root { --accent: <%= accent %>; }\n",
             ),
             Some(SupportedLanguage::Erb)
         ));
@@ -5161,6 +5378,99 @@ mod tests {
             rendered.contains("\x1b[38;2;255;121;198mreturn"),
             "expected injected JavaScript keyword styling inside onclick attribute"
         );
+    }
+
+    #[test]
+    fn embedded_template_profiles_route_host_content_into_matching_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let js_path = fixture_path("erb/app.js.erb");
+        let js_source = read_file(&js_path);
+        let js_analysis = analyze_with_theme(Some(js_path.as_path()), &js_source, &theme)
+            .expect("failed to analyze js.erb fixture")
+            .snapshot();
+        assert!(
+            nested_runtime_names(&js_analysis).contains(&"javascript"),
+            "expected js.erb content to inject into javascript runtime"
+        );
+        assert!(
+            !nested_runtime_names(&js_analysis).contains(&"html"),
+            "expected js.erb content to avoid falling back to html runtime"
+        );
+
+        let css_path = fixture_path("erb/theme.css.erb");
+        let css_source = read_file(&css_path);
+        let css_analysis = analyze_with_theme(Some(css_path.as_path()), &css_source, &theme)
+            .expect("failed to analyze css.erb fixture")
+            .snapshot();
+        assert!(
+            nested_runtime_names(&css_analysis).contains(&"css"),
+            "expected css.erb content to inject into css runtime"
+        );
+
+        let xml_path = fixture_path("jinja/feed.xml.j2");
+        let xml_source = read_file(&xml_path);
+        let xml_analysis = analyze_with_theme(Some(xml_path.as_path()), &xml_source, &theme)
+            .expect("failed to analyze xml.j2 fixture")
+            .snapshot();
+        assert!(
+            nested_runtime_names(&xml_analysis).contains(&"xml"),
+            "expected xml.j2 content to inject into xml runtime"
+        );
+        assert!(
+            !nested_runtime_names(&xml_analysis).contains(&"html"),
+            "expected xml.j2 content to avoid falling back to html runtime"
+        );
+    }
+
+    #[test]
+    fn embedded_template_html_family_reuses_html_host_and_runtime_specific_code() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let eex_path = fixture_path("eex/page.html.eex");
+        let eex_source = read_file(&eex_path);
+        let eex_analysis = analyze_with_theme(Some(eex_path.as_path()), &eex_source, &theme)
+            .expect("failed to analyze eex fixture")
+            .snapshot();
+        assert!(
+            nested_runtime_names(&eex_analysis).contains(&"html"),
+            "expected html.eex content to inject into html runtime"
+        );
+        assert!(
+            nested_runtime_names(&eex_analysis).contains(&"elixir"),
+            "expected html.eex code to inject into elixir runtime"
+        );
+
+        let jsp_path = fixture_path("jsp/page.jsp");
+        let jsp_source = read_file(&jsp_path);
+        let jsp_analysis = analyze_with_theme(Some(jsp_path.as_path()), &jsp_source, &theme)
+            .expect("failed to analyze jsp fixture")
+            .snapshot();
+        assert!(
+            nested_runtime_names(&jsp_analysis).contains(&"html"),
+            "expected jsp content to inject into html runtime"
+        );
+        assert!(
+            nested_runtime_names(&jsp_analysis).contains(&"java"),
+            "expected jsp code to inject into java runtime"
+        );
+    }
+
+    #[test]
+    fn asp_and_adp_templates_still_reuse_html_host_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        for relative_path in ["asp/page.asp", "adp/page.adp"] {
+            let path = fixture_path(relative_path);
+            let source = read_file(&path);
+            let analysis = analyze_with_theme(Some(path.as_path()), &source, &theme)
+                .unwrap_or_else(|error| panic!("failed to analyze {}: {error}", path.display()))
+                .snapshot();
+            assert!(
+                nested_runtime_names(&analysis).contains(&"html"),
+                "expected {relative_path} content to inject into html runtime"
+            );
+        }
     }
 
     #[test]

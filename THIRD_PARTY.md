@@ -111,14 +111,11 @@ Included sources:
 - `grammars/jinja/common/expression.js`
 - `grammars/jinja/common/literal.js`
 - `grammars/jinja/queries/highlights.scm`
-- `grammars/jinja/queries/injections.scm`
 - `grammars/jinja/scanner.c`
 - `grammars/twig/grammar.js`
 - `grammars/twig/queries/highlights.scm`
-- `grammars/twig/queries/injections.scm`
 - `grammars/twig/scanner.c`
 - `grammars/erb/queries/highlights.scm`
-- `grammars/erb/queries/injections.scm`
 - `grammars/php/queries/highlights.scm`
 - `grammars/php/queries/injections.scm`
 - `grammars/php/queries/injections-text.scm`
@@ -560,20 +557,19 @@ Upstream projects:
   Source: [cathaysia/tree-sitter-jinja](https://github.com/cathaysia/tree-sitter-jinja)
   Revision: `7e254abb76618227806f6881525980231faa1610`
   License: Apache-2.0
-  Notes: repository-local adapted copy of the upstream Jinja grammar and support files. `grammars/jinja/grammar.js` is a kat-local wrapper that points at the vendored base grammar file layout and keeps HTML combined injection in kat's runtime model.
+  Notes: repository-local adapted copy of the upstream Jinja grammar and support files. `grammars/jinja/grammar.js` is a kat-local wrapper that points at the vendored base grammar file layout. Template host dispatch is now handled by kat's document-profile + host-resolver layer instead of a dedicated Jinja injections query.
 
 - `grammars/twig/*`
   Source: [kaermorchen/tree-sitter-twig](https://github.com/kaermorchen/tree-sitter-twig)
   Revision: `dac11024e40536d05c958d920139c310cbe86625`
   License: MPL-2.0
-  Notes: repository-local copy of the upstream Twig grammar and scanner, with kat-local highlights / injections queries layered on top.
+  Notes: repository-local copy of the upstream Twig grammar and scanner, with a kat-local highlights query layered on top. Template host dispatch is handled by kat's document-profile + host-resolver layer.
 
 - `grammars/erb/queries/highlights.scm`
-- `grammars/erb/queries/injections.scm`
   Source: [tree-sitter/tree-sitter-embedded-template](https://github.com/tree-sitter/tree-sitter-embedded-template)
   Revision: `3499d85f0a0d937c507a4a65368f2f63772786e1`
   License: MIT
-  Notes: repository-local copies of the upstream embedded-template queries for ERB. Parser code is linked from the Rust crate `tree-sitter-embedded-template`.
+  Notes: repository-local adapted highlights query for the shared embedded-template parser used by `ERB` / `EEx` / `JSP` / `ASP` / `ADP`. Parser code is linked from the Rust crate `tree-sitter-embedded-template`; host/content dispatch is handled by kat's document-profile + host-resolver layer.
 
 - `grammars/php/queries/highlights.scm`
 - `grammars/php/queries/injections.scm`
