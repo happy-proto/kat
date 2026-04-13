@@ -2,6 +2,8 @@
 
 本文档记录当前仍保留 vendored 模式的 grammar，以及为什么它们暂时不迁移到 crate-backed parser。
 
+当前仓库默认策略已经改为：优先使用 crate-backed parser；只有存在明确阻碍时，才把某个 grammar 留在 vendored 模式。
+
 ## 没有可用的 crates.io grammar crate
 
 - `git_config`
@@ -32,10 +34,21 @@
 - `svelte`
 - `just`
 
+## 当前继续 vendored，主要是为了沿用上游 grammar 源和仓库内 query 集成资产
+
+- `actionscript`
+- `applescript`
+- `asciidoc`
+- `asm`
+- `awk`
+- `bibtex`
+
 ## 仓库内有本地 grammar 或 scanner 改造，短期内不适合直接切回上游 crate
 
 - `ignore`
   原因：本地重命名并调整成统一的 ignore-pattern runtime，供 `.gitignore`、`.dockerignore`、`.npmignore` 等文件共享。
+- `authorized_keys`
+  原因：当前直接在仓库内维护了一个面向 SSH 公钥/授权文件的小 grammar，并配合 `.pub` 内容检测做路径识别。
 - `dockerfile`
   原因：本地维护了适配 `kat` 宿主模型的 injections query，且当前可用 crate 仍停留在旧版 `tree-sitter` 依赖链上。
 - `hcl`

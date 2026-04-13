@@ -41,8 +41,21 @@ const DOCKERFILE_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/dockerfile/queries/highlights.scm");
 const DOCKERFILE_INJECTIONS_QUERY: &str =
     include_str!("../grammars/dockerfile/queries/injections.scm");
+const ACTIONSCRIPT_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/actionscript/queries/highlights.scm");
+const ADA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ada/queries/highlights.scm");
+const ADA_LOCALS_QUERY: &str = include_str!("../grammars/ada/queries/locals.scm");
+const APPLESCRIPT_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/applescript/queries/highlights.scm");
+const ASM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/asm/queries/highlights.scm");
+const ASCIIDOC_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/asciidoc/queries/highlights.scm");
+const AUTHORIZED_KEYS_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/authorized_keys/queries/highlights.scm");
+const AWK_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/awk/queries/highlights.scm");
 const BASH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/bash/queries/highlights.scm");
 const BASH_INJECTIONS_QUERY: &str = include_str!("../grammars/bash/queries/injections.scm");
+const BIBTEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/bibtex/queries/highlights.scm");
+const BIBTEX_LOCALS_QUERY: &str = include_str!("../grammars/bibtex/queries/locals.scm");
 const FISH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fish/queries/highlights.scm");
 const ZSH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/zsh/queries/highlights.scm");
 const ZSH_INJECTIONS_QUERY: &str = include_str!("../grammars/zsh/queries/injections.scm");
@@ -209,6 +222,13 @@ unsafe extern "C" {
     fn tree_sitter_git_log() -> *const ();
     fn tree_sitter_git_config() -> *const ();
     fn tree_sitter_dockerfile() -> *const ();
+    fn tree_sitter_actionscript() -> *const ();
+    fn tree_sitter_applescript() -> *const ();
+    fn tree_sitter_asm() -> *const ();
+    fn tree_sitter_asciidoc() -> *const ();
+    fn tree_sitter_authorized_keys() -> *const ();
+    fn tree_sitter_awk() -> *const ();
+    fn tree_sitter_bibtex() -> *const ();
     fn tree_sitter_fish() -> *const ();
     fn tree_sitter_hcl() -> *const ();
     fn tree_sitter_gomod() -> *const ();
@@ -249,7 +269,16 @@ const GIT_MAILMAP_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitt
 const GIT_LOG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_log) };
 const GIT_CONFIG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_git_config) };
 const DOCKERFILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_dockerfile) };
+const ACTIONSCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_actionscript) };
+const ADA_LANGUAGE: LanguageFn = tree_sitter_ada::LANGUAGE;
+const APPLESCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_applescript) };
+const ASM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_asm) };
+const ASCIIDOC_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_asciidoc) };
+const AUTHORIZED_KEYS_LANGUAGE: LanguageFn =
+    unsafe { LanguageFn::from_raw(tree_sitter_authorized_keys) };
+const AWK_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_awk) };
 const BASH_LANGUAGE: LanguageFn = tree_sitter_bash::LANGUAGE;
+const BIBTEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_bibtex) };
 const FISH_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_fish) };
 const ZSH_LANGUAGE: LanguageFn = tree_sitter_zsh::LANGUAGE;
 const POWERSHELL_LANGUAGE: LanguageFn = tree_sitter_powershell::LANGUAGE;
@@ -400,11 +429,67 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         locals_query: "",
     },
     StaticLanguageAsset {
+        name: "actionscript",
+        language_fn: ACTIONSCRIPT_LANGUAGE,
+        highlights_query: ACTIONSCRIPT_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "ada",
+        language_fn: ADA_LANGUAGE,
+        highlights_query: ADA_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: ADA_LOCALS_QUERY,
+    },
+    StaticLanguageAsset {
+        name: "applescript",
+        language_fn: APPLESCRIPT_LANGUAGE,
+        highlights_query: APPLESCRIPT_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "asm",
+        language_fn: ASM_LANGUAGE,
+        highlights_query: ASM_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "asciidoc",
+        language_fn: ASCIIDOC_LANGUAGE,
+        highlights_query: ASCIIDOC_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "authorized_keys",
+        language_fn: AUTHORIZED_KEYS_LANGUAGE,
+        highlights_query: AUTHORIZED_KEYS_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "awk",
+        language_fn: AWK_LANGUAGE,
+        highlights_query: AWK_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
         name: "bash",
         language_fn: BASH_LANGUAGE,
         highlights_query: BASH_HIGHLIGHTS_QUERY,
         injections_query: BASH_INJECTIONS_QUERY,
         locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "bibtex",
+        language_fn: BIBTEX_LANGUAGE,
+        highlights_query: BIBTEX_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: BIBTEX_LOCALS_QUERY,
     },
     StaticLanguageAsset {
         name: "fish",

@@ -1,0 +1,1 @@
+command="echo kat",restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKb0pQ1wTq8mC9oG0qD1nVwXnQ7lYQd+O4Wn6H2YfA kat@example

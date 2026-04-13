@@ -83,7 +83,7 @@
     field: (field_identifier) @function.method.call))
 
 (function_declaration
-  name: (identifier) @function.definition)
+  name: (identifier) @function)
 
 (method_declaration
   name: (field_identifier) @function.method)
