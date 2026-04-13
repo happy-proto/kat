@@ -112,10 +112,14 @@ Included sources:
 - `grammars/jinja/common/literal.js`
 - `grammars/jinja/queries/highlights.scm`
 - `grammars/jinja/scanner.c`
+- `grammars/eex/queries/highlights.scm`
 - `grammars/twig/grammar.js`
 - `grammars/twig/queries/highlights.scm`
 - `grammars/twig/scanner.c`
 - `grammars/erb/queries/highlights.scm`
+- `grammars/jsp/queries/highlights.scm`
+- `grammars/asp/queries/highlights.scm`
+- `grammars/adp/queries/highlights.scm`
 - `grammars/php/queries/highlights.scm`
 - `grammars/php/queries/injections.scm`
 - `grammars/php/queries/injections-text.scm`
@@ -565,11 +569,15 @@ Upstream projects:
   License: MPL-2.0
   Notes: repository-local copy of the upstream Twig grammar and scanner, with a kat-local highlights query layered on top. Template host dispatch is handled by kat's document-profile + host-resolver layer.
 
+- `grammars/eex/queries/highlights.scm`
 - `grammars/erb/queries/highlights.scm`
+- `grammars/jsp/queries/highlights.scm`
+- `grammars/asp/queries/highlights.scm`
+- `grammars/adp/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-embedded-template](https://github.com/tree-sitter/tree-sitter-embedded-template)
   Revision: `3499d85f0a0d937c507a4a65368f2f63772786e1`
   License: MIT
-  Notes: repository-local adapted highlights query for the shared embedded-template parser used by `ERB` / `EEx` / `JSP` / `ASP` / `ADP`. Parser code is linked from the Rust crate `tree-sitter-embedded-template`; host/content dispatch is handled by kat's document-profile + host-resolver layer.
+  Notes: repository-local adapted highlights queries for the shared embedded-template parser used by `ERB` / `EEx` / `JSP` / `ASP` / `ADP`. Parser code is linked from the Rust crate `tree-sitter-embedded-template`; host/content dispatch is handled by kat's document-profile + host-resolver layer.
 
 - `grammars/php/queries/highlights.scm`
 - `grammars/php/queries/injections.scm`
