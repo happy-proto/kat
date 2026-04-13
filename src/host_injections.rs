@@ -201,6 +201,17 @@ fn collect_host_injection_candidates(
             source,
         )?),
         (
+            "jinja" | "twig" | "erb" | "eex" | "jsp" | "asp" | "adp",
+            DocumentProfile::TemplateHtml
+            | DocumentProfile::TemplateXml
+            | DocumentProfile::TemplateCss
+            | DocumentProfile::TemplateJavaScript,
+        ) => candidates.extend(collect_template_injection_candidates(
+            document_kind.runtime_name(),
+            document_kind.profile(),
+            tree.root_node(),
+        )),
+        (
             "yaml",
             DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata,
         ) => candidates.extend(collect_github_actions_yaml_injection_candidates(
@@ -217,6 +228,86 @@ fn collect_host_injection_candidates(
     }
 
     Ok(candidates)
+}
+
+fn collect_template_injection_candidates(
+    runtime_name: &str,
+    profile: DocumentProfile,
+    root: Node,
+) -> Vec<InjectionCandidate> {
+    let mut candidates = Vec::new();
+    let mut content_ranges = Vec::new();
+    let mut code_ranges = Vec::new();
+    walk_template_injection_nodes(root, &mut content_ranges, &mut code_ranges);
+
+    let host_runtime = template_host_runtime(profile);
+    if supports_runtime(host_runtime) && !content_ranges.is_empty() {
+        candidates.push(InjectionCandidate {
+            ranges: normalize_ranges(content_ranges),
+            language_name: host_runtime.to_owned(),
+            is_combined: true,
+            merge_parent_styles: false,
+            decode: InjectionDecode::None,
+            highlight_github_expressions: false,
+            visual_kind: Some(InjectionVisualKind::Transparent),
+            visual_level_bump: Some(0),
+            visual_anchor: Some(InjectionVisualAnchor::Content),
+        });
+    }
+
+    if let Some(code_runtime) = template_code_runtime(runtime_name)
+        && supports_runtime(code_runtime)
+        && !code_ranges.is_empty()
+    {
+        candidates.push(InjectionCandidate {
+            ranges: normalize_ranges(code_ranges),
+            language_name: code_runtime.to_owned(),
+            is_combined: true,
+            merge_parent_styles: false,
+            decode: InjectionDecode::None,
+            highlight_github_expressions: false,
+            visual_kind: Some(InjectionVisualKind::Transparent),
+            visual_level_bump: Some(0),
+            visual_anchor: Some(InjectionVisualAnchor::Content),
+        });
+    }
+
+    candidates
+}
+
+fn walk_template_injection_nodes(
+    node: Node,
+    content_ranges: &mut Vec<Range<usize>>,
+    code_ranges: &mut Vec<Range<usize>>,
+) {
+    match node.kind() {
+        "content" => content_ranges.push(node.byte_range()),
+        "code" => code_ranges.push(node.byte_range()),
+        _ => {}
+    }
+
+    for child in named_children(node) {
+        walk_template_injection_nodes(child, content_ranges, code_ranges);
+    }
+}
+
+fn template_host_runtime(profile: DocumentProfile) -> &'static str {
+    match profile {
+        DocumentProfile::TemplateHtml => "html",
+        DocumentProfile::TemplateXml => "xml",
+        DocumentProfile::TemplateCss => "css",
+        DocumentProfile::TemplateJavaScript => "javascript",
+        _ => unreachable!("non-template profile should not request template host runtime"),
+    }
+}
+
+fn template_code_runtime(runtime_name: &str) -> Option<&'static str> {
+    match runtime_name {
+        "erb" => Some("ruby"),
+        "eex" => Some("elixir"),
+        "jsp" => Some("java"),
+        _ => None,
+    }
 }
 
 fn collect_dockerfile_injection_candidates(

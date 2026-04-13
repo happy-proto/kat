@@ -194,11 +194,12 @@ const MAKE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/make/queries/highl
 const CMAKE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cmake/queries/highlights.scm");
 const NINJA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ninja/queries/highlights.scm");
 const JINJA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jinja/queries/highlights.scm");
-const JINJA_INJECTIONS_QUERY: &str = include_str!("../grammars/jinja/queries/injections.scm");
+const EEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/eex/queries/highlights.scm");
 const TWIG_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/twig/queries/highlights.scm");
-const TWIG_INJECTIONS_QUERY: &str = include_str!("../grammars/twig/queries/injections.scm");
 const ERB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/erb/queries/highlights.scm");
-const ERB_INJECTIONS_QUERY: &str = include_str!("../grammars/erb/queries/injections.scm");
+const JSP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jsp/queries/highlights.scm");
+const ASP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/asp/queries/highlights.scm");
+const ADP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/adp/queries/highlights.scm");
 
 unsafe extern "C" {
     fn tree_sitter_ignore() -> *const ();
@@ -941,21 +942,49 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "jinja",
         language_fn: JINJA_LANGUAGE,
         highlights_query: JINJA_HIGHLIGHTS_QUERY,
-        injections_query: JINJA_INJECTIONS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "eex",
+        language_fn: ERB_LANGUAGE,
+        highlights_query: EEX_HIGHLIGHTS_QUERY,
+        injections_query: "",
         locals_query: "",
     },
     StaticLanguageAsset {
         name: "twig",
         language_fn: TWIG_LANGUAGE,
         highlights_query: TWIG_HIGHLIGHTS_QUERY,
-        injections_query: TWIG_INJECTIONS_QUERY,
+        injections_query: "",
         locals_query: "",
     },
     StaticLanguageAsset {
         name: "erb",
         language_fn: ERB_LANGUAGE,
         highlights_query: ERB_HIGHLIGHTS_QUERY,
-        injections_query: ERB_INJECTIONS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "jsp",
+        language_fn: ERB_LANGUAGE,
+        highlights_query: JSP_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "asp",
+        language_fn: ERB_LANGUAGE,
+        highlights_query: ASP_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "adp",
+        language_fn: ERB_LANGUAGE,
+        highlights_query: ADP_HIGHLIGHTS_QUERY,
+        injections_query: "",
         locals_query: "",
     },
 ];

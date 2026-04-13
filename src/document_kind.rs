@@ -9,6 +9,10 @@ pub(crate) enum DocumentProfile {
     GitHubActionMetadata,
     GitConfig,
     GitModules,
+    TemplateHtml,
+    TemplateXml,
+    TemplateCss,
+    TemplateJavaScript,
 }
 
 impl DocumentProfile {
@@ -19,6 +23,10 @@ impl DocumentProfile {
             Self::GitHubActionMetadata => "github_action_metadata",
             Self::GitConfig => "git_config",
             Self::GitModules => "git_modules",
+            Self::TemplateHtml => "template_html",
+            Self::TemplateXml => "template_xml",
+            Self::TemplateCss => "template_css",
+            Self::TemplateJavaScript => "template_javascript",
         }
     }
 }
@@ -80,6 +88,15 @@ pub(crate) fn git_config_document_kind(source_path: Option<&Path>) -> DocumentKi
     }
 }
 
+pub(crate) fn template_document_kind(
+    runtime_name: &'static str,
+    source_path: Option<&Path>,
+    default_profile: DocumentProfile,
+) -> DocumentKind {
+    let profile = template_profile(source_path).unwrap_or(default_profile);
+    DocumentKind::with_profile(runtime_name, profile)
+}
+
 fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
 
@@ -109,6 +126,24 @@ fn git_config_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     }
 
     None
+}
+
+fn template_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+    let path = source_path?;
+    let file_name = path.file_name()?.to_str()?;
+    let mut segments = file_name.rsplit('.');
+    segments.next()?;
+    let host_segment = segments.next()?.to_ascii_lowercase();
+
+    Some(match host_segment.as_str() {
+        "html" | "htm" | "shtml" | "xhtml" | "htc" => DocumentProfile::TemplateHtml,
+        "xml" | "xsd" | "xslt" | "svg" | "rss" | "opml" | "rng" => DocumentProfile::TemplateXml,
+        "css" => DocumentProfile::TemplateCss,
+        "js" | "mjs" | "cjs" | "jsx" | "es6" | "babel" | "pac" => {
+            DocumentProfile::TemplateJavaScript
+        }
+        _ => return None,
+    })
 }
 
 fn is_github_actions_workflow_path(path: &Path) -> bool {

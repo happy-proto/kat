@@ -63,6 +63,7 @@
   `JSON` / `TOML` / `YAML` 的 key 走配置语言 key 语义，`YAML alias` 单独走绿色斜体下划线，`Rust` 则细分到 trait、attribute、macro、function definition、local variable 等层级。
 - `Python`、`HTML`、`CSS`、`JavaScript` 这一轮已经补齐了一批此前明显缺失的语义 capture，并新增 fixture / showcase / 专门测试锁住回归。
 - `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB` 这一轮也已全部接入，且都补上了最小 fixture，避免只是 detector 占位。
+- HTML 相关模板宿主这轮也补齐到统一模型：`ERB` / `EEx` / `JSP` / `ASP` / `ADP` 共享同一套 `<% ... %>` AST，内容部分会按文件后缀继续分发到 `HTML` / `XML` / `CSS` / `JavaScript` runtime；`Jinja` / `Twig` 也改为走同一套 host profile，而不是继续把 HTML content 固定写死在 query 里。
 - `VHDL`、`VimL`、`Todo.txt` 现在也已接入独立 runtime；其中 `VimL` 复用了 Lua / Python / Ruby / regex 注入链路，`Todo.txt` 则按 `priority` / `project` / `context` 做了最小但可读的结构化高亮。
 - `Go` 这轮也已接入为独立 runtime，并把 `zed` 的 Go highlights/injections 里对终端渲染最有价值的部分对齐进来。
 - `go.mod`、`go.work`、`go.sum` 现在也已作为 Go 生态元数据文件接入独立 runtime，而不是混入 `.go` source runtime。
@@ -95,7 +96,7 @@
 | Go | 🟩 精细 | 已支持 `.go`；当前 query 已补齐 package namespace、type / builtin type、generic type parameter、function definition、method definition / call、builtin function、directive comment、数值 / 字符串 / rune / escape；并且支持基于 comment hint 的 `json` / `yaml` / `html` / `javascript` / `css` / `bash` / `sql` / `regex` 注入调度。现在 `sql` 这条线还进一步支持了 `sql:postgres` / `sql:mysql` / `sql:sqlite` 方言 hint。fixture / showcase 已覆盖独立文件与 Markdown fenced `go` / `golang` alias；这些 `sql` / `regex` hint 已真正落到共享 runtime。 | 本地 `zed` 有独立 Go grammar 包，并维护了 `highlights.scm` 与面向 regex / sql / json / yaml / html / css / js / bash 等子语言的 `injections.scm`。 | 对 `kat` 来说，Go source runtime 已经达到样板语言级别；当前剩余收益更多来自继续补嵌入语言本体细节，而不是 Go 宿主层重写。 |
 | Go Module Files (`go.mod` / `go.work` / `go.sum`) | 🟩 精细 | 现已作为 `gomod` / `gowork` / `gosum` 三个独立 runtime 接入，而不是混入 `.go` source runtime。`go.mod` 已细化 directive、module path、workspace/file path、replace operator、version、toolchain、retract range；`go.work` 已细化 go/use/replace 与 workspace path；`go.sum` 已细化 module path、module version、pseudo-version 数字段、`go.mod` suffix、`h1:` hash version 与 checksum value。fixture / showcase 已覆盖三类文件。 | `zed` 一类成熟语言系统通常会把这些 Go 生态特殊文件纳入独立语言或至少独立检测路径，而不是复用 Go source 语义。 | 这一层最重要的架构决策已经落定：保持 Go source 与 Go 生态元数据文件分离，是更简化也更长期可维护的设计。后续工作更多会是继续抠 query 细节，而不是重新争论是否应该并回 `.go` runtime。 |
 | Python | 🟩 精细 | 已支持 `.py`；这一轮补齐了 decorator / decorator call、builtin call、builtin type、constructor method、annotation string、`self` / `cls`、`isinstance` / `issubclass`、更完整 docstring 识别；同时补上了 `# sql` 注释块、`.execute(...)` / `.executemany(...)` / `.executescript(...)` 调用点，以及 `re.*` / `regex.*` 调用点的 SQL/Regex 注入。raw string 与 backslash-escaped string 现在都会先 decode 再进入共享 runtime。fixture / showcase 已覆盖 advanced 场景与新增嵌入场景，并且所有嵌套 Python 场景都会直接复用同一 runtime。 | 本地 `zed` 的 Python grammar query 仍然还会继续覆盖更多注入场景，例如 SQL string injection；编辑器层还有 semantic tokens、toolchain、context provider。 | 在当前终端高亮目标下，Python 已经达到仓库内精细语言的标准；继续推进时，重点应更多落在嵌入语言边界规则，而不是再继续堆宿主语义 capture。 |
-| HTML | 🟩 精细 | 已支持 `.html` / `.htm`；已注入 `<script>` -> JavaScript、`<style>` -> CSS，以及 `style=` -> CSS、`on*=` -> JavaScript；当前 query 还补上了 entity、custom element、attribute 与 nested-region showcase，fixture / showcase 已覆盖 rich 场景。 | 本地 `zed` 的 HTML 扩展除了 script/style，也对 `style=` 属性和 `on*=` 事件属性做了注入。 | 对终端阅读来说，HTML 这层剩余收益已经大多来自被注入子语言本体继续升级，而不是 HTML 宿主层本身继续加复杂规则。 |
+| HTML | 🟩 精细 | 已支持 `.html` / `.htm` / `.shtml` / `.xhtml`，以及 `htc` / `yaws` 这类历史 HTML 宿主文件；已注入 `<script>` -> JavaScript、`<style>` -> CSS，以及 `style=` -> CSS、`on*=` -> JavaScript；当前 query 还补上了 entity、custom element、attribute 与 nested-region showcase，fixture / showcase 已覆盖 rich 场景。对 `html.erb` / `html.eex` / `jsp` / `asp` / `adp` / `html.twig` / `html.j2` 这类模板宿主，内容部分也会继续复用同一 `html` runtime，而不是各自复制一套宿主高亮。 | 本地 `zed` 的 HTML 扩展除了 script/style，也对 `style=` 属性和 `on*=` 事件属性做了注入。成熟编辑器通常也会让 HTML 模板宿主继续复用共享 HTML runtime。 | 对终端阅读来说，HTML 这层剩余收益已经大多来自被注入子语言本体继续升级，而不是 HTML 宿主层本身继续加复杂规则。 |
 | CSS | 🟩 精细 | 已支持 `.css`；这一轮补齐了 id/class/pseudo selector、namespace selector、custom property、at-rule、color value、unit、`!important`、keyframes 等细节，并新增 rich fixture / showcase 锁住回归。 | 本地 `zed` 有独立 CSS grammar 包，并配套 `outline`、`indents`、`textobjects`、`overrides`。 | 对 `kat` 而言，CSS 已经从“基础可读”升级到“宿主和嵌套场景都可直接复用的精细 runtime”；后续主要是继续让更多宿主语言注入到它，而不是再重做 CSS 本体。 |
 | JavaScript | 🟩 精细 | 已支持 `.js` / `.mjs` / `.cjs` / `.jsx` 与 shebang；已注入 JSDoc；tagged template 现已细化到 `css/json/html/sql/yaml/graphql` 调度；regex pattern 也开始走 host-aware `regex_javascript` runtime。当前不仅支持 regex literal，还支持 `RegExp("...")`、`RegExp(\`...\`)`、`RegExp(String.raw\`...\`)`、`/* sql */` / `/* sql:postgres|mysql|sqlite */`、`/* graphql */` 注释宿主普通字符串 / template string、`.query(...)` / `.execute(...)` / `.prepare(...)` 这类 SQL 调用点、sqlite 风格的 `.get(...)` / `.all(...)` / `.run(...)` 调用点，以及 `client.gql\`...\`` 这类 member-tagged GraphQL，并会先按宿主字面量规则 decode 再进入子语言 runtime。query 补齐了 class / heritage / constructor / private property / function definition / regex body+flags / decorator / JSX tag+attribute 等细节；userscript metadata 也已通过独立 mini-runtime 融入统一注入路径；fixture / showcase 已覆盖 rich / JSX / userscript / SQL / GraphQL injection 场景。 | 本地 `zed` 的 JavaScript injections 仍更丰富，特别是 `sql`、`regex`、`graphql` 等独立嵌入 runtime 已更成熟。 | `kat` 的 JavaScript 本体已经可以归入精细档。剩余差距主要收敛到更复杂的 template 边界语义，以及后续继续加深被注入子语言本体，而不是“GraphQL 还没接进来”这类基础缺口。 |
 | GraphQL | 🟦 中等 | 已支持顶层 `.graphql` / `.gql` / `.graphqls` 文件；当前 query 已覆盖 operation / schema / type-system keyword、directive、variable、fragment definition / spread、field / argument / object field、builtin operation type，以及基础 string / number / boolean / null。`JavaScript` 的 `gql` / `graphql` tagged template、member-tagged template 与 `/* graphql */` comment-hosted string，Markdown fenced `graphql` / `gql`，以及无扩展名内容检测，都会复用同一 runtime。fixture / showcase 已覆盖顶层文件、JavaScript 宿主与 Markdown fenced alias。 | `zed` 一类成熟实现通常也会把 GraphQL 作为高收益注入目标，尤其是 JavaScript tagged template。 | 这一层已经从“预留入口”推进到“真正接通 runtime”。接下来若还要继续抠，重点应是继续细化 query，而不是重新搭接宿主分发。 |
@@ -212,18 +213,8 @@
 - `Haskell`：`hs`
 - `Highlight non-printables`：`show-nonprintable`
 - `Hosts File`：`hosts`
-- `HTML (ASP)`：`asp`
-- `HTML (EEx)`：`html.eex`、`html.leex`
-- `HTML (Erlang)`：`yaws`
-- `HTML (Jinja2)`：`htm.j2`、`html.j2`、`xhtml.j2`、`xml.j2`
-- `HTML (Rails)`：`rails`、`rhtml`、`erb`、`html.erb`
-- `HTML (Tcl)`：`adp`
-- `HTML (Twig)`：`twig`、`html.twig`
 - `HTTP Request and Response`：`http`
 - `Idris`：`idr`
-- `Java Server Page (JSP)`：`jsp`
-- `JavaScript`：`htc`
-- `JavaScript (Rails)`：`js.erb`
 - `jsonnet`：`jsonnet`、`libsonnet`、`libjsonnet`
 - `Julia`：`jl`
 - `Known Hosts`：`known_hosts`、`known_hosts.old`
@@ -291,9 +282,8 @@
 ### 部分覆盖：已有相关 runtime，但文件识别范围仍窄于 `bat`
 
 - `Bourne Again Shell (bash)`：`kat` 已覆盖 `sh`、`bash`、`zsh`、`.bash_aliases`、`.bash_functions`、`.bash_login`、`.bash_logout`、`.bash_profile`、`.bashrc`、`.profile`、`.zlogin`、`.zlogout`、`.zprofile`、`.zshenv`、`.zshrc`；仍缺 `ash`、`.bash_completions`、`.bash_variables`、`.textmate_init`、`PKGBUILD`、`ebuild`、`eclass`、`**/bat/config`、`*.ksh`、`*.kshrc`、`/etc/os-release`、`/var/run/os-release`、`/etc/profile`、`bashrc`、`*.bashrc`、`bash_profile`、`*.bash_profile`、`bash_login`、`*.bash_login`、`bash_logout`、`*.bash_logout`、`zshrc`、`*.zshrc`、`zprofile`、`*.zprofile`、`zlogin`、`*.zlogin`、`zlogout`、`*.zlogout`、`zshenv`、`*.zshenv`
-- `CSS`：`kat` 已覆盖 `css`；仍缺 `css.erb`、`css.liquid`
+- `CSS`：`kat` 已覆盖 `css`、`css.erb`；仍缺 `css.liquid`
 - `Dockerfile`：`kat` 已覆盖 `Dockerfile`、`dockerfile`、`Containerfile`；仍缺 `.Dockerfile`
-- `HTML`：`kat` 已覆盖 `html`、`htm`；仍缺 `shtml`、`xhtml`
 - `JavaScript (Babel)`：`kat` 已覆盖 `js`、`mjs`、`jsx`、`cjs`；仍缺 `babel`、`es6`、`*.pac`
 - `JSON`：`kat` 已覆盖 `json`、`jsonc`、`jsonl`、`ipynb` 与 `flake.lock`；仍缺 `sublime-settings`、`sublime-menu`、`sublime-keymap`、`sublime-mousemap`、`sublime-theme`、`sublime-build`、`sublime-project`、`sublime-completions`、`sublime-commands`、`sublime-macro`、`sublime-color-scheme`、`Pipfile.lock`、`*.jsonld`、`*.geojson`、`*.ndjson`、`*.sarif`
 - `Markdown`：`kat` 已覆盖 `md`、`markdown`、`mdown`、`markdn`、`mkd`

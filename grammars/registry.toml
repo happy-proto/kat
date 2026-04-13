@@ -580,7 +580,7 @@ highlight_names = [
 name = "html"
 library_name = "tree-sitter-html"
 parser_source = "crate"
-extensions = ["html", "htm"]
+extensions = ["html", "htm", "shtml", "xhtml", "htc", "yaws"]
 filenames = []
 shebang_substrings = []
 extra_c_flags = []
@@ -1588,6 +1588,19 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "eex"
+library_name = "tree-sitter-embedded-template"
+parser_source = "crate"
+extensions = ["eex", "leex"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+]
+
+[[grammar]]
 name = "twig"
 library_name = "tree-sitter-twig"
 extensions = ["twig"]
@@ -1614,6 +1627,45 @@ library_name = "tree-sitter-embedded-template"
 parser_source = "crate"
 extensions = ["erb"]
 filenames = ["rails", "rhtml"]
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+]
+
+[[grammar]]
+name = "jsp"
+library_name = "tree-sitter-embedded-template"
+parser_source = "crate"
+extensions = ["jsp"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+]
+
+[[grammar]]
+name = "asp"
+library_name = "tree-sitter-embedded-template"
+parser_source = "crate"
+extensions = ["asp"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+]
+
+[[grammar]]
+name = "adp"
+library_name = "tree-sitter-embedded-template"
+parser_source = "crate"
+extensions = ["adp"]
+filenames = []
 shebang_substrings = []
 extra_c_flags = []
 highlight_names = [
