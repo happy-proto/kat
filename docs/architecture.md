@@ -25,7 +25,7 @@
 
 ### 构建模型
 
-- `build.rs` 对 vendored grammar 统一在构建期通过 `tree-sitter-generate` 生成 parser C 源码；仓库当前通过 Cargo package-level profile override 单独把 `tree-sitter-generate` 提升到 release 级优化，以避免像 `Crystal` 这类 grammar 在默认 build-dependency `opt-level = 0` 下出现病态慢构建。
+- `build.rs` 对 vendored grammar 统一在构建期通过 `tree-sitter-generate` 生成 parser C 源码；默认不再为单个高成本语言额外保留仓库级 build-time 特殊优化。
 - vendored grammar 的 `parser.c` 会与仓库内 `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。

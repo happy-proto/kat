@@ -13,9 +13,7 @@
 - `textproto`
 - `userscript_metadata`
 - `cabal`
-- `coffeescript`
 - `crontab`
-- `crystal`
 - `dotenv`
 - `email`
 - `ninja`

@@ -600,35 +600,6 @@ highlight_names = [
 ]
 
 [[grammar]]
-name = "coffeescript"
-library_name = "tree-sitter-coffeescript"
-extensions = ["coffee", "cson"]
-filenames = ["Cakefile"]
-filename_prefixes = []
-shebang_substrings = []
-extra_c_flags = []
-highlight_names = [
-  "comment",
-  "constant.builtin",
-  "function",
-  "function.call",
-  "function.method",
-  "keyword.control",
-  "keyword.control.import",
-  "keyword.operator",
-  "number",
-  "property",
-  "string",
-  "string.regexp",
-  "type",
-  "type.builtin",
-  "variable",
-  "variable.other",
-  "variable.other.member",
-  "variable.parameter",
-]
-
-[[grammar]]
 name = "command_help"
 library_name = "tree-sitter-command-help"
 extensions = ["cmd-help", "help"]
@@ -676,57 +647,6 @@ highlight_names = [
   "punctuation.delimiter",
   "string",
   "variable",
-]
-
-[[grammar]]
-name = "crystal"
-library_name = "tree-sitter-crystal"
-extensions = ["cr"]
-filenames = []
-filename_prefixes = []
-shebang_substrings = []
-extra_c_flags = []
-highlight_names = [
-  "attribute",
-  "boolean",
-  "character",
-  "character.special",
-  "comment",
-  "constant.builtin",
-  "function",
-  "function.call",
-  "function.method",
-  "keyword",
-  "keyword.conditional",
-  "keyword.conditional.ternary",
-  "keyword.exception",
-  "keyword.function",
-  "keyword.import",
-  "keyword.modifier",
-  "keyword.repeat",
-  "keyword.return",
-  "keyword.type",
-  "label",
-  "number",
-  "number.float",
-  "operator",
-  "property",
-  "punctuation.bracket",
-  "punctuation.delimiter",
-  "punctuation.special",
-  "string",
-  "string.escape",
-  "string.regexp",
-  "string.special",
-  "string.special.symbol",
-  "tag.delimiter",
-  "type",
-  "type.builtin",
-  "variable",
-  "variable.builtin",
-  "variable.member",
-  "variable.parameter",
-  "variable.parameter.builtin",
 ]
 
 [[grammar]]

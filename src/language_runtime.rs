@@ -62,16 +62,10 @@ const CFML_INJECTIONS_QUERY: &str = include_str!("../grammars/cfml/queries/injec
 const CLOJURE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/clojure/queries/highlights.scm");
 const CMAKECACHE_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/cmakecache/queries/highlights.scm");
-const COFFEESCRIPT_HIGHLIGHTS_QUERY: &str =
-    include_str!("../grammars/coffeescript/queries/highlights.scm");
-const COFFEESCRIPT_INJECTIONS_QUERY: &str =
-    include_str!("../grammars/coffeescript/queries/injections.scm");
 const COMMAND_HELP_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/command_help/queries/highlights.scm");
 const CPUINFO_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cpuinfo/queries/highlights.scm");
 const CRONTAB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/crontab/queries/highlights.scm");
-const CRYSTAL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/crystal/queries/highlights.scm");
-const CRYSTAL_INJECTIONS_QUERY: &str = include_str!("../grammars/crystal/queries/injections.scm");
 const D_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/d/queries/highlights.scm");
 const D_INJECTIONS_QUERY: &str = include_str!("../grammars/d/queries/injections.scm");
 const DEBSOURCES_HIGHLIGHTS_QUERY: &str =
@@ -269,11 +263,9 @@ unsafe extern "C" {
     fn tree_sitter_bibtex() -> *const ();
     fn tree_sitter_cabal() -> *const ();
     fn tree_sitter_cmakecache() -> *const ();
-    fn tree_sitter_coffeescript() -> *const ();
     fn tree_sitter_command_help() -> *const ();
     fn tree_sitter_cpuinfo() -> *const ();
     fn tree_sitter_crontab() -> *const ();
-    fn tree_sitter_crystal() -> *const ();
     fn tree_sitter_debsources() -> *const ();
     fn tree_sitter_fish() -> *const ();
     fn tree_sitter_fstab() -> *const ();
@@ -332,11 +324,9 @@ const CABAL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_cab
 const CFML_LANGUAGE: LanguageFn = tree_sitter_cfml::LANGUAGE_CFML;
 const CLOJURE_LANGUAGE: LanguageFn = tree_sitter_clojure_orchard::LANGUAGE;
 const CMAKECACHE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_cmakecache) };
-const COFFEESCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_coffeescript) };
 const COMMAND_HELP_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_command_help) };
 const CPUINFO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_cpuinfo) };
 const CRONTAB_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_crontab) };
-const CRYSTAL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_crystal) };
 const D_LANGUAGE: LanguageFn = tree_sitter_d::LANGUAGE;
 const DEBSOURCES_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_debsources) };
 const ELM_LANGUAGE: LanguageFn = tree_sitter_elm::LANGUAGE;
@@ -589,13 +579,6 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         locals_query: "",
     },
     StaticLanguageAsset {
-        name: "coffeescript",
-        language_fn: COFFEESCRIPT_LANGUAGE,
-        highlights_query: COFFEESCRIPT_HIGHLIGHTS_QUERY,
-        injections_query: COFFEESCRIPT_INJECTIONS_QUERY,
-        locals_query: "",
-    },
-    StaticLanguageAsset {
         name: "command_help",
         language_fn: COMMAND_HELP_LANGUAGE,
         highlights_query: COMMAND_HELP_HIGHLIGHTS_QUERY,
@@ -614,13 +597,6 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: CRONTAB_LANGUAGE,
         highlights_query: CRONTAB_HIGHLIGHTS_QUERY,
         injections_query: "",
-        locals_query: "",
-    },
-    StaticLanguageAsset {
-        name: "crystal",
-        language_fn: CRYSTAL_LANGUAGE,
-        highlights_query: CRYSTAL_HIGHLIGHTS_QUERY,
-        injections_query: CRYSTAL_INJECTIONS_QUERY,
         locals_query: "",
     },
     StaticLanguageAsset {

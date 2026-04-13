@@ -184,21 +184,12 @@ Included sources:
 - `grammars/clojure/queries/highlights.scm`
 - `grammars/cmakecache/grammar.js`
 - `grammars/cmakecache/queries/highlights.scm`
-- `grammars/coffeescript/grammar.js`
-- `grammars/coffeescript/queries/highlights.scm`
-- `grammars/coffeescript/queries/injections.scm`
-- `grammars/coffeescript/scanner.c`
 - `grammars/command_help/grammar.js`
 - `grammars/command_help/queries/highlights.scm`
 - `grammars/cpuinfo/grammar.js`
 - `grammars/cpuinfo/queries/highlights.scm`
 - `grammars/crontab/grammar.js`
 - `grammars/crontab/queries/highlights.scm`
-- `grammars/crystal/grammar.js`
-- `grammars/crystal/queries/highlights.scm`
-- `grammars/crystal/queries/injections.scm`
-- `grammars/crystal/scanner.c`
-- `grammars/crystal/unicode.c`
 - `grammars/d/queries/highlights.scm`
 - `grammars/d/queries/injections.scm`
 - `grammars/debsources/grammar.js`
@@ -805,12 +796,6 @@ Upstream projects:
   License: project-local
   Notes: repository-local minimal grammar and highlights query for `CMakeCache.txt`.
 
-- `grammars/coffeescript/*`
-  Source: [svkozak/tree-sitter-coffeescript](https://github.com/svkozak/tree-sitter-coffeescript)
-  Revision: `3bb4dbd68ca926c76b3baadb529da4de3726ea37`
-  License: MIT
-  Notes: repository-local copy of the upstream CoffeeScript grammar, scanner and queries.
-
 - `grammars/command_help/*`
   Source: repository-local
   Revision: n/a
@@ -828,12 +813,6 @@ Upstream projects:
   Revision: `70b5628278756c3dc429fac6545fe7b2e8c553a0`
   License: MIT
   Notes: repository-local copy of the upstream crontab grammar and highlights query.
-
-- `grammars/crystal/*`
-  Source: [crystal-lang-tools/tree-sitter-crystal](https://github.com/crystal-lang-tools/tree-sitter-crystal)
-  Revision: `50ca9e6fcfb16a2cbcad59203cfd8ad650e25c49`
-  License: MIT
-  Notes: repository-local copy of the upstream Crystal grammar, scanner, injections query, and the Neovim highlights query adapted for kat.
 
 - `grammars/d/queries/*`
   Source: [gdamore/tree-sitter-d](https://github.com/gdamore/tree-sitter-d)

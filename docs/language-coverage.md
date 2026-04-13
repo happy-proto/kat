@@ -65,7 +65,7 @@
 - `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB` 这一轮也已全部接入，且都补上了最小 fixture，避免只是 detector 占位。
 - HTML 相关模板宿主这轮也补齐到统一模型：`ERB` / `EEx` / `JSP` / `ASP` / `ADP` 共享同一套 `<% ... %>` AST，内容部分会按文件后缀继续分发到 `HTML` / `XML` / `CSS` / `JavaScript` runtime；`Jinja` / `Twig` 也改为走同一套 host profile，而不是继续把 HTML content 固定写死在 query 里。
 - `ActionScript`、`Ada`、`AppleScript`、`Assembly (.s/.S)`、`AsciiDoc`、`Authorized Keys`、`AWK`、`BibTeX` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `Ada` 已直接切到 crate-backed parser，`ASP` 也补齐了此前缺失的 `.asa` 入口。
-- `Cabal`、`CFML`、`Clojure`、`CoffeeScript`、`Crystal`、`D`、`Elm`、`Erlang`、`F#`、`Fortran` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `CFML`、`Clojure`、`D`、`Elm`、`Erlang`、`F#`、`Fortran` 直接走 crate-backed parser，`coffee.erb` 也已接入统一模板宿主分发链路。除此之外，`CMakeCache`、`Command Help`、`CpuInfo`、`debsources`、`Fortran Namelist`、`fstab` 这批历史上更偏“专用文本文件”的入口，也都补成了独立 mini-runtime；`CMake` 生成的 `*.h.in` / `*.hpp.in` 头文件模板、`cron.d/*` 与 `/var/mail/*` / `/var/spool/mail/*` 也已纳入 detector。
+- `Cabal`、`CFML`、`Clojure`、`D`、`Elm`、`Erlang`、`F#`、`Fortran` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `CFML`、`Clojure`、`D`、`Elm`、`Erlang`、`F#`、`Fortran` 直接走 crate-backed parser。除此之外，`CMakeCache`、`Command Help`、`CpuInfo`、`debsources`、`Fortran Namelist`、`fstab` 这批历史上更偏“专用文本文件”的入口，也都补成了独立 mini-runtime；`CMake` 生成的 `*.h.in` / `*.hpp.in` 头文件模板、`cron.d/*` 与 `/var/mail/*` / `/var/spool/mail/*` 也已纳入 detector。
 - `VHDL`、`VimL`、`Todo.txt` 现在也已接入独立 runtime；其中 `VimL` 复用了 Lua / Python / Ruby / regex 注入链路，`Todo.txt` 则按 `priority` / `project` / `context` 做了最小但可读的结构化高亮。
 - `Go` 这轮也已接入为独立 runtime，并把 `zed` 的 Go highlights/injections 里对终端渲染最有价值的部分对齐进来。
 - `go.mod`、`go.work`、`go.sum` 现在也已作为 Go 生态元数据文件接入独立 runtime，而不是混入 `.go` source runtime。

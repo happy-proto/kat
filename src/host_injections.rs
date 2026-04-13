@@ -205,7 +205,6 @@ fn collect_host_injection_candidates(
             DocumentProfile::TemplateHtml
             | DocumentProfile::TemplateXml
             | DocumentProfile::TemplateCss
-            | DocumentProfile::TemplateCoffeeScript
             | DocumentProfile::TemplateJavaScript,
         ) => candidates.extend(collect_template_injection_candidates(
             document_kind.runtime_name(),
@@ -297,7 +296,6 @@ fn template_host_runtime(profile: DocumentProfile) -> &'static str {
         DocumentProfile::TemplateHtml => "html",
         DocumentProfile::TemplateXml => "xml",
         DocumentProfile::TemplateCss => "css",
-        DocumentProfile::TemplateCoffeeScript => "coffeescript",
         DocumentProfile::TemplateJavaScript => "javascript",
         _ => unreachable!("non-template profile should not request template host runtime"),
     }

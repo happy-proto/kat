@@ -12,7 +12,6 @@ pub(crate) enum DocumentProfile {
     TemplateHtml,
     TemplateXml,
     TemplateCss,
-    TemplateCoffeeScript,
     TemplateJavaScript,
 }
 
@@ -27,7 +26,6 @@ impl DocumentProfile {
             Self::TemplateHtml => "template_html",
             Self::TemplateXml => "template_xml",
             Self::TemplateCss => "template_css",
-            Self::TemplateCoffeeScript => "template_coffeescript",
             Self::TemplateJavaScript => "template_javascript",
         }
     }
@@ -141,7 +139,6 @@ fn template_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
         "html" | "htm" | "shtml" | "xhtml" | "htc" => DocumentProfile::TemplateHtml,
         "xml" | "xsd" | "xslt" | "svg" | "rss" | "opml" | "rng" => DocumentProfile::TemplateXml,
         "css" => DocumentProfile::TemplateCss,
-        "coffee" => DocumentProfile::TemplateCoffeeScript,
         "js" | "mjs" | "cjs" | "jsx" | "es6" | "babel" | "pac" => {
             DocumentProfile::TemplateJavaScript
         }
