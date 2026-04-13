@@ -70,6 +70,12 @@ echo 'COMPLETE=fish kat | source' >> ~/.config/fish/completions/kat.fish
 cargo build
 ```
 
+当前仓库里个别 vendored grammar 会在构建时回退到官方 `tree-sitter` CLI 生成 parser（目前主要是 `CoffeeScript`），所以本地开发机还需要额外装一下：
+
+```bash
+cargo install tree-sitter-cli
+```
+
 如果想直接安装当前仓库配置对应的预编译包，可以用：
 
 ```bash

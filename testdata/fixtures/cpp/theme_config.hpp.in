@@ -1,0 +1,5 @@
+#pragma once
+
+namespace kat {
+inline constexpr auto theme_name = "Dracula";
+}

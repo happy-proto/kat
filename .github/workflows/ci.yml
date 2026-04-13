@@ -60,6 +60,11 @@ jobs:
         with:
           components: clippy
 
+      - name: Install tree-sitter-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: tree-sitter-cli
+
       - name: Set up sccache
         uses: ./.github/actions/sccache
 
@@ -117,6 +122,11 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tree-sitter-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: tree-sitter-cli
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -229,6 +239,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Install tree-sitter-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: tree-sitter-cli
 
       - name: Set up sccache
         if: matrix.use_sccache

@@ -1,0 +1,4 @@
+MAILTO=ops@example.com
+PATH=/usr/local/bin
+
+*/5 * * * * kat render --theme Dracula

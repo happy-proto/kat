@@ -12,7 +12,12 @@
 - `git_mailmap`
 - `textproto`
 - `userscript_metadata`
+- `cabal`
+- `coffeescript`
+- `crontab`
+- `crystal`
 - `dotenv`
+- `email`
 - `ninja`
 - `twig`
 - `ssh_config`
@@ -49,8 +54,20 @@
   原因：本地重命名并调整成统一的 ignore-pattern runtime，供 `.gitignore`、`.dockerignore`、`.npmignore` 等文件共享。
 - `authorized_keys`
   原因：当前直接在仓库内维护了一个面向 SSH 公钥/授权文件的小 grammar，并配合 `.pub` 内容检测做路径识别。
+- `cmakecache`
+  原因：仓库内维护了一个专门面向 `CMakeCache.txt` 的小 grammar，用来稳定承接 key/type/value 结构和 path-like value 高亮。
+- `command_help`
+  原因：当前直接在仓库内维护了一个针对命令帮助文本的小 grammar，用来识别标题、directive 和常见命令行片段。
+- `cpuinfo`
+  原因：仓库内维护了面向 `cpuinfo` 键值结构的本地 mini-runtime，当前没有值得迁移的现成 crate。
 - `dockerfile`
   原因：本地维护了适配 `kat` 宿主模型的 injections query，且当前可用 crate 仍停留在旧版 `tree-sitter` 依赖链上。
+- `debsources`
+  原因：仓库内维护了 `sources.list` 专用 mini-runtime，用来稳定识别源类型、suite/component 和 URI。
+- `fortran_namelist`
+  原因：当前直接在仓库内维护了一份面向 namelist 结构的轻量 grammar，和主 `fortran` runtime 分开演进更简单。
+- `fstab`
+  原因：仓库内维护了 `fstab` / `crypttab` / `mtab` 这类系统表文件的小 grammar，便于按字段类型持续细化。
 - `hcl`
   原因：本地 grammar/scanner 做过适配，用来承接 `.hcl` 和 `.nomad` 这类文件的独立 runtime。
 - `graphql`

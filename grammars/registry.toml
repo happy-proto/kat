@@ -496,6 +496,560 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "cabal"
+library_name = "tree-sitter-cabal"
+extensions = ["cabal"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "number",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "type",
+]
+
+[[grammar]]
+name = "cfml"
+library_name = "tree-sitter-cfml"
+parser_source = "crate"
+extensions = ["cfml", "cfm", "cfc"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "character.special",
+  "comment",
+  "comment.documentation",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "definition.function",
+  "doctype",
+  "document",
+  "embedded",
+  "expression",
+  "function",
+  "function.call",
+  "function.method",
+  "function.method.call",
+  "keyword",
+  "keyword.conditional.ternary",
+  "keyword.directive",
+  "namespace",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "spell",
+  "string",
+  "string.regexp",
+  "tag",
+  "tag.error",
+  "text",
+  "type",
+  "variable",
+  "variable.builtin",
+]
+
+[[grammar]]
+name = "clojure"
+library_name = "tree-sitter-clojure-orchard"
+parser_source = "crate"
+extensions = ["clj", "cljc", "cljs", "edn"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "constant.builtin",
+  "number",
+  "operator",
+  "string",
+]
+
+[[grammar]]
+name = "cmakecache"
+library_name = "tree-sitter-cmakecache"
+extensions = []
+filenames = ["CMakeCache.txt"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "number",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "string",
+  "string.special.path",
+  "type.builtin",
+]
+
+[[grammar]]
+name = "coffeescript"
+library_name = "tree-sitter-coffeescript"
+extensions = ["coffee", "cson"]
+filenames = ["Cakefile"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "function",
+  "function.call",
+  "function.method",
+  "keyword.control",
+  "keyword.control.import",
+  "keyword.operator",
+  "number",
+  "property",
+  "string",
+  "string.regexp",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.other",
+  "variable.other.member",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "command_help"
+library_name = "tree-sitter-command-help"
+extensions = ["cmd-help", "help"]
+filenames = ["help"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "function.builtin",
+  "keyword.directive",
+  "string",
+  "text",
+  "text.title",
+]
+
+[[grammar]]
+name = "cpuinfo"
+library_name = "tree-sitter-cpuinfo"
+extensions = ["cpuinfo"]
+filenames = ["cpuinfo"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "number",
+  "property",
+  "punctuation.delimiter",
+  "string",
+]
+
+[[grammar]]
+name = "crontab"
+library_name = "tree-sitter-crontab"
+extensions = ["tab"]
+filenames = ["crontab"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "keyword",
+  "number",
+  "operator",
+  "punctuation.delimiter",
+  "string",
+  "variable",
+]
+
+[[grammar]]
+name = "crystal"
+library_name = "tree-sitter-crystal"
+extensions = ["cr"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "character",
+  "character.special",
+  "comment",
+  "constant.builtin",
+  "function",
+  "function.call",
+  "function.method",
+  "keyword",
+  "keyword.conditional",
+  "keyword.conditional.ternary",
+  "keyword.exception",
+  "keyword.function",
+  "keyword.import",
+  "keyword.modifier",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "label",
+  "number",
+  "number.float",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.regexp",
+  "string.special",
+  "string.special.symbol",
+  "tag.delimiter",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.member",
+  "variable.parameter",
+  "variable.parameter.builtin",
+]
+
+[[grammar]]
+name = "d"
+library_name = "tree-sitter-d"
+parser_source = "crate"
+extensions = ["d", "di"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.language",
+  "function",
+  "keyword",
+  "keyword.control",
+  "keyword.directive",
+  "keyword.storage",
+  "label",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "string.special",
+  "text",
+  "type",
+  "type.builtin",
+  "type.deprecated",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "debsources"
+library_name = "tree-sitter-debsources"
+extensions = []
+filenames = ["sources.list"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "keyword",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "string.special",
+  "text.uri",
+  "type",
+]
+
+[[grammar]]
+name = "elm"
+library_name = "tree-sitter-elm"
+parser_source = "crate"
+extensions = ["elm"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "char.elm",
+  "character.escape.elm",
+  "comment.elm",
+  "constant.numeric.elm",
+  "function.elm",
+  "keyword.control.elm",
+  "keyword.operator.arrow.elm",
+  "keyword.operator.assignment.elm",
+  "keyword.operator.elm",
+  "keyword.other.elm",
+  "keyword.other.port.elm",
+  "keyword.type.elm",
+  "local.definition",
+  "local.function.elm",
+  "local.reference",
+  "local.scope",
+  "meta.import.elm",
+  "punctuation.section.braces",
+  "punctuation.separator.comma.elm",
+  "source.glsl",
+  "storage.type.elm",
+  "string.elm",
+  "union.elm",
+]
+
+[[grammar]]
+name = "email"
+library_name = "tree-sitter-mail"
+extensions = ["eml", "msg", "mbx", "mboxz"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "markup.environment",
+  "string",
+  "tag",
+  "type.builtin",
+]
+
+[[grammar]]
+name = "erlang"
+library_name = "tree-sitter-erlang"
+parser_source = "crate"
+extensions = ["erl", "hrl"]
+filenames = ["Emakefile", "emakefile"]
+filename_prefixes = []
+shebang_substrings = ["escript"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "comment.discard",
+  "constant",
+  "function",
+  "keyword",
+  "keyword.directive",
+  "keyword.operator",
+  "module",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.special.symbol",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "fortran"
+library_name = "tree-sitter-fortran"
+parser_source = "crate"
+extensions = ["f", "F", "f77", "F77", "for", "FOR", "fpp", "FPP", "f90", "F90", "f95", "F95", "f03", "F03", "f08", "F08"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "conditional",
+  "function",
+  "function.call",
+  "include",
+  "keyword",
+  "keyword.function",
+  "keyword.operator",
+  "keyword.return",
+  "namespace",
+  "number",
+  "operator",
+  "parameter",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "repeat",
+  "string",
+  "type",
+  "variable",
+]
+
+[[grammar]]
+name = "fortran_namelist"
+library_name = "tree-sitter-fortran-namelist"
+extensions = ["namelist"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "keyword",
+  "number",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "variable",
+]
+
+[[grammar]]
+name = "fsharp"
+library_name = "tree-sitter-fsharp"
+parser_source = "crate"
+extensions = ["fs", "fsx"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "character.special",
+  "comment",
+  "comment.documentation",
+  "constant",
+  "constant.builtin",
+  "constant.macro",
+  "function",
+  "function.call",
+  "function.member",
+  "function.method",
+  "keyword",
+  "keyword.conditional",
+  "keyword.directive",
+  "keyword.exception",
+  "keyword.function",
+  "keyword.import",
+  "keyword.modifier",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "local.definition.function",
+  "local.definition.parameter",
+  "local.definition.var",
+  "local.reference",
+  "local.scope",
+  "module",
+  "module.builtin",
+  "number",
+  "number.float",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "spell",
+  "string",
+  "type",
+  "type.builtin",
+  "type.definition",
+  "variable",
+  "variable.member",
+  "variable.parameter",
+  "variable.parameter.builtin",
+]
+
+[[grammar]]
+name = "fsharp_signature"
+library_name = "tree-sitter-fsharp"
+parser_source = "crate"
+extensions = ["fsi"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "character.special",
+  "comment",
+  "comment.documentation",
+  "constant",
+  "constant.builtin",
+  "constant.macro",
+  "function",
+  "function.call",
+  "function.member",
+  "function.method",
+  "keyword",
+  "keyword.conditional",
+  "keyword.directive",
+  "keyword.exception",
+  "keyword.function",
+  "keyword.import",
+  "keyword.modifier",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "local.definition.function",
+  "local.definition.parameter",
+  "local.definition.var",
+  "local.reference",
+  "local.scope",
+  "module",
+  "module.builtin",
+  "number",
+  "number.float",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "spell",
+  "string",
+  "type",
+  "type.builtin",
+  "type.definition",
+  "variable",
+  "variable.member",
+  "variable.parameter",
+  "variable.parameter.builtin",
+]
+
+[[grammar]]
+name = "fstab"
+library_name = "tree-sitter-fstab"
+extensions = []
+filenames = ["fstab", "crypttab", "mtab"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "number",
+  "string",
+  "string.special",
+  "string.special.path",
+  "type",
+]
+
+[[grammar]]
 name = "bash"
 library_name = "tree-sitter-bash"
 parser_source = "crate"

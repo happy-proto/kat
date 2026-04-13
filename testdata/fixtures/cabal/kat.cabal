@@ -1,0 +1,8 @@
+cabal-version: 3.8
+name: kat
+version: 0.1.0.0
+
+library
+  exposed-modules: Kat.Theme
+  build-depends: base >=4.18 && <5
+  default-language: Haskell2010
