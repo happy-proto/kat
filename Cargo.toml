@@ -5,6 +5,10 @@ edition = "2024"
 repository = "https://github.com/happy-proto/kat"
 default-run = "kat"
 
+[workspace]
+members = ["tools/validate-grammar-registry"]
+resolver = "2"
+
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/latest/kat-{ target }{ archive-suffix }"
 bin-dir = "kat-{ target }/{ bin }{ binary-ext }"
