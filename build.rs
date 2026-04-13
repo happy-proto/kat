@@ -514,7 +514,7 @@ fn regenerate_parser_sources(
 fn prefers_tree_sitter_cli_generation(grammar_dir: &Path) -> bool {
     matches!(
         grammar_dir.file_name().and_then(|name| name.to_str()),
-        Some("coffeescript")
+        Some("coffeescript" | "crystal")
     )
 }
 
