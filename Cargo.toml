@@ -15,6 +15,13 @@ pkg-fmt = "zip"
 [package.metadata.binstall.overrides.'cfg(not(target_os = "windows"))']
 pkg-fmt = "tgz"
 
+# `tree-sitter-generate` is a heavy build dependency, and some grammars
+# (notably Crystal) become pathologically slow at opt-level 0 during
+# build-time parser generation. Keep the override scoped to this package
+# instead of raising the optimization level for all build dependencies.
+[profile.release.package.tree-sitter-generate]
+opt-level = 3
+
 [[bin]]
 name = "kat"
 path = "src/main.rs"

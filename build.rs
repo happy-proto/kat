@@ -3,7 +3,6 @@ use std::{
     io::ErrorKind,
     path::{Path, PathBuf},
     process,
-    process::Command,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -235,7 +234,7 @@ fn compile_grammar(
         || !parser_artifacts_exist(&cache_paths.parser_src_dir)
     {
         let stage_started_at = Instant::now();
-        regenerate_parser_sources(&grammar_dir, &grammar_json_path, &cache_paths);
+        regenerate_parser_sources(&grammar_json_path, &cache_paths);
         write_fingerprint(&cache_paths.parser_fingerprint_path, &parser_fingerprint);
         profiler.log_stage(
             &grammar.name,
@@ -470,11 +469,7 @@ fn regenerate_grammar_json(grammar_dir: &Path, cache_paths: &GrammarCachePaths) 
     remove_dir_if_exists(&cache_paths.grammar_json_staging_dir);
 }
 
-fn regenerate_parser_sources(
-    grammar_dir: &Path,
-    grammar_json_path: &Path,
-    cache_paths: &GrammarCachePaths,
-) {
+fn regenerate_parser_sources(grammar_json_path: &Path, cache_paths: &GrammarCachePaths) {
     remove_dir_if_exists(&cache_paths.parser_src_staging_dir);
     fs::create_dir_all(&cache_paths.parser_src_staging_dir).unwrap_or_else(|error| {
         panic!(
@@ -483,81 +478,25 @@ fn regenerate_parser_sources(
         )
     });
 
-    if prefers_tree_sitter_cli_generation(grammar_dir) {
-        regenerate_parser_sources_with_tree_sitter_cli(
-            grammar_dir,
-            &cache_paths.parser_src_staging_dir,
-        );
-    } else {
-        generate_parser_in_directory(
-            grammar_dir,
-            Some(cache_paths.parser_src_staging_dir.clone()),
-            Some(grammar_json_path.to_path_buf()),
-            ABI_VERSION_MIN,
-            None,
-            None,
-            true,
-            OptLevel::default(),
-        )
-        .unwrap_or_else(|error| {
-            panic!("failed to generate parser.c from {grammar_json_path:?}: {error}")
-        });
-    }
+    generate_parser_in_directory(
+        grammar_json_path,
+        Some(cache_paths.parser_src_staging_dir.clone()),
+        Some(grammar_json_path.to_path_buf()),
+        ABI_VERSION_MIN,
+        None,
+        None,
+        true,
+        OptLevel::default(),
+    )
+    .unwrap_or_else(|error| {
+        panic!("failed to generate parser.c from {grammar_json_path:?}: {error}")
+    });
 
     sync_generated_dir(
         &cache_paths.parser_src_staging_dir,
         &cache_paths.parser_src_dir,
     );
     remove_dir_if_exists(&cache_paths.parser_src_staging_dir);
-}
-
-fn prefers_tree_sitter_cli_generation(grammar_dir: &Path) -> bool {
-    matches!(
-        grammar_dir.file_name().and_then(|name| name.to_str()),
-        Some("coffeescript" | "crystal")
-    )
-}
-
-fn regenerate_parser_sources_with_tree_sitter_cli(
-    grammar_dir: &Path,
-    parser_src_staging_dir: &Path,
-) {
-    let cli_workspace = parser_src_staging_dir.with_extension("tree-sitter-cli");
-    remove_dir_if_exists(&cli_workspace);
-    sync_generated_dir(grammar_dir, &cli_workspace);
-
-    let status = Command::new("tree-sitter")
-        .arg("generate")
-        .current_dir(&cli_workspace)
-        .status()
-        .unwrap_or_else(|error| {
-            panic!(
-                "failed to launch `tree-sitter generate` for {:?}: {error}. \
-install `tree-sitter-cli` so vendored CoffeeScript parser sources can be generated",
-                grammar_dir
-            )
-        });
-
-    assert!(
-        status.success(),
-        "`tree-sitter generate` failed for {:?} with status {status}",
-        grammar_dir
-    );
-
-    let generated_src_dir = cli_workspace.join("src");
-    copy_if_changed(
-        &generated_src_dir.join("parser.c"),
-        &parser_src_staging_dir.join("parser.c"),
-    );
-    copy_if_changed(
-        &generated_src_dir.join("node-types.json"),
-        &parser_src_staging_dir.join("node-types.json"),
-    );
-    sync_generated_dir(
-        &generated_src_dir.join("tree_sitter"),
-        &parser_src_staging_dir.join("tree_sitter"),
-    );
-    remove_dir_if_exists(&cli_workspace);
 }
 
 fn collect_scanner_paths(grammar_dir: &Path, names: &[&str]) -> Vec<PathBuf> {

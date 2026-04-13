@@ -25,7 +25,7 @@
 
 ### 构建模型
 
-- `build.rs` 对 vendored grammar 默认在构建期通过 `tree-sitter-generate` 生成 parser C 源码；如果个别 grammar 在这条路径上的生成成本或稳定性明显失控，可以按仓库内显式白名单回退到官方 `tree-sitter` CLI 生成。
+- `build.rs` 对 vendored grammar 统一在构建期通过 `tree-sitter-generate` 生成 parser C 源码；仓库当前通过 Cargo package-level profile override 单独把 `tree-sitter-generate` 提升到 release 级优化，以避免像 `Crystal` 这类 grammar 在默认 build-dependency `opt-level = 0` 下出现病态慢构建。
 - vendored grammar 的 `parser.c` 会与仓库内 `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
@@ -90,5 +90,5 @@
 - 只有仓库里已经注册并构建的 runtime 才能作为可高亮的注入目标。
 - 无扩展名内容检测目前仍是有限启发式，不是完整内容识别系统。
 - 部分共享 grammar 的表达能力仍然限制了 query 可细化的上限，例如 SQL、Regex、JSDoc 一类场景。
-- 少数 vendored 大型 grammar 的首次 parser 生成成本仍然偏高；这类语言应优先继续评估能否迁回 crate-backed。
+- 少数 vendored 大型 grammar 的首次 parser 生成成本仍然偏高；这类语言应优先继续评估能否迁回 crate-backed，但默认不再通过 CLI fallback 分叉构建路径。
 - `scanner.cc` 路线已经在当前环境验证过，但仍需要补 Linux 构建确认。
