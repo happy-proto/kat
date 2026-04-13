@@ -87,6 +87,12 @@ const FORTRAN_NAMELIST_HIGHLIGHTS_QUERY: &str =
 const FSHARP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fsharp/queries/highlights.scm");
 const FSHARP_INJECTIONS_QUERY: &str = include_str!("../grammars/fsharp/queries/injections.scm");
 const FSHARP_LOCALS_QUERY: &str = include_str!("../grammars/fsharp/queries/locals.scm");
+const FSHARP_SIGNATURE_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/fsharp_signature/queries/highlights.scm");
+const FSHARP_SIGNATURE_INJECTIONS_QUERY: &str =
+    include_str!("../grammars/fsharp_signature/queries/injections.scm");
+const FSHARP_SIGNATURE_LOCALS_QUERY: &str =
+    include_str!("../grammars/fsharp_signature/queries/locals.scm");
 const FSTAB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fstab/queries/highlights.scm");
 const FISH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fish/queries/highlights.scm");
 const ZSH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/zsh/queries/highlights.scm");
@@ -683,9 +689,9 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
     StaticLanguageAsset {
         name: "fsharp_signature",
         language_fn: FSHARP_SIGNATURE_LANGUAGE,
-        highlights_query: FSHARP_HIGHLIGHTS_QUERY,
-        injections_query: FSHARP_INJECTIONS_QUERY,
-        locals_query: FSHARP_LOCALS_QUERY,
+        highlights_query: FSHARP_SIGNATURE_HIGHLIGHTS_QUERY,
+        injections_query: FSHARP_SIGNATURE_INJECTIONS_QUERY,
+        locals_query: FSHARP_SIGNATURE_LOCALS_QUERY,
     },
     StaticLanguageAsset {
         name: "fstab",

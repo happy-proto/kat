@@ -215,6 +215,9 @@ Included sources:
 - `grammars/fsharp/queries/highlights.scm`
 - `grammars/fsharp/queries/injections.scm`
 - `grammars/fsharp/queries/locals.scm`
+- `grammars/fsharp_signature/queries/highlights.scm`
+- `grammars/fsharp_signature/queries/injections.scm`
+- `grammars/fsharp_signature/queries/locals.scm`
 - `grammars/fstab/grammar.js`
 - `grammars/fstab/queries/highlights.scm`
 - `grammars/scss/grammar.js`
@@ -875,6 +878,7 @@ Upstream projects:
   Notes: repository-local minimal grammar and highlights query for Fortran namelist files.
 
 - `grammars/fsharp/queries/*`
+- `grammars/fsharp_signature/queries/*`
   Source: [ionide/tree-sitter-fsharp](https://github.com/ionide/tree-sitter-fsharp)
   Revision: `594c500ecace8618db32dd1144307897277db067`
   License: MIT
