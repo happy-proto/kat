@@ -761,7 +761,7 @@ impl InjectionVisualKind {
     }
 
     pub(crate) fn uses_rectangular_padding(self) -> bool {
-        matches!(self, Self::RectBlock)
+        matches!(self, Self::RectBlock | Self::ScopeBlock)
     }
 }
 

@@ -75,7 +75,7 @@
 - `Git Link` / `Git Mailmap` / `Git Log` 现也已作为独立 Git 生态 runtime 接入；其中 `Git Log` 会把 patch 区块直接注入共享 `diff` runtime，而 `Ignore Files` 也已补齐 `exclude` 与全局 Git ignore 的路径 detector。
 - `JSDoc` 也已经不再是纯占位，但受当前 upstream grammar 表达能力限制，参数名等细节仍没有达到和宿主语言同级的细粒度程度。
 - `Justfile` 仍是当前一个明确强项，但参考基线应改为社区扩展 [`zed-just`](https://github.com/jackTabsCode/zed-just)，而不是再写成“`zed` 没有同级支持”。
-- `renderer` 现在已经不再把所有块级 nested runtime 都硬塞进同一种矩形灰底：Markdown fenced code、GitHub Actions `run` 这类真内容块继续走共享 `rect_block`，而 `Justfile recipe` 这类缩进作用域已经拆成独立的 `scope_block` 视觉原语；inline 注入和更复杂的非矩形区域仍在继续收敛。
+- `renderer` 现在已经不再把所有块级 nested runtime 都硬塞进同一种视觉类型：Markdown fenced code、GitHub Actions `run` 这类真内容块继续走共享 `rect_block`，而 `Justfile recipe` 这类缩进作用域已经拆成独立的 `scope_block` 视觉原语；当前 terminal fallback 仍会先复用成熟的 recipe body 矩形块效果，inline 注入和更复杂的非矩形区域仍在继续收敛。
 
 ## 语言总览
 

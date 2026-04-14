@@ -2813,10 +2813,9 @@ fn build_region_segments(
         InjectionVisualKind::Transparent | InjectionVisualKind::TightBlock => {
             build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
         }
-        InjectionVisualKind::RectBlock => {
+        InjectionVisualKind::RectBlock | InjectionVisualKind::ScopeBlock => {
             build_block_region_segments(source, ranges, visual_anchor)
         }
-        InjectionVisualKind::ScopeBlock => build_scope_block_region_segments(source, ranges),
     };
 
     line_bounds.sort_by_key(|line| (line.line_start, line.left, line.text_end));
@@ -2896,36 +2895,6 @@ fn build_block_region_segments(
         .collect()
 }
 
-fn build_scope_block_region_segments(source: &str, ranges: &[Range<usize>]) -> Vec<RegionSegment> {
-    let covered_lines = classify_covered_lines(source, ranges);
-    let Some(block_lines) = content_block_lines(&covered_lines) else {
-        return Vec::new();
-    };
-    let scope_width = shared_scope_indent_width(source, block_lines);
-    if scope_width == 0 {
-        return build_region_segment_bounds(
-            source,
-            ranges,
-            shared_leading_indent(source, ranges),
-            InjectionVisualAnchor::Content,
-        );
-    }
-
-    block_lines
-        .iter()
-        .filter(|line| line.role != CoveredLineRole::Wrapper)
-        .map(|line| {
-            let band_end = line.line_start + scope_width;
-            RegionSegment {
-                line_start: line.line_start,
-                left: line.line_start,
-                text_end: band_end.min(line.line_end),
-                right: band_end,
-            }
-        })
-        .collect()
-}
-
 fn content_block_lines(covered_lines: &[CoveredLine]) -> Option<&[CoveredLine]> {
     let first_content = covered_lines
         .iter()
@@ -2934,22 +2903,6 @@ fn content_block_lines(covered_lines: &[CoveredLine]) -> Option<&[CoveredLine]> 
         .iter()
         .rposition(|line| line.role == CoveredLineRole::Content)?;
     Some(&covered_lines[first_content..=last_content])
-}
-
-fn shared_scope_indent_width(source: &str, lines: &[CoveredLine]) -> usize {
-    lines
-        .iter()
-        .filter(|line| line.role == CoveredLineRole::Content)
-        .map(|line| leading_indent_width(&source[line.line_start..line.line_end]))
-        .min()
-        .unwrap_or(0)
-}
-
-fn leading_indent_width(text: &str) -> usize {
-    text.chars()
-        .take_while(|ch| matches!(ch, ' ' | '\t'))
-        .map(char::len_utf8)
-        .sum()
 }
 
 fn content_start_offset(source: &str, line: CoveredLine) -> usize {
@@ -9047,23 +9000,22 @@ priority: 7
         );
         assert_eq!(
             segment_left_column(source, first_segment),
-            0,
-            "expected scope block coverage to start at the recipe line start"
+            4,
+            "expected scope block fallback geometry to align with the shared recipe indent"
         );
         assert_eq!(
             segment_rendered_right_edge(source, first_segment),
-            4,
-            "expected scope block geometry to stop at the shared recipe indentation"
-        );
-        assert_eq!(
             segment_rendered_right_edge(source, second_segment),
-            4,
-            "expected all recipe lines to share the same indentation-band width"
+            "expected scope block fallback geometry to keep a shared rendered right edge"
+        );
+        assert!(
+            segment_trailing_padding(second_segment) > 0,
+            "expected shorter recipe lines to keep rectangular fallback padding for now"
         );
         assert_eq!(
             segment_trailing_padding(first_segment),
             0,
-            "expected scope block visuals to avoid rectangular right-edge padding"
+            "expected the widest recipe line to define the fallback block width"
         );
     }
 

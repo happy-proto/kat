@@ -50,7 +50,7 @@
    - nested region 的 snapshot 需要保留递归子区域以及各自解析到的 `document kind` / runtime 身份，方便宿主感知注入、方言分发和 runtime 复用直接在 IR 上断言，而不是退回最终 ANSI。
 2. `visual`
    - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、`rect_block` / `scope_block` / `tight_block` / `transparent` 这些区域结果。
-   - 对块级嵌套区域，会按共享缩进和注入 range 推导对应的视觉原语：真正的矩形内容块继续走 `rect_block`，而像 `Justfile recipe` 这类缩进作用域则走独立的 `scope_block`，而不是继续复用同一块灰底模型。
+   - 对块级嵌套区域，会按共享缩进和注入 range 推导对应的视觉原语：真正的矩形内容块继续走 `rect_block`，而像 `Justfile recipe` 这类缩进作用域则走独立的 `scope_block`。当前 terminal fallback 仍可暂时复用成熟的矩形 body 几何，但 IR 上不再把两者混成同一种区域。
 3. `render_ops`
    - 负责把视觉模型编译成终端无关的渲染状态流，而不是直接拼 ANSI 字符串。
    - 这层输出的是稳定 IR，适合做 snapshot、回归和跨环境 diff。
