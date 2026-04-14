@@ -314,7 +314,17 @@ fn top_region_style(
     line_segments
         .iter()
         .filter(|segment| segment.left <= start && segment.right >= end)
-        .map(|segment| segment.visual_level)
-        .max()
-        .and_then(|level| theme.nested_region_tint(level))
+        .max_by_key(|segment| segment.visual_level)
+        .and_then(|segment| region_style(*segment, theme))
+}
+
+fn region_style(segment: FlatRegionSegment, theme: Theme) -> Option<TokenStyle> {
+    match segment.visual_kind {
+        crate::host_injections::InjectionVisualKind::Transparent => None,
+        crate::host_injections::InjectionVisualKind::TightBlock
+        | crate::host_injections::InjectionVisualKind::RectBlock
+        | crate::host_injections::InjectionVisualKind::ScopeBlock => {
+            theme.nested_region_tint(segment.visual_level)
+        }
+    }
 }

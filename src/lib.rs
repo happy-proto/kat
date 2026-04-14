@@ -990,6 +990,7 @@ pub(crate) struct HighlightRenderData {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct VisualRegion {
+    pub(crate) visual_kind: InjectionVisualKind,
     pub(crate) visual_level: usize,
     pub(crate) segments: Vec<RegionSegment>,
 }
@@ -1004,6 +1005,7 @@ pub(crate) struct RegionSegment {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct FlatRegionSegment {
+    pub(crate) visual_kind: InjectionVisualKind,
     pub(crate) visual_level: usize,
     pub(crate) line_start: usize,
     pub(crate) left: usize,
@@ -2791,10 +2793,14 @@ fn build_region_segments(
     visual_kind: InjectionVisualKind,
 ) -> Vec<RegionSegment> {
     let shared_indent = shared_leading_indent(source, ranges);
-    let mut line_bounds = if visual_kind.is_block() {
-        build_block_region_segments(source, ranges, visual_anchor)
-    } else {
-        build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
+    let mut line_bounds = match visual_kind {
+        InjectionVisualKind::Transparent | InjectionVisualKind::TightBlock => {
+            build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
+        }
+        InjectionVisualKind::RectBlock => {
+            build_block_region_segments(source, ranges, visual_anchor)
+        }
+        InjectionVisualKind::ScopeBlock => build_scope_block_region_segments(source, ranges),
     };
 
     line_bounds.sort_by_key(|line| (line.line_start, line.left, line.text_end));
@@ -2842,13 +2848,7 @@ fn build_block_region_segments(
     visual_anchor: InjectionVisualAnchor,
 ) -> Vec<RegionSegment> {
     let covered_lines = classify_covered_lines(source, ranges);
-    let first_content = covered_lines
-        .iter()
-        .position(|line| line.role == CoveredLineRole::Content);
-    let last_content = covered_lines
-        .iter()
-        .rposition(|line| line.role == CoveredLineRole::Content);
-    let (Some(first_content), Some(last_content)) = (first_content, last_content) else {
+    let Some(block_lines) = content_block_lines(&covered_lines) else {
         return build_region_segment_bounds(
             source,
             ranges,
@@ -2856,14 +2856,14 @@ fn build_block_region_segments(
             visual_anchor,
         );
     };
-    let block_left_offset = covered_lines[first_content..=last_content]
+    let block_left_offset = block_lines
         .iter()
         .filter(|line| line.role == CoveredLineRole::Content)
         .map(|line| content_start_offset(source, *line))
         .min()
         .unwrap_or(0);
 
-    covered_lines[first_content..=last_content]
+    block_lines
         .iter()
         .filter(|line| line.role != CoveredLineRole::Wrapper)
         .map(|line| RegionSegment {
@@ -2878,6 +2878,62 @@ fn build_block_region_segments(
             right: line.line_end,
         })
         .collect()
+}
+
+fn build_scope_block_region_segments(source: &str, ranges: &[Range<usize>]) -> Vec<RegionSegment> {
+    let covered_lines = classify_covered_lines(source, ranges);
+    let Some(block_lines) = content_block_lines(&covered_lines) else {
+        return Vec::new();
+    };
+    let scope_width = shared_scope_indent_width(source, block_lines);
+    if scope_width == 0 {
+        return build_region_segment_bounds(
+            source,
+            ranges,
+            shared_leading_indent(source, ranges),
+            InjectionVisualAnchor::Content,
+        );
+    }
+
+    block_lines
+        .iter()
+        .filter(|line| line.role != CoveredLineRole::Wrapper)
+        .map(|line| {
+            let band_end = line.line_start + scope_width;
+            RegionSegment {
+                line_start: line.line_start,
+                left: line.line_start,
+                text_end: band_end.min(line.line_end),
+                right: band_end,
+            }
+        })
+        .collect()
+}
+
+fn content_block_lines(covered_lines: &[CoveredLine]) -> Option<&[CoveredLine]> {
+    let first_content = covered_lines
+        .iter()
+        .position(|line| line.role == CoveredLineRole::Content)?;
+    let last_content = covered_lines
+        .iter()
+        .rposition(|line| line.role == CoveredLineRole::Content)?;
+    Some(&covered_lines[first_content..=last_content])
+}
+
+fn shared_scope_indent_width(source: &str, lines: &[CoveredLine]) -> usize {
+    lines
+        .iter()
+        .filter(|line| line.role == CoveredLineRole::Content)
+        .map(|line| leading_indent_width(&source[line.line_start..line.line_end]))
+        .min()
+        .unwrap_or(0)
+}
+
+fn leading_indent_width(text: &str) -> usize {
+    text.chars()
+        .take_while(|ch| matches!(ch, ' ' | '\t'))
+        .map(char::len_utf8)
+        .sum()
 }
 
 fn content_start_offset(source: &str, line: CoveredLine) -> usize {
@@ -3346,6 +3402,7 @@ fn map_virtual_regions_to_source(
             });
         }
         mapped.push(VisualRegion {
+            visual_kind: region.visual_kind,
             visual_level: region.visual_level,
             segments,
         });
@@ -3533,6 +3590,7 @@ pub(crate) fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<Vis
     for region in nested_regions {
         if region.visual_kind.is_block() {
             regions.push(VisualRegion {
+                visual_kind: region.visual_kind,
                 visual_level: region.visual_level,
                 segments: region.layout_segments.clone(),
             });
@@ -3581,6 +3639,7 @@ pub(crate) fn flatten_region_segments(regions: &[VisualRegion]) -> Vec<FlatRegio
     for region in regions {
         for segment in &region.segments {
             flat_segments.push(FlatRegionSegment {
+                visual_kind: region.visual_kind,
                 visual_level: region.visual_level,
                 line_start: segment.line_start,
                 left: segment.left,
@@ -8905,6 +8964,42 @@ priority: 7
     }
 
     #[test]
+    fn just_recipe_body_uses_scope_block_visual_kind() {
+        let source = "install:\n    cargo install --path .\n    cargo fmt --check\n";
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let analysis = analysis_snapshot_for_path(Path::new("Justfile"), source, &theme);
+        let region = find_nested_region(&analysis, "bash", "cargo install --path .", source);
+        let first_segment = segment_for_line(region, source, "cargo install --path .");
+        let second_segment = segment_for_line(region, source, "cargo fmt --check");
+
+        assert_eq!(
+            region.visual_kind, "scope_block",
+            "expected Justfile recipe bodies to use scope block visuals"
+        );
+        assert_eq!(
+            segment_left_column(source, first_segment),
+            0,
+            "expected scope block coverage to start at the recipe line start"
+        );
+        assert_eq!(
+            segment_rendered_right_edge(source, first_segment),
+            4,
+            "expected scope block geometry to stop at the shared recipe indentation"
+        );
+        assert_eq!(
+            segment_rendered_right_edge(source, second_segment),
+            4,
+            "expected all recipe lines to share the same indentation-band width"
+        );
+        assert_eq!(
+            segment_trailing_padding(first_segment),
+            0,
+            "expected scope block visuals to avoid rectangular right-edge padding"
+        );
+    }
+
+    #[test]
     fn just_recipe_trailing_separator_blank_line_stays_outside_block_region() {
         let source = "install:\n    cargo install --path .\n\nnext:\n    echo hi\n";
         let tint = RgbColor(1, 2, 3);
@@ -9613,6 +9708,24 @@ priority: 7
         let value: Value = serde_json::from_str(&json).expect("visual json should parse");
 
         assert!(value["regions"].is_array());
+    }
+
+    #[test]
+    fn debug_visual_json_preserves_scope_block_kind_for_just_recipe() {
+        let source = "install:\n    cargo install --path .\n";
+        let json = debug_visual_json(Some(Path::new("Justfile")), source)
+            .expect("visual debug json for Justfile should render");
+        let value: Value = serde_json::from_str(&json).expect("visual json should parse");
+        let regions = value["regions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("expected visual regions array: {json}"));
+
+        assert!(
+            regions
+                .iter()
+                .any(|region| region["visual_kind"] == Value::String("scope_block".into())),
+            "expected visual debug json to preserve scope block regions: {json}"
+        );
     }
 
     #[test]

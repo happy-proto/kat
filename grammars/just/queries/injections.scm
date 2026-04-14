@@ -19,7 +19,7 @@
   !shebang
   (#set! injection.language "bash")
   (#set! injection.include-children)
-  (#set! kat.visual "block")) @injection.content
+  (#set! kat.visual "scope-block")) @injection.content
 
 (external_command
   (command_body) @injection.content
@@ -54,7 +54,7 @@
       (recipe_body
         !shebang
         (#set! injection.include-children)
-        (#set! kat.visual "block")) @injection.content)
+        (#set! kat.visual "scope-block")) @injection.content)
 
     (assignment
       (expression
@@ -72,7 +72,7 @@
       (recipe_body
         !shebang
         (#set! injection.include-children)
-        (#set! kat.visual "block")) @injection.content)
+        (#set! kat.visual "scope-block")) @injection.content)
 
     (assignment
       (expression
@@ -89,7 +89,7 @@
       (recipe_body
         !shebang
         (#set! injection.include-children)
-        (#set! kat.visual "block")) @injection.content)
+        (#set! kat.visual "scope-block")) @injection.content)
 
     (assignment
       (expression
@@ -106,7 +106,7 @@
     (language) @injection.language)
   (#not-any-of? @injection.language "python3" "nodejs" "node" "uv")
   (#set! injection.include-children)
-  (#set! kat.visual "block")) @injection.content
+  (#set! kat.visual "scope-block")) @injection.content
 
 ; Transform some known executables
 
@@ -117,7 +117,7 @@
   (#any-of? @_lang "python3" "uv")
   (#set! injection.language "python")
   (#set! injection.include-children)
-  (#set! kat.visual "block")) @injection.content
+  (#set! kat.visual "scope-block")) @injection.content
 
 ; node/nodejs -> javascript
 (recipe_body
@@ -126,4 +126,4 @@
   (#any-of? @_lang "node" "nodejs")
   (#set! injection.language "javascript")
   (#set! injection.include-children)
-  (#set! kat.visual "block")) @injection.content
+  (#set! kat.visual "scope-block")) @injection.content
