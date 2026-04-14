@@ -73,8 +73,10 @@ enum SupportedLanguage {
     Clojure,
     CmakeCache,
     Cmake,
+    CoffeeScript,
     CommandHelp,
     CpuInfo,
+    Crystal,
     Crontab,
     Css,
     Cpp,
@@ -244,9 +246,11 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "cfml" => SupportedLanguage::Cfml,
         "clojure" => SupportedLanguage::Clojure,
         "cmakecache" => SupportedLanguage::CmakeCache,
+        "coffeescript" => SupportedLanguage::CoffeeScript,
         "command_help" => SupportedLanguage::CommandHelp,
         "cpuinfo" => SupportedLanguage::CpuInfo,
         "crontab" => SupportedLanguage::Crontab,
+        "crystal" => SupportedLanguage::Crystal,
         "d" => SupportedLanguage::D,
         "debsources" => SupportedLanguage::Debsources,
         "elm" => SupportedLanguage::Elm,
@@ -860,9 +864,11 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "cfml" => DocumentKind::plain("cfml"),
         "clojure" => DocumentKind::plain("clojure"),
         "cmakecache" => DocumentKind::plain("cmakecache"),
+        "coffeescript" => DocumentKind::plain("coffeescript"),
         "command_help" => DocumentKind::plain("command_help"),
         "cpuinfo" => DocumentKind::plain("cpuinfo"),
         "crontab" => DocumentKind::plain("crontab"),
+        "crystal" => DocumentKind::plain("crystal"),
         "d" => DocumentKind::plain("d"),
         "debsources" => DocumentKind::plain("debsources"),
         "elm" => DocumentKind::plain("elm"),
@@ -1321,6 +1327,11 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(DocumentKind::plain("cmakecache"));
     }
 
+    let coffeescript = grammar("coffeescript");
+    if matches_path(coffeescript, source_path) {
+        return Some(DocumentKind::plain("coffeescript"));
+    }
+
     let command_help = grammar("command_help");
     if matches_path(command_help, source_path) {
         return Some(DocumentKind::plain("command_help"));
@@ -1334,6 +1345,11 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     let crontab = grammar("crontab");
     if matches_path(crontab, source_path) || is_cron_d_path(source_path) {
         return Some(DocumentKind::plain("crontab"));
+    }
+
+    let crystal = grammar("crystal");
+    if matches_path(crystal, source_path) {
+        return Some(DocumentKind::plain("crystal"));
     }
 
     let d = grammar("d");
@@ -3700,7 +3716,7 @@ mod tests {
         "todotxt",
     ];
     const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &[
-        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "d", "fortran", "fsharp",
+        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "crystal", "d", "fortran", "fsharp",
     ];
     const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
         "java",
@@ -3718,6 +3734,7 @@ mod tests {
     const FIXTURE_SCRIPTING_AND_WEB_PROGRAMMING_FAMILIES: &[&str] = &[
         "cfml",
         "clojure",
+        "coffeescript",
         "elm",
         "python",
         "php",
@@ -3922,6 +3939,16 @@ mod tests {
             expected_fragments: &["KAT_THEME", "STRING", "Dracula", "ON"],
         },
         FixtureCase {
+            relative_path: "coffeescript/theme.coffee",
+            expect_highlight: true,
+            expected_fragments: &["class", "ThemePreview", "render", "console.log"],
+        },
+        FixtureCase {
+            relative_path: "coffeescript/theme.coffee.erb",
+            expect_highlight: true,
+            expected_fragments: &["<%=", "ThemePreview", "->", "@theme.name"],
+        },
+        FixtureCase {
             relative_path: "command_help/kat.help",
             expect_highlight: true,
             expected_fragments: &["NAME", "SYNOPSIS", "kat render", "--theme"],
@@ -3935,6 +3962,11 @@ mod tests {
             relative_path: "crontab/root.tab",
             expect_highlight: true,
             expected_fragments: &["*/5", "PATH=/usr/local/bin", "kat render", "MAILTO"],
+        },
+        FixtureCase {
+            relative_path: "crystal/theme.cr",
+            expect_highlight: true,
+            expected_fragments: &["class", "ThemePreview", "def", "puts"],
         },
         FixtureCase {
             relative_path: "d/theme.d",
@@ -5602,6 +5634,17 @@ mod tests {
             Some(SupportedLanguage::Cfml)
         ));
         assert!(matches!(
+            detect_language(Some(Path::new("theme.coffee")), "class ThemePreview\n"),
+            Some(SupportedLanguage::CoffeeScript)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("Cakefile")),
+                "task 'build', -> console.log 'kat'\n",
+            ),
+            Some(SupportedLanguage::CoffeeScript)
+        ));
+        assert!(matches!(
             detect_language(
                 Some(Path::new("theme.clj")),
                 "(defn render-theme [] (println \"kat\"))\n",
@@ -5626,6 +5669,10 @@ mod tests {
         assert!(matches!(
             detect_language(Some(Path::new("root.tab")), "*/5 * * * * kat render\n"),
             Some(SupportedLanguage::Crontab)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.cr")), "class ThemePreview\nend\n"),
+            Some(SupportedLanguage::Crystal)
         ));
         assert!(matches!(
             detect_language(
@@ -6331,6 +6378,25 @@ mod tests {
                 "expected {relative_path} content to inject into html runtime"
             );
         }
+    }
+
+    #[test]
+    fn coffee_erb_templates_reuse_coffeescript_host_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("coffeescript/theme.coffee.erb");
+        let source = read_file(&path);
+        let analysis = analyze_with_theme(Some(path.as_path()), &source, &theme)
+            .expect("failed to analyze coffee.erb fixture")
+            .snapshot();
+
+        assert!(
+            nested_runtime_names(&analysis).contains(&"coffeescript"),
+            "expected coffee.erb content to inject into coffeescript runtime"
+        );
+        assert!(
+            nested_runtime_names(&analysis).contains(&"ruby"),
+            "expected coffee.erb code to inject into ruby runtime"
+        );
     }
 
     #[test]
