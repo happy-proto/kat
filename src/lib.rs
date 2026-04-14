@@ -3650,12 +3650,14 @@ mod tests {
         analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
         display_geometry::{display_width, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
+        language_runtime::runtime,
         render_ops::{RenderOpSnapshot, RenderPlanSnapshot},
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
     };
     use anstyle::RgbColor;
     use serde_json::Value;
+    use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
 
     struct FixtureCase {
         relative_path: &'static str,
@@ -9712,6 +9714,129 @@ priority: 7
         assert_eq!(
             value["capabilities"]["background_queries_enabled"],
             Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn coffeescript_query_captures_class_and_method_names() {
+        let path = fixture_path("coffeescript/theme.coffee");
+        let source = read_file(&path);
+        let language = runtime("coffeescript")
+            .expect("expected coffeescript runtime")
+            .language
+            .clone();
+        let query = Query::new(
+            &language,
+            include_str!("../grammars/coffeescript/queries/highlights.scm"),
+        )
+        .expect("expected coffeescript highlights query to compile");
+        let capture_names = query.capture_names();
+        let mut parser = Parser::new();
+        parser
+            .set_language(&language)
+            .expect("expected coffeescript parser to load");
+        let tree = parser
+            .parse(&source, None)
+            .expect("expected coffeescript tree");
+        let mut cursor = QueryCursor::new();
+        let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+        let mut captures = Vec::new();
+
+        while {
+            matches.advance();
+            matches.get().is_some()
+        } {
+            let query_match = matches
+                .get()
+                .expect("query match should exist immediately after advance");
+            for capture in query_match.captures {
+                captures.push((
+                    capture_names[capture.index as usize].to_owned(),
+                    source[capture.node.byte_range()].to_owned(),
+                ));
+            }
+        }
+
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "type" && text == "ThemePreview"),
+            "expected CoffeeScript query to capture the class name, got {captures:?}"
+        );
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "function.method" && text == "constructor"),
+            "expected CoffeeScript query to capture constructor, got {captures:?}"
+        );
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "function.method" && text == "render"),
+            "expected CoffeeScript query to capture render, got {captures:?}"
+        );
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "function.method" && text == "log"),
+            "expected CoffeeScript query to capture member-call fallback names, got {captures:?}"
+        );
+    }
+
+    #[test]
+    fn coffeescript_analysis_styles_class_and_method_names() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("coffeescript/theme.coffee");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let type_style = theme
+            .token_style_for("type", "ThemePreview")
+            .expect("expected type style");
+        let method_style = theme
+            .token_style_for("function.method", "constructor")
+            .expect("expected function method style");
+        let render_offset = source.find("render").expect("expected render token");
+        let log_offset = source.find("log").expect("expected log token");
+        let constructor_offset = source
+            .find("constructor")
+            .expect("expected constructor token");
+        let class_offset = source.find("ThemePreview").expect("expected class token");
+
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= class_offset
+                    && class_offset < span.end
+                    && span.style == Some(type_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected ThemePreview to use type styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= constructor_offset
+                    && constructor_offset < span.end
+                    && span.style == Some(method_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected constructor to use method styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= render_offset
+                    && render_offset < span.end
+                    && span.style == Some(method_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected render to use method styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= log_offset
+                    && log_offset < span.end
+                    && span.style == Some(method_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected log to use method styling, got {:?}",
+            analysis.spans
         );
     }
 

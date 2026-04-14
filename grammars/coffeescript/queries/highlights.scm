@@ -19,6 +19,10 @@
 (method_definition
   (identifier) @function.method)
 
+(method_definition
+  (ERROR
+    (identifier) @function.method))
+
 (class_property_method
   (identifier) @function.method)
 
@@ -50,6 +54,10 @@
     (member_expression
       (expression) @variable.other
       (identifier) @function.method)))
+
+(member_expression
+  (expression (identifier) @variable.other)
+  (identifier) @function.method)
 
 ;; Classes and properties
 (class_definition
@@ -113,6 +121,3 @@
 "await" @keyword.operator
 "async" @keyword.operator
 "yield" @keyword.operator
-
-;; Fallback variable highlight
-(identifier) @variable
