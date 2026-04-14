@@ -218,6 +218,7 @@ enum OutputMode {
     DebugAnalysis,
     DebugSemantics,
     DebugVisual,
+    DebugLayout,
     DebugRenderOps,
     DebugTerminal,
     Version,
@@ -314,6 +315,8 @@ struct CliArgs {
     debug_shell_semantics: bool,
     #[arg(long = "debug-visual", group = "mode")]
     debug_visual: bool,
+    #[arg(long = "debug-layout", group = "mode")]
+    debug_layout: bool,
     #[arg(long = "debug-render-ops", group = "mode")]
     debug_render_ops: bool,
     #[arg(long = "debug-terminal", group = "mode")]
@@ -533,6 +536,8 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         OutputMode::DebugSemantics
     } else if cli.debug_visual {
         OutputMode::DebugVisual
+    } else if cli.debug_layout {
+        OutputMode::DebugLayout
     } else if cli.debug_render_ops {
         OutputMode::DebugRenderOps
     } else if cli.debug_terminal {
@@ -587,6 +592,13 @@ fn render_output(
             source,
             kat::debug_visual_json,
             kat::debug_named_language_visual_json,
+        ),
+        OutputMode::DebugLayout => render_debug_json(
+            language,
+            source_path,
+            source,
+            kat::debug_layout_json,
+            kat::debug_named_language_layout_json,
         ),
         OutputMode::DebugRenderOps => render_debug_json(
             language,
@@ -1091,6 +1103,24 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: Some("markdown".to_owned()),
+                paths: vec![PathBuf::from("notes.md")],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_debug_layout_flag() {
+        let options =
+            parse_cli_args([OsString::from("--debug-layout"), OsString::from("notes.md")])
+                .expect("failed to parse debug layout flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::DebugLayout,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );

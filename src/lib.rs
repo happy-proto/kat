@@ -1,11 +1,13 @@
 mod analysis;
 mod debug_progress;
+mod debug_runtime_log;
 mod display_geometry;
 mod document_kind;
 mod grammar_registry;
 mod host_injections;
 mod language_aliases;
 mod language_runtime;
+mod layout;
 mod render_ops;
 mod semantic_overlays;
 mod sql_dialect;
@@ -41,6 +43,7 @@ use crate::host_injections::{
 };
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
+use crate::layout::LayoutDocument;
 use crate::render_ops::RenderPlan;
 use crate::semantic_overlays::{
     debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
@@ -387,13 +390,45 @@ fn visual_named_language_with_theme(
     Ok(VisualDocument::from_analysis(&analysis))
 }
 
+fn layout_with_theme(
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+    terminal_width: Option<usize>,
+) -> Result<LayoutDocument> {
+    let visual = visual_with_theme(source_path, source, theme)?;
+    Ok(LayoutDocument::from_visual(
+        source,
+        visual.spans(),
+        visual.regions(),
+        *theme,
+        terminal_width,
+    ))
+}
+
+fn layout_named_language_with_theme(
+    language_name: &str,
+    source: &str,
+    theme: &Theme,
+    terminal_width: Option<usize>,
+) -> Result<LayoutDocument> {
+    let visual = visual_named_language_with_theme(language_name, source, theme)?;
+    Ok(LayoutDocument::from_visual(
+        source,
+        visual.spans(),
+        visual.regions(),
+        *theme,
+        terminal_width,
+    ))
+}
+
 fn render_plan_with_theme(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
 ) -> Result<RenderPlan> {
-    let visual = visual_with_theme(source_path, source, theme)?;
-    Ok(RenderPlan::compile(source, &visual, *theme))
+    let layout = layout_with_theme(source_path, source, theme, None)?;
+    Ok(RenderPlan::compile(&layout, *theme))
 }
 
 fn render_plan_named_language_with_theme(
@@ -401,8 +436,8 @@ fn render_plan_named_language_with_theme(
     source: &str,
     theme: &Theme,
 ) -> Result<RenderPlan> {
-    let visual = visual_named_language_with_theme(language_name, source, theme)?;
-    Ok(RenderPlan::compile(source, &visual, *theme))
+    let layout = layout_named_language_with_theme(language_name, source, theme, None)?;
+    Ok(RenderPlan::compile(&layout, *theme))
 }
 
 fn render_with_theme_and_timing(
@@ -418,10 +453,15 @@ fn render_with_theme_and_timing(
         source.to_owned()
     } else {
         let visual = VisualDocument::from_analysis(&analysis);
+        let layout = LayoutDocument::from_visual(
+            source,
+            visual.spans(),
+            visual.regions(),
+            *theme,
+            terminal_width,
+        );
         let render_started_at = Instant::now();
-        let output =
-            RenderPlan::compile_with_terminal_width(source, &visual, *theme, terminal_width)
-                .encode(*theme);
+        let output = RenderPlan::compile(&layout, *theme).encode(*theme);
         timings.record_render_styled_spans(render_started_at);
         output
     };
@@ -447,6 +487,16 @@ pub fn debug_visual_json(source_path: Option<&Path>, source: &str) -> Result<Str
 pub fn debug_named_language_visual_json(language_name: &str, source: &str) -> Result<String> {
     let visual = visual_named_language_with_theme(language_name, source, &debug_theme())?;
     to_pretty_json(&visual.snapshot())
+}
+
+pub fn debug_layout_json(source_path: Option<&Path>, source: &str) -> Result<String> {
+    let layout = layout_with_theme(source_path, source, &debug_theme(), None)?;
+    to_pretty_json(&layout.snapshot())
+}
+
+pub fn debug_named_language_layout_json(language_name: &str, source: &str) -> Result<String> {
+    let layout = layout_named_language_with_theme(language_name, source, &debug_theme(), None)?;
+    to_pretty_json(&layout.snapshot())
 }
 
 pub fn debug_render_ops_json(source_path: Option<&Path>, source: &str) -> Result<String> {
@@ -1014,16 +1064,6 @@ pub(crate) struct VisualRegion {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct RegionSegment {
-    pub(crate) line_start: usize,
-    pub(crate) left: usize,
-    pub(crate) text_end: usize,
-    pub(crate) right: usize,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct FlatRegionSegment {
-    pub(crate) visual_kind: InjectionVisualKind,
-    pub(crate) visual_level: usize,
     pub(crate) line_start: usize,
     pub(crate) left: usize,
     pub(crate) text_end: usize,
@@ -3604,40 +3644,13 @@ fn render_styled_spans(
             regions.len(),
         ),
     );
-    let visual = VisualDocument::from_parts(theme.color_mode(), spans.to_vec(), regions.to_vec());
-    let rendered = RenderPlan::compile(source, &visual, *theme).encode(*theme);
+    let layout = LayoutDocument::from_visual(source, spans, regions, *theme, None);
+    let rendered = RenderPlan::compile(&layout, *theme).encode(*theme);
     progress_log(
         "render",
         format!("done lines={} output_bytes={}", total_lines, rendered.len()),
     );
     rendered
-}
-
-pub(crate) fn flatten_region_segments(regions: &[VisualRegion]) -> Vec<FlatRegionSegment> {
-    let mut flat_segments = Vec::new();
-
-    for region in regions {
-        for segment in &region.segments {
-            flat_segments.push(FlatRegionSegment {
-                visual_kind: region.visual_kind,
-                visual_level: region.visual_level,
-                line_start: segment.line_start,
-                left: segment.left,
-                text_end: segment.text_end,
-                right: segment.right,
-            });
-        }
-    }
-
-    flat_segments.sort_by_key(|segment| {
-        (
-            segment.line_start,
-            segment.left,
-            segment.right,
-            segment.visual_level,
-        )
-    });
-    flat_segments
 }
 
 pub(crate) fn style_covering_span_from(
@@ -3665,15 +3678,17 @@ mod tests {
     use super::{
         InjectionVisualKind, NestedRegion, RegionSegment, StyledSpan, SupportedLanguage,
         analyze_with_theme, collect_top_level_injection_regions, debug_analysis_json,
-        debug_render_ops_json, debug_semantics, debug_terminal_json, debug_visual_json,
-        detect_document_kind, detect_language, highlight_named_language, overlay_nested_region,
-        overlay_style_spans, plain_document_kind, render_plan_with_theme, render_with_theme,
+        debug_layout_json, debug_render_ops_json, debug_semantics, debug_terminal_json,
+        debug_visual_json, detect_document_kind, detect_language, highlight_named_language,
+        overlay_nested_region, overlay_style_spans, plain_document_kind, render_plan_with_theme,
+        render_with_theme,
     };
     use crate::{
         analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
         display_geometry::{display_width, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
         language_runtime::runtime,
+        layout::{LayoutRowSnapshot, LayoutSnapshot},
         render_ops::{RenderOpSnapshot, RenderPlanSnapshot},
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
@@ -9206,6 +9221,17 @@ priority: 7
             .snapshot(*theme)
     }
 
+    fn layout_snapshot_for_path(
+        path: &Path,
+        source: &str,
+        theme: &Theme,
+        terminal_width: usize,
+    ) -> LayoutSnapshot {
+        super::layout_with_theme(Some(path), source, theme, Some(terminal_width))
+            .unwrap_or_else(|error| panic!("failed to build layout {}: {error}", path.display()))
+            .snapshot()
+    }
+
     fn render_with_theme_at_width(
         path: &Path,
         source: &str,
@@ -9331,6 +9357,20 @@ priority: 7
             }
         }
         text
+    }
+
+    fn layout_row_containing<'a>(
+        rows: &'a [LayoutRowSnapshot],
+        needle: &str,
+    ) -> &'a LayoutRowSnapshot {
+        rows.iter()
+            .find(|row| row.text.contains(needle))
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected layout rows to contain text fragment {needle:?}, got rows {:?}",
+                    rows.iter().map(|row| row.text.as_str()).collect::<Vec<_>>()
+                )
+            })
     }
 
     fn wrapped_screen_lines(text: &str, width: usize) -> Vec<String> {
@@ -9793,6 +9833,110 @@ priority: 7
         let value: Value = serde_json::from_str(&json).expect("visual json should parse");
 
         assert!(value["regions"].is_array());
+    }
+
+    #[test]
+    fn debug_layout_json_reports_rows_array() {
+        let source = "install:\n    cargo install --path .\n";
+        let json = debug_layout_json(Some(Path::new("Justfile")), source)
+            .expect("layout debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("layout json should parse");
+
+        assert!(value["rows"].is_array());
+    }
+
+    #[test]
+    fn just_scope_block_layout_keeps_wrapped_row_left_edges_without_fake_blank_rows() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let path = PathBuf::from("testdata/showcase/just/recipe-block.just");
+        let source = read_file(&path);
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 80);
+        let first = layout_row_containing(&layout.rows, "@cd mdsre");
+        let second = layout_row_containing(&layout.rows, "uv run mdsre mongo query");
+        let continuation = layout_row_containing(&layout.rows, "ws.forEach(r =>");
+
+        assert_eq!(
+            first
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or_default(),
+            4,
+            "expected the first recipe row to preserve its shared recipe indent"
+        );
+        assert_eq!(
+            second
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or_default(),
+            4,
+            "expected the first wrapped row of the second recipe command to keep the recipe indent"
+        );
+        assert_eq!(
+            continuation
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or(usize::MAX),
+            0,
+            "expected wrapped recipe rows to start tinting from the visible screen column"
+        );
+
+        let first_index = layout
+            .rows
+            .iter()
+            .position(|row| row.text.contains("@cd mdsre"))
+            .expect("expected first recipe row");
+        let second_index = layout
+            .rows
+            .iter()
+            .position(|row| row.text.contains("uv run mdsre mongo query"))
+            .expect("expected second recipe row");
+
+        assert_eq!(
+            second_index,
+            first_index + 1,
+            "expected no fake blank layout rows between recipe command rows: {:?}",
+            layout
+                .rows
+                .iter()
+                .map(|row| (&row.text, &row.background_runs))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn just_scope_block_layout_tracks_cjk_wrapped_width_in_display_cells() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let source = "demo:\n    printf '短描述短描述短描述短描述短描述'\n";
+        let layout =
+            super::layout_with_theme(Some(Path::new("Justfile")), source, &theme, Some(16))
+                .expect("expected layout to render for CJK recipe")
+                .snapshot();
+        let first = layout_row_containing(&layout.rows, "    printf '短");
+        let continuation = layout_row_containing(&layout.rows, "描述短描述");
+
+        assert_eq!(
+            first
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or_default(),
+            4,
+            "expected the first CJK recipe row to preserve the recipe indent"
+        );
+        assert_eq!(
+            continuation
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or(usize::MAX),
+            0,
+            "expected wrapped CJK continuation rows to be measured in display cells"
+        );
     }
 
     #[test]
