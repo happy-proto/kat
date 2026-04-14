@@ -60,7 +60,6 @@ impl Default for DisplayProfile {
     }
 }
 
-#[cfg(test)]
 pub(crate) fn display_width(text: &str) -> DisplayColumn {
     DisplayProfile::default().display_width(text)
 }

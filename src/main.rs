@@ -15,7 +15,7 @@ use clap_complete::engine::{ArgValueCompleter, CompletionCandidate};
 use clap_complete::env::{Bash, Elvish, EnvCompleter, Fish, Powershell, Zsh};
 use miette::{Report, miette};
 use shadow_rs::shadow;
-use terminal_size::{Height, terminal_size};
+use terminal_size::{Height, Width, terminal_size};
 
 const DEFAULT_TERMINAL_ROWS: usize = 24;
 
@@ -630,7 +630,9 @@ fn render_output_with_timing(
     timings: Option<&mut DebugTimingStats>,
 ) -> Result<String> {
     if matches!(options.mode, OutputMode::Render) {
-        let render_output = kat::render_with_timing(source_path, source)?;
+        let terminal_width = io::stdout().is_terminal().then(terminal_columns).flatten();
+        let render_output =
+            kat::render_with_timing_and_terminal_width(source_path, source, terminal_width)?;
         if let Some(timings) = timings {
             timings.render_pipeline.detect_document_kind +=
                 render_output.timings.detect_document_kind;
@@ -897,6 +899,17 @@ fn terminal_rows() -> Option<usize> {
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
         .filter(|rows| *rows > 0)
+}
+
+fn terminal_columns() -> Option<usize> {
+    if let Some((Width(columns), _)) = terminal_size() {
+        return Some(usize::from(columns).max(1));
+    }
+
+    env::var("COLUMNS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|columns| *columns > 0)
 }
 
 fn count_output_lines(output: &str) -> usize {

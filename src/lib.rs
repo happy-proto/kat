@@ -218,8 +218,16 @@ pub struct RenderOutput {
 }
 
 pub fn render_with_timing(source_path: Option<&Path>, source: &str) -> Result<RenderOutput> {
+    render_with_timing_and_terminal_width(source_path, source, None)
+}
+
+pub fn render_with_timing_and_terminal_width(
+    source_path: Option<&Path>,
+    source: &str,
+    terminal_width: Option<usize>,
+) -> Result<RenderOutput> {
     let theme = detected_theme();
-    render_with_theme_and_timing(source_path, source, &theme)
+    render_with_theme_and_timing(source_path, source, &theme, terminal_width)
 }
 
 pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
@@ -342,7 +350,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
 
 #[cfg_attr(not(test), allow(dead_code))]
 fn render_with_theme(source_path: Option<&Path>, source: &str, theme: &Theme) -> Result<String> {
-    Ok(render_with_theme_and_timing(source_path, source, theme)?.output)
+    Ok(render_with_theme_and_timing(source_path, source, theme, None)?.output)
 }
 
 fn analyze_with_theme(
@@ -401,6 +409,7 @@ fn render_with_theme_and_timing(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
+    terminal_width: Option<usize>,
 ) -> Result<RenderOutput> {
     let mut timings = RenderTimings::default();
     let analysis = AnalysisDocument::detect(source_path, source, *theme, Some(&mut timings))?;
@@ -410,7 +419,9 @@ fn render_with_theme_and_timing(
     } else {
         let visual = VisualDocument::from_analysis(&analysis);
         let render_started_at = Instant::now();
-        let output = RenderPlan::compile(source, &visual, *theme).encode(*theme);
+        let output =
+            RenderPlan::compile_with_terminal_width(source, &visual, *theme, terminal_width)
+                .encode(*theme);
         timings.record_render_styled_spans(render_started_at);
         output
     };
@@ -9195,6 +9206,17 @@ priority: 7
             .snapshot(*theme)
     }
 
+    fn render_with_theme_at_width(
+        path: &Path,
+        source: &str,
+        theme: &Theme,
+        terminal_width: usize,
+    ) -> String {
+        super::render_with_theme_and_timing(Some(path), source, theme, Some(terminal_width))
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()))
+            .output
+    }
+
     fn nested_regions(regions: &[NestedRegionSnapshot]) -> Vec<&NestedRegionSnapshot> {
         let mut flattened = Vec::new();
         for region in regions {
@@ -9309,6 +9331,49 @@ priority: 7
             }
         }
         text
+    }
+
+    fn wrapped_screen_lines(text: &str, width: usize) -> Vec<String> {
+        assert!(width > 0, "expected positive wrap width");
+
+        let plain = strip_ansi(text);
+        let mut rows = Vec::new();
+        let mut current = String::new();
+        let mut current_width = 0usize;
+        let mut just_wrapped_at_boundary = false;
+
+        for grapheme in unicode_segmentation::UnicodeSegmentation::graphemes(plain.as_str(), true) {
+            if grapheme == "\n" {
+                if !current.is_empty() || !just_wrapped_at_boundary {
+                    rows.push(std::mem::take(&mut current));
+                }
+                current_width = 0;
+                just_wrapped_at_boundary = false;
+                continue;
+            }
+
+            let grapheme_width = unicode_width::UnicodeWidthStr::width(grapheme);
+            if current_width > 0 && current_width + grapheme_width > width {
+                rows.push(std::mem::take(&mut current));
+                current_width = 0;
+            }
+
+            current.push_str(grapheme);
+            current_width += grapheme_width;
+            just_wrapped_at_boundary = false;
+
+            if current_width == width {
+                rows.push(std::mem::take(&mut current));
+                current_width = 0;
+                just_wrapped_at_boundary = true;
+            }
+        }
+
+        if !current.is_empty() {
+            rows.push(current);
+        }
+
+        rows
     }
 
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
@@ -9745,6 +9810,30 @@ priority: 7
                 .iter()
                 .any(|region| region["visual_kind"] == Value::String("scope_block".into())),
             "expected visual debug json to preserve scope block regions: {json}"
+        );
+    }
+
+    #[test]
+    fn just_recipe_block_padding_does_not_create_blank_wrapped_rows() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let path = PathBuf::from("testdata/showcase/just/recipe-block.just");
+        let source = read_file(&path);
+        let rendered = render_with_theme_at_width(path.as_path(), &source, &theme, 80);
+        let wrapped = wrapped_screen_lines(&rendered, 80);
+        let first_index = wrapped
+            .iter()
+            .position(|line| line.contains("@cd mdsre"))
+            .expect("expected wrapped output to contain first recipe command");
+        let second_index = wrapped
+            .iter()
+            .position(|line| line.contains("uv run mdsre mongo query"))
+            .expect("expected wrapped output to contain second recipe command");
+
+        assert_eq!(
+            second_index,
+            first_index + 1,
+            "expected no blank wrapped rows between recipe command lines: {wrapped:?}"
         );
     }
 

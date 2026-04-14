@@ -3,7 +3,9 @@ use std::ops::Range;
 use serde::Serialize;
 
 use crate::{
-    FlatRegionSegment, StyledSpan, flatten_region_segments, style_covering_span_from,
+    FlatRegionSegment, StyledSpan,
+    display_geometry::display_width,
+    flatten_region_segments, style_covering_span_from,
     terminal::escape_control_sequences,
     theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
     visual::VisualDocument,
@@ -16,6 +18,15 @@ pub(crate) struct RenderPlan {
 
 impl RenderPlan {
     pub(crate) fn compile(source: &str, visual: &VisualDocument, theme: Theme) -> Self {
+        Self::compile_with_terminal_width(source, visual, theme, None)
+    }
+
+    pub(crate) fn compile_with_terminal_width(
+        source: &str,
+        visual: &VisualDocument,
+        theme: Theme,
+        terminal_width: Option<usize>,
+    ) -> Self {
         let mut builder = RenderPlanBuilder::new(theme);
         let mut line_start = 0;
         let flat_segments = flatten_region_segments(visual.regions());
@@ -64,8 +75,11 @@ impl RenderPlan {
             );
             compile_line_padding(
                 &mut builder,
+                source,
+                line_start,
                 line_end,
                 &flat_segments[line_segment_start..segment_index],
+                terminal_width,
             );
             builder.reset_style();
 
@@ -256,8 +270,11 @@ fn compile_line_text(
 
 fn compile_line_padding(
     builder: &mut RenderPlanBuilder,
+    source: &str,
+    line_start: usize,
     line_end: usize,
     line_segments: &[FlatRegionSegment],
+    terminal_width: Option<usize>,
 ) {
     let mut boundaries = vec![line_end];
     for segment in line_segments {
@@ -272,6 +289,20 @@ fn compile_line_padding(
         return;
     }
 
+    let mut remaining_columns = terminal_width.and_then(|width| {
+        if width == 0 {
+            return None;
+        }
+
+        let line_width = display_width(&source[line_start..line_end]).as_usize();
+        let used_on_last_screen_line = line_width % width;
+        if used_on_last_screen_line == 0 {
+            Some(0)
+        } else {
+            Some(width - used_on_last_screen_line)
+        }
+    });
+
     for window in boundaries.windows(2) {
         let start = window[0];
         let end = window[1];
@@ -281,7 +312,18 @@ fn compile_line_padding(
 
         let style = top_region_style(line_segments, start, end, builder.theme);
         if let Some(style) = style {
-            builder.push_text(&" ".repeat(end - start), Some(style));
+            let mut padding_len = end - start;
+            if let Some(remaining) = remaining_columns.as_mut() {
+                if *remaining == 0 {
+                    break;
+                }
+                padding_len = padding_len.min(*remaining);
+                *remaining -= padding_len;
+            }
+
+            if padding_len > 0 {
+                builder.push_text(&" ".repeat(padding_len), Some(style));
+            }
         }
     }
 }
