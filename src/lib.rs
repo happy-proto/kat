@@ -73,8 +73,10 @@ enum SupportedLanguage {
     Clojure,
     CmakeCache,
     Cmake,
+    CoffeeScript,
     CommandHelp,
     CpuInfo,
+    Crystal,
     Crontab,
     Css,
     Cpp,
@@ -244,9 +246,11 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "cfml" => SupportedLanguage::Cfml,
         "clojure" => SupportedLanguage::Clojure,
         "cmakecache" => SupportedLanguage::CmakeCache,
+        "coffeescript" => SupportedLanguage::CoffeeScript,
         "command_help" => SupportedLanguage::CommandHelp,
         "cpuinfo" => SupportedLanguage::CpuInfo,
         "crontab" => SupportedLanguage::Crontab,
+        "crystal" => SupportedLanguage::Crystal,
         "d" => SupportedLanguage::D,
         "debsources" => SupportedLanguage::Debsources,
         "elm" => SupportedLanguage::Elm,
@@ -860,9 +864,11 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "cfml" => DocumentKind::plain("cfml"),
         "clojure" => DocumentKind::plain("clojure"),
         "cmakecache" => DocumentKind::plain("cmakecache"),
+        "coffeescript" => DocumentKind::plain("coffeescript"),
         "command_help" => DocumentKind::plain("command_help"),
         "cpuinfo" => DocumentKind::plain("cpuinfo"),
         "crontab" => DocumentKind::plain("crontab"),
+        "crystal" => DocumentKind::plain("crystal"),
         "d" => DocumentKind::plain("d"),
         "debsources" => DocumentKind::plain("debsources"),
         "elm" => DocumentKind::plain("elm"),
@@ -1323,6 +1329,11 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
         return Some(DocumentKind::plain("cmakecache"));
     }
 
+    let coffeescript = grammar("coffeescript");
+    if matches_path(coffeescript, source_path) {
+        return Some(DocumentKind::plain("coffeescript"));
+    }
+
     let command_help = grammar("command_help");
     if matches_path(command_help, source_path) {
         return Some(DocumentKind::plain("command_help"));
@@ -1336,6 +1347,11 @@ fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<Docu
     let crontab = grammar("crontab");
     if matches_path(crontab, source_path) || is_cron_d_path(source_path) {
         return Some(DocumentKind::plain("crontab"));
+    }
+
+    let crystal = grammar("crystal");
+    if matches_path(crystal, source_path) {
+        return Some(DocumentKind::plain("crystal"));
     }
 
     let d = grammar("d");
@@ -3693,12 +3709,14 @@ mod tests {
         analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
         display_geometry::{display_width, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
+        language_runtime::runtime,
         render_ops::{RenderOpSnapshot, RenderPlanSnapshot},
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
     };
     use anstyle::RgbColor;
     use serde_json::Value;
+    use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
 
     struct FixtureCase {
         relative_path: &'static str,
@@ -3759,7 +3777,7 @@ mod tests {
         "todotxt",
     ];
     const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &[
-        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "d", "fortran", "fsharp",
+        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "crystal", "d", "fortran", "fsharp",
     ];
     const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
         "java",
@@ -3777,6 +3795,7 @@ mod tests {
     const FIXTURE_SCRIPTING_AND_WEB_PROGRAMMING_FAMILIES: &[&str] = &[
         "cfml",
         "clojure",
+        "coffeescript",
         "elm",
         "python",
         "php",
@@ -3981,6 +4000,16 @@ mod tests {
             expected_fragments: &["KAT_THEME", "STRING", "Dracula", "ON"],
         },
         FixtureCase {
+            relative_path: "coffeescript/theme.coffee",
+            expect_highlight: true,
+            expected_fragments: &["class", "ThemePreview", "render", "console.log"],
+        },
+        FixtureCase {
+            relative_path: "coffeescript/theme.coffee.erb",
+            expect_highlight: true,
+            expected_fragments: &["<%=", "ThemePreview", "->", "@theme.name"],
+        },
+        FixtureCase {
             relative_path: "command_help/kat.help",
             expect_highlight: true,
             expected_fragments: &["NAME", "SYNOPSIS", "kat render", "--theme"],
@@ -3994,6 +4023,11 @@ mod tests {
             relative_path: "crontab/root.tab",
             expect_highlight: true,
             expected_fragments: &["*/5", "PATH=/usr/local/bin", "kat render", "MAILTO"],
+        },
+        FixtureCase {
+            relative_path: "crystal/theme.cr",
+            expect_highlight: true,
+            expected_fragments: &["class", "ThemePreview", "def", "puts"],
         },
         FixtureCase {
             relative_path: "d/theme.d",
@@ -5661,6 +5695,17 @@ mod tests {
             Some(SupportedLanguage::Cfml)
         ));
         assert!(matches!(
+            detect_language(Some(Path::new("theme.coffee")), "class ThemePreview\n"),
+            Some(SupportedLanguage::CoffeeScript)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("Cakefile")),
+                "task 'build', -> console.log 'kat'\n",
+            ),
+            Some(SupportedLanguage::CoffeeScript)
+        ));
+        assert!(matches!(
             detect_language(
                 Some(Path::new("theme.clj")),
                 "(defn render-theme [] (println \"kat\"))\n",
@@ -5685,6 +5730,10 @@ mod tests {
         assert!(matches!(
             detect_language(Some(Path::new("root.tab")), "*/5 * * * * kat render\n"),
             Some(SupportedLanguage::Crontab)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.cr")), "class ThemePreview\nend\n"),
+            Some(SupportedLanguage::Crystal)
         ));
         assert!(matches!(
             detect_language(
@@ -6390,6 +6439,25 @@ mod tests {
                 "expected {relative_path} content to inject into html runtime"
             );
         }
+    }
+
+    #[test]
+    fn coffee_erb_templates_reuse_coffeescript_host_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("coffeescript/theme.coffee.erb");
+        let source = read_file(&path);
+        let analysis = analyze_with_theme(Some(path.as_path()), &source, &theme)
+            .expect("failed to analyze coffee.erb fixture")
+            .snapshot();
+
+        assert!(
+            nested_runtime_names(&analysis).contains(&"coffeescript"),
+            "expected coffee.erb content to inject into coffeescript runtime"
+        );
+        assert!(
+            nested_runtime_names(&analysis).contains(&"ruby"),
+            "expected coffee.erb code to inject into ruby runtime"
+        );
     }
 
     #[test]
@@ -9759,6 +9827,129 @@ priority: 7
         assert_eq!(
             value["capabilities"]["background_queries_enabled"],
             Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn coffeescript_query_captures_class_and_method_names() {
+        let path = fixture_path("coffeescript/theme.coffee");
+        let source = read_file(&path);
+        let language = runtime("coffeescript")
+            .expect("expected coffeescript runtime")
+            .language
+            .clone();
+        let query = Query::new(
+            &language,
+            include_str!("../grammars/coffeescript/queries/highlights.scm"),
+        )
+        .expect("expected coffeescript highlights query to compile");
+        let capture_names = query.capture_names();
+        let mut parser = Parser::new();
+        parser
+            .set_language(&language)
+            .expect("expected coffeescript parser to load");
+        let tree = parser
+            .parse(&source, None)
+            .expect("expected coffeescript tree");
+        let mut cursor = QueryCursor::new();
+        let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+        let mut captures = Vec::new();
+
+        while {
+            matches.advance();
+            matches.get().is_some()
+        } {
+            let query_match = matches
+                .get()
+                .expect("query match should exist immediately after advance");
+            for capture in query_match.captures {
+                captures.push((
+                    capture_names[capture.index as usize].to_owned(),
+                    source[capture.node.byte_range()].to_owned(),
+                ));
+            }
+        }
+
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "type" && text == "ThemePreview"),
+            "expected CoffeeScript query to capture the class name, got {captures:?}"
+        );
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "function.method" && text == "constructor"),
+            "expected CoffeeScript query to capture constructor, got {captures:?}"
+        );
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "function.method" && text == "render"),
+            "expected CoffeeScript query to capture render, got {captures:?}"
+        );
+        assert!(
+            captures
+                .iter()
+                .any(|(capture, text)| capture == "function.method" && text == "log"),
+            "expected CoffeeScript query to capture member-call fallback names, got {captures:?}"
+        );
+    }
+
+    #[test]
+    fn coffeescript_analysis_styles_class_and_method_names() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("coffeescript/theme.coffee");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let type_style = theme
+            .token_style_for("type", "ThemePreview")
+            .expect("expected type style");
+        let method_style = theme
+            .token_style_for("function.method", "constructor")
+            .expect("expected function method style");
+        let render_offset = source.find("render").expect("expected render token");
+        let log_offset = source.find("log").expect("expected log token");
+        let constructor_offset = source
+            .find("constructor")
+            .expect("expected constructor token");
+        let class_offset = source.find("ThemePreview").expect("expected class token");
+
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= class_offset
+                    && class_offset < span.end
+                    && span.style == Some(type_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected ThemePreview to use type styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= constructor_offset
+                    && constructor_offset < span.end
+                    && span.style == Some(method_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected constructor to use method styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= render_offset
+                    && render_offset < span.end
+                    && span.style == Some(method_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected render to use method styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= log_offset
+                    && log_offset < span.end
+                    && span.style == Some(method_style.snapshot(ColorMode::TrueColor))
+            }),
+            "expected log to use method styling, got {:?}",
+            analysis.spans
         );
     }
 
