@@ -1,12 +1,14 @@
-use std::ops::Range;
+use std::{ops::Range, path::Path};
 
 use anyhow::{Context, Result};
 use tree_sitter::{Node, QueryCursor, StreamingIterator, Tree};
 
 use crate::{
+    detect_document_kind,
     document_kind::{DocumentKind, DocumentProfile},
     language_aliases::normalize_language_name,
     language_runtime::{LanguageRuntime, supports_runtime},
+    plain_document_kind,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -34,10 +36,24 @@ pub(crate) enum InjectionVisualAnchor {
 }
 
 #[derive(Debug)]
+pub(crate) enum InjectionProjectionSegment {
+    Source(Range<usize>),
+    Synthetic(String),
+}
+
+#[derive(Debug)]
+pub(crate) enum InjectionProjection {
+    RawRanges,
+    TemplateSegments(Vec<InjectionProjectionSegment>),
+}
+
+#[derive(Debug)]
 pub(crate) struct InjectionCandidate {
+    pub(crate) document_kind: DocumentKind,
     pub(crate) ranges: Vec<Range<usize>>,
-    pub(crate) language_name: String,
+    pub(crate) projection: InjectionProjection,
     pub(crate) is_combined: bool,
+    pub(crate) strip_shared_indent: bool,
     pub(crate) merge_parent_styles: bool,
     pub(crate) decode: InjectionDecode,
     pub(crate) highlight_github_expressions: bool,
@@ -154,9 +170,11 @@ fn collect_query_injection_candidates(
 
         if injection_combined {
             candidates.push(InjectionCandidate {
+                document_kind: plain_document_kind(&injection_language),
                 ranges: normalize_ranges(content_ranges),
-                language_name: injection_language,
+                projection: InjectionProjection::RawRanges,
                 is_combined: true,
+                strip_shared_indent: true,
                 merge_parent_styles,
                 decode,
                 highlight_github_expressions: false,
@@ -170,9 +188,11 @@ fn collect_query_injection_candidates(
         for range in content_ranges {
             if range.start < range.end {
                 candidates.push(InjectionCandidate {
+                    document_kind: plain_document_kind(&injection_language),
                     ranges: vec![range],
-                    language_name: injection_language.clone(),
+                    projection: InjectionProjection::RawRanges,
                     is_combined: false,
+                    strip_shared_indent: false,
                     merge_parent_styles,
                     decode,
                     highlight_github_expressions: false,
@@ -219,6 +239,10 @@ fn collect_host_injection_candidates(
         ) => candidates.extend(collect_github_actions_yaml_injection_candidates(
             tree, source,
         )),
+        ("hcl", _) => candidates.extend(collect_hcl_template_injection_candidates(
+            tree.root_node(),
+            source,
+        )),
         ("javascript" | "typescript" | "tsx", _) => {
             candidates.extend(collect_ecmascript_comment_injection_candidates(
                 document_kind.runtime_name(),
@@ -245,9 +269,11 @@ fn collect_template_injection_candidates(
     let host_runtime = template_host_runtime(profile);
     if supports_runtime(host_runtime) && !content_ranges.is_empty() {
         candidates.push(InjectionCandidate {
+            document_kind: plain_document_kind(host_runtime),
             ranges: normalize_ranges(content_ranges),
-            language_name: host_runtime.to_owned(),
+            projection: InjectionProjection::RawRanges,
             is_combined: true,
+            strip_shared_indent: true,
             merge_parent_styles: false,
             decode: InjectionDecode::None,
             highlight_github_expressions: false,
@@ -262,9 +288,11 @@ fn collect_template_injection_candidates(
         && !code_ranges.is_empty()
     {
         candidates.push(InjectionCandidate {
+            document_kind: plain_document_kind(code_runtime),
             ranges: normalize_ranges(code_ranges),
-            language_name: code_runtime.to_owned(),
+            projection: InjectionProjection::RawRanges,
             is_combined: true,
+            strip_shared_indent: true,
             merge_parent_styles: false,
             decode: InjectionDecode::None,
             highlight_github_expressions: false,
@@ -363,9 +391,11 @@ fn collect_dockerfile_injection_candidates(
         for range in content_ranges {
             if range.start < range.end {
                 candidates.push(InjectionCandidate {
+                    document_kind: plain_document_kind(&current_shell),
                     ranges: vec![range],
-                    language_name: current_shell.clone(),
+                    projection: InjectionProjection::RawRanges,
                     is_combined: false,
+                    strip_shared_indent: false,
                     merge_parent_styles: false,
                     decode: InjectionDecode::None,
                     highlight_github_expressions: false,
@@ -378,6 +408,194 @@ fn collect_dockerfile_injection_candidates(
     }
 
     Ok(candidates)
+}
+
+fn collect_hcl_template_injection_candidates(root: Node, source: &str) -> Vec<InjectionCandidate> {
+    let mut candidates = Vec::new();
+    walk_hcl_template_nodes(root, source, &mut candidates);
+    candidates
+}
+
+fn walk_hcl_template_nodes(node: Node, source: &str, candidates: &mut Vec<InjectionCandidate>) {
+    if node.kind() == "block" {
+        collect_hcl_template_block_candidate(node, source, candidates);
+    }
+
+    for child in named_children(node) {
+        walk_hcl_template_nodes(child, source, candidates);
+    }
+}
+
+fn collect_hcl_template_block_candidate(
+    node: Node,
+    source: &str,
+    candidates: &mut Vec<InjectionCandidate>,
+) {
+    if !hcl_block_is_named(node, source, "template") {
+        return;
+    }
+
+    let Some(body) = named_children(node).find(|child| child.kind() == "body") else {
+        return;
+    };
+    let Some(destination) = hcl_template_destination(body, source) else {
+        return;
+    };
+    let Some(document_kind) = detect_document_kind(Some(Path::new(destination)), "") else {
+        return;
+    };
+    if !supports_runtime(document_kind.runtime_name()) {
+        return;
+    }
+
+    let Some(template_value) = hcl_block_attribute_value(body, source, "data") else {
+        return;
+    };
+    let Some(candidate) =
+        build_hcl_template_projection_candidate(template_value, document_kind, source)
+    else {
+        return;
+    };
+    candidates.push(candidate);
+}
+
+fn build_hcl_template_projection_candidate(
+    value: Node,
+    document_kind: DocumentKind,
+    source: &str,
+) -> Option<InjectionCandidate> {
+    let template_node = hcl_template_node(value)?;
+    let placeholder = hcl_template_inline_placeholder(document_kind.runtime_name());
+    let mut covered_ranges = Vec::new();
+    let mut projection_segments = Vec::new();
+    append_hcl_template_projection_segments(
+        template_node,
+        source,
+        placeholder,
+        &mut covered_ranges,
+        &mut projection_segments,
+    );
+    let covered_ranges = normalize_ranges(covered_ranges);
+    let extent = candidate_extent(&covered_ranges);
+    if extent.start >= extent.end || projection_segments.is_empty() {
+        return None;
+    }
+
+    Some(InjectionCandidate {
+        document_kind,
+        ranges: vec![extent],
+        projection: InjectionProjection::TemplateSegments(projection_segments),
+        is_combined: true,
+        strip_shared_indent: true,
+        merge_parent_styles: false,
+        decode: InjectionDecode::None,
+        highlight_github_expressions: false,
+        visual_kind: Some(InjectionVisualKind::RectBlock),
+        visual_level_bump: Some(1),
+        visual_anchor: Some(InjectionVisualAnchor::Content),
+    })
+}
+
+fn append_hcl_template_projection_segments(
+    node: Node,
+    source: &str,
+    inline_placeholder: &str,
+    covered_ranges: &mut Vec<Range<usize>>,
+    projection_segments: &mut Vec<InjectionProjectionSegment>,
+) {
+    match node.kind() {
+        "template_literal" => {
+            covered_ranges.push(node.byte_range());
+            projection_segments.push(InjectionProjectionSegment::Source(node.byte_range()));
+        }
+        "template_interpolation" => {
+            covered_ranges.push(node.byte_range());
+            projection_segments.push(InjectionProjectionSegment::Synthetic(
+                inline_placeholder.to_owned(),
+            ));
+        }
+        "template_if_intro"
+        | "template_else_intro"
+        | "template_if_end"
+        | "template_for_start"
+        | "template_for_end" => {
+            covered_ranges.push(node.byte_range());
+            if !hcl_template_directive_is_standalone_line(source, node.byte_range()) {
+                projection_segments.push(InjectionProjectionSegment::Synthetic(
+                    inline_placeholder.to_owned(),
+                ));
+            }
+        }
+        "heredoc_template" | "quoted_template" | "template_expr" | "template_if"
+        | "template_for" | "template_directive" => {
+            for child in named_children(node) {
+                append_hcl_template_projection_segments(
+                    child,
+                    source,
+                    inline_placeholder,
+                    covered_ranges,
+                    projection_segments,
+                );
+            }
+        }
+        _ => {}
+    }
+}
+
+fn hcl_block_is_named(node: Node, source: &str, expected: &str) -> bool {
+    named_children(node).next().is_some_and(|child| {
+        child.kind() == "identifier" && source[child.byte_range()] == *expected
+    })
+}
+
+fn hcl_template_destination<'a>(body: Node, source: &'a str) -> Option<&'a str> {
+    let value = hcl_block_attribute_value(body, source, "destination")?;
+    let text = source[value.byte_range()].trim();
+    let text = text.strip_prefix('"')?.strip_suffix('"')?;
+    (!text.contains("${") && !text.contains("%{")).then_some(text)
+}
+
+fn hcl_block_attribute_value<'a>(body: Node<'a>, source: &str, key: &str) -> Option<Node<'a>> {
+    named_children(body).find_map(|child| {
+        if child.kind() != "attribute" {
+            return None;
+        }
+
+        let mut children = named_children(child);
+        let name = children.next()?;
+        let value = children.next()?;
+        (name.kind() == "identifier" && source[name.byte_range()] == *key).then_some(value)
+    })
+}
+
+fn hcl_template_node(node: Node) -> Option<Node> {
+    match node.kind() {
+        "template_expr" | "heredoc_template" | "quoted_template" => Some(node),
+        _ => named_children(node).find_map(hcl_template_node),
+    }
+}
+
+fn hcl_template_directive_is_standalone_line(source: &str, range: Range<usize>) -> bool {
+    let line_start = source[..range.start]
+        .rfind('\n')
+        .map(|index| index + 1)
+        .unwrap_or(0);
+    let line_end = source[range.end..]
+        .find('\n')
+        .map(|offset| range.end + offset)
+        .unwrap_or(source.len());
+    source[line_start..range.start]
+        .chars()
+        .all(|ch| matches!(ch, ' ' | '\t'))
+        && source[range.end..line_end].chars().all(char::is_whitespace)
+}
+
+fn hcl_template_inline_placeholder(runtime_name: &str) -> &'static str {
+    match runtime_name {
+        "json" | "toml" => "0",
+        "yaml" | "ini" | "dotenv" | "hcl" => "kat_template_value",
+        _ => "KAT_TEMPLATE_VALUE",
+    }
 }
 
 fn collect_github_actions_yaml_injection_candidates(
@@ -542,9 +760,11 @@ fn build_host_injection_candidate(
     decode: InjectionDecode,
 ) -> InjectionCandidate {
     InjectionCandidate {
+        document_kind: plain_document_kind(language_name),
         ranges,
-        language_name: language_name.to_owned(),
+        projection: InjectionProjection::RawRanges,
         is_combined: false,
+        strip_shared_indent: false,
         merge_parent_styles: false,
         decode,
         highlight_github_expressions: false,
@@ -627,9 +847,11 @@ fn collect_github_actions_yaml_mapping_candidates(
         if supports_runtime(&language_name) {
             for range in run_ranges {
                 candidates.push(InjectionCandidate {
+                    document_kind: plain_document_kind(&language_name),
                     ranges: vec![range],
-                    language_name: language_name.clone(),
+                    projection: InjectionProjection::RawRanges,
                     is_combined: true,
+                    strip_shared_indent: true,
                     merge_parent_styles: false,
                     decode: InjectionDecode::None,
                     highlight_github_expressions: true,
@@ -721,6 +943,12 @@ fn normalize_ranges(mut ranges: Vec<Range<usize>>) -> Vec<Range<usize>> {
     ranges.retain(|range| range.start < range.end);
     ranges.sort_by(|left, right| left.start.cmp(&right.start).then(left.end.cmp(&right.end)));
     ranges
+}
+
+fn candidate_extent(ranges: &[Range<usize>]) -> Range<usize> {
+    let start = ranges.first().map_or(0, |range| range.start);
+    let end = ranges.last().map_or(start, |range| range.end);
+    start..end
 }
 
 impl InjectionDecode {

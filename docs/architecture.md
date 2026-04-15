@@ -35,6 +35,7 @@
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
+- 对“模板语法和目标文件语法需要同时成立”的宿主，`analysis` 层允许 host resolver 生成 projection-based injection：宿主模板先保留自己对原文的高亮，再把内容区投影成一份带 source map 的 virtual source 交给目标 runtime。这样像 Nomad `template.destination -> data` 这类场景就可以同时保留 HCL template directive / interpolation 高亮，并把 `data` 主体继续分发到 `python`、`bash`、`hcl` 等目标 runtime，而不是在普通 query 注入和宿主语法之间二选一。
 - 对 `ERB` / `EEx` / `JSP` / `ASP` / `ADP` 这类共享 `<% ... %>` AST 的模板宿主，`document kind profile` 现在还承担“内容区最终应进入哪个宿主 runtime”的职责：同一个模板 runtime 可以按 `html` / `xml` / `css` / `javascript` 这类后缀把 `content` 节点继续分发到共享宿主 runtime，而不是为每种宿主复制一套 parser/query。
 - 对 shell、Regex、SQL、JSDoc 以及 GitHub Actions expression 这类仅靠 highlights query 难以长期稳定表达局部结构语义的语言 / profile，允许在基础 capture 之后叠加轻量 semantic overlay。
 - 共享 runtime 只承接真正共享 AST / 语义模型的语言；像 Protocol Buffers schema (`.proto`) 与 Protocol Buffers text format (`.textproto` / `.pbtxt`) 这种虽然同属一个生态、但语法角色不同的文件类型，应拆成独立 runtime，而不是在同一 grammar 上叠加 profile 特判。
