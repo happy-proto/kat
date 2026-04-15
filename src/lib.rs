@@ -6680,6 +6680,71 @@ mod tests {
     }
 
     #[test]
+    fn nomad_template_python_projection_uses_rectangular_block_tint() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("hcl/nomad-template-python.nomad");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let region = find_nested_region(&analysis, "python", "def render_message():", &source);
+        let segments = [
+            segment_for_line(region, &source, "import os"),
+            segment_for_line(region, &source, "def render_message():"),
+            segment_for_line(region, &source, "print(\"hello ${NOMAD_ALLOC_ID}\")"),
+            segment_for_line(region, &source, "%{ if meta.env == \"prod\" }"),
+            segment_for_line(region, &source, "return os.environ.get(\"MODE\", \"prod\")"),
+            segment_for_line(region, &source, "%{ else }"),
+            segment_for_line(region, &source, "return \"dev\""),
+            segment_for_line(region, &source, "%{ endif }"),
+        ];
+        let widths: Vec<_> = segments
+            .iter()
+            .map(|segment| segment_rendered_right_edge(&source, segment))
+            .collect();
+        let expected_width = widths[0];
+
+        assert_eq!(region.visual_kind, "rect_block");
+        assert!(
+            widths.iter().all(|width| *width == expected_width),
+            "expected Nomad template projection lines to share a rectangular right edge, got widths {widths:?}"
+        );
+
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let import_row = layout_row_containing(&layout.rows, "import os");
+        let blank_row = layout
+            .rows
+            .iter()
+            .find(|row| row.source_line_start == line_start_for_line_number(&source, 7))
+            .expect("expected layout to retain the blank line inside the Nomad template body");
+        let endif_row = layout_row_containing(&layout.rows, "%{ endif }");
+
+        assert_eq!(
+            import_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            Some((0, expected_width)),
+            "expected first projected Python line to receive a full-width block tint"
+        );
+        assert_eq!(
+            blank_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            Some((0, expected_width)),
+            "expected blank lines inside the projected template body to keep the same block tint"
+        );
+        assert_eq!(
+            endif_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            Some((0, expected_width)),
+            "expected HCL template directive lines inside the projection to keep the same block tint"
+        );
+    }
+
+    #[test]
     fn go_highlights_generics_methods_builtins_and_directives() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = fixture_path("go/rich.go");
