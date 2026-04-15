@@ -1,0 +1,4 @@
+Port 22
+PermitRootLogin no
+Match User deploy
+  ForceCommand /usr/bin/kat render

@@ -11,6 +11,8 @@ pub(crate) enum DocumentProfile {
     GitModules,
     TemplateHtml,
     TemplateXml,
+    TemplateYaml,
+    TemplateSql,
     TemplateCss,
     TemplateCoffeeScript,
     TemplateJavaScript,
@@ -26,6 +28,8 @@ impl DocumentProfile {
             Self::GitModules => "git_modules",
             Self::TemplateHtml => "template_html",
             Self::TemplateXml => "template_xml",
+            Self::TemplateYaml => "template_yaml",
+            Self::TemplateSql => "template_sql",
             Self::TemplateCss => "template_css",
             Self::TemplateCoffeeScript => "template_coffeescript",
             Self::TemplateJavaScript => "template_javascript",
@@ -140,6 +144,8 @@ fn template_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     Some(match host_segment.as_str() {
         "html" | "htm" | "shtml" | "xhtml" | "htc" => DocumentProfile::TemplateHtml,
         "xml" | "xsd" | "xslt" | "svg" | "rss" | "opml" | "rng" => DocumentProfile::TemplateXml,
+        "yaml" | "yml" => DocumentProfile::TemplateYaml,
+        "sql" => DocumentProfile::TemplateSql,
         "css" => DocumentProfile::TemplateCss,
         "coffee" => DocumentProfile::TemplateCoffeeScript,
         "js" | "mjs" | "cjs" | "jsx" | "es6" | "babel" | "pac" => {

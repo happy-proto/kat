@@ -1733,6 +1733,22 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "csv"
+library_name = "tree-sitter-csv"
+extensions = ["csv"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "float",
+  "number",
+  "punctuation.delimiter",
+  "string",
+]
+
+[[grammar]]
 name = "tsv"
 library_name = "tree-sitter-tsv"
 extensions = ["tsv"]
@@ -2181,6 +2197,29 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "stylus"
+library_name = "tree-sitter-stylus"
+extensions = ["styl", "stylus"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "selector.class",
+  "selector.id",
+  "string",
+  "tag",
+  "variable",
+]
+
+[[grammar]]
 name = "dot"
 library_name = "tree-sitter-dot"
 extensions = ["dot", "DOT", "gv"]
@@ -2612,7 +2651,7 @@ highlight_names = [
 [[grammar]]
 name = "jinja"
 library_name = "tree-sitter-jinja"
-extensions = ["j2", "jinja2", "jinja"]
+extensions = ["j2", "jinja2", "jinja", "sls"]
 filenames = []
 shebang_substrings = []
 extra_c_flags = []
@@ -2680,7 +2719,7 @@ highlight_names = [
 name = "erb"
 library_name = "tree-sitter-embedded-template"
 parser_source = "crate"
-extensions = ["erb"]
+extensions = ["erb", "erbsql"]
 filenames = ["rails", "rhtml"]
 shebang_substrings = []
 extra_c_flags = []
@@ -2924,7 +2963,7 @@ highlight_names = [
 name = "ssh_config"
 library_name = "tree-sitter-ssh-config"
 extensions = []
-filenames = ["ssh_config"]
+filenames = ["ssh_config", "sshd_config"]
 filename_prefixes = []
 shebang_substrings = []
 extra_c_flags = []
@@ -3123,6 +3162,41 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "strace"
+library_name = "tree-sitter-strace"
+extensions = []
+filenames = ["strace"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.numeric",
+  "error",
+  "function",
+  "label",
+  "string",
+]
+
+[[grammar]]
+name = "syslog"
+library_name = "tree-sitter-syslog"
+extensions = []
+filenames = ["syslog"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "label",
+  "number",
+  "operator",
+  "punctuation.delimiter",
+  "string",
+]
+
+[[grammar]]
 name = "vhdl"
 library_name = "tree-sitter-vhdl"
 parser_source = "crate"
@@ -3180,6 +3254,82 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "verilog"
+library_name = "tree-sitter-verilog"
+parser_source = "crate"
+extensions = ["v", "V"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constructor",
+  "function",
+  "function.builtin",
+  "function.call",
+  "keyword",
+  "keyword.conditional",
+  "keyword.conditional.ternary",
+  "keyword.directive",
+  "keyword.directive.define",
+  "keyword.function",
+  "keyword.import",
+  "keyword.modifier",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "label",
+  "module",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "spell",
+  "string",
+  "string.special.path",
+  "type",
+  "type.builtin",
+  "type.definition",
+  "variable",
+  "variable.builtin",
+  "variable.member",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "systemverilog"
+library_name = "tree-sitter-systemverilog"
+parser_source = "crate"
+extensions = ["sv", "svh", "vh"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "error",
+  "function",
+  "function.builtin",
+  "keyword",
+  "module",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.special",
+  "type",
+]
+
+[[grammar]]
 name = "vim"
 library_name = "tree-sitter-vim"
 parser_source = "crate"
@@ -3221,5 +3371,178 @@ highlight_names = [
   "type",
   "variable",
   "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "vimhelp"
+library_name = "tree-sitter-vimhelp"
+extensions = ["vimhelp"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment.error",
+  "comment.hint",
+  "comment.warning",
+  "keyword.directive",
+  "label",
+  "markup.heading.1",
+  "markup.heading.2",
+  "markup.heading.3",
+  "markup.heading.4",
+  "markup.heading.4.marker",
+  "markup.heading.5.marker",
+  "markup.link",
+  "markup.raw",
+  "markup.raw.block",
+  "string.special",
+  "string.special.url",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "sml"
+library_name = "tree-sitter-sml"
+extensions = ["sml", "cm", "sig"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "constructor",
+  "error",
+  "id",
+  "keyword",
+  "module",
+  "number",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "vid",
+]
+
+[[grammar]]
+name = "solidity"
+library_name = "tree-sitter-solidity"
+parser_source = "crate"
+extensions = ["sol"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "conditional",
+  "constant",
+  "constant.builtin",
+  "constructor",
+  "exception",
+  "field",
+  "function",
+  "function.builtin",
+  "function.method",
+  "include",
+  "keyword",
+  "keyword.function",
+  "keyword.operator",
+  "keyword.return",
+  "number",
+  "operator",
+  "parameter",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "repeat",
+  "string",
+  "tag",
+  "type",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "varlink"
+library_name = "tree-sitter-varlink"
+parser_source = "crate"
+extensions = ["varlink"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "entity.attribute-name",
+  "entity.enum-member",
+  "entity.error",
+  "entity.interface",
+  "entity.method",
+  "entity.type",
+  "keyword.error",
+  "keyword.interface",
+  "keyword.method",
+  "keyword.type",
+  "operator",
+  "punctuation",
+  "type.primitive",
+]
+
+[[grammar]]
+name = "vyper"
+library_name = "tree-sitter-vyper"
+extensions = ["vy"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute.builtin",
+  "comment",
+  "function",
+  "keyword",
+  "operator",
+  "property",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "type",
+  "variable",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "wgsl"
+library_name = "tree-sitter-wgsl"
+extensions = ["wgsl"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "function",
+  "function.call",
+  "keyword",
+  "keyword.conditional",
+  "keyword.function",
+  "keyword.modifier",
+  "keyword.repeat",
+  "keyword.return",
+  "keyword.type",
+  "number",
+  "number.float",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "spell",
+  "type",
+  "variable",
+  "variable.member",
   "variable.parameter",
 ]

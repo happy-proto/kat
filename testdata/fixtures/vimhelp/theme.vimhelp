@@ -1,0 +1,8 @@
+= Theme Preview =
+
+*theme-preview* Use `:KatRender` to render the active theme.
+>
+lua print("kat")
+<
+
+Note: Use |:help| for more details.
