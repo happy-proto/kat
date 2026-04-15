@@ -433,13 +433,22 @@ fn segment_rect_slices(
     };
 
     let left_column = display_column(source, segment.line_start, segment.left);
-    let right_column = display_column(source, segment.line_start, segment.right);
+    let right_column = display_column(source, segment.line_start, segment.text_end)
+        + segment.right_padding.as_usize();
     if right_column <= left_column {
         return Vec::new();
     }
+    let line_text_right = rows.iter().map(|row| row.end_column).max().unwrap_or(0);
 
     rows.iter()
-        .filter_map(|row| intersect_slice(*row, left_column, right_column))
+        .filter_map(|row| {
+            let row_right = if row.end_column == line_text_right {
+                right_column
+            } else {
+                right_column.min(row.end_column)
+            };
+            intersect_rect_slice(*row, left_column, row_right)
+        })
         .collect()
 }
 
@@ -450,6 +459,20 @@ fn intersect_slice(
 ) -> Option<BackgroundSlice> {
     let start = segment_left.max(row.start_column);
     let end = segment_right.min(row.end_column);
+    (start < end).then_some(BackgroundSlice {
+        row_index: row.row_index,
+        start_column: start - row.start_column,
+        end_column: end - row.start_column,
+    })
+}
+
+fn intersect_rect_slice(
+    row: RowRef,
+    segment_left: usize,
+    segment_right: usize,
+) -> Option<BackgroundSlice> {
+    let start = segment_left.max(row.start_column);
+    let end = segment_right.max(row.start_column);
     (start < end).then_some(BackgroundSlice {
         row_index: row.row_index,
         start_column: start - row.start_column,

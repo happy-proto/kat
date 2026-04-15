@@ -38,8 +38,9 @@ use crate::document_kind::{
 };
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
-    InjectionCandidate, InjectionDecode, InjectionVisualAnchor, InjectionVisualKind,
-    collect_injection_candidates, default_visual_level_bump,
+    InjectionCandidate, InjectionDecode, InjectionProjection, InjectionProjectionSegment,
+    InjectionVisualAnchor, InjectionVisualKind, collect_injection_candidates,
+    default_visual_level_bump,
 };
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
@@ -1067,7 +1068,7 @@ pub(crate) struct RegionSegment {
     pub(crate) line_start: usize,
     pub(crate) left: usize,
     pub(crate) text_end: usize,
-    pub(crate) right: usize,
+    pub(crate) right_padding: DisplayColumn,
 }
 
 pub(crate) fn highlight_named_language_render_data(
@@ -1285,7 +1286,10 @@ fn collect_styled_spans<'a>(
     Ok(spans)
 }
 
-fn detect_document_kind(source_path: Option<&Path>, source: &str) -> Option<DocumentKind> {
+pub(crate) fn detect_document_kind(
+    source_path: Option<&Path>,
+    source: &str,
+) -> Option<DocumentKind> {
     if is_tree_sitter_query_path(source_path) {
         return Some(DocumentKind::plain("query"));
     }
@@ -2449,17 +2453,11 @@ fn render_injection_candidates(
     let mut rendered = Vec::with_capacity(top_level.len());
 
     for candidate in top_level.drain(..) {
-        let normalized = candidate.language_name.as_str();
         let visual = resolve_injection_visual(source, &candidate);
         let visual_level = parent_visual_level.saturating_add(visual.level_bump);
-        let (virtual_source, source_map) = build_virtual_source(
-            source,
-            &candidate.ranges,
-            candidate.is_combined,
-            candidate.decode,
-        );
+        let (virtual_source, source_map) = build_candidate_virtual_source(source, &candidate);
         let child_render = render_virtual_injection_render_data(
-            normalized,
+            candidate.document_kind,
             &virtual_source,
             candidate.highlight_github_expressions,
             theme,
@@ -2650,7 +2648,7 @@ fn covered_line_ranges<'a>(
 }
 
 fn render_virtual_injection_render_data(
-    language_name: &str,
+    document_kind: DocumentKind,
     source: &str,
     highlight_github_expressions: bool,
     theme: &Theme,
@@ -2658,7 +2656,7 @@ fn render_virtual_injection_render_data(
     timings: Option<&mut RenderTimings>,
 ) -> Result<HighlightRenderData> {
     let mut render_data = highlight_named_language_render_data_with_depth(
-        plain_document_kind(language_name),
+        document_kind,
         None,
         source,
         theme,
@@ -2753,8 +2751,21 @@ fn merge_adjacent_combined_candidates(
         if let Some(last) = merged.last_mut()
             && last.is_combined
             && candidate.is_combined
-            && last.language_name == candidate.language_name
+            && last.document_kind == candidate.document_kind
             && last.merge_parent_styles == candidate.merge_parent_styles
+            && last.strip_shared_indent == candidate.strip_shared_indent
+            && last.decode == candidate.decode
+            && last.highlight_github_expressions == candidate.highlight_github_expressions
+            && last.visual_kind == candidate.visual_kind
+            && last.visual_level_bump == candidate.visual_level_bump
+            && last.visual_anchor == candidate.visual_anchor
+            && matches!(
+                (&last.projection, &candidate.projection),
+                (
+                    InjectionProjection::RawRanges,
+                    InjectionProjection::RawRanges
+                )
+            )
             && can_merge_combined_candidates(source, last, &candidate)
         {
             last.ranges.extend(candidate.ranges);
@@ -2853,6 +2864,126 @@ fn build_virtual_source(
     (virtual_source, source_map)
 }
 
+fn build_candidate_virtual_source(
+    source: &str,
+    candidate: &InjectionCandidate,
+) -> (String, Vec<Range<usize>>) {
+    match &candidate.projection {
+        InjectionProjection::RawRanges => build_virtual_source(
+            source,
+            &candidate.ranges,
+            candidate.strip_shared_indent,
+            candidate.decode,
+        ),
+        InjectionProjection::TemplateSegments(segments) => build_projected_virtual_source(
+            source,
+            &candidate.ranges,
+            segments,
+            candidate.strip_shared_indent,
+        ),
+    }
+}
+
+fn build_projected_virtual_source(
+    source: &str,
+    ranges: &[Range<usize>],
+    segments: &[InjectionProjectionSegment],
+    strip_shared_indent: bool,
+) -> (String, Vec<Range<usize>>) {
+    let shared_indent = if strip_shared_indent {
+        shared_leading_indent(source, ranges)
+    } else {
+        0
+    };
+    let mut virtual_source = String::new();
+    let mut source_map = Vec::new();
+    let mut at_line_start = true;
+    let mut trim_remaining = shared_indent;
+
+    for segment in segments {
+        match segment {
+            InjectionProjectionSegment::Source(range) => append_projected_source_range(
+                source,
+                range,
+                shared_indent,
+                &mut virtual_source,
+                &mut source_map,
+                &mut at_line_start,
+                &mut trim_remaining,
+            ),
+            InjectionProjectionSegment::Synthetic(text) => append_projected_synthetic_text(
+                text,
+                &mut virtual_source,
+                &mut source_map,
+                &mut at_line_start,
+                &mut trim_remaining,
+                shared_indent,
+            ),
+        }
+    }
+
+    (virtual_source, source_map)
+}
+
+fn append_projected_source_range(
+    source: &str,
+    range: &Range<usize>,
+    shared_indent: usize,
+    virtual_source: &mut String,
+    source_map: &mut Vec<Range<usize>>,
+    at_line_start: &mut bool,
+    trim_remaining: &mut usize,
+) {
+    let mut cursor = range.start;
+    while cursor < range.end {
+        let ch = source[cursor..]
+            .chars()
+            .next()
+            .expect("source range should stay on character boundary");
+        let next = cursor + ch.len_utf8();
+        if *at_line_start && *trim_remaining > 0 && matches!(ch, ' ' | '\t') {
+            *trim_remaining -= 1;
+            cursor = next;
+            continue;
+        }
+
+        append_raw_range(source, cursor..next, virtual_source, source_map);
+        cursor = next;
+        if ch == '\n' {
+            *at_line_start = true;
+            *trim_remaining = shared_indent;
+        } else {
+            *at_line_start = false;
+            *trim_remaining = 0;
+        }
+    }
+}
+
+fn append_projected_synthetic_text(
+    text: &str,
+    virtual_source: &mut String,
+    source_map: &mut Vec<Range<usize>>,
+    at_line_start: &mut bool,
+    trim_remaining: &mut usize,
+    shared_indent: usize,
+) {
+    virtual_source.push_str(text);
+    source_map.extend(std::iter::repeat_n(0..0, text.len()));
+
+    if let Some(last_newline) = text.rfind('\n') {
+        *at_line_start = true;
+        let trailing = &text[last_newline + 1..];
+        let consumed_indent = trailing
+            .chars()
+            .take_while(|ch| matches!(ch, ' ' | '\t'))
+            .count();
+        *trim_remaining = shared_indent.saturating_sub(consumed_indent);
+    } else if !text.is_empty() {
+        *at_line_start = false;
+        *trim_remaining = 0;
+    }
+}
+
 fn build_region_segments(
     source: &str,
     ranges: &[Range<usize>],
@@ -2898,10 +3029,7 @@ fn build_region_segments(
             let content_width =
                 display_width_from_column(left_column, &source[line.left..line.text_end]);
             RegionSegment {
-                right: line.text_end
-                    + region_right
-                        .as_usize()
-                        .saturating_sub((left_column + content_width).as_usize()),
+                right_padding: region_right - (left_column + content_width),
                 ..line
             }
         })
@@ -2941,7 +3069,7 @@ fn build_block_region_segments(
                 InjectionVisualAnchor::LineStart => line.line_start,
             },
             text_end: line.line_end,
-            right: line.line_end,
+            right_padding: DisplayColumn::new(0),
         })
         .collect()
 }
@@ -3010,7 +3138,7 @@ fn build_region_segment_for_line(
         line_start: line.line_start,
         left,
         text_end: line.line_end,
-        right: line.line_end,
+        right_padding: DisplayColumn::new(0),
     }
 }
 
@@ -3418,7 +3546,7 @@ fn map_virtual_regions_to_source(
                 line_start: line_start_offset(source, mapped_left),
                 left: mapped_left,
                 text_end: mapped_text_end,
-                right: mapped_text_end + segment.right.saturating_sub(segment.text_end),
+                right_padding: segment.right_padding,
             });
         }
         mapped.push(VisualRegion {
@@ -3500,7 +3628,7 @@ fn map_virtual_region_segments_to_source(
             line_start: line_start_offset(source, mapped_left),
             left: mapped_left,
             text_end: mapped_text_end,
-            right: mapped_text_end + segment.right.saturating_sub(segment.text_end),
+            right_padding: segment.right_padding,
         });
     }
 
@@ -6440,6 +6568,183 @@ mod tests {
     }
 
     #[test]
+    fn nomad_template_destination_routes_data_into_target_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("hcl/nomad-template-python.nomad");
+        let source = read_file(&path);
+        let analysis = analyze_with_theme(Some(path.as_path()), &source, &theme)
+            .expect("failed to analyze nomad python template fixture")
+            .snapshot();
+
+        assert!(
+            nested_runtime_names(&analysis).contains(&"python"),
+            "expected destination-driven nomad template content to inject into python runtime"
+        );
+    }
+
+    #[test]
+    fn nomad_template_keeps_hcl_template_syntax_while_highlighting_python_content() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("hcl/nomad-template-python.nomad");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let python_region =
+            find_nested_region(&analysis, "python", "def render_message():", &source);
+        let keyword_style = theme
+            .token_style_for("keyword", "def")
+            .expect("expected python keyword style")
+            .snapshot(ColorMode::TrueColor);
+        let return_style = theme
+            .token_style_for("keyword", "return")
+            .expect("expected python return style")
+            .snapshot(ColorMode::TrueColor);
+        let template_punctuation_style = theme
+            .token_style_for("punctuation.special", "${")
+            .expect("expected hcl template punctuation style")
+            .snapshot(ColorMode::TrueColor);
+        let template_keyword_style = theme
+            .token_style_for("keyword.control.conditional", "if")
+            .expect("expected hcl template conditional style")
+            .snapshot(ColorMode::TrueColor);
+        let def_offset = source
+            .find("def render_message")
+            .expect("expected python def");
+        let return_offset = source
+            .find("return os.environ.get")
+            .expect("expected python return statement");
+        let interpolation_offset = source
+            .find("${NOMAD_ALLOC_ID}")
+            .expect("expected interpolation");
+        let if_offset = source
+            .find("%{ if")
+            .expect("expected template if directive")
+            + 3;
+
+        assert!(
+            region_covers_line(python_region, &source, "def render_message():"),
+            "expected python region to cover the function definition line"
+        );
+        assert!(
+            region_covers_line(python_region, &source, "print(\"hello ${NOMAD_ALLOC_ID}\")"),
+            "expected python region to keep covering lines that contain hcl interpolations"
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= def_offset
+                    && def_offset < span.end
+                    && span.style.as_ref() == Some(&keyword_style)
+            }),
+            "expected def to keep python keyword styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= return_offset
+                    && return_offset < span.end
+                    && span.style.as_ref() == Some(&return_style)
+            }),
+            "expected return after template directives to keep python keyword styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= interpolation_offset
+                    && interpolation_offset < span.end
+                    && span.style.as_ref() == Some(&template_punctuation_style)
+            }),
+            "expected ${{...}} to keep hcl template punctuation styling, got {:?}",
+            analysis.spans
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= if_offset
+                    && if_offset < span.end
+                    && span.style.as_ref() == Some(&template_keyword_style)
+            }),
+            "expected %{{ if ... }} to keep hcl conditional styling, got {:?}",
+            analysis.spans
+        );
+    }
+
+    #[test]
+    fn nomad_template_python_projection_renders_without_layout_panics() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("hcl/nomad-template-python.nomad");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .expect("expected nomad template projection fixture to render");
+
+        assert!(rendered.contains("render_message"));
+        assert!(rendered.contains("NOMAD_ALLOC_ID"));
+        assert!(rendered.contains("endif"));
+    }
+
+    #[test]
+    fn nomad_template_python_projection_uses_rectangular_block_tint() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("hcl/nomad-template-python.nomad");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let region = find_nested_region(&analysis, "python", "def render_message():", &source);
+        let segments = [
+            segment_for_line(region, &source, "import os"),
+            segment_for_line(region, &source, "def render_message():"),
+            segment_for_line(region, &source, "print(\"hello ${NOMAD_ALLOC_ID}\")"),
+            segment_for_line(region, &source, "%{ if meta.env == \"prod\" }"),
+            segment_for_line(region, &source, "return os.environ.get(\"MODE\", \"prod\")"),
+            segment_for_line(region, &source, "%{ else }"),
+            segment_for_line(region, &source, "return \"dev\""),
+            segment_for_line(region, &source, "%{ endif }"),
+        ];
+        let widths: Vec<_> = segments
+            .iter()
+            .map(|segment| segment_rendered_right_edge(&source, segment))
+            .collect();
+        let expected_width = widths[0];
+
+        assert_eq!(region.visual_kind, "rect_block");
+        assert!(
+            widths.iter().all(|width| *width == expected_width),
+            "expected Nomad template projection lines to share a rectangular right edge, got widths {widths:?}"
+        );
+
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let import_row = layout_row_containing(&layout.rows, "import os");
+        let blank_row = layout
+            .rows
+            .iter()
+            .find(|row| row.source_line_start == line_start_for_line_number(&source, 7))
+            .expect("expected layout to retain the blank line inside the Nomad template body");
+        let endif_row = layout_row_containing(&layout.rows, "%{ endif }");
+
+        assert_eq!(
+            import_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            Some((0, expected_width)),
+            "expected first projected Python line to receive a full-width block tint"
+        );
+        assert_eq!(
+            blank_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            Some((0, expected_width)),
+            "expected blank lines inside the projected template body to keep the same block tint"
+        );
+        assert_eq!(
+            endif_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            Some((0, expected_width)),
+            "expected HCL template directive lines inside the projection to keep the same block tint"
+        );
+    }
+
+    #[test]
     fn go_highlights_generics_methods_builtins_and_directives() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = fixture_path("go/rich.go");
@@ -9339,7 +9644,7 @@ priority: 7
     }
 
     fn segment_trailing_padding(segment: &RegionSegmentSnapshot) -> usize {
-        segment.right.saturating_sub(segment.text_end)
+        segment.right_padding
     }
 
     fn segment_rendered_right_edge(source: &str, segment: &RegionSegmentSnapshot) -> usize {
