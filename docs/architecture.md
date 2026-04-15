@@ -70,6 +70,7 @@
 - `display_geometry` 内部显式区分 `ByteOffset` 与 `DisplayColumn`：前者只代表源码 UTF-8 偏移，后者只代表终端显示列。新的几何逻辑应优先沿用这两个类型，而不是继续把裸 `usize` 当作双重语义容器。
 - `visual` / `layout` / `render_ops` 仍然保留源码 byte offset 作为文本切片边界，但几何决策必须在 `layout` 层完成：像 `RectBlock` 这类矩形区域要在 wrapped screen rows 上展开，像 `ScopeBlock` 这类缩进作用域则要按每个 screen row 的非空白内容决定左边界，并按共享右边界形成 block。
 - `display_geometry` 当前内建统一的 Unicode 宽度规则，并把 tab stop 作为仓库级策略集中定义；如果未来要支持不同 terminal profile 或 East Asian 宽度策略，也应继续在这层扩展，而不是把特殊逻辑散落回各个语言 / 渲染分支里。
+- 从 `layout` 开始，终端显示文本默认进入 display-space 语义：像 tab 这类会影响显示列、但不应继续交给 terminal 自行解释的控制字符，要先按仓库级 `display_geometry` 规则展开成稳定的显示文本，再进入 `render_ops` / `terminal`。最终 terminal 输出优先保证显示几何一致性，而不是逐字节保留原始控制字符。
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
 - 终端默认颜色查询不再由 `theme` 直接触发，而是通过 `terminal` 层能力探测统一接入；当前实现通过 `termwiz` 的 dynamic color probe 同时查询 OSC 10 / OSC 11，再在仓库内统一派生 nested region tint。
 - `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-layout`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、display-space layout、render IR 和 terminal 编码层。
