@@ -1,0 +1,9 @@
+interface io.kat.theme
+
+type Theme (
+  name: string,
+  active: bool
+)
+
+method GetTheme() -> (theme: Theme)
+error NotFound ()

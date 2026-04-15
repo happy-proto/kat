@@ -1,0 +1,5 @@
+read(3, "theme", 5) = 5
+openat(AT_FDCWD, "/etc/kat.conf", O_RDONLY|O_CLOEXEC) = 3
+write(1, "Dracula\n", 8) = 8
+close(3) = 0
++++ exited with 0 +++

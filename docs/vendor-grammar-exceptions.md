@@ -36,6 +36,7 @@
 - `dot`
 - `svelte`
 - `just`
+- `wgsl`
 
 ## 当前继续 vendored，主要是为了沿用上游 grammar 源和仓库内 query 集成资产
 
@@ -45,11 +46,15 @@
 - `asm`
 - `awk`
 - `bibtex`
+- `csv`
 - `latex`
 - `nasm`
+- `sml`
+- `strace`
 - `tcl`
 - `tsv`
 - `typst`
+- `vimhelp`
 
 ## 仓库内有本地 grammar 或 scanner 改造，短期内不适合直接切回上游 crate
 
@@ -93,6 +98,12 @@
   原因：本地 grammar 改成复用仓库里的 `css/grammar.js`，避免引入第二套 CSS 依赖。
 - `textile`
   原因：当前仓库内维护的是本地最小 Textile grammar；已评估过上游实现，但其授权元数据暂不适合直接 vendored 进仓库。
+- `stylus`
+  原因：当前仓库内维护的是面向缩进式 Stylus 语法的本地最小 grammar，优先保证 `.styl` / `.stylus` 的稳定可读性，而不是强行依赖一条维护状态不稳定的外部依赖链。
+- `syslog`
+  原因：当前直接在仓库内维护了面向经典 syslog 行结构的小 grammar，用来稳定承接月份、时间、主机、进程和消息体的最小可读分层。
+- `vyper`
+  原因：上游 grammar 在当前集成目标下不够稳定，因此仓库内先维护一份面向 Vyper 合约结构的本地最小 grammar 与 query，优先保证 detector、fixture 和基础高亮可持续演进。
 
 ## 许可证原因，继续使用 vendored 方案更合适
 

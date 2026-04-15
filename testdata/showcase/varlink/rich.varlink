@@ -1,0 +1,11 @@
+interface io.kat.theme
+
+type Theme (
+  name: string,
+  active: bool,
+  accent: string
+)
+
+method GetTheme(slug: string) -> (theme: Theme)
+method ListThemes() -> (themes: []Theme)
+error NotFound ()

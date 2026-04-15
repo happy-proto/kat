@@ -225,6 +225,8 @@ fn collect_host_injection_candidates(
             "jinja" | "twig" | "erb" | "eex" | "jsp" | "asp" | "adp",
             DocumentProfile::TemplateHtml
             | DocumentProfile::TemplateXml
+            | DocumentProfile::TemplateYaml
+            | DocumentProfile::TemplateSql
             | DocumentProfile::TemplateCss
             | DocumentProfile::TemplateCoffeeScript
             | DocumentProfile::TemplateJavaScript,
@@ -325,6 +327,8 @@ fn template_host_runtime(profile: DocumentProfile) -> &'static str {
     match profile {
         DocumentProfile::TemplateHtml => "html",
         DocumentProfile::TemplateXml => "xml",
+        DocumentProfile::TemplateYaml => "yaml",
+        DocumentProfile::TemplateSql => "sql",
         DocumentProfile::TemplateCss => "css",
         DocumentProfile::TemplateCoffeeScript => "coffeescript",
         DocumentProfile::TemplateJavaScript => "javascript",

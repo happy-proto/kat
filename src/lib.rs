@@ -82,6 +82,7 @@ enum SupportedLanguage {
     CpuInfo,
     Crystal,
     Crontab,
+    Csv,
     Css,
     Cpp,
     Apache,
@@ -145,11 +146,17 @@ enum SupportedLanguage {
     Sass,
     Scala,
     Scss,
+    Sml,
+    Solidity,
     SshConfig,
     Sql,
     Rust,
+    Strace,
+    Stylus,
     Svelte,
     Swift,
+    Syslog,
+    SystemVerilog,
     Tcl,
     Textile,
     Textproto,
@@ -160,9 +167,14 @@ enum SupportedLanguage {
     TypeScript,
     Twig,
     Typst,
+    Varlink,
+    Verilog,
     Vue,
     Vhdl,
     Vim,
+    VimHelp,
+    Vyper,
+    Wgsl,
     Xml,
     Yaml,
     Zig,
@@ -332,6 +344,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "html" => SupportedLanguage::Html,
         "vue" => SupportedLanguage::Vue,
         "svelte" => SupportedLanguage::Svelte,
+        "csv" => SupportedLanguage::Csv,
         "ignore" => SupportedLanguage::Ignore,
         "css" => SupportedLanguage::Css,
         "javascript" => SupportedLanguage::JavaScript,
@@ -354,8 +367,19 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "erb" => SupportedLanguage::Erb,
         "jsp" => SupportedLanguage::Jsp,
         "latex" => SupportedLanguage::Latex,
+        "sml" => SupportedLanguage::Sml,
+        "solidity" => SupportedLanguage::Solidity,
+        "strace" => SupportedLanguage::Strace,
+        "stylus" => SupportedLanguage::Stylus,
+        "syslog" => SupportedLanguage::Syslog,
+        "systemverilog" => SupportedLanguage::SystemVerilog,
         "vhdl" => SupportedLanguage::Vhdl,
+        "varlink" => SupportedLanguage::Varlink,
+        "verilog" => SupportedLanguage::Verilog,
         "vim" => SupportedLanguage::Vim,
+        "vimhelp" => SupportedLanguage::VimHelp,
+        "vyper" => SupportedLanguage::Vyper,
+        "wgsl" => SupportedLanguage::Wgsl,
         "tcl" => SupportedLanguage::Tcl,
         "textile" => SupportedLanguage::Textile,
         "tsv" => SupportedLanguage::Tsv,
@@ -810,6 +834,10 @@ pub fn highlight_textile(source: &str) -> Result<String> {
     highlight_named_language("textile", source, &detected_theme())
 }
 
+pub fn highlight_csv(source: &str) -> Result<String> {
+    highlight_named_language("csv", source, &detected_theme())
+}
+
 pub fn highlight_todotxt(source: &str) -> Result<String> {
     highlight_named_language("todotxt", source, &detected_theme())
 }
@@ -820,6 +848,38 @@ pub fn highlight_tsv(source: &str) -> Result<String> {
 
 pub fn highlight_typst(source: &str) -> Result<String> {
     highlight_named_language("typst", source, &detected_theme())
+}
+
+pub fn highlight_strace(source: &str) -> Result<String> {
+    highlight_named_language("strace", source, &detected_theme())
+}
+
+pub fn highlight_stylus(source: &str) -> Result<String> {
+    highlight_named_language("stylus", source, &detected_theme())
+}
+
+pub fn highlight_syslog(source: &str) -> Result<String> {
+    highlight_named_language("syslog", source, &detected_theme())
+}
+
+pub fn highlight_sml(source: &str) -> Result<String> {
+    highlight_named_language("sml", source, &detected_theme())
+}
+
+pub fn highlight_solidity(source: &str) -> Result<String> {
+    highlight_named_language("solidity", source, &detected_theme())
+}
+
+pub fn highlight_varlink(source: &str) -> Result<String> {
+    highlight_named_language("varlink", source, &detected_theme())
+}
+
+pub fn highlight_vyper(source: &str) -> Result<String> {
+    highlight_named_language("vyper", source, &detected_theme())
+}
+
+pub fn highlight_wgsl(source: &str) -> Result<String> {
+    highlight_named_language("wgsl", source, &detected_theme())
 }
 
 pub fn highlight_javascript(source: &str) -> Result<String> {
@@ -898,8 +958,20 @@ pub fn highlight_vhdl(source: &str) -> Result<String> {
     highlight_named_language("vhdl", source, &detected_theme())
 }
 
+pub fn highlight_verilog(source: &str) -> Result<String> {
+    highlight_named_language("verilog", source, &detected_theme())
+}
+
+pub fn highlight_systemverilog(source: &str) -> Result<String> {
+    highlight_named_language("systemverilog", source, &detected_theme())
+}
+
 pub fn highlight_vim(source: &str) -> Result<String> {
     highlight_named_language("vim", source, &detected_theme())
+}
+
+pub fn highlight_vimhelp(source: &str) -> Result<String> {
+    highlight_named_language("vimhelp", source, &detected_theme())
 }
 
 pub fn highlight_nasm(source: &str) -> Result<String> {
@@ -1025,11 +1097,18 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "sql_sqlite" => DocumentKind::plain("sql_sqlite"),
         "textproto" => DocumentKind::plain("textproto"),
         "latex" => DocumentKind::plain("latex"),
+        "sml" => DocumentKind::plain("sml"),
+        "solidity" => DocumentKind::plain("solidity"),
+        "strace" => DocumentKind::plain("strace"),
+        "stylus" => DocumentKind::plain("stylus"),
+        "syslog" => DocumentKind::plain("syslog"),
         "tcl" => DocumentKind::plain("tcl"),
         "textile" => DocumentKind::plain("textile"),
+        "csv" => DocumentKind::plain("csv"),
         "todotxt" => DocumentKind::plain("todotxt"),
         "tsv" => DocumentKind::plain("tsv"),
         "typst" => DocumentKind::plain("typst"),
+        "varlink" => DocumentKind::plain("varlink"),
         "html" => DocumentKind::plain("html"),
         "vue" => DocumentKind::plain("vue"),
         "svelte" => DocumentKind::plain("svelte"),
@@ -1064,7 +1143,12 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "asp" => DocumentKind::plain("asp"),
         "adp" => DocumentKind::plain("adp"),
         "vhdl" => DocumentKind::plain("vhdl"),
+        "verilog" => DocumentKind::plain("verilog"),
+        "systemverilog" => DocumentKind::plain("systemverilog"),
         "vim" => DocumentKind::plain("vim"),
+        "vimhelp" => DocumentKind::plain("vimhelp"),
+        "vyper" => DocumentKind::plain("vyper"),
+        "wgsl" => DocumentKind::plain("wgsl"),
         other => panic!("unsupported runtime name {other}"),
     }
 }
@@ -1595,9 +1679,24 @@ pub(crate) fn detect_document_kind(
         return Some(DocumentKind::plain("vhdl"));
     }
 
+    let verilog = grammar("verilog");
+    if matches_path(verilog, source_path) {
+        return Some(DocumentKind::plain("verilog"));
+    }
+
+    let systemverilog = grammar("systemverilog");
+    if matches_path(systemverilog, source_path) {
+        return Some(DocumentKind::plain("systemverilog"));
+    }
+
     let vim = grammar("vim");
     if matches_path(vim, source_path) {
         return Some(DocumentKind::plain("vim"));
+    }
+
+    let vimhelp = grammar("vimhelp");
+    if matches_path(vimhelp, source_path) {
+        return Some(DocumentKind::plain("vimhelp"));
     }
 
     let ssh_config = grammar("ssh_config");
@@ -1740,6 +1839,31 @@ pub(crate) fn detect_document_kind(
         return Some(DocumentKind::plain("latex"));
     }
 
+    let sml = grammar("sml");
+    if matches_path(sml, source_path) {
+        return Some(DocumentKind::plain("sml"));
+    }
+
+    let solidity = grammar("solidity");
+    if matches_path(solidity, source_path) {
+        return Some(DocumentKind::plain("solidity"));
+    }
+
+    let strace = grammar("strace");
+    if matches_path(strace, source_path) {
+        return Some(DocumentKind::plain("strace"));
+    }
+
+    let stylus = grammar("stylus");
+    if matches_path(stylus, source_path) {
+        return Some(DocumentKind::plain("stylus"));
+    }
+
+    let syslog = grammar("syslog");
+    if matches_path(syslog, source_path) {
+        return Some(DocumentKind::plain("syslog"));
+    }
+
     let tcl = grammar("tcl");
     if matches_path(tcl, source_path) || matches_shebang(tcl, source) {
         return Some(DocumentKind::plain("tcl"));
@@ -1750,6 +1874,11 @@ pub(crate) fn detect_document_kind(
         return Some(DocumentKind::plain("textile"));
     }
 
+    let csv = grammar("csv");
+    if matches_path(csv, source_path) {
+        return Some(DocumentKind::plain("csv"));
+    }
+
     let tsv = grammar("tsv");
     if matches_path(tsv, source_path) {
         return Some(DocumentKind::plain("tsv"));
@@ -1758,6 +1887,21 @@ pub(crate) fn detect_document_kind(
     let typst = grammar("typst");
     if matches_path(typst, source_path) {
         return Some(DocumentKind::plain("typst"));
+    }
+
+    let varlink = grammar("varlink");
+    if matches_path(varlink, source_path) {
+        return Some(DocumentKind::plain("varlink"));
+    }
+
+    let vyper = grammar("vyper");
+    if matches_path(vyper, source_path) {
+        return Some(DocumentKind::plain("vyper"));
+    }
+
+    let wgsl = grammar("wgsl");
+    if matches_path(wgsl, source_path) {
+        return Some(DocumentKind::plain("wgsl"));
     }
 
     let javascript = grammar("javascript");
@@ -1837,10 +1981,15 @@ pub(crate) fn detect_document_kind(
 
     let jinja = grammar("jinja");
     if matches_path(jinja, source_path) {
+        let default_profile = if is_sls_path(source_path) {
+            DocumentProfile::TemplateYaml
+        } else {
+            DocumentProfile::TemplateHtml
+        };
         return Some(template_document_kind(
             "jinja",
             source_path,
-            DocumentProfile::TemplateHtml,
+            default_profile,
         ));
     }
 
@@ -1864,11 +2013,12 @@ pub(crate) fn detect_document_kind(
 
     let erb = grammar("erb");
     if matches_path(erb, source_path) {
-        return Some(template_document_kind(
-            "erb",
-            source_path,
-            DocumentProfile::TemplateHtml,
-        ));
+        let default_profile = if is_sql_erb_path(source_path) {
+            DocumentProfile::TemplateSql
+        } else {
+            DocumentProfile::TemplateHtml
+        };
+        return Some(template_document_kind("erb", source_path, default_profile));
     }
 
     let jsp = grammar("jsp");
@@ -2058,7 +2208,31 @@ fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
         .filter_map(|component| component.to_str())
         .collect::<Vec<_>>();
 
-    matches!(components.as_slice(), [.., ".ssh", "config"])
+    matches!(
+        components.as_slice(),
+        [.., ".ssh", "config"] | [.., "ssh", "sshd_config"]
+    ) || matches!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some("sshd_config")
+    )
+}
+
+fn is_sls_path(source_path: Option<&Path>) -> bool {
+    source_path.is_some_and(|path| {
+        path.extension().and_then(|extension| extension.to_str()) == Some("sls")
+    })
+}
+
+fn is_sql_erb_path(source_path: Option<&Path>) -> bool {
+    source_path.is_some_and(|path| {
+        matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("erbsql")
+        ) || path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with(".sql.erb"))
+    })
 }
 
 fn is_authorized_keys_pub_path(source_path: Option<&Path>, source: &str) -> bool {
@@ -3905,9 +4079,11 @@ mod tests {
 
     const FIXTURE_DATA_AND_MARKUP_FAMILIES: &[&str] = &[
         "cabal",
+        "csv",
         "email",
         "json",
         "query",
+        "syslog",
         "toml",
         "yaml",
         "markdown",
@@ -3928,6 +4104,8 @@ mod tests {
         "ini",
         "tsv",
         "typst",
+        "vimhelp",
+        "varlink",
         "xml",
         "plain",
     ];
@@ -3957,10 +4135,26 @@ mod tests {
         "fortran_namelist",
         "fstab",
         "requirements",
+        "strace",
         "todotxt",
     ];
     const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &[
-        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "nasm", "crystal", "d", "fortran", "fsharp",
+        "rust",
+        "c",
+        "cpp",
+        "go",
+        "vhdl",
+        "verilog",
+        "systemverilog",
+        "wgsl",
+        "ada",
+        "asm",
+        "nasm",
+        "crystal",
+        "d",
+        "fortran",
+        "fsharp",
+        "sml",
     ];
     const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
         "java",
@@ -3968,9 +4162,11 @@ mod tests {
         "csharp",
         "groovy",
         "scala",
+        "solidity",
         "swift",
         "dart",
         "elixir",
+        "vyper",
         "zig",
         "actionscript",
         "erlang",
@@ -3991,6 +4187,7 @@ mod tests {
         "awk",
         "tcl",
         "vim",
+        "stylus",
     ];
     const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
         "adp",
@@ -4131,6 +4328,11 @@ mod tests {
             relative_path: "textile/theme.textile",
             expect_highlight: true,
             expected_fragments: &["h1.", "Kat Textile Preview", "*", "bc.", "pre."],
+        },
+        FixtureCase {
+            relative_path: "csv/themes.csv",
+            expect_highlight: true,
+            expected_fragments: &["name", "Dracula", "true", "Solarized Dark"],
         },
         FixtureCase {
             relative_path: "tsv/themes.tsv",
@@ -4440,6 +4642,11 @@ mod tests {
             expected_fragments: &["module", "let", "render", "printfn"],
         },
         FixtureCase {
+            relative_path: "sml/theme.sml",
+            expect_highlight: true,
+            expected_fragments: &["structure", "ThemePreview", "fun", "print"],
+        },
+        FixtureCase {
             relative_path: "fstab/fstab",
             expect_highlight: true,
             expected_fragments: &["UUID=0123-ABCD", "/", "ext4", "defaults"],
@@ -4717,6 +4924,11 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "solidity/theme.sol",
+            expect_highlight: true,
+            expected_fragments: &["pragma", "contract", "DEFAULT_THEME", "render"],
+        },
+        FixtureCase {
             relative_path: "dart/theme_preview.dart",
             expect_highlight: true,
             expected_fragments: &["ThemePreview", "defaultTheme", "render", "main", "print"],
@@ -4731,6 +4943,11 @@ mod tests {
                 "render",
                 "IO",
             ],
+        },
+        FixtureCase {
+            relative_path: "vyper/theme.vy",
+            expect_highlight: true,
+            expected_fragments: &["@deploy", "@external", "self.name", "return"],
         },
         FixtureCase {
             relative_path: "zig/theme.zig",
@@ -4749,6 +4966,21 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "verilog/theme.v",
+            expect_highlight: true,
+            expected_fragments: &["module", "always", "active", "1'b1"],
+        },
+        FixtureCase {
+            relative_path: "systemverilog/theme.sv",
+            expect_highlight: true,
+            expected_fragments: &["module", "logic", "always_ff", "1'b1"],
+        },
+        FixtureCase {
+            relative_path: "wgsl/theme.wgsl",
+            expect_highlight: true,
+            expected_fragments: &["struct", "@fragment", "vec4<f32>", "return"],
+        },
+        FixtureCase {
             relative_path: "vim/theme_preview.vim",
             expect_highlight: true,
             expected_fragments: &[
@@ -4760,9 +4992,29 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "stylus/theme.styl",
+            expect_highlight: true,
+            expected_fragments: &["@import", "$accent", ".panel", "&:hover", "rgba"],
+        },
+        FixtureCase {
+            relative_path: "vimhelp/theme.vimhelp",
+            expect_highlight: true,
+            expected_fragments: &["Theme Preview", "*theme-preview*", ":KatRender", "Note:"],
+        },
+        FixtureCase {
+            relative_path: "varlink/theme.varlink",
+            expect_highlight: true,
+            expected_fragments: &["interface", "Theme", "GetTheme", "NotFound"],
+        },
+        FixtureCase {
             relative_path: "ssh_config/.ssh/config",
             expect_highlight: true,
             expected_fragments: &["Host", "HostName", "IdentityFile", "Match", "Port"],
+        },
+        FixtureCase {
+            relative_path: "ssh_config/sshd_config",
+            expect_highlight: true,
+            expected_fragments: &["Port", "PermitRootLogin", "Match", "ForceCommand"],
         },
         FixtureCase {
             relative_path: "gitattributes/.gitattributes",
@@ -4814,6 +5066,16 @@ mod tests {
             relative_path: "requirements/requirements.txt",
             expect_highlight: true,
             expected_fragments: &["-r", "httpx", "0.27", "python_version", "example.com"],
+        },
+        FixtureCase {
+            relative_path: "strace/strace",
+            expect_highlight: true,
+            expected_fragments: &["read", "\"theme\"", "openat", "exited"],
+        },
+        FixtureCase {
+            relative_path: "syslog/syslog",
+            expect_highlight: true,
+            expected_fragments: &["Oct", "kat-host", "sshd", "Accepted publickey"],
         },
         FixtureCase {
             relative_path: "todotxt/todo.txt",
@@ -4992,6 +5254,17 @@ mod tests {
             expected_fragments: &["section", "{{", "title", "{%", "endif"],
         },
         FixtureCase {
+            relative_path: "jinja/webserver.sls",
+            expect_highlight: true,
+            expected_fragments: &[
+                "webserver",
+                "pkg.installed",
+                "service.running",
+                "enable",
+                "true",
+            ],
+        },
+        FixtureCase {
             relative_path: "eex/page.html.eex",
             expect_highlight: true,
             expected_fragments: &["section", "<%=", "@title", "%>"],
@@ -5030,6 +5303,11 @@ mod tests {
             relative_path: "erb/theme.css.erb",
             expect_highlight: true,
             expected_fragments: &["--accent", "accent", ":root"],
+        },
+        FixtureCase {
+            relative_path: "erb/schema.sql.erb",
+            expect_highlight: true,
+            expected_fragments: &["CREATE", "TABLE", "themes", "<%= accent %>"],
         },
     ];
 
@@ -5141,6 +5419,7 @@ mod tests {
     }
 
     const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
+        "csv",
         "css",
         "graphql",
         "hcl",
@@ -5157,6 +5436,9 @@ mod tests {
         "todotxt",
         "tsv",
         "typst",
+        "syslog",
+        "varlink",
+        "vimhelp",
         "yaml",
     ];
     const SHOWCASE_SHELL_AND_TOOLING_FAMILIES: &[&str] = &[
@@ -5169,6 +5451,7 @@ mod tests {
         "git_log",
         "ignore",
         "just",
+        "strace",
         "todotxt",
         "zsh",
     ];
@@ -5178,9 +5461,16 @@ mod tests {
         "nasm",
         "python",
         "rust",
+        "sml",
+        "solidity",
+        "stylus",
         "tcl",
         "vhdl",
+        "verilog",
         "vim",
+        "systemverilog",
+        "vyper",
+        "wgsl",
     ];
 
     #[test]
@@ -5566,6 +5856,10 @@ mod tests {
             Some(SupportedLanguage::Textile)
         ));
         assert!(matches!(
+            detect_language(Some(Path::new("themes.csv")), "name,active\nDracula,true\n",),
+            Some(SupportedLanguage::Csv)
+        ));
+        assert!(matches!(
             detect_language(
                 Some(Path::new("themes.tsv")),
                 "name\tactive\nDracula\ttrue\n",
@@ -5760,6 +6054,13 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("states/webserver.sls")),
+                "webserver:\n  test.configurable_test_state:\n",
+            ),
+            Some(SupportedLanguage::Jinja)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("templates/page.html.twig")),
                 "<section>{{ title }}</section>\n",
             ),
@@ -5818,6 +6119,20 @@ mod tests {
             detect_language(
                 Some(Path::new("templates/theme.css.erb")),
                 ":root { --accent: <%= accent %>; }\n",
+            ),
+            Some(SupportedLanguage::Erb)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("db/schema.sql.erb")),
+                "CREATE TABLE themes (accent TEXT DEFAULT '<%= accent %>');\n",
+            ),
+            Some(SupportedLanguage::Erb)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("db/schema.erbsql")),
+                "SELECT '<%= accent %>';\n",
             ),
             Some(SupportedLanguage::Erb)
         ));
@@ -6127,6 +6442,13 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("Theme.sml")),
+                "structure ThemePreview = struct end\n",
+            ),
+            Some(SupportedLanguage::Sml)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("fstab")),
                 "UUID=0123-ABCD / ext4 defaults 0 1\n",
             ),
@@ -6156,6 +6478,13 @@ mod tests {
             Some(SupportedLanguage::Scala)
         ));
         assert!(matches!(
+            detect_language(
+                Some(Path::new("ThemePreview.sol")),
+                "pragma solidity ^0.8.28;\ncontract ThemePreview {}\n",
+            ),
+            Some(SupportedLanguage::Solidity)
+        ));
+        assert!(matches!(
             detect_language(Some(Path::new("ThemePreview.swift")), "print(\"kat\")\n"),
             Some(SupportedLanguage::Swift)
         ));
@@ -6180,11 +6509,22 @@ mod tests {
             Some(SupportedLanguage::Zig)
         ));
         assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.vy")),
+                "@external\ndef render() -> String[32]:\n    return \"kat\"\n",
+            ),
+            Some(SupportedLanguage::Vyper)
+        ));
+        assert!(matches!(
             detect_language(Some(Path::new(".ssh/config")), "Host github.com\n"),
             Some(SupportedLanguage::SshConfig)
         ));
         assert!(matches!(
             detect_language(Some(Path::new("ssh_config")), "Host *\n"),
+            Some(SupportedLanguage::SshConfig)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("sshd_config")), "Port 22\n"),
             Some(SupportedLanguage::SshConfig)
         ));
         assert!(matches!(
@@ -6234,6 +6574,21 @@ mod tests {
             Some(SupportedLanguage::Requirements)
         ));
         assert!(matches!(
+            detect_language(Some(Path::new("strace")), "read(3, \"theme\", 5) = 5\n"),
+            Some(SupportedLanguage::Strace)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.styl")), ".panel\n  color #fff\n"),
+            Some(SupportedLanguage::Stylus)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("syslog")),
+                "Oct 15 10:42:00 kat-host sshd[1234]: Accepted publickey\n",
+            ),
+            Some(SupportedLanguage::Syslog)
+        ));
+        assert!(matches!(
             detect_language(
                 Some(Path::new("todo.txt")),
                 "(A) 2026-04-12 Finish kat +syntax @terminal due:2026-04-13\n"
@@ -6248,8 +6603,41 @@ mod tests {
             Some(SupportedLanguage::Vhdl)
         ));
         assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.v")),
+                "module theme_preview; endmodule\n",
+            ),
+            Some(SupportedLanguage::Verilog)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.sv")),
+                "module theme_preview; logic active; endmodule\n",
+            ),
+            Some(SupportedLanguage::SystemVerilog)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.vh")), "`define THEME_ACCENT 8'hbd\n",),
+            Some(SupportedLanguage::SystemVerilog)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.wgsl")),
+                "@fragment\nfn main() -> @location(0) vec4<f32> {\n  return vec4<f32>(1.0);\n}\n",
+            ),
+            Some(SupportedLanguage::Wgsl)
+        ));
+        assert!(matches!(
             detect_language(Some(Path::new(".vimrc")), "let g:kat_theme = 'dracula'\n"),
             Some(SupportedLanguage::Vim)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.vimhelp")), "= Theme Preview =\n",),
+            Some(SupportedLanguage::VimHelp)
+        ));
+        assert!(matches!(
+            detect_language(Some(Path::new("theme.varlink")), "interface io.kat.theme\n",),
+            Some(SupportedLanguage::Varlink)
         ));
         assert!(matches!(
             detect_language(
@@ -6701,6 +7089,30 @@ mod tests {
         assert!(
             !nested_runtime_names(&xml_analysis).contains(&"html"),
             "expected xml.j2 content to avoid falling back to html runtime"
+        );
+
+        let sls_path = fixture_path("jinja/webserver.sls");
+        let sls_source = read_file(&sls_path);
+        let sls_analysis = analyze_with_theme(Some(sls_path.as_path()), &sls_source, &theme)
+            .expect("failed to analyze sls fixture")
+            .snapshot();
+        assert!(
+            nested_runtime_names(&sls_analysis).contains(&"yaml"),
+            "expected .sls content to inject into yaml runtime"
+        );
+
+        let sql_path = fixture_path("erb/schema.sql.erb");
+        let sql_source = read_file(&sql_path);
+        let sql_analysis = analyze_with_theme(Some(sql_path.as_path()), &sql_source, &theme)
+            .expect("failed to analyze sql.erb fixture")
+            .snapshot();
+        assert!(
+            nested_runtime_names(&sql_analysis).contains(&"sql"),
+            "expected sql.erb content to inject into sql runtime"
+        );
+        assert!(
+            !nested_runtime_names(&sql_analysis).contains(&"html"),
+            "expected sql.erb content to avoid falling back to html runtime"
         );
     }
 

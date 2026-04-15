@@ -1,0 +1,12 @@
+= Theme Preview =
+
+== Commands ==
+
+*theme-preview* Use `:KatRender` to render the active theme.
+|:KatShowcase| opens the showcase.
+>
+lua print("kat")
+<
+
+Warning: Preview output depends on your terminal.
+See https://example.com/kat for the full guide.

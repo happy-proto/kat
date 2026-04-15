@@ -69,6 +69,8 @@
 - `VHDL`、`VimL`、`Todo.txt` 现在也已接入独立 runtime；其中 `VimL` 复用了 Lua / Python / Ruby / regex 注入链路，`Todo.txt` 则按 `priority` / `project` / `context` 做了最小但可读的结构化高亮。
 - `LaTeX / TeX`、`Tcl`、`Textile`、`TSV`、`Typst` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `LaTeX` 已补上 `minted` / `pycode` / `luacode` 这类高收益环境注入，`Typst` 也已接入 raw block 按 info string 分发子语言的链路。
 - `NASM / x86_64 Assembly` 现在也不再混在通用 `asm` 入口里，而是拆成了独立 runtime，覆盖 `.asm` / `.nasm` / `.yasm` / `.inc` / `.mac`；原有 `.s` / `.S` 继续由通用 `asm` runtime 承接，避免把传统汇编入口和 NASM 方言强行揉在一起。
+- `Salt State (SLS)`、`SQL (Rails)`、`SSHD Config` 这一轮已经接回现有宿主模型：`.sls` 复用 `jinja` runtime 并走 YAML host profile，`.sql.erb` / `.erbsql` 复用 `erb` runtime 并走 SQL host profile，`sshd_config` 则复用现有 `ssh_config` runtime，而不是再额外复制一套近似 grammar。
+- `CSV`、`SML`、`Solidity`、`Strace`、`Stylus`、`syslog`、`SystemVerilog`、`varlink`、`Verilog`、`VimHelp`、`Vyper`、`WGSL` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `Solidity` / `Verilog` / `SystemVerilog` / `varlink` 现在走 crate-backed parser，`WGSL` 则因为现有 crate 仍卡在旧版 `tree-sitter` ABI，先回到 vendored grammar 路线。
 - `Go` 这轮也已接入为独立 runtime，并把 `zed` 的 Go highlights/injections 里对终端渲染最有价值的部分对齐进来。
 - `go.mod`、`go.work`、`go.sum` 现在也已作为 Go 生态元数据文件接入独立 runtime，而不是混入 `.go` source runtime。
 - `HCL` 现已作为独立配置语言 runtime 接入，覆盖 `.hcl` 与 `.nomad`；当前 query 已补齐注释、block/type、attribute key、function call、string/template、operator、布尔/数字/null。除了基础 HCL 高亮外，Nomad 风格 `template { destination, data }` 现在也会按 `destination` 推断目标 runtime，并通过 projection-based injection 同时保留 HCL template syntax 与目标文件语法高亮；现有 fixture / showcase 继续以 Nomad 风格样例为主，但 runtime 定位仍保持通用 HCL。
@@ -246,22 +248,6 @@
 - `Ruby Haml`：`haml`
 - `Ruby on Rails`：`rxml`、`builder`
 - `Ruby Slim`：`slim`、`skim`
-- `Salt State (SLS)`：`sls`
-- `Separated Values`：`csv`
-- `SML`：`sml`、`cm`、`sig`
-- `Solidity`：`sol`
-- `SQL (Rails)`：`erbsql`、`sql.erb`
-- `SSHD Config`：`sshd_config`
-- `Strace`：`strace`
-- `Stylus`：`styl`、`stylus`
-- `syslog`：`syslog`
-- `SystemVerilog`：`sv`、`svh`、`vh`
-- `varlink`：`varlink`
-- `Verilog`：`v`、`V`
-- `VimHelp`：`vimhelp`
-- `Vyper`：`vy`
-- `WGSL`：`wgsl`
-
 ### 部分覆盖：已有相关 runtime，但文件识别范围仍窄于 `bat`
 
 - `CSS`：`kat` 已覆盖 `css`、`css.erb`；仍缺 `css.liquid`

@@ -513,6 +513,56 @@ Upstream projects:
   License: MIT
   Notes: repository-local copy of the upstream Typst grammar, scanner and required unicode support header, plus kat-local adapted highlights / injections queries for Typst markup and raw block nested runtimes.
 
+- `grammars/csv/grammar.js`
+- `grammars/csv/common/define-grammar.js`
+  Source: [tree-sitter-grammars/tree-sitter-csv](https://github.com/tree-sitter-grammars/tree-sitter-csv)
+  Revision: `f6bf6e35eb0b95fbadea4bb39cb9709507fcb181`
+  License: MIT
+  Notes: repository-local extracted CSV subset built from the upstream separated-values grammar support file, with a kat-local wrapper kept as a dedicated runtime for comma-separated data files.
+
+- `grammars/sml/*`
+  Source: [matthew-fluet/tree-sitter-sml](https://github.com/matthew-fluet/tree-sitter-sml)
+  Revision: `fd4b4955bb998262840ab8119885b3edf20ea75a`
+  License: MIT
+  Notes: repository-local copy of the upstream SML grammar, scanner and highlights query, kept as a dedicated runtime for `.sml` / `.cm` / `.sig`.
+
+- `grammars/solidity/queries/highlights.scm`
+  Source: [JoranHonig/tree-sitter-solidity](https://github.com/JoranHonig/tree-sitter-solidity)
+  Revision: `048fe686cb1fde267243739b8bdbec8fc3a55272`
+  License: MIT
+  Notes: repository-local adapted highlights query. The Solidity parser is provided by the Rust crate [tree-sitter-solidity](https://crates.io/crates/tree-sitter-solidity).
+
+- `grammars/strace/*`
+  Source: [sigmaSd/tree-sitter-strace](https://github.com/sigmaSd/tree-sitter-strace)
+  Revision: `ac874ddfcc08d689fee1f4533789e06d88388f29`
+  License: MIT
+  Notes: repository-local copy of the upstream Strace grammar and highlights query, kept as a dedicated runtime for `strace` output files.
+
+- `grammars/systemverilog/queries/highlights.scm`
+  Source: [gmlarumbe/tree-sitter-systemverilog](https://github.com/gmlarumbe/tree-sitter-systemverilog)
+  Revision: `293928578cb27fbd0005fcc5f09c09a1e8628c89`
+  License: MIT
+  Notes: repository-local adapted highlights query. The SystemVerilog parser is provided by the Rust crate [tree-sitter-systemverilog](https://crates.io/crates/tree-sitter-systemverilog).
+
+- `grammars/varlink/queries/highlights.scm`
+  Source: [M0ppers/tree-sitter-varlink](https://github.com/M0ppers/tree-sitter-varlink)
+  Revision: `52976e66d3f4529045a14201841e4dc289de8107`
+  License: MIT
+  Notes: repository-local adapted highlights query. The Varlink parser is provided by the Rust crate [tree-sitter-varlink](https://crates.io/crates/tree-sitter-varlink).
+
+- `grammars/vimhelp/*`
+  Source: [neovim/tree-sitter-vimdoc](https://github.com/neovim/tree-sitter-vimdoc)
+  Revision: `f061895a0eff1d5b90e4fb60d21d87be3267031a`
+  License: Apache-2.0
+  Notes: repository-local copy of the upstream Vim help grammar and query assets, kept as a dedicated runtime for `.vimhelp` files.
+
+- `grammars/wgsl/grammar.js`
+- `grammars/wgsl/scanner.c`
+  Source: [szebniok/tree-sitter-wgsl](https://github.com/szebniok/tree-sitter-wgsl)
+  Revision: `27ae4db1458d5ea7555300c9e93c6273723d420c`
+  License: CC0-1.0
+  Notes: repository-local copy of the upstream WGSL grammar and scanner, kept vendored because the published crate still depends on an older `tree-sitter` ABI. The highlights query is maintained locally for kat's capture model.
+
 - `grammars/sql/queries/highlights.scm`
 - `grammars/sql/queries/highlights-postgres.scm`
 - `grammars/sql/queries/highlights-mysql.scm`

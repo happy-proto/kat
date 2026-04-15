@@ -199,9 +199,23 @@ const LATEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/latex/queries/hig
 const LATEX_INJECTIONS_QUERY: &str = include_str!("../grammars/latex/queries/injections.scm");
 const TCL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/tcl/queries/highlights.scm");
 const TEXTILE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/textile/queries/highlights.scm");
+const CSV_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/csv/queries/highlights.scm");
 const TSV_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/tsv/queries/highlights.scm");
 const TYPST_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/typst/queries/highlights.scm");
 const TYPST_INJECTIONS_QUERY: &str = include_str!("../grammars/typst/queries/injections.scm");
+const STRACE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/strace/queries/highlights.scm");
+const STYLUS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/stylus/queries/highlights.scm");
+const SYSLOG_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/syslog/queries/highlights.scm");
+const SML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/sml/queries/highlights.scm");
+const SOLIDITY_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/solidity/queries/highlights.scm");
+const SYSTEMVERILOG_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/systemverilog/queries/highlights.scm");
+const VARLINK_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/varlink/queries/highlights.scm");
+const VERILOG_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/verilog/queries/highlights.scm");
+const VIMHELP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/vimhelp/queries/highlights.scm");
+const VIMHELP_INJECTIONS_QUERY: &str = include_str!("../grammars/vimhelp/queries/injections.scm");
+const VYPER_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/vyper/queries/highlights.scm");
+const WGSL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/wgsl/queries/highlights.scm");
 const REGEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/regex/queries/highlights.scm");
 const REGEX_JAVASCRIPT_HIGHLIGHTS_QUERY: &str = concat!(
     include_str!("../grammars/regex/queries/highlights.scm"),
@@ -299,8 +313,16 @@ unsafe extern "C" {
     fn tree_sitter_latex() -> *const ();
     fn tree_sitter_tcl() -> *const ();
     fn tree_sitter_textile() -> *const ();
+    fn tree_sitter_csv() -> *const ();
     fn tree_sitter_tsv() -> *const ();
     fn tree_sitter_typst() -> *const ();
+    fn tree_sitter_strace() -> *const ();
+    fn tree_sitter_stylus() -> *const ();
+    fn tree_sitter_syslog() -> *const ();
+    fn tree_sitter_sml() -> *const ();
+    fn tree_sitter_vimdoc() -> *const ();
+    fn tree_sitter_vyper() -> *const ();
+    fn tree_sitter_wgsl() -> *const ();
     fn tree_sitter_userscript_metadata() -> *const ();
     fn tree_sitter_markdown() -> *const ();
     fn tree_sitter_markdown_inline() -> *const ();
@@ -420,8 +442,20 @@ const TEXTPROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter
 const LATEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_latex) };
 const TCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_tcl) };
 const TEXTILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_textile) };
+const CSV_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_csv) };
 const TSV_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_tsv) };
 const TYPST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_typst) };
+const STRACE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_strace) };
+const STYLUS_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_stylus) };
+const SYSLOG_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_syslog) };
+const SML_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_sml) };
+const SOLIDITY_LANGUAGE: LanguageFn = tree_sitter_solidity::LANGUAGE;
+const SYSTEMVERILOG_LANGUAGE: LanguageFn = tree_sitter_systemverilog::LANGUAGE;
+const VARLINK_LANGUAGE: LanguageFn = tree_sitter_varlink::LANGUAGE;
+const VERILOG_LANGUAGE: LanguageFn = tree_sitter_verilog::LANGUAGE;
+const VIMHELP_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_vimdoc) };
+const VYPER_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_vyper) };
+const WGSL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_wgsl) };
 const REGEX_LANGUAGE: LanguageFn = tree_sitter_regex::LANGUAGE;
 const JSDOC_LANGUAGE: LanguageFn = tree_sitter_jsdoc::LANGUAGE;
 const USERSCRIPT_METADATA_LANGUAGE: LanguageFn =
@@ -950,10 +984,31 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         locals_query: "",
     },
     StaticLanguageAsset {
+        name: "verilog",
+        language_fn: VERILOG_LANGUAGE,
+        highlights_query: VERILOG_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "systemverilog",
+        language_fn: SYSTEMVERILOG_LANGUAGE,
+        highlights_query: SYSTEMVERILOG_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
         name: "vim",
         language_fn: VIM_LANGUAGE_PLACEHOLDER,
         highlights_query: VIM_HIGHLIGHTS_QUERY,
         injections_query: VIM_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "vimhelp",
+        language_fn: VIMHELP_LANGUAGE,
+        highlights_query: VIMHELP_HIGHLIGHTS_QUERY,
+        injections_query: VIMHELP_INJECTIONS_QUERY,
         locals_query: "",
     },
     StaticLanguageAsset {
@@ -1132,6 +1187,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         locals_query: "",
     },
     StaticLanguageAsset {
+        name: "csv",
+        language_fn: CSV_LANGUAGE,
+        highlights_query: CSV_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
         name: "tsv",
         language_fn: TSV_LANGUAGE,
         highlights_query: TSV_HIGHLIGHTS_QUERY,
@@ -1143,6 +1205,62 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: TYPST_LANGUAGE,
         highlights_query: TYPST_HIGHLIGHTS_QUERY,
         injections_query: TYPST_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "strace",
+        language_fn: STRACE_LANGUAGE,
+        highlights_query: STRACE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "stylus",
+        language_fn: STYLUS_LANGUAGE,
+        highlights_query: STYLUS_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "syslog",
+        language_fn: SYSLOG_LANGUAGE,
+        highlights_query: SYSLOG_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "sml",
+        language_fn: SML_LANGUAGE,
+        highlights_query: SML_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "solidity",
+        language_fn: SOLIDITY_LANGUAGE,
+        highlights_query: SOLIDITY_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "varlink",
+        language_fn: VARLINK_LANGUAGE,
+        highlights_query: VARLINK_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "vyper",
+        language_fn: VYPER_LANGUAGE,
+        highlights_query: VYPER_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "wgsl",
+        language_fn: WGSL_LANGUAGE,
+        highlights_query: WGSL_HIGHLIGHTS_QUERY,
+        injections_query: "",
         locals_query: "",
     },
     StaticLanguageAsset {
