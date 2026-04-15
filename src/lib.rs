@@ -125,10 +125,12 @@ enum SupportedLanguage {
     Json,
     Jsp,
     Kotlin,
+    Latex,
     Less,
     Lua,
     Make,
     Markdown,
+    Nasm,
     Nginx,
     Ninja,
     Nix,
@@ -148,12 +150,16 @@ enum SupportedLanguage {
     Rust,
     Svelte,
     Swift,
+    Tcl,
+    Textile,
     Textproto,
     TodoTxt,
     Toml,
+    Tsv,
     Tsx,
     TypeScript,
     Twig,
+    Typst,
     Vue,
     Vhdl,
     Vim,
@@ -248,6 +254,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "ada" => SupportedLanguage::Ada,
         "applescript" => SupportedLanguage::AppleScript,
         "asm" => SupportedLanguage::Asm,
+        "nasm" => SupportedLanguage::Nasm,
         "asciidoc" => SupportedLanguage::AsciiDoc,
         "authorized_keys" => SupportedLanguage::AuthorizedKeys,
         "awk" => SupportedLanguage::Awk,
@@ -346,8 +353,13 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "eex" => SupportedLanguage::Eex,
         "erb" => SupportedLanguage::Erb,
         "jsp" => SupportedLanguage::Jsp,
+        "latex" => SupportedLanguage::Latex,
         "vhdl" => SupportedLanguage::Vhdl,
         "vim" => SupportedLanguage::Vim,
+        "tcl" => SupportedLanguage::Tcl,
+        "textile" => SupportedLanguage::Textile,
+        "tsv" => SupportedLanguage::Tsv,
+        "typst" => SupportedLanguage::Typst,
         other => panic!("unsupported test language mapping for {other}"),
     })
 }
@@ -786,8 +798,28 @@ pub fn highlight_textproto(source: &str) -> Result<String> {
     highlight_named_language("textproto", source, &detected_theme())
 }
 
+pub fn highlight_latex(source: &str) -> Result<String> {
+    highlight_named_language("latex", source, &detected_theme())
+}
+
+pub fn highlight_tcl(source: &str) -> Result<String> {
+    highlight_named_language("tcl", source, &detected_theme())
+}
+
+pub fn highlight_textile(source: &str) -> Result<String> {
+    highlight_named_language("textile", source, &detected_theme())
+}
+
 pub fn highlight_todotxt(source: &str) -> Result<String> {
     highlight_named_language("todotxt", source, &detected_theme())
+}
+
+pub fn highlight_tsv(source: &str) -> Result<String> {
+    highlight_named_language("tsv", source, &detected_theme())
+}
+
+pub fn highlight_typst(source: &str) -> Result<String> {
+    highlight_named_language("typst", source, &detected_theme())
 }
 
 pub fn highlight_javascript(source: &str) -> Result<String> {
@@ -870,6 +902,10 @@ pub fn highlight_vim(source: &str) -> Result<String> {
     highlight_named_language("vim", source, &detected_theme())
 }
 
+pub fn highlight_nasm(source: &str) -> Result<String> {
+    highlight_named_language("nasm", source, &detected_theme())
+}
+
 pub fn debug_named_language_tree(language_name: &str, source: &str) -> Result<String> {
     debug_language_tree_impl(language_name, source)
 }
@@ -910,6 +946,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "ada" => DocumentKind::plain("ada"),
         "applescript" => DocumentKind::plain("applescript"),
         "asm" => DocumentKind::plain("asm"),
+        "nasm" => DocumentKind::plain("nasm"),
         "asciidoc" => DocumentKind::plain("asciidoc"),
         "authorized_keys" => DocumentKind::plain("authorized_keys"),
         "awk" => DocumentKind::plain("awk"),
@@ -987,7 +1024,12 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "sql_mysql" => DocumentKind::plain("sql_mysql"),
         "sql_sqlite" => DocumentKind::plain("sql_sqlite"),
         "textproto" => DocumentKind::plain("textproto"),
+        "latex" => DocumentKind::plain("latex"),
+        "tcl" => DocumentKind::plain("tcl"),
+        "textile" => DocumentKind::plain("textile"),
         "todotxt" => DocumentKind::plain("todotxt"),
+        "tsv" => DocumentKind::plain("tsv"),
+        "typst" => DocumentKind::plain("typst"),
         "html" => DocumentKind::plain("html"),
         "vue" => DocumentKind::plain("vue"),
         "svelte" => DocumentKind::plain("svelte"),
@@ -1342,6 +1384,11 @@ pub(crate) fn detect_document_kind(
         return Some(DocumentKind::plain("asm"));
     }
 
+    let nasm = grammar("nasm");
+    if matches_path(nasm, source_path) {
+        return Some(DocumentKind::plain("nasm"));
+    }
+
     let asciidoc = grammar("asciidoc");
     if matches_path(asciidoc, source_path) {
         return Some(DocumentKind::plain("asciidoc"));
@@ -1686,6 +1733,31 @@ pub(crate) fn detect_document_kind(
     let textproto = grammar("textproto");
     if matches_path(textproto, source_path) {
         return Some(DocumentKind::plain("textproto"));
+    }
+
+    let latex = grammar("latex");
+    if matches_path(latex, source_path) {
+        return Some(DocumentKind::plain("latex"));
+    }
+
+    let tcl = grammar("tcl");
+    if matches_path(tcl, source_path) || matches_shebang(tcl, source) {
+        return Some(DocumentKind::plain("tcl"));
+    }
+
+    let textile = grammar("textile");
+    if matches_path(textile, source_path) {
+        return Some(DocumentKind::plain("textile"));
+    }
+
+    let tsv = grammar("tsv");
+    if matches_path(tsv, source_path) {
+        return Some(DocumentKind::plain("tsv"));
+    }
+
+    let typst = grammar("typst");
+    if matches_path(typst, source_path) {
+        return Some(DocumentKind::plain("typst"));
     }
 
     let javascript = grammar("javascript");
@@ -3849,9 +3921,13 @@ mod tests {
         "sql",
         "proto",
         "textproto",
+        "latex",
+        "textile",
         "todotxt",
         "dotenv",
         "ini",
+        "tsv",
+        "typst",
         "xml",
         "plain",
     ];
@@ -3884,7 +3960,7 @@ mod tests {
         "todotxt",
     ];
     const FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES: &[&str] = &[
-        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "crystal", "d", "fortran", "fsharp",
+        "rust", "c", "cpp", "go", "vhdl", "ada", "asm", "nasm", "crystal", "d", "fortran", "fsharp",
     ];
     const FIXTURE_MANAGED_PROGRAMMING_FAMILIES: &[&str] = &[
         "java",
@@ -3913,6 +3989,7 @@ mod tests {
         "lua",
         "applescript",
         "awk",
+        "tcl",
         "vim",
     ];
     const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
@@ -4035,6 +4112,37 @@ mod tests {
             expected_fragments: &["name", "\"Dracula\"", "enabled", "true", "tags"],
         },
         FixtureCase {
+            relative_path: "latex/theme.tex",
+            expect_highlight: true,
+            expected_fragments: &[
+                "\\documentclass",
+                "\\section",
+                "\\textbf",
+                "\\label",
+                "https://example.com/kat",
+            ],
+        },
+        FixtureCase {
+            relative_path: "latex/theme.sty",
+            expect_highlight: true,
+            expected_fragments: &["\\ProvidesPackage", "\\newcommand", "\\texttt", "katTheme"],
+        },
+        FixtureCase {
+            relative_path: "textile/theme.textile",
+            expect_highlight: true,
+            expected_fragments: &["h1.", "Kat Textile Preview", "*", "bc.", "pre."],
+        },
+        FixtureCase {
+            relative_path: "tsv/themes.tsv",
+            expect_highlight: true,
+            expected_fragments: &["name", "Dracula", "true", "Monokai"],
+        },
+        FixtureCase {
+            relative_path: "typst/theme.typ",
+            expect_highlight: true,
+            expected_fragments: &["#let", "= Theme Preview", "*bold*", "```json", "#for"],
+        },
+        FixtureCase {
             relative_path: "hcl/nomad-job.hcl",
             expect_highlight: true,
             expected_fragments: &[
@@ -4085,6 +4193,17 @@ mod tests {
             relative_path: "asm/theme.s",
             expect_highlight: true,
             expected_fragments: &["theme_preview:", "mov", "x0", "#42"],
+        },
+        FixtureCase {
+            relative_path: "nasm/theme.asm",
+            expect_highlight: true,
+            expected_fragments: &[
+                "section .text",
+                "global theme_preview",
+                "mov",
+                "rax",
+                "syscall",
+            ],
         },
         FixtureCase {
             relative_path: "cabal/kat.cabal",
@@ -4765,6 +4884,11 @@ mod tests {
             expected_fragments: &["BEGIN", "function render", "printf", "theme"],
         },
         FixtureCase {
+            relative_path: "tcl/theme.tcl",
+            expect_highlight: true,
+            expected_fragments: &["#!/usr/bin/env tclsh", "proc", "set", "puts", "if"],
+        },
+        FixtureCase {
             relative_path: "lua/theme_preview.lua",
             expect_highlight: true,
             expected_fragments: &["local", "ThemePreview", "function", "setmetatable", "print"],
@@ -5023,12 +5147,16 @@ mod tests {
         "html",
         "json",
         "markdown",
+        "latex",
         "proto",
         "query",
         "sql",
+        "textile",
         "textproto",
         "toml",
         "todotxt",
+        "tsv",
+        "typst",
         "yaml",
     ];
     const SHOWCASE_SHELL_AND_TOOLING_FAMILIES: &[&str] = &[
@@ -5044,8 +5172,16 @@ mod tests {
         "todotxt",
         "zsh",
     ];
-    const SHOWCASE_PROGRAMMING_LANGUAGE_FAMILIES: &[&str] =
-        &["go", "javascript", "python", "rust", "vhdl", "vim"];
+    const SHOWCASE_PROGRAMMING_LANGUAGE_FAMILIES: &[&str] = &[
+        "go",
+        "javascript",
+        "nasm",
+        "python",
+        "rust",
+        "tcl",
+        "vhdl",
+        "vim",
+    ];
 
     #[test]
     fn showcase_suite_groups_cover_all_showcase_families() {
@@ -5410,6 +5546,48 @@ mod tests {
         ));
         assert!(matches!(
             detect_language(
+                Some(Path::new("docs/theme.tex")),
+                "\\section{Theme Preview}\\label{sec:theme}\n",
+            ),
+            Some(SupportedLanguage::Latex)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.sty")),
+                "\\ProvidesPackage{kat-theme}\n",
+            ),
+            Some(SupportedLanguage::Latex)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.textile")),
+                "h1. Kat Textile Preview\n",
+            ),
+            Some(SupportedLanguage::Textile)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("themes.tsv")),
+                "name\tactive\nDracula\ttrue\n",
+            ),
+            Some(SupportedLanguage::Tsv)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.typ")),
+                "#let theme = \"Dracula\"\n= Theme Preview\n",
+            ),
+            Some(SupportedLanguage::Typst)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.tcl")),
+                "#!/usr/bin/env tclsh\nputs \"kat\"\n",
+            ),
+            Some(SupportedLanguage::Tcl)
+        ));
+        assert!(matches!(
+            detect_language(
                 Some(Path::new("src/theme.c")),
                 "typedef struct Theme { int enabled; } Theme;\n",
             ),
@@ -5756,6 +5934,34 @@ mod tests {
                 "theme_preview:\n  mov x0, #42\n",
             ),
             Some(SupportedLanguage::Asm)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.asm")),
+                "section .text\nglobal theme_preview\n",
+            ),
+            Some(SupportedLanguage::Nasm)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("theme.yasm")),
+                "section .text\nglobal theme_preview\n",
+            ),
+            Some(SupportedLanguage::Nasm)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("macros.mac")),
+                "%macro save_regs 0\n%endmacro\n",
+            ),
+            Some(SupportedLanguage::Nasm)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("macros.inc")),
+                "%define THEME_NAME \"Dracula\"\n",
+            ),
+            Some(SupportedLanguage::Nasm)
         ));
         assert!(matches!(
             detect_language(

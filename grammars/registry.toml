@@ -266,6 +266,36 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "nasm"
+library_name = "tree-sitter-nasm"
+extensions = ["asm", "nasm", "yasm", "inc", "mac"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant",
+  "constant.builtin",
+  "constant.numeric.float",
+  "constant.numeric.integer",
+  "function",
+  "function.special",
+  "keyword",
+  "keyword.directive",
+  "label",
+  "operator",
+  "operator.binary",
+  "operator.unary",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "type",
+  "variable",
+  "variable.builtin",
+]
+
+[[grammar]]
 name = "asciidoc"
 library_name = "tree-sitter-asciidoc"
 extensions = ["adoc", "ad", "asciidoc"]
@@ -1627,6 +1657,135 @@ highlight_names = [
   "property",
   "punctuation.bracket",
   "string",
+]
+
+[[grammar]]
+name = "latex"
+library_name = "tree-sitter-latex"
+extensions = ["tex", "ltx", "sty", "cls"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "function",
+  "function.macro",
+  "keyword.conditional",
+  "keyword.import",
+  "label",
+  "module",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "spell",
+  "string",
+  "string.special.path",
+  "text.emphasis",
+  "text.reference",
+  "text.strong",
+  "text.title",
+  "text.uri",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "tcl"
+library_name = "tree-sitter-tcl"
+extensions = ["tcl", "tk", "tm"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = ["tclsh", "wish"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "conditional",
+  "function",
+  "function.builtin",
+  "keyword",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "spell",
+  "string",
+  "string.escape",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]
+
+[[grammar]]
+name = "textile"
+library_name = "tree-sitter-textile"
+extensions = ["textile"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "punctuation.list.markdown",
+  "punctuation.special",
+  "text",
+  "text.literal.block",
+  "text.title",
+]
+
+[[grammar]]
+name = "tsv"
+library_name = "tree-sitter-tsv"
+extensions = ["tsv"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "float",
+  "number",
+  "punctuation.delimiter",
+  "string",
+]
+
+[[grammar]]
+name = "typst"
+library_name = "tree-sitter-typst"
+extensions = ["typ"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "boolean",
+  "comment",
+  "constant",
+  "constant.builtin",
+  "function",
+  "function.method",
+  "keyword",
+  "keyword.import",
+  "keyword.operator",
+  "keyword.repeat",
+  "keyword.return",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.list.markdown",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "tag",
+  "text.emphasis",
+  "text.literal.block",
+  "text.literal.inline",
+  "text.quote",
+  "text.reference",
+  "text.strong",
+  "text.title",
+  "text.uri",
+  "variable",
 ]
 
 [[grammar]]

@@ -48,6 +48,7 @@ const ADA_LOCALS_QUERY: &str = include_str!("../grammars/ada/queries/locals.scm"
 const APPLESCRIPT_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/applescript/queries/highlights.scm");
 const ASM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/asm/queries/highlights.scm");
+const NASM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/nasm/queries/highlights.scm");
 const ASCIIDOC_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/asciidoc/queries/highlights.scm");
 const AUTHORIZED_KEYS_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/authorized_keys/queries/highlights.scm");
@@ -194,6 +195,13 @@ const GRAPHQL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/graphql/queries
 const PROTO_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/proto/queries/highlights.scm");
 const TEXTPROTO_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/textproto/queries/highlights.scm");
+const LATEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/latex/queries/highlights.scm");
+const LATEX_INJECTIONS_QUERY: &str = include_str!("../grammars/latex/queries/injections.scm");
+const TCL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/tcl/queries/highlights.scm");
+const TEXTILE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/textile/queries/highlights.scm");
+const TSV_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/tsv/queries/highlights.scm");
+const TYPST_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/typst/queries/highlights.scm");
+const TYPST_INJECTIONS_QUERY: &str = include_str!("../grammars/typst/queries/injections.scm");
 const REGEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/regex/queries/highlights.scm");
 const REGEX_JAVASCRIPT_HIGHLIGHTS_QUERY: &str = concat!(
     include_str!("../grammars/regex/queries/highlights.scm"),
@@ -263,6 +271,7 @@ unsafe extern "C" {
     fn tree_sitter_actionscript() -> *const ();
     fn tree_sitter_applescript() -> *const ();
     fn tree_sitter_asm() -> *const ();
+    fn tree_sitter_nasm() -> *const ();
     fn tree_sitter_asciidoc() -> *const ();
     fn tree_sitter_authorized_keys() -> *const ();
     fn tree_sitter_awk() -> *const ();
@@ -287,6 +296,11 @@ unsafe extern "C" {
     fn tree_sitter_graphql() -> *const ();
     fn tree_sitter_proto() -> *const ();
     fn tree_sitter_textproto() -> *const ();
+    fn tree_sitter_latex() -> *const ();
+    fn tree_sitter_tcl() -> *const ();
+    fn tree_sitter_textile() -> *const ();
+    fn tree_sitter_tsv() -> *const ();
+    fn tree_sitter_typst() -> *const ();
     fn tree_sitter_userscript_metadata() -> *const ();
     fn tree_sitter_markdown() -> *const ();
     fn tree_sitter_markdown_inline() -> *const ();
@@ -320,6 +334,7 @@ const ACTIONSCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sit
 const ADA_LANGUAGE: LanguageFn = tree_sitter_ada::LANGUAGE;
 const APPLESCRIPT_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_applescript) };
 const ASM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_asm) };
+const NASM_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_nasm) };
 const ASCIIDOC_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_asciidoc) };
 const AUTHORIZED_KEYS_LANGUAGE: LanguageFn =
     unsafe { LanguageFn::from_raw(tree_sitter_authorized_keys) };
@@ -402,6 +417,11 @@ const JAVASCRIPT_LANGUAGE: LanguageFn = tree_sitter_javascript::LANGUAGE;
 const GRAPHQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_graphql) };
 const PROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_proto) };
 const TEXTPROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_textproto) };
+const LATEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_latex) };
+const TCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_tcl) };
+const TEXTILE_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_textile) };
+const TSV_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_tsv) };
+const TYPST_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_typst) };
 const REGEX_LANGUAGE: LanguageFn = tree_sitter_regex::LANGUAGE;
 const JSDOC_LANGUAGE: LanguageFn = tree_sitter_jsdoc::LANGUAGE;
 const USERSCRIPT_METADATA_LANGUAGE: LanguageFn =
@@ -520,6 +540,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "asm",
         language_fn: ASM_LANGUAGE,
         highlights_query: ASM_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "nasm",
+        language_fn: NASM_LANGUAGE,
+        highlights_query: NASM_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },
@@ -1081,6 +1108,41 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: TEXTPROTO_LANGUAGE,
         highlights_query: TEXTPROTO_HIGHLIGHTS_QUERY,
         injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "latex",
+        language_fn: LATEX_LANGUAGE,
+        highlights_query: LATEX_HIGHLIGHTS_QUERY,
+        injections_query: LATEX_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "tcl",
+        language_fn: TCL_LANGUAGE,
+        highlights_query: TCL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "textile",
+        language_fn: TEXTILE_LANGUAGE,
+        highlights_query: TEXTILE_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "tsv",
+        language_fn: TSV_LANGUAGE,
+        highlights_query: TSV_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "typst",
+        language_fn: TYPST_LANGUAGE,
+        highlights_query: TYPST_HIGHLIGHTS_QUERY,
+        injections_query: TYPST_INJECTIONS_QUERY,
         locals_query: "",
     },
     StaticLanguageAsset {
