@@ -45,6 +45,11 @@
 - `asm`
 - `awk`
 - `bibtex`
+- `latex`
+- `nasm`
+- `tcl`
+- `tsv`
+- `typst`
 
 ## 仓库内有本地 grammar 或 scanner 改造，短期内不适合直接切回上游 crate
 
@@ -86,6 +91,8 @@
   原因：本地 scanner 改了 HTML scanner 符号名，确保 Vue runtime 和独立 HTML runtime 可同时链接。
 - `scss`
   原因：本地 grammar 改成复用仓库里的 `css/grammar.js`，避免引入第二套 CSS 依赖。
+- `textile`
+  原因：当前仓库内维护的是本地最小 Textile grammar；已评估过上游实现，但其授权元数据暂不适合直接 vendored 进仓库。
 
 ## 许可证原因，继续使用 vendored 方案更合适
 

@@ -67,6 +67,8 @@
 - `ActionScript`、`Ada`、`AppleScript`、`Assembly (.s/.S)`、`AsciiDoc`、`Authorized Keys`、`AWK`、`BibTeX` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `Ada` 已直接切到 crate-backed parser，`ASP` 也补齐了此前缺失的 `.asa` 入口。
 - `Cabal`、`CFML`、`Clojure`、`CoffeeScript`、`Crystal`、`D`、`Elm`、`Erlang`、`F#`、`Fortran` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `CFML`、`Clojure`、`CoffeeScript`、`Crystal`、`D`、`Elm`、`Erlang`、`F#`、`Fortran` 现在都走 crate-backed parser，`CoffeeScript` / `Crystal` 的 parser 则来自外部 `kat-parsers` bundle crate；`coffee.erb` 也已重新接回统一模板宿主分发链路。除此之外，`CMakeCache`、`Command Help`、`CpuInfo`、`debsources`、`Fortran Namelist`、`fstab` 这批历史上更偏“专用文本文件”的入口，也都补成了独立 mini-runtime；`CMake` 生成的 `*.h.in` / `*.hpp.in` 头文件模板、`cron.d/*` 与 `/var/mail/*` / `/var/spool/mail/*` 也已纳入 detector。
 - `VHDL`、`VimL`、`Todo.txt` 现在也已接入独立 runtime；其中 `VimL` 复用了 Lua / Python / Ruby / regex 注入链路，`Todo.txt` 则按 `priority` / `project` / `context` 做了最小但可读的结构化高亮。
+- `LaTeX / TeX`、`Tcl`、`Textile`、`TSV`、`Typst` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `LaTeX` 已补上 `minted` / `pycode` / `luacode` 这类高收益环境注入，`Typst` 也已接入 raw block 按 info string 分发子语言的链路。
+- `NASM / x86_64 Assembly` 现在也不再混在通用 `asm` 入口里，而是拆成了独立 runtime，覆盖 `.asm` / `.nasm` / `.yasm` / `.inc` / `.mac`；原有 `.s` / `.S` 继续由通用 `asm` runtime 承接，避免把传统汇编入口和 NASM 方言强行揉在一起。
 - `Go` 这轮也已接入为独立 runtime，并把 `zed` 的 Go highlights/injections 里对终端渲染最有价值的部分对齐进来。
 - `go.mod`、`go.work`、`go.sum` 现在也已作为 Go 生态元数据文件接入独立 runtime，而不是混入 `.go` source runtime。
 - `HCL` 现已作为独立配置语言 runtime 接入，覆盖 `.hcl` 与 `.nomad`；当前 query 已补齐注释、block/type、attribute key、function call、string/template、operator、布尔/数字/null。除了基础 HCL 高亮外，Nomad 风格 `template { destination, data }` 现在也会按 `destination` 推断目标 runtime，并通过 projection-based injection 同时保留 HCL template syntax 与目标文件语法高亮；现有 fixture / showcase 继续以 Nomad 风格样例为主，但 runtime 定位仍保持通用 HCL。
@@ -92,7 +94,8 @@
 | ActionScript | 🟨 基础 | 已支持 `.as`；当前独立 `actionscript` runtime 已接入最小 grammar/highlights 资产，并补上 fixture，避免继续停留在 bat 对照表里的纯缺口状态。 | 生态里已有独立 Tree-sitter grammar，可作为后续继续补 query 细节的基础。 | 这门语言现在已经有了稳定 runtime 入口；下一步是否继续做深，重点会是补 class/member/metadata 这类更细语义，而不是接线问题。 |
 | Ada | 🟨 基础 | 已支持 `.adb` / `.ads` / `.gpr`；当前 `ada` runtime 已改为 crate-backed parser，并保留本地 highlights/locals query 作为集成资产。fixture 已覆盖基础 source file。 | 生态里已有独立 Ada Tree-sitter grammar/crate，可长期沿着 query 细化继续演进。 | 对这门语言来说，先把 parser 迁到 crate-backed 再接入 runtime，是比继续保留本地 parser 源更长期可维护的路径；后续主要工作会是把 capture 语义压实。 |
 | AppleScript | 🟨 基础 | 已支持 `.applescript`、`Script Editor` / `script editor` 文件名与 `osascript` shebang；当前独立 `applescript` runtime 已接入 grammar/scanner/highlights 资产，并补上 fixture。 | 生态里已有独立 AppleScript grammar，可作为后续继续补 command/property 细节的起点。 | 这一层已经从“完全缺失”推进到“能稳定识别并高亮 AppleScript 文件”；后续收益主要来自 query 细化，而不是 detector。 |
-| Assembly (`.s` / `.S`) | 🟨 基础 | 已支持 `.s` / `.S`；当前独立 `asm` runtime 已覆盖最小汇编语法高亮，并补上 fixture，先把此前 bat 对照下的 `ARM Assembly` 缺口收口。 | 生态里已有通用 assembly Tree-sitter grammar，可覆盖这类传统汇编入口。 | 当前先按通用 `asm` runtime 承接 `.s` / `.S` 是更稳妥的长期结构；若后续要继续细分 ARM / x86 方言，应该在此基础上再做 detector/profile 分化。 |
+| Assembly (`.s` / `.S`) | 🟨 基础 | 已支持 `.s` / `.S`；当前独立 `asm` runtime 已覆盖最小汇编语法高亮，并补上 fixture，继续承接传统汇编入口。 | 生态里已有通用 assembly Tree-sitter grammar，可覆盖这类传统汇编入口。 | 把 `.s` / `.S` 留在通用 `asm` runtime，比把所有汇编方言都塞进同一套 profile 更稳妥；需要方言化时，再沿 detector/runtime 继续拆。 |
+| NASM / x86-64 Assembly | 🟨 基础 | 已支持 `.asm` / `.nasm` / `.yasm` / `.inc` / `.mac`；当前独立 `nasm` runtime 已覆盖 comment、label、register、instruction、directive、size hint、立即数 / string 等基础结构，并补上 fixture / showcase。 | 生态里已有独立 NASM Tree-sitter grammar，可直接把 x86 / x86_64 风格入口从通用 assembly 里拆出来。 | 这一层最重要的决策是把 NASM 方言独立成 runtime，而不是继续拿通用 `asm` grammar 硬吃 `.asm`；后续再做深时，收益会主要来自 instruction family、memory operand 和 preprocessor 细节。 |
 | AsciiDoc | 🟨 基础 | 已支持 `.adoc` / `.ad` / `.asciidoc`；当前独立 `asciidoc` runtime 已接入 grammar、scanner、support files 与 highlights query，并补上 fixture。 | 生态里已有独立 AsciiDoc Tree-sitter grammar，可作为后续继续补 heading/list/admonition 细节的基础。 | 这门语言现在已经脱离“纯文本”阶段；下一步更值得做的是围绕 markup 语义继续抠 query，而不是重新讨论 runtime 是否独立。 |
 | Authorized Keys | 🟨 基础 | 已支持 `authorized_keys` / `authorized_keys2` 文件名，并对明显 SSH 公钥内容的 `.pub` 文件补上内容感知检测；当前仓库内还维护了一个面向 key type / base64 blob / option / comment 的小型本地 grammar。fixture 已覆盖常见 authorized_keys 场景。 | 成熟编辑器生态未必都会单独细化这类 SSH plumbing 文件，但把它作为独立 mini-runtime 处理，比退回普通文本更适合终端阅读。 | 这是一个很符合 `kat` 当前 detector + mini-runtime 模型的文件类型：格式稳定、收益高，而且不值得为了它引入更重的 grammar 依赖链。 |
 | AWK | 🟨 基础 | 已支持 `.awk` 与 `awk` / `gawk` / `mawk` / `nawk` shebang；当前独立 `awk` runtime 已接入 grammar/scanner/highlights 资产，并补上 fixture。 | 生态里已有独立 AWK grammar，可作为后续补 pattern/action、builtin variable 和 regexp 细节的基础。 | 这一层已经把脚本文件识别与基础可读性补齐；后续若继续做深，重点是 query 细化，而不是宿主分发。 |
@@ -103,6 +106,11 @@
 | YAML | 🟩 精细 | 已支持 `.yaml` / `.yml`；Markdown `---` frontmatter 已注入 YAML；fixture / showcase 已覆盖 anchor / alias / tag / merge key / block scalar / GitHub Actions workflow。当前除 `actions/github-script` 的 JavaScript 注入外，GitHub Actions workflow / `action.yml` 这类 profile 也已接入宿主级 resolver：`run` block 会按同级 `shell` 分发到 `bash` / `zsh` / `fish` / `python` 等已注册 runtime，`${{ ... }}` expression 与 `uses: owner/repo@ref` 也已有专门语义高亮。Dracula 语义上，YAML alias / anchor 单独走绿色斜体下划线，key 走配置语言 key 的青色。 | 本地 `zed` 有独立 YAML grammar 包，并额外做了 GitHub Actions `actions/github-script` -> JavaScript 注入；这部分已被 `kat` 对齐进统一 runtime。 | YAML 现在已经从“基础接入”升级到“场景化精细支持”；后续剩余工作更多是继续扩充被注入子语言，而不是 YAML 宿主层本身。 |
 | Protocol Buffers (`.proto`) | 🟨 基础 | 已支持 `.proto` / `.protobuf` / `.protodevel`；当前独立 `proto` runtime 已覆盖 `syntax` / `package` / `import` / `message` / `service` / `rpc`、标量类型、message/service 标识符、字段编号和基础字符串字面量。fixture / showcase 已覆盖 schema 场景。 | 成熟编辑器生态通常会把 protobuf schema 作为独立 IDL 语言处理，而不是混入通用文本或数据格式 runtime。 | 这一层已经具备基础可读性；后续主要值得继续细化的是 enum / option / oneof / reserved / map 等 protobuf schema 专有结构。 |
 | Protocol Buffers Text Format (`textproto`) | 🟨 基础 | 已支持 `.textproto` / `.textpb` / `.pbtxt` / `.prototxt`；当前独立 `textproto` runtime 已覆盖 field name、`:` delimiter、string / boolean / number 等基础值语义。fixture / showcase 已覆盖常见文本数据场景。 | 成熟编辑器生态通常会把 protobuf text format 视作独立于 `.proto` schema 的数据格式，而不是复用同一套 schema runtime。 | 这一层最重要的架构决策已经落定：schema 与文本数据格式拆成两个 runtime，比在同一 grammar 里混合特判更长期可维护。 |
+| LaTeX / TeX | 🟨 基础 | 已支持 `.tex` / `.ltx` / `.sty` / `.cls`；当前独立 `latex` runtime 已覆盖 command、section/title、label/reference、hyperlink、数学/分组 delimiter，以及基础 text/spell 语义，并通过 injections query 支持 `minted` / `pycode` / `luacode` 等高收益环境。fixture / showcase 已覆盖顶层文档、package file 与 `minted` 场景。 | 生态里已有独立 LaTeX Tree-sitter grammar，成熟实现通常也会把代码环境注入到目标语言 runtime。 | 这一层已经不再是“把 `.tex` 认出来”；当前更重要的是保持宿主结构与嵌入代码环境的统一分发。后续若继续做深，价值会主要落在 theorem/math/command family 的 capture 细化。 |
+| Tcl | 🟨 基础 | 已支持 `.tcl` / `.tk` / `.tm` 与 `tclsh` / `wish` shebang；当前独立 `tcl` runtime 已覆盖 `proc`、builtin command、变量、参数、条件/循环、string/escape 与常见 operator，并补上 fixture / showcase。 | 生态里已有独立 Tcl grammar，可作为后续继续补 command family 和 variable 语义的基础。 | 这门语言现在已经具备稳定 runtime 入口；后续值得继续做的是围绕 builtin/namespace/word expansion 补更细语义，而不是 detector。 |
+| Textile | 🟨 基础 | 已支持 `.textile`；当前以仓库内最小本地 runtime 覆盖 heading、list marker、`bc.` / `pre.` 代码块标记和基础段落文本，并补上 fixture / showcase。 | 编辑器生态里已有可参考的 Tree-sitter 实现，但当前可验证的上游授权元数据并不稳定。 | 对这类轻量 markup 文件来说，先用本地最小 runtime 把结构读清楚，比为了短期接线引入来源不清的 vendored grammar 更稳妥；后续若上游许可明确，再评估是否切回第三方 grammar。 |
+| TSV | 🟨 基础 | 已支持 `.tsv`；当前独立 `tsv` runtime 已覆盖 tab delimiter、text、number、float 与 boolean，并补上 fixture / showcase。 | 生态里通常会把 separated values 做成一组共享 grammar / dialect，而不是继续退回纯文本。 | 这一层的价值主要在于把制表符分隔的数据表从纯文本里拆出来；后续若继续做深，更合理的方向是把 CSV / PSV / TSV 统一成一个 separated-values runtime 族。 |
+| Typst | 🟨 基础 | 已支持 `.typ`；当前独立 `typst` runtime 已覆盖 heading、tag、call、variable、keyword、operator、emphasis/strong/quote、raw span/block、label/ref 等高收益结构，并通过 raw block info string 把代码块继续注入到目标 runtime。fixture / showcase 已覆盖基础 markup 与 raw JSON block。 | 生态里已有独立 Typst grammar，成熟实现通常也会把 raw code block 作为统一嵌入入口处理。 | 这门语言现在已经脱离“纯文本或占位 detector”阶段；后续收益主要来自把数学、layout、set/show 语义继续压细，而不是重新搭建 runtime。 |
 | HCL | 🟦 中等 | 已支持 `.hcl` / `.nomad`；当前独立 `hcl` runtime 已覆盖注释、block/type、attribute key、function call、数字 / 布尔 / null、operator、template interpolation / directive、heredoc delimiter 与基本 string/token 结构。除此之外，Nomad 风格 `template { destination = \"...\"; data = <<EOF ... }` 现在会按 `destination` 分发到目标 runtime，并通过 projection-based injection 同时保留 HCL template directive / interpolation 与目标语言高亮；fixture / showcase 已补对应 Python 样例。 | Helix 等成熟编辑器生态通常会把 HCL 作为独立配置语言处理，并在 Terraform / Nomad 等 DSL 之间复用同一语法基础。 | 这一层已经不再只是“通用 HCL token 能读”，而是开始承接宿主感知模板分发；后续主要收益会落在更多目标 runtime 的 placeholder 策略与更细的 Nomad/Terraform profile 语义，而不是回退到单纯 query 注入。 |
 | Rust | 🟩 精细 | 已支持 `.rs`；宏 token-tree 注入、Rustdoc Markdown 注入、Rustdoc 内 fenced Rust / Python、普通 macro / attribute / trait / function definition / function method / variable / lifetime / local binding 都已细化；这一轮还补上了常见 SQL 宏字符串与 regex 宏 / `Regex(Builder)::new` 的注入。fixture / showcase 已覆盖 rich 结构、rustdoc nested case 与 SQL/Regex 场景。Dracula 语义上，attribute 走绿色斜体，trait/interface 走青色，local variable 保持前景色，不再被误染成 literal 色。 | 本地 `zed` 既有更细的 Rust highlights / injections，也有 `semantic_token_rules`、context provider、imports、runnables 等更成熟的语言层实现；当前 `kat` 已对齐它在 highlights/injections 里最关键的终端可见部分。 | 对终端语法高亮本身，Rust 已经达到当前仓库里最精细的一档；剩余明显差距已更多集中在 `rstml`、更细的 SQL 宏识别，以及编辑器层能力。 |
 | Go | 🟩 精细 | 已支持 `.go`；当前 query 已补齐 package namespace、type / builtin type、generic type parameter、function definition、method definition / call、builtin function、directive comment、数值 / 字符串 / rune / escape；并且支持基于 comment hint 的 `json` / `yaml` / `html` / `javascript` / `css` / `bash` / `sql` / `regex` 注入调度。现在 `sql` 这条线还进一步支持了 `sql:postgres` / `sql:mysql` / `sql:sqlite` 方言 hint。fixture / showcase 已覆盖独立文件与 Markdown fenced `go` / `golang` alias；这些 `sql` / `regex` hint 已真正落到共享 runtime。 | 本地 `zed` 有独立 Go grammar 包，并维护了 `highlights.scm` 与面向 regex / sql / json / yaml / html / css / js / bash 等子语言的 `injections.scm`。 | 对 `kat` 来说，Go source runtime 已经达到样板语言级别；当前剩余收益更多来自继续补嵌入语言本体细节，而不是 Go 宿主层重写。 |
@@ -182,7 +190,7 @@
 
 下面这节只记录“文件类型识别 / runtime 入口”层面的差距，不评价 `bat` 与 `kat` 在 query 质量、嵌入语言或终端主题语义上的优劣。对照基线为本机 `bat --list-languages` 当前输出。
 
-- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`、`C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`，和这次继续补齐的 `PHP` / `Scala` / `Swift` / `Dart` / `Elixir` / `Zig`、`VHDL` / `VimL` / `Todo.txt`、`SSH Config` / `Git Attributes` / `Git Commit` / `Git Rebase Todo` / `Git Link` / `Git Log` / `Git Mailmap` / `Requirements.txt` / `Apache Conf` / `SCSS` / `Sass`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml`，以及 `exclude` / 全局 Git ignore 这批 detector 扩展。
+- `kat` 当前已经补上这一轮计划中的 `TypeScript` / `TSX`、`Vue` / `Svelte`、`DotENV` / `INI` / `XML`、`Makefile` / `CMake` / `Ninja`、`Jinja` / `Twig` / `ERB`，以及后续追加的 `C` / `C++` / `Java` / `Kotlin` / `Ruby` / `Lua` / `Nix`、`C#` / `Groovy` / `Diff` / `Java Properties` / `JQ` / `Less` / `Graphviz (DOT)` / `nginx`，和这次继续补齐的 `PHP` / `Scala` / `Swift` / `Dart` / `Elixir` / `Zig`、`VHDL` / `VimL` / `Todo.txt`、`SSH Config` / `Git Attributes` / `Git Commit` / `Git Rebase Todo` / `Git Link` / `Git Log` / `Git Mailmap` / `Requirements.txt` / `Apache Conf` / `SCSS` / `Sass`，以及这一轮继续补齐的 `LaTeX / TeX` / `Tcl` / `Textile` / `TSV` / `Typst` / `x86_64 Assembly`；同时补齐了 `tf` / `tfvars`、`.env*`、`ipynb` / `jsonl` / `flake.lock`、`CITATION.cff` / `.clang-format`、`*.mkd`、`ddl` / `dml`，以及 `exclude` / 全局 Git ignore 这批 detector 扩展。
 - 下表从这一轮之后的真实剩余缺口继续维护；不再保留已经补齐项的旧记录。
 
 ### 完全缺失：`kat` 还没有对应 runtime / detector 入口
@@ -200,7 +208,6 @@
 - `jsonnet`：`jsonnet`、`libsonnet`、`libjsonnet`
 - `Julia`：`jl`
 - `Known Hosts`：`known_hosts`、`known_hosts.old`
-- `LaTeX`：`tex`、`ltx`
 - `Lean 4`：`lean`
 - `Lisp`：`lisp`、`cl`、`clisp`、`l`、`mud`、`el`、`scm`、`ss`、`lsp`、`fasl`、`sld`
 - `Literate Haskell`：`lhs`
@@ -249,17 +256,11 @@
 - `Stylus`：`styl`、`stylus`
 - `syslog`：`syslog`
 - `SystemVerilog`：`sv`、`svh`、`vh`
-- `Tab Separated Values`：`tsv`
-- `Tcl`：`tcl`
-- `TeX`：`sty`、`cls`
-- `Textile`：`textile`
-- `Typst`：`typ`
 - `varlink`：`varlink`
 - `Verilog`：`v`、`V`
 - `VimHelp`：`vimhelp`
 - `Vyper`：`vy`
 - `WGSL`：`wgsl`
-- `x86_64 Assembly`：`yasm`、`nasm`、`asm`、`inc`、`mac`
 
 ### 部分覆盖：已有相关 runtime，但文件识别范围仍窄于 `bat`
 

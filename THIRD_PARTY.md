@@ -47,6 +47,23 @@ Included sources:
 - `grammars/proto/queries/highlights.scm`
 - `grammars/textproto/grammar.js`
 - `grammars/textproto/queries/highlights.scm`
+- `grammars/latex/grammar.js`
+- `grammars/latex/scanner.c`
+- `grammars/latex/queries/highlights.scm`
+- `grammars/latex/queries/injections.scm`
+- `grammars/tcl/grammar.js`
+- `grammars/tcl/scanner.c`
+- `grammars/tcl/queries/highlights.scm`
+- `grammars/textile/grammar.js`
+- `grammars/textile/queries/highlights.scm`
+- `grammars/tsv/grammar.js`
+- `grammars/tsv/common/define-grammar.js`
+- `grammars/tsv/queries/highlights.scm`
+- `grammars/typst/grammar.js`
+- `grammars/typst/scanner.c`
+- `grammars/typst/unicode.h`
+- `grammars/typst/queries/highlights.scm`
+- `grammars/typst/queries/injections.scm`
 - `grammars/sql/queries/highlights.scm`
 - `grammars/sql/queries/highlights-postgres.scm`
 - `grammars/sql/queries/highlights-mysql.scm`
@@ -157,6 +174,8 @@ Included sources:
 - `grammars/applescript/queries/highlights.scm`
 - `grammars/asm/grammar.js`
 - `grammars/asm/queries/highlights.scm`
+- `grammars/nasm/grammar.js`
+- `grammars/nasm/queries/highlights.scm`
 - `grammars/asciidoc/grammar.js`
 - `grammars/asciidoc/common/grammar.js`
 - `grammars/asciidoc/scanner.c`
@@ -453,6 +472,46 @@ Upstream projects:
   Revision: `568471b80fd8793d37ed01865d8c2208a9fefd1b`
   License: MIT
   Notes: repository-local adapted highlights query for kat's capture model, including local semantic adjustments for field names and scalar literals.
+
+- `grammars/latex/grammar.js`
+- `grammars/latex/scanner.c`
+  Source: [latex-lsp/tree-sitter-latex](https://github.com/latex-lsp/tree-sitter-latex)
+  Revision: `7e0ecdc02926c7b9b2e0c76003d4fe7b0944f957`
+  License: MIT
+  Notes: repository-local copy of the upstream LaTeX grammar and scanner, kept as a dedicated runtime for `.tex` / `.ltx` / `.sty` / `.cls`.
+
+- `grammars/latex/queries/highlights.scm`
+- `grammars/latex/queries/injections.scm`
+  Source: [nvim-treesitter/nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter)
+  Revision: `cf12346a3414fa1b06af75c79faebe7f76df080a`
+  License: Apache-2.0
+  Notes: repository-local adapted LaTeX query assets based on nvim-treesitter, retuned for kat's capture model and nested-runtime integration. The injections query keeps high-value `minted` / `pycode` / `luacode` style environments routed into kat's shared runtimes.
+
+- `grammars/tcl/*`
+  Source: [tree-sitter-grammars/tree-sitter-tcl](https://github.com/tree-sitter-grammars/tree-sitter-tcl)
+  Revision: `8f11ac7206a54ed11210491cee1e0657e2962c47`
+  License: MIT
+  Notes: repository-local copy of the upstream Tcl grammar, scanner and highlights query, kept as a dedicated runtime for `.tcl` / `.tk` / `.tm` files and Tcl shebang scripts.
+
+- `grammars/textile/*`
+  Source: kat local integration
+  Revision: n/a
+  License: project-local
+  Notes: repository-local minimal grammar and highlights query for Textile markup. An upstream Tree-sitter repository was evaluated, but it is not vendored here because its licensing metadata is currently unclear.
+
+- `grammars/tsv/grammar.js`
+- `grammars/tsv/common/define-grammar.js`
+- `grammars/tsv/queries/highlights.scm`
+  Source: [tree-sitter-grammars/tree-sitter-csv](https://github.com/tree-sitter-grammars/tree-sitter-csv)
+  Revision: `f6bf6e35eb0b95fbadea4bb39cb9709507fcb181`
+  License: MIT
+  Notes: repository-local extracted TSV subset built from the upstream separated-values grammar support file, with a kat-local TSV wrapper and highlights query kept as a dedicated runtime for tab-separated data files.
+
+- `grammars/typst/*`
+  Source: [uben0/tree-sitter-typst](https://github.com/uben0/tree-sitter-typst)
+  Revision: `46cf4ded12ee974a70bf8457263b67ad7ee0379d`
+  License: MIT
+  Notes: repository-local copy of the upstream Typst grammar, scanner and required unicode support header, plus kat-local adapted highlights / injections queries for Typst markup and raw block nested runtimes.
 
 - `grammars/sql/queries/highlights.scm`
 - `grammars/sql/queries/highlights-postgres.scm`
@@ -751,6 +810,12 @@ Upstream projects:
   Revision: `839741fef4dab5128952334624905c82b40c7133`
   License: MIT
   Notes: repository-local copy of the upstream assembly grammar and highlights query, currently used for `.s` / `.S` source files.
+
+- `grammars/nasm/*`
+  Source: [naclsn/tree-sitter-nasm](https://github.com/naclsn/tree-sitter-nasm)
+  Revision: `d1b3638d017f2a8585e26dcfc66fe1df94185e30`
+  License: MIT
+  Notes: repository-local copy of the upstream NASM grammar and highlights query, kept as a dedicated runtime for x86 / x86_64-flavored `.asm` / `.nasm` / `.yasm` / `.inc` / `.mac` sources.
 
 - `grammars/asciidoc/*`
   Source: [cpkio/tree-sitter-asciidoc](https://github.com/cpkio/tree-sitter-asciidoc)
