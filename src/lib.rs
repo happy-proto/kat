@@ -1068,7 +1068,7 @@ pub(crate) struct RegionSegment {
     pub(crate) line_start: usize,
     pub(crate) left: usize,
     pub(crate) text_end: usize,
-    pub(crate) right: usize,
+    pub(crate) right_padding: DisplayColumn,
 }
 
 pub(crate) fn highlight_named_language_render_data(
@@ -3029,10 +3029,7 @@ fn build_region_segments(
             let content_width =
                 display_width_from_column(left_column, &source[line.left..line.text_end]);
             RegionSegment {
-                right: line.text_end
-                    + region_right
-                        .as_usize()
-                        .saturating_sub((left_column + content_width).as_usize()),
+                right_padding: region_right - (left_column + content_width),
                 ..line
             }
         })
@@ -3072,7 +3069,7 @@ fn build_block_region_segments(
                 InjectionVisualAnchor::LineStart => line.line_start,
             },
             text_end: line.line_end,
-            right: line.line_end,
+            right_padding: DisplayColumn::new(0),
         })
         .collect()
 }
@@ -3141,7 +3138,7 @@ fn build_region_segment_for_line(
         line_start: line.line_start,
         left,
         text_end: line.line_end,
-        right: line.line_end,
+        right_padding: DisplayColumn::new(0),
     }
 }
 
@@ -3549,7 +3546,7 @@ fn map_virtual_regions_to_source(
                 line_start: line_start_offset(source, mapped_left),
                 left: mapped_left,
                 text_end: mapped_text_end,
-                right: mapped_text_end + segment.right.saturating_sub(segment.text_end),
+                right_padding: segment.right_padding,
             });
         }
         mapped.push(VisualRegion {
@@ -3631,7 +3628,7 @@ fn map_virtual_region_segments_to_source(
             line_start: line_start_offset(source, mapped_left),
             left: mapped_left,
             text_end: mapped_text_end,
-            right: mapped_text_end + segment.right.saturating_sub(segment.text_end),
+            right_padding: segment.right_padding,
         });
     }
 
@@ -6670,6 +6667,19 @@ mod tests {
     }
 
     #[test]
+    fn nomad_template_python_projection_renders_without_layout_panics() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("hcl/nomad-template-python.nomad");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .expect("expected nomad template projection fixture to render");
+
+        assert!(rendered.contains("render_message"));
+        assert!(rendered.contains("NOMAD_ALLOC_ID"));
+        assert!(rendered.contains("endif"));
+    }
+
+    #[test]
     fn go_highlights_generics_methods_builtins_and_directives() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = fixture_path("go/rich.go");
@@ -9569,7 +9579,7 @@ priority: 7
     }
 
     fn segment_trailing_padding(segment: &RegionSegmentSnapshot) -> usize {
-        segment.right.saturating_sub(segment.text_end)
+        segment.right_padding
     }
 
     fn segment_rendered_right_edge(source: &str, segment: &RegionSegmentSnapshot) -> usize {

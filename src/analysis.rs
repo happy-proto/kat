@@ -204,7 +204,7 @@ pub(crate) struct RegionSegmentSnapshot {
     pub line_start: usize,
     pub left: usize,
     pub text_end: usize,
-    pub right: usize,
+    pub right_padding: usize,
 }
 
 impl From<crate::RegionSegment> for RegionSegmentSnapshot {
@@ -213,7 +213,7 @@ impl From<crate::RegionSegment> for RegionSegmentSnapshot {
             line_start: segment.line_start,
             left: segment.left,
             text_end: segment.text_end,
-            right: segment.right,
+            right_padding: segment.right_padding.as_usize(),
         }
     }
 }

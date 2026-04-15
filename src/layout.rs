@@ -433,7 +433,8 @@ fn segment_rect_slices(
     };
 
     let left_column = display_column(source, segment.line_start, segment.left);
-    let right_column = display_column(source, segment.line_start, segment.right);
+    let right_column = display_column(source, segment.line_start, segment.text_end)
+        + segment.right_padding.as_usize();
     if right_column <= left_column {
         return Vec::new();
     }
