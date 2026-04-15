@@ -1,12 +1,9 @@
-use std::ops::Range;
-
 use serde::Serialize;
 
 use crate::{
-    FlatRegionSegment, StyledSpan, flatten_region_segments, style_covering_span_from,
+    layout::LayoutDocument,
     terminal::escape_control_sequences,
     theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
-    visual::VisualDocument,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -15,66 +12,16 @@ pub(crate) struct RenderPlan {
 }
 
 impl RenderPlan {
-    pub(crate) fn compile(source: &str, visual: &VisualDocument, theme: Theme) -> Self {
+    pub(crate) fn compile(layout: &LayoutDocument, theme: Theme) -> Self {
         let mut builder = RenderPlanBuilder::new(theme);
-        let mut line_start = 0;
-        let flat_segments = flatten_region_segments(visual.regions());
-        let mut span_start_index = 0;
-        let mut span_end_index = 0;
-        let mut segment_index = 0;
 
-        while line_start <= source.len() {
-            let line_end = source[line_start..]
-                .find('\n')
-                .map(|offset| line_start + offset)
-                .unwrap_or(source.len());
-
-            while span_start_index < visual.spans().len()
-                && visual.spans()[span_start_index].range.end <= line_start
-            {
-                span_start_index += 1;
-            }
-            span_end_index = span_end_index.max(span_start_index);
-            while span_end_index < visual.spans().len()
-                && visual.spans()[span_end_index].range.start < line_end
-            {
-                span_end_index += 1;
-            }
-
-            while segment_index < flat_segments.len()
-                && (flat_segments[segment_index].line_start < line_start
-                    || (flat_segments[segment_index].line_start == line_start
-                        && flat_segments[segment_index].right <= line_start))
-            {
-                segment_index += 1;
-            }
-            let line_segment_start = segment_index;
-            while segment_index < flat_segments.len()
-                && flat_segments[segment_index].line_start == line_start
-            {
-                segment_index += 1;
-            }
-
-            compile_line_text(
-                &mut builder,
-                source,
-                line_start..line_end,
-                &visual.spans()[span_start_index..span_end_index],
-                &flat_segments[line_segment_start..segment_index],
-            );
-            compile_line_padding(
-                &mut builder,
-                line_end,
-                &flat_segments[line_segment_start..segment_index],
-            );
+        for (row_index, row) in layout.rows().iter().enumerate() {
+            compile_row(&mut builder, row);
             builder.reset_style();
 
-            if line_end == source.len() {
-                break;
+            if row_index + 1 < layout.rows().len() {
+                builder.push_newline();
             }
-
-            builder.push_newline();
-            line_start = line_end + 1;
         }
 
         Self { ops: builder.ops }
@@ -201,102 +148,38 @@ impl RenderPlanBuilder {
     }
 }
 
-fn compile_line_text(
-    builder: &mut RenderPlanBuilder,
-    source: &str,
-    line_range: Range<usize>,
-    spans: &[StyledSpan],
-    line_segments: &[FlatRegionSegment],
-) {
-    let line_start = line_range.start;
-    let line_end = line_range.end;
-    if line_start == line_end {
-        return;
-    }
+fn compile_row(builder: &mut RenderPlanBuilder, row: &crate::layout::LayoutRow) {
+    let mut cell_index = 0usize;
+    let mut column = 0usize;
 
-    let mut boundaries = vec![line_start, line_end];
-
-    for span in spans {
-        if span.range.start < line_end && span.range.end > line_start {
-            boundaries.push(span.range.start.max(line_start));
-            boundaries.push(span.range.end.min(line_end));
-        }
-    }
-
-    for segment in line_segments {
-        if segment.left < line_end && segment.text_end > line_start {
-            boundaries.push(segment.left.max(line_start));
-            boundaries.push(segment.text_end.min(line_end));
-        }
-    }
-
-    boundaries.sort_unstable();
-    boundaries.dedup();
-    let mut span_cursor = 0;
-
-    for window in boundaries.windows(2) {
-        let start = window[0];
-        let end = window[1];
-        if start == end {
+    while column < row.display_width {
+        if row
+            .cells
+            .get(cell_index)
+            .is_some_and(|cell| cell.column == column)
+        {
+            let cell = &row.cells[cell_index];
+            let style = merged_style(cell.style, background_style_at(row, cell.column));
+            builder.push_text(&cell.text, style);
+            column += cell.width.max(1);
+            cell_index += 1;
             continue;
         }
 
-        let text = &source[start..end];
-        let style = merged_visual_style(
-            spans,
-            line_segments,
-            &mut span_cursor,
-            start,
-            end,
-            builder.theme,
-        );
-        builder.push_text(text, style);
+        let style = background_style_at(row, column);
+        let run_end = next_cell_column(row, cell_index)
+            .unwrap_or(row.display_width)
+            .min(background_run_end(row, column).unwrap_or(row.display_width))
+            .max(column + 1);
+        builder.push_text(&" ".repeat(run_end - column), style);
+        column = run_end;
     }
 }
 
-fn compile_line_padding(
-    builder: &mut RenderPlanBuilder,
-    line_end: usize,
-    line_segments: &[FlatRegionSegment],
-) {
-    let mut boundaries = vec![line_end];
-    for segment in line_segments {
-        if segment.right > line_end {
-            boundaries.push(segment.right);
-        }
-    }
-    boundaries.sort_unstable();
-    boundaries.dedup();
-
-    if boundaries.len() <= 1 {
-        return;
-    }
-
-    for window in boundaries.windows(2) {
-        let start = window[0];
-        let end = window[1];
-        if start == end {
-            continue;
-        }
-
-        let style = top_region_style(line_segments, start, end, builder.theme);
-        if let Some(style) = style {
-            builder.push_text(&" ".repeat(end - start), Some(style));
-        }
-    }
-}
-
-fn merged_visual_style(
-    spans: &[StyledSpan],
-    line_segments: &[FlatRegionSegment],
-    span_cursor: &mut usize,
-    start: usize,
-    end: usize,
-    theme: Theme,
+fn merged_style(
+    foreground: Option<TokenStyle>,
+    background: Option<TokenStyle>,
 ) -> Option<TokenStyle> {
-    let foreground = style_covering_span_from(spans, span_cursor, start, end);
-    let background = top_region_style(line_segments, start, end, theme);
-
     match (foreground, background) {
         (Some(foreground), Some(background)) => Some(foreground.with_background_under(background)),
         (Some(foreground), None) => Some(foreground),
@@ -305,16 +188,20 @@ fn merged_visual_style(
     }
 }
 
-fn top_region_style(
-    line_segments: &[FlatRegionSegment],
-    start: usize,
-    end: usize,
-    theme: Theme,
-) -> Option<TokenStyle> {
-    line_segments
+fn background_style_at(row: &crate::layout::LayoutRow, column: usize) -> Option<TokenStyle> {
+    row.background_runs
         .iter()
-        .filter(|segment| segment.left <= start && segment.right >= end)
-        .map(|segment| segment.visual_level)
-        .max()
-        .and_then(|level| theme.nested_region_tint(level))
+        .find(|run| run.start_column <= column && run.end_column > column)
+        .map(|run| run.style)
+}
+
+fn background_run_end(row: &crate::layout::LayoutRow, column: usize) -> Option<usize> {
+    row.background_runs
+        .iter()
+        .find(|run| run.start_column <= column && run.end_column > column)
+        .map(|run| run.end_column)
+}
+
+fn next_cell_column(row: &crate::layout::LayoutRow, cell_index: usize) -> Option<usize> {
+    row.cells.get(cell_index).map(|cell| cell.column)
 }

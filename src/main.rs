@@ -15,7 +15,7 @@ use clap_complete::engine::{ArgValueCompleter, CompletionCandidate};
 use clap_complete::env::{Bash, Elvish, EnvCompleter, Fish, Powershell, Zsh};
 use miette::{Report, miette};
 use shadow_rs::shadow;
-use terminal_size::{Height, terminal_size};
+use terminal_size::{Height, Width, terminal_size};
 
 const DEFAULT_TERMINAL_ROWS: usize = 24;
 
@@ -218,6 +218,7 @@ enum OutputMode {
     DebugAnalysis,
     DebugSemantics,
     DebugVisual,
+    DebugLayout,
     DebugRenderOps,
     DebugTerminal,
     Version,
@@ -314,6 +315,8 @@ struct CliArgs {
     debug_shell_semantics: bool,
     #[arg(long = "debug-visual", group = "mode")]
     debug_visual: bool,
+    #[arg(long = "debug-layout", group = "mode")]
+    debug_layout: bool,
     #[arg(long = "debug-render-ops", group = "mode")]
     debug_render_ops: bool,
     #[arg(long = "debug-terminal", group = "mode")]
@@ -533,6 +536,8 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         OutputMode::DebugSemantics
     } else if cli.debug_visual {
         OutputMode::DebugVisual
+    } else if cli.debug_layout {
+        OutputMode::DebugLayout
     } else if cli.debug_render_ops {
         OutputMode::DebugRenderOps
     } else if cli.debug_terminal {
@@ -588,6 +593,13 @@ fn render_output(
             kat::debug_visual_json,
             kat::debug_named_language_visual_json,
         ),
+        OutputMode::DebugLayout => render_debug_json(
+            language,
+            source_path,
+            source,
+            kat::debug_layout_json,
+            kat::debug_named_language_layout_json,
+        ),
         OutputMode::DebugRenderOps => render_debug_json(
             language,
             source_path,
@@ -630,7 +642,9 @@ fn render_output_with_timing(
     timings: Option<&mut DebugTimingStats>,
 ) -> Result<String> {
     if matches!(options.mode, OutputMode::Render) {
-        let render_output = kat::render_with_timing(source_path, source)?;
+        let terminal_width = io::stdout().is_terminal().then(terminal_columns).flatten();
+        let render_output =
+            kat::render_with_timing_and_terminal_width(source_path, source, terminal_width)?;
         if let Some(timings) = timings {
             timings.render_pipeline.detect_document_kind +=
                 render_output.timings.detect_document_kind;
@@ -899,6 +913,17 @@ fn terminal_rows() -> Option<usize> {
         .filter(|rows| *rows > 0)
 }
 
+fn terminal_columns() -> Option<usize> {
+    if let Some((Width(columns), _)) = terminal_size() {
+        return Some(usize::from(columns).max(1));
+    }
+
+    env::var("COLUMNS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|columns| *columns > 0)
+}
+
 fn count_output_lines(output: &str) -> usize {
     if output.is_empty() {
         return 0;
@@ -1078,6 +1103,24 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: Some("markdown".to_owned()),
+                paths: vec![PathBuf::from("notes.md")],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_debug_layout_flag() {
+        let options =
+            parse_cli_args([OsString::from("--debug-layout"), OsString::from("notes.md")])
+                .expect("failed to parse debug layout flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::DebugLayout,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );

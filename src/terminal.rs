@@ -1,9 +1,11 @@
-use std::{env, ffi::OsStr};
+use std::{env, ffi::OsStr, io::IsTerminal};
 
 use anstyle::RgbColor;
 use serde::Serialize;
+use termwiz::caps::{Capabilities, ColorLevel};
 
 use crate::{
+    debug_runtime_log,
     render_ops::RenderPlanSnapshot,
     terminal_background::detect_nested_region_tint,
     theme::{ColorMode, RgbColorSnapshot, Theme},
@@ -13,7 +15,18 @@ use crate::{
 pub struct TerminalCapabilities {
     color_mode: ColorMode,
     nested_region_tint: Option<RgbColor>,
+    nested_region_tint_source: NestedRegionTintSource,
     background_queries_enabled: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NestedRegionTintSource {
+    Probed,
+    ProbeUnavailable,
+    UnsupportedColorMode,
+    QueriesDisabled,
+    DebugDisabled,
 }
 
 impl TerminalCapabilities {
@@ -21,23 +34,43 @@ impl TerminalCapabilities {
         let color_mode = detect_color_mode();
         let background_queries_enabled =
             !background_queries_disabled(env::var_os("KAT_DISABLE_TERMINAL_QUERIES").as_deref());
-        let nested_region_tint = if background_queries_enabled {
-            detect_nested_region_tint(color_mode)
+        let (nested_region_tint, nested_region_tint_source) = if color_mode != ColorMode::TrueColor
+        {
+            (None, NestedRegionTintSource::UnsupportedColorMode)
+        } else if background_queries_enabled {
+            match detect_nested_region_tint(color_mode) {
+                Some(tint) => (Some(tint), NestedRegionTintSource::Probed),
+                None => (None, NestedRegionTintSource::ProbeUnavailable),
+            }
         } else {
-            None
+            (None, NestedRegionTintSource::QueriesDisabled)
         };
 
-        Self {
+        let capabilities = Self {
             color_mode,
             nested_region_tint,
+            nested_region_tint_source,
             background_queries_enabled,
-        }
+        };
+        debug_runtime_log::log(
+            "terminal_capabilities_detected",
+            &serde_json::json!({
+                "stdout_is_terminal": std::io::stdout().is_terminal(),
+                "term": env::var_os("TERM").map(|value| value.to_string_lossy().into_owned()),
+                "colorterm": env::var_os("COLORTERM").map(|value| value.to_string_lossy().into_owned()),
+                "term_program": env::var_os("TERM_PROGRAM").map(|value| value.to_string_lossy().into_owned()),
+                "kat_color_mode": env::var_os("KAT_COLOR_MODE").map(|value| value.to_string_lossy().into_owned()),
+                "capabilities": capabilities.snapshot(),
+            }),
+        );
+        capabilities
     }
 
     pub fn for_debug_layers() -> Self {
         Self {
             color_mode: detect_color_mode(),
             nested_region_tint: None,
+            nested_region_tint_source: NestedRegionTintSource::DebugDisabled,
             background_queries_enabled: false,
         }
     }
@@ -50,6 +83,7 @@ impl TerminalCapabilities {
         TerminalCapabilitiesSnapshot {
             color_mode: self.color_mode,
             nested_region_tint: self.nested_region_tint.map(Into::into),
+            nested_region_tint_source: self.nested_region_tint_source,
             background_queries_enabled: self.background_queries_enabled,
         }
     }
@@ -59,6 +93,7 @@ impl TerminalCapabilities {
 pub struct TerminalCapabilitiesSnapshot {
     pub color_mode: ColorMode,
     pub nested_region_tint: Option<RgbColorSnapshot>,
+    pub nested_region_tint_source: NestedRegionTintSource,
     pub background_queries_enabled: bool,
 }
 
@@ -96,7 +131,7 @@ fn background_queries_disabled(value: Option<&OsStr>) -> bool {
 
 fn detect_color_mode() -> ColorMode {
     if let Some(explicit_mode) = env::var_os("KAT_COLOR_MODE") {
-        return match explicit_mode
+        let detected = match explicit_mode
             .to_string_lossy()
             .to_ascii_lowercase()
             .as_str()
@@ -106,54 +141,72 @@ fn detect_color_mode() -> ColorMode {
             "truecolor" | "24bit" | "rgb" => ColorMode::TrueColor,
             _ => ColorMode::Ansi,
         };
+        debug_runtime_log::log(
+            "terminal_color_mode_detected",
+            &serde_json::json!({
+                "source": "kat_color_mode",
+                "value": explicit_mode.to_string_lossy().into_owned(),
+                "detected": detected,
+            }),
+        );
+        return detected;
     }
 
     if env::var_os("NO_COLOR").is_some() {
+        debug_runtime_log::log(
+            "terminal_color_mode_detected",
+            &serde_json::json!({
+                "source": "no_color",
+                "detected": ColorMode::NoColor,
+            }),
+        );
         return ColorMode::NoColor;
     }
 
     if env::var("TERM").is_ok_and(|term| term == "dumb") {
+        debug_runtime_log::log(
+            "terminal_color_mode_detected",
+            &serde_json::json!({
+                "source": "term_dumb",
+                "detected": ColorMode::NoColor,
+            }),
+        );
         return ColorMode::NoColor;
     }
 
-    if env::var("COLORTERM").is_ok_and(|value| {
-        let value = value.to_ascii_lowercase();
-        value.contains("truecolor") || value.contains("24bit")
-    }) {
-        return ColorMode::TrueColor;
-    }
-
-    if env::var("TERM").is_ok_and(|term| {
-        let term = term.to_ascii_lowercase();
-        term.contains("direct")
-            || term.contains("kitty")
-            || term.contains("wezterm")
-            || term.contains("ghostty")
-    }) {
-        return ColorMode::TrueColor;
-    }
-
-    if env::var("TERM_PROGRAM").is_ok_and(|program| {
-        matches!(
-            program.as_str(),
-            "WezTerm" | "iTerm.app" | "vscode" | "WarpTerminal" | "ghostty"
-        )
-    }) {
-        return ColorMode::TrueColor;
-    }
-
-    ColorMode::Ansi
+    let detected = Capabilities::new_from_env()
+        .map(|capabilities| match capabilities.color_level() {
+            ColorLevel::TrueColor => ColorMode::TrueColor,
+            ColorLevel::TwoFiftySix | ColorLevel::Sixteen => ColorMode::Ansi,
+            ColorLevel::MonoChrome => ColorMode::NoColor,
+        })
+        .unwrap_or(ColorMode::Ansi);
+    debug_runtime_log::log(
+        "terminal_color_mode_detected",
+        &serde_json::json!({
+            "source": "termwiz_capabilities",
+            "detected": detected,
+        }),
+    );
+    detected
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{TerminalCapabilities, background_queries_disabled, escape_control_sequences};
+    use super::{
+        NestedRegionTintSource, TerminalCapabilities, background_queries_disabled,
+        escape_control_sequences,
+    };
     use std::ffi::OsStr;
 
     #[test]
     fn debug_capabilities_disable_terminal_queries() {
         let capabilities = TerminalCapabilities::for_debug_layers();
         assert!(!capabilities.snapshot().background_queries_enabled);
+        assert_eq!(
+            capabilities.snapshot().nested_region_tint_source,
+            NestedRegionTintSource::DebugDisabled
+        );
     }
 
     #[test]

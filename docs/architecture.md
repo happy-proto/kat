@@ -42,20 +42,24 @@
 
 ### 渲染分层
 
-当前渲染链路明确拆成 4 层：
+当前渲染链路明确拆成 5 层：
 
 1. `analysis`
    - 负责 document kind 检测、基础 highlight、semantic overlay、injection region 收集。
    - 这一层内部仍保留 detect / highlight / semantic / injections 的细分，不会因为外层抽象而把 parser 与高亮逻辑重新揉平。
    - nested region 的 snapshot 需要保留递归子区域以及各自解析到的 `document kind` / runtime 身份，方便宿主感知注入、方言分发和 runtime 复用直接在 IR 上断言，而不是退回最终 ANSI。
 2. `visual`
-   - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、block/tight-block/transparent 的区域结果。
-   - 对块级嵌套区域，会按共享缩进和注入 range 推导统一的视觉区域，而不是只给已有文本逐行上色。
-3. `render_ops`
+   - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、`rect_block` / `scope_block` / `tight_block` / `transparent` 这些区域结果。
+   - 对块级嵌套区域，会按共享缩进和注入 range 推导对应的视觉原语：真正的矩形内容块继续走 `rect_block`，而像 `Justfile recipe` 这类缩进作用域则走独立的 `scope_block`。当前 terminal fallback 仍可暂时复用成熟的矩形 body 几何，但 IR 上不再把两者混成同一种区域。
+3. `layout`
+   - 负责把 visual 层的源码级视觉语义展开成 display-space 布局：wrapped screen rows、cell 列宽、块级 bbox，以及 `scope_block` / `rect_block` 在终端显示空间里的覆盖范围。
+   - 这一层只依赖仓库自己的 `display_geometry` 语义和终端宽度，不直接碰 ANSI，也不直接绑定第三方 terminal API。
+4. `render_ops`
    - 负责把视觉模型编译成终端无关的渲染状态流，而不是直接拼 ANSI 字符串。
    - 这层输出的是稳定 IR，适合做 snapshot、回归和跨环境 diff。
-4. `terminal`
-   - 负责终端能力探测、背景查询开关和 ANSI 编码视图。
+5. `terminal`
+   - 负责终端能力探测、默认颜色查询和最终终端编码 / 输出。
+   - 当前 terminal backend 已开始收口到 `termwiz`：默认前景 / 背景颜色通过 `ProbeCapabilities::dynamic_color` 统一查询，避免 render backend 和 OSC probing 分别占用两套 TTY I/O 栈。
    - CLI 输出层仍以“terminal 层编码出完整 ANSI 文本”为边界；长输出优先交给外部分页器，而不是继续向内建 TUI 演进。
 
 ### 视觉与终端约定
@@ -63,12 +67,12 @@
 - 注入区域的视觉策略默认由 runtime 统一推导；块级区域和行内片段走不同的默认视觉模型。
 - 与终端显示列宽相关的逻辑统一收口到 `display_geometry` 模块；显示宽度、前缀列位置、ANSI 剥离以及后续 tab stop 策略都必须通过这层抽象处理，不允许在 visual / render / test 里直接用 `len()`、字节差值或 `chars().count()` 近似显示宽度。
 - `display_geometry` 内部显式区分 `ByteOffset` 与 `DisplayColumn`：前者只代表源码 UTF-8 偏移，后者只代表终端显示列。新的几何逻辑应优先沿用这两个类型，而不是继续把裸 `usize` 当作双重语义容器。
-- `visual` / `render_ops` 仍然保留源码 byte offset 作为文本切片边界，但像 `RectBlock` 这类需要补齐右边界的区域，必须先通过 `display_geometry` 把内容换算成显示列宽，再反推出需要补多少尾部空格；不要再把源码 byte offset 直接当成终端列宽。
+- `visual` / `layout` / `render_ops` 仍然保留源码 byte offset 作为文本切片边界，但几何决策必须在 `layout` 层完成：像 `RectBlock` 这类矩形区域要在 wrapped screen rows 上展开，像 `ScopeBlock` 这类缩进作用域则要按每个 screen row 的非空白内容决定左边界，并按共享右边界形成 block。
 - `display_geometry` 当前内建统一的 Unicode 宽度规则，并把 tab stop 作为仓库级策略集中定义；如果未来要支持不同 terminal profile 或 East Asian 宽度策略，也应继续在这层扩展，而不是把特殊逻辑散落回各个语言 / 渲染分支里。
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
-- 终端背景色查询不再由 `theme` 直接触发，而是通过 `terminal` 层能力探测统一接入；当前 OSC 11 后端仍落在 [terminal_background.rs](../src/terminal_background.rs)。
-- `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、render IR 和 terminal 编码层。
-- 测试策略默认以 `analysis` / `visual` / `render_ops` 作为主契约层：语言识别、嵌套 runtime 复用、block 几何、右侧补齐和 render state 都应优先断言 IR；terminal / ANSI 只保留编码、reset churn 和能力探测这类终端边界回归。
+- 终端默认颜色查询不再由 `theme` 直接触发，而是通过 `terminal` 层能力探测统一接入；当前实现通过 `termwiz` 的 dynamic color probe 同时查询 OSC 10 / OSC 11，再在仓库内统一派生 nested region tint。
+- `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-layout`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、display-space layout、render IR 和 terminal 编码层。
+- 测试策略默认以 `analysis` / `visual` / `layout` / `render_ops` 作为主契约层：语言识别、嵌套 runtime 复用、block 几何、wrapped bbox 和 render state 都应优先断言 IR；terminal / ANSI 只保留编码、reset churn 和能力探测这类终端边界回归。
 
 ## 维护约定
 

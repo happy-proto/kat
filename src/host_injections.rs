@@ -24,6 +24,7 @@ pub(crate) enum InjectionVisualKind {
     Transparent,
     TightBlock,
     RectBlock,
+    ScopeBlock,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -741,6 +742,7 @@ impl InjectionVisualKind {
             Self::Transparent => "transparent",
             Self::TightBlock => "tight_block",
             Self::RectBlock => "rect_block",
+            Self::ScopeBlock => "scope_block",
         }
     }
 
@@ -749,6 +751,7 @@ impl InjectionVisualKind {
             "transparent" => Self::Transparent,
             "tight-block" => Self::TightBlock,
             "block" => Self::RectBlock,
+            "scope-block" => Self::ScopeBlock,
             _ => Self::Transparent,
         }
     }
@@ -758,7 +761,7 @@ impl InjectionVisualKind {
     }
 
     pub(crate) fn uses_rectangular_padding(self) -> bool {
-        matches!(self, Self::RectBlock)
+        matches!(self, Self::RectBlock | Self::ScopeBlock)
     }
 }
 
@@ -774,7 +777,9 @@ impl InjectionVisualAnchor {
 pub(crate) fn default_visual_level_bump(visual_kind: InjectionVisualKind) -> usize {
     match visual_kind {
         InjectionVisualKind::Transparent => 0,
-        InjectionVisualKind::TightBlock | InjectionVisualKind::RectBlock => 1,
+        InjectionVisualKind::TightBlock
+        | InjectionVisualKind::RectBlock
+        | InjectionVisualKind::ScopeBlock => 1,
     }
 }
 

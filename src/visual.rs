@@ -59,6 +59,7 @@ impl VisualDocument {
                 .regions
                 .iter()
                 .map(|region| VisualRegionSnapshot {
+                    visual_kind: region.visual_kind.snapshot_name(),
                     visual_level: region.visual_level,
                     segments: region
                         .segments
@@ -92,6 +93,7 @@ pub(crate) struct VisualSpanSnapshot {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub(crate) struct VisualRegionSnapshot {
+    pub visual_kind: &'static str,
     pub visual_level: usize,
     pub segments: Vec<VisualRegionSegmentSnapshot>,
 }

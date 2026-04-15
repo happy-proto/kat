@@ -1,11 +1,13 @@
 mod analysis;
 mod debug_progress;
+mod debug_runtime_log;
 mod display_geometry;
 mod document_kind;
 mod grammar_registry;
 mod host_injections;
 mod language_aliases;
 mod language_runtime;
+mod layout;
 mod render_ops;
 mod semantic_overlays;
 mod sql_dialect;
@@ -41,6 +43,7 @@ use crate::host_injections::{
 };
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
+use crate::layout::LayoutDocument;
 use crate::render_ops::RenderPlan;
 use crate::semantic_overlays::{
     debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
@@ -218,8 +221,16 @@ pub struct RenderOutput {
 }
 
 pub fn render_with_timing(source_path: Option<&Path>, source: &str) -> Result<RenderOutput> {
+    render_with_timing_and_terminal_width(source_path, source, None)
+}
+
+pub fn render_with_timing_and_terminal_width(
+    source_path: Option<&Path>,
+    source: &str,
+    terminal_width: Option<usize>,
+) -> Result<RenderOutput> {
     let theme = detected_theme();
-    render_with_theme_and_timing(source_path, source, &theme)
+    render_with_theme_and_timing(source_path, source, &theme, terminal_width)
 }
 
 pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
@@ -342,7 +353,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
 
 #[cfg_attr(not(test), allow(dead_code))]
 fn render_with_theme(source_path: Option<&Path>, source: &str, theme: &Theme) -> Result<String> {
-    Ok(render_with_theme_and_timing(source_path, source, theme)?.output)
+    Ok(render_with_theme_and_timing(source_path, source, theme, None)?.output)
 }
 
 fn analyze_with_theme(
@@ -379,13 +390,45 @@ fn visual_named_language_with_theme(
     Ok(VisualDocument::from_analysis(&analysis))
 }
 
+fn layout_with_theme(
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+    terminal_width: Option<usize>,
+) -> Result<LayoutDocument> {
+    let visual = visual_with_theme(source_path, source, theme)?;
+    Ok(LayoutDocument::from_visual(
+        source,
+        visual.spans(),
+        visual.regions(),
+        *theme,
+        terminal_width,
+    ))
+}
+
+fn layout_named_language_with_theme(
+    language_name: &str,
+    source: &str,
+    theme: &Theme,
+    terminal_width: Option<usize>,
+) -> Result<LayoutDocument> {
+    let visual = visual_named_language_with_theme(language_name, source, theme)?;
+    Ok(LayoutDocument::from_visual(
+        source,
+        visual.spans(),
+        visual.regions(),
+        *theme,
+        terminal_width,
+    ))
+}
+
 fn render_plan_with_theme(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
 ) -> Result<RenderPlan> {
-    let visual = visual_with_theme(source_path, source, theme)?;
-    Ok(RenderPlan::compile(source, &visual, *theme))
+    let layout = layout_with_theme(source_path, source, theme, None)?;
+    Ok(RenderPlan::compile(&layout, *theme))
 }
 
 fn render_plan_named_language_with_theme(
@@ -393,14 +436,15 @@ fn render_plan_named_language_with_theme(
     source: &str,
     theme: &Theme,
 ) -> Result<RenderPlan> {
-    let visual = visual_named_language_with_theme(language_name, source, theme)?;
-    Ok(RenderPlan::compile(source, &visual, *theme))
+    let layout = layout_named_language_with_theme(language_name, source, theme, None)?;
+    Ok(RenderPlan::compile(&layout, *theme))
 }
 
 fn render_with_theme_and_timing(
     source_path: Option<&Path>,
     source: &str,
     theme: &Theme,
+    terminal_width: Option<usize>,
 ) -> Result<RenderOutput> {
     let mut timings = RenderTimings::default();
     let analysis = AnalysisDocument::detect(source_path, source, *theme, Some(&mut timings))?;
@@ -409,8 +453,15 @@ fn render_with_theme_and_timing(
         source.to_owned()
     } else {
         let visual = VisualDocument::from_analysis(&analysis);
+        let layout = LayoutDocument::from_visual(
+            source,
+            visual.spans(),
+            visual.regions(),
+            *theme,
+            terminal_width,
+        );
         let render_started_at = Instant::now();
-        let output = RenderPlan::compile(source, &visual, *theme).encode(*theme);
+        let output = RenderPlan::compile(&layout, *theme).encode(*theme);
         timings.record_render_styled_spans(render_started_at);
         output
     };
@@ -436,6 +487,16 @@ pub fn debug_visual_json(source_path: Option<&Path>, source: &str) -> Result<Str
 pub fn debug_named_language_visual_json(language_name: &str, source: &str) -> Result<String> {
     let visual = visual_named_language_with_theme(language_name, source, &debug_theme())?;
     to_pretty_json(&visual.snapshot())
+}
+
+pub fn debug_layout_json(source_path: Option<&Path>, source: &str) -> Result<String> {
+    let layout = layout_with_theme(source_path, source, &debug_theme(), None)?;
+    to_pretty_json(&layout.snapshot())
+}
+
+pub fn debug_named_language_layout_json(language_name: &str, source: &str) -> Result<String> {
+    let layout = layout_named_language_with_theme(language_name, source, &debug_theme(), None)?;
+    to_pretty_json(&layout.snapshot())
 }
 
 pub fn debug_render_ops_json(source_path: Option<&Path>, source: &str) -> Result<String> {
@@ -996,21 +1057,13 @@ pub(crate) struct HighlightRenderData {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct VisualRegion {
+    pub(crate) visual_kind: InjectionVisualKind,
     pub(crate) visual_level: usize,
     pub(crate) segments: Vec<RegionSegment>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct RegionSegment {
-    pub(crate) line_start: usize,
-    pub(crate) left: usize,
-    pub(crate) text_end: usize,
-    pub(crate) right: usize,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct FlatRegionSegment {
-    pub(crate) visual_level: usize,
     pub(crate) line_start: usize,
     pub(crate) left: usize,
     pub(crate) text_end: usize,
@@ -2807,10 +2860,13 @@ fn build_region_segments(
     visual_kind: InjectionVisualKind,
 ) -> Vec<RegionSegment> {
     let shared_indent = shared_leading_indent(source, ranges);
-    let mut line_bounds = if visual_kind.is_block() {
-        build_block_region_segments(source, ranges, visual_anchor)
-    } else {
-        build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
+    let mut line_bounds = match visual_kind {
+        InjectionVisualKind::Transparent | InjectionVisualKind::TightBlock => {
+            build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
+        }
+        InjectionVisualKind::RectBlock | InjectionVisualKind::ScopeBlock => {
+            build_block_region_segments(source, ranges, visual_anchor)
+        }
     };
 
     line_bounds.sort_by_key(|line| (line.line_start, line.left, line.text_end));
@@ -2858,13 +2914,7 @@ fn build_block_region_segments(
     visual_anchor: InjectionVisualAnchor,
 ) -> Vec<RegionSegment> {
     let covered_lines = classify_covered_lines(source, ranges);
-    let first_content = covered_lines
-        .iter()
-        .position(|line| line.role == CoveredLineRole::Content);
-    let last_content = covered_lines
-        .iter()
-        .rposition(|line| line.role == CoveredLineRole::Content);
-    let (Some(first_content), Some(last_content)) = (first_content, last_content) else {
+    let Some(block_lines) = content_block_lines(&covered_lines) else {
         return build_region_segment_bounds(
             source,
             ranges,
@@ -2872,14 +2922,14 @@ fn build_block_region_segments(
             visual_anchor,
         );
     };
-    let block_left_offset = covered_lines[first_content..=last_content]
+    let block_left_offset = block_lines
         .iter()
         .filter(|line| line.role == CoveredLineRole::Content)
         .map(|line| content_start_offset(source, *line))
         .min()
         .unwrap_or(0);
 
-    covered_lines[first_content..=last_content]
+    block_lines
         .iter()
         .filter(|line| line.role != CoveredLineRole::Wrapper)
         .map(|line| RegionSegment {
@@ -2894,6 +2944,16 @@ fn build_block_region_segments(
             right: line.line_end,
         })
         .collect()
+}
+
+fn content_block_lines(covered_lines: &[CoveredLine]) -> Option<&[CoveredLine]> {
+    let first_content = covered_lines
+        .iter()
+        .position(|line| line.role == CoveredLineRole::Content)?;
+    let last_content = covered_lines
+        .iter()
+        .rposition(|line| line.role == CoveredLineRole::Content)?;
+    Some(&covered_lines[first_content..=last_content])
 }
 
 fn content_start_offset(source: &str, line: CoveredLine) -> usize {
@@ -3362,6 +3422,7 @@ fn map_virtual_regions_to_source(
             });
         }
         mapped.push(VisualRegion {
+            visual_kind: region.visual_kind,
             visual_level: region.visual_level,
             segments,
         });
@@ -3549,6 +3610,7 @@ pub(crate) fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<Vis
     for region in nested_regions {
         if region.visual_kind.is_block() {
             regions.push(VisualRegion {
+                visual_kind: region.visual_kind,
                 visual_level: region.visual_level,
                 segments: region.layout_segments.clone(),
             });
@@ -3582,39 +3644,13 @@ fn render_styled_spans(
             regions.len(),
         ),
     );
-    let visual = VisualDocument::from_parts(theme.color_mode(), spans.to_vec(), regions.to_vec());
-    let rendered = RenderPlan::compile(source, &visual, *theme).encode(*theme);
+    let layout = LayoutDocument::from_visual(source, spans, regions, *theme, None);
+    let rendered = RenderPlan::compile(&layout, *theme).encode(*theme);
     progress_log(
         "render",
         format!("done lines={} output_bytes={}", total_lines, rendered.len()),
     );
     rendered
-}
-
-pub(crate) fn flatten_region_segments(regions: &[VisualRegion]) -> Vec<FlatRegionSegment> {
-    let mut flat_segments = Vec::new();
-
-    for region in regions {
-        for segment in &region.segments {
-            flat_segments.push(FlatRegionSegment {
-                visual_level: region.visual_level,
-                line_start: segment.line_start,
-                left: segment.left,
-                text_end: segment.text_end,
-                right: segment.right,
-            });
-        }
-    }
-
-    flat_segments.sort_by_key(|segment| {
-        (
-            segment.line_start,
-            segment.left,
-            segment.right,
-            segment.visual_level,
-        )
-    });
-    flat_segments
 }
 
 pub(crate) fn style_covering_span_from(
@@ -3642,15 +3678,17 @@ mod tests {
     use super::{
         InjectionVisualKind, NestedRegion, RegionSegment, StyledSpan, SupportedLanguage,
         analyze_with_theme, collect_top_level_injection_regions, debug_analysis_json,
-        debug_render_ops_json, debug_semantics, debug_terminal_json, debug_visual_json,
-        detect_document_kind, detect_language, highlight_named_language, overlay_nested_region,
-        overlay_style_spans, plain_document_kind, render_plan_with_theme, render_with_theme,
+        debug_layout_json, debug_render_ops_json, debug_semantics, debug_terminal_json,
+        debug_visual_json, detect_document_kind, detect_language, highlight_named_language,
+        overlay_nested_region, overlay_style_spans, plain_document_kind, render_plan_with_theme,
+        render_with_theme,
     };
     use crate::{
         analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
         display_geometry::{display_width, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
         language_runtime::runtime,
+        layout::{LayoutRowSnapshot, LayoutSnapshot},
         render_ops::{RenderOpSnapshot, RenderPlanSnapshot},
         sql_dialect::detect_sql_dialect,
         theme::{ColorMode, Theme},
@@ -8973,6 +9011,41 @@ priority: 7
     }
 
     #[test]
+    fn just_recipe_body_uses_scope_block_visual_kind() {
+        let source = "install:\n    cargo install --path .\n    cargo fmt --check\n";
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let analysis = analysis_snapshot_for_path(Path::new("Justfile"), source, &theme);
+        let region = find_nested_region(&analysis, "bash", "cargo install --path .", source);
+        let first_segment = segment_for_line(region, source, "cargo install --path .");
+        let second_segment = segment_for_line(region, source, "cargo fmt --check");
+
+        assert_eq!(
+            region.visual_kind, "scope_block",
+            "expected Justfile recipe bodies to use scope block visuals"
+        );
+        assert_eq!(
+            segment_left_column(source, first_segment),
+            4,
+            "expected scope block fallback geometry to align with the shared recipe indent"
+        );
+        assert_eq!(
+            segment_rendered_right_edge(source, first_segment),
+            segment_rendered_right_edge(source, second_segment),
+            "expected scope block fallback geometry to keep a shared rendered right edge"
+        );
+        assert!(
+            segment_trailing_padding(second_segment) > 0,
+            "expected shorter recipe lines to keep rectangular fallback padding for now"
+        );
+        assert_eq!(
+            segment_trailing_padding(first_segment),
+            0,
+            "expected the widest recipe line to define the fallback block width"
+        );
+    }
+
+    #[test]
     fn just_recipe_trailing_separator_blank_line_stays_outside_block_region() {
         let source = "install:\n    cargo install --path .\n\nnext:\n    echo hi\n";
         let tint = RgbColor(1, 2, 3);
@@ -9148,6 +9221,28 @@ priority: 7
             .snapshot(*theme)
     }
 
+    fn layout_snapshot_for_path(
+        path: &Path,
+        source: &str,
+        theme: &Theme,
+        terminal_width: usize,
+    ) -> LayoutSnapshot {
+        super::layout_with_theme(Some(path), source, theme, Some(terminal_width))
+            .unwrap_or_else(|error| panic!("failed to build layout {}: {error}", path.display()))
+            .snapshot()
+    }
+
+    fn render_with_theme_at_width(
+        path: &Path,
+        source: &str,
+        theme: &Theme,
+        terminal_width: usize,
+    ) -> String {
+        super::render_with_theme_and_timing(Some(path), source, theme, Some(terminal_width))
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()))
+            .output
+    }
+
     fn nested_regions(regions: &[NestedRegionSnapshot]) -> Vec<&NestedRegionSnapshot> {
         let mut flattened = Vec::new();
         for region in regions {
@@ -9262,6 +9357,63 @@ priority: 7
             }
         }
         text
+    }
+
+    fn layout_row_containing<'a>(
+        rows: &'a [LayoutRowSnapshot],
+        needle: &str,
+    ) -> &'a LayoutRowSnapshot {
+        rows.iter()
+            .find(|row| row.text.contains(needle))
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected layout rows to contain text fragment {needle:?}, got rows {:?}",
+                    rows.iter().map(|row| row.text.as_str()).collect::<Vec<_>>()
+                )
+            })
+    }
+
+    fn wrapped_screen_lines(text: &str, width: usize) -> Vec<String> {
+        assert!(width > 0, "expected positive wrap width");
+
+        let plain = strip_ansi(text);
+        let mut rows = Vec::new();
+        let mut current = String::new();
+        let mut current_width = 0usize;
+        let mut just_wrapped_at_boundary = false;
+
+        for grapheme in unicode_segmentation::UnicodeSegmentation::graphemes(plain.as_str(), true) {
+            if grapheme == "\n" {
+                if !current.is_empty() || !just_wrapped_at_boundary {
+                    rows.push(std::mem::take(&mut current));
+                }
+                current_width = 0;
+                just_wrapped_at_boundary = false;
+                continue;
+            }
+
+            let grapheme_width = unicode_width::UnicodeWidthStr::width(grapheme);
+            if current_width > 0 && current_width + grapheme_width > width {
+                rows.push(std::mem::take(&mut current));
+                current_width = 0;
+            }
+
+            current.push_str(grapheme);
+            current_width += grapheme_width;
+            just_wrapped_at_boundary = false;
+
+            if current_width == width {
+                rows.push(std::mem::take(&mut current));
+                current_width = 0;
+                just_wrapped_at_boundary = true;
+            }
+        }
+
+        if !current.is_empty() {
+            rows.push(current);
+        }
+
+        rows
     }
 
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
@@ -9681,6 +9833,152 @@ priority: 7
         let value: Value = serde_json::from_str(&json).expect("visual json should parse");
 
         assert!(value["regions"].is_array());
+    }
+
+    #[test]
+    fn debug_layout_json_reports_rows_array() {
+        let source = "install:\n    cargo install --path .\n";
+        let json = debug_layout_json(Some(Path::new("Justfile")), source)
+            .expect("layout debug json should render");
+        let value: Value = serde_json::from_str(&json).expect("layout json should parse");
+
+        assert!(value["rows"].is_array());
+    }
+
+    #[test]
+    fn just_scope_block_layout_keeps_wrapped_row_left_edges_without_fake_blank_rows() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let path = PathBuf::from("testdata/showcase/just/recipe-block.just");
+        let source = read_file(&path);
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 80);
+        let first = layout_row_containing(&layout.rows, "@cd mdsre");
+        let second = layout_row_containing(&layout.rows, "uv run mdsre mongo query");
+        let continuation = layout_row_containing(&layout.rows, "ws.forEach(r =>");
+
+        assert_eq!(
+            first
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or_default(),
+            4,
+            "expected the first recipe row to preserve its shared recipe indent"
+        );
+        assert_eq!(
+            second
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or_default(),
+            4,
+            "expected the first wrapped row of the second recipe command to keep the recipe indent"
+        );
+        assert_eq!(
+            continuation
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or(usize::MAX),
+            0,
+            "expected wrapped recipe rows to start tinting from the visible screen column"
+        );
+
+        let first_index = layout
+            .rows
+            .iter()
+            .position(|row| row.text.contains("@cd mdsre"))
+            .expect("expected first recipe row");
+        let second_index = layout
+            .rows
+            .iter()
+            .position(|row| row.text.contains("uv run mdsre mongo query"))
+            .expect("expected second recipe row");
+
+        assert_eq!(
+            second_index,
+            first_index + 1,
+            "expected no fake blank layout rows between recipe command rows: {:?}",
+            layout
+                .rows
+                .iter()
+                .map(|row| (&row.text, &row.background_runs))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn just_scope_block_layout_tracks_cjk_wrapped_width_in_display_cells() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let source = "demo:\n    printf '短描述短描述短描述短描述短描述'\n";
+        let layout =
+            super::layout_with_theme(Some(Path::new("Justfile")), source, &theme, Some(16))
+                .expect("expected layout to render for CJK recipe")
+                .snapshot();
+        let first = layout_row_containing(&layout.rows, "    printf '短");
+        let continuation = layout_row_containing(&layout.rows, "描述短描述");
+
+        assert_eq!(
+            first
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or_default(),
+            4,
+            "expected the first CJK recipe row to preserve the recipe indent"
+        );
+        assert_eq!(
+            continuation
+                .background_runs
+                .first()
+                .map(|run| run.start_column)
+                .unwrap_or(usize::MAX),
+            0,
+            "expected wrapped CJK continuation rows to be measured in display cells"
+        );
+    }
+
+    #[test]
+    fn debug_visual_json_preserves_scope_block_kind_for_just_recipe() {
+        let source = "install:\n    cargo install --path .\n";
+        let json = debug_visual_json(Some(Path::new("Justfile")), source)
+            .expect("visual debug json for Justfile should render");
+        let value: Value = serde_json::from_str(&json).expect("visual json should parse");
+        let regions = value["regions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("expected visual regions array: {json}"));
+
+        assert!(
+            regions
+                .iter()
+                .any(|region| region["visual_kind"] == Value::String("scope_block".into())),
+            "expected visual debug json to preserve scope block regions: {json}"
+        );
+    }
+
+    #[test]
+    fn just_recipe_block_padding_does_not_create_blank_wrapped_rows() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let path = PathBuf::from("testdata/showcase/just/recipe-block.just");
+        let source = read_file(&path);
+        let rendered = render_with_theme_at_width(path.as_path(), &source, &theme, 80);
+        let wrapped = wrapped_screen_lines(&rendered, 80);
+        let first_index = wrapped
+            .iter()
+            .position(|line| line.contains("@cd mdsre"))
+            .expect("expected wrapped output to contain first recipe command");
+        let second_index = wrapped
+            .iter()
+            .position(|line| line.contains("uv run mdsre mongo query"))
+            .expect("expected wrapped output to contain second recipe command");
+
+        assert_eq!(
+            second_index,
+            first_index + 1,
+            "expected no blank wrapped rows between recipe command lines: {wrapped:?}"
+        );
     }
 
     #[test]

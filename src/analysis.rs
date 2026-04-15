@@ -220,6 +220,7 @@ impl From<crate::RegionSegment> for RegionSegmentSnapshot {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub(crate) struct VisualRegionSnapshot {
+    pub visual_kind: &'static str,
     pub visual_level: usize,
     pub segments: Vec<RegionSegmentSnapshot>,
 }
@@ -227,6 +228,7 @@ pub(crate) struct VisualRegionSnapshot {
 impl VisualRegionSnapshot {
     fn from_region(region: &crate::VisualRegion) -> Self {
         Self {
+            visual_kind: region.visual_kind.snapshot_name(),
             visual_level: region.visual_level,
             segments: region.segments.iter().copied().map(Into::into).collect(),
         }
