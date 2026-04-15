@@ -10024,6 +10024,47 @@ priority: 7
     }
 
     #[test]
+    fn markdown_html_block_tabs_layout_expands_tabs_into_display_spaces() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("markdown/html_block_tabs.md");
+        let source = read_file(&path);
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let short_row = layout_row_containing(&layout.rows, "<td>值");
+        let long_row = layout_row_containing(&layout.rows, "这里放一段更长的中文内容");
+
+        assert!(
+            !short_row.text.contains('\t'),
+            "expected layout row text to expand tabs before rendering: {:?}",
+            short_row.text
+        );
+        assert!(
+            !long_row.text.contains('\t'),
+            "expected layout row text to expand tabs before rendering: {:?}",
+            long_row.text
+        );
+    }
+
+    #[test]
+    fn markdown_html_block_tabs_terminal_output_expands_tabs_before_encoding() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("markdown/html_block_tabs.md");
+        let source = read_file(&path);
+        let rendered = render_with_theme_at_width(path.as_path(), &source, &theme, 120);
+        let stripped = strip_ansi(&rendered);
+
+        assert!(
+            !rendered.contains('\t'),
+            "expected encoded output to avoid raw tabs so display-space geometry stays stable"
+        );
+        assert!(
+            !stripped.contains('\t'),
+            "expected plain rendered output to avoid raw tabs after ANSI stripping"
+        );
+    }
+
+    #[test]
     fn rust_multiline_raw_string_sql_uses_block_region_tint() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));

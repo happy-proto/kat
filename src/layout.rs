@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
-use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
 
 use crate::{
     StyledSpan, VisualRegion,
-    display_geometry::display_width,
+    display_geometry::{display_text_spans, display_width},
     style_covering_span_from,
     theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
 };
@@ -168,13 +166,14 @@ struct BackgroundSlice {
     end_column: usize,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct GraphemeSpan {
     byte_start: usize,
     byte_end: usize,
     column_start: usize,
     column_end: usize,
     width: usize,
+    rendered_text: String,
 }
 
 fn build_rows(source: &str, spans: &[StyledSpan], terminal_width: Option<usize>) -> Vec<LayoutRow> {
@@ -214,7 +213,7 @@ fn build_rows(source: &str, spans: &[StyledSpan], terminal_width: Option<usize>)
                     cells.push(LayoutCell {
                         column: grapheme.column_start - row.start_column,
                         width: grapheme.width,
-                        text: source[grapheme.byte_start..grapheme.byte_end].to_owned(),
+                        text: grapheme.rendered_text.clone(),
                         style,
                     });
                 }
@@ -501,20 +500,17 @@ fn trim_trailing_whitespace(source: &str, start: usize, end: usize) -> usize {
 }
 
 fn grapheme_spans(line_text: &str, line_start: usize) -> Vec<GraphemeSpan> {
-    let mut spans = Vec::new();
-    let mut column = 0usize;
-    for (byte_offset, grapheme) in UnicodeSegmentation::grapheme_indices(line_text, true) {
-        let width = UnicodeWidthStr::width(grapheme);
-        spans.push(GraphemeSpan {
-            byte_start: line_start + byte_offset,
-            byte_end: line_start + byte_offset + grapheme.len(),
-            column_start: column,
-            column_end: column + width,
-            width,
-        });
-        column += width;
-    }
-    spans
+    display_text_spans(line_text, line_start)
+        .into_iter()
+        .map(|span| GraphemeSpan {
+            byte_start: span.byte_start,
+            byte_end: span.byte_end,
+            column_start: span.column_start.as_usize(),
+            column_end: span.column_end.as_usize(),
+            width: (span.column_end - span.column_start).as_usize(),
+            rendered_text: span.rendered_text,
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug)]
