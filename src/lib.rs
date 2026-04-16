@@ -34,7 +34,7 @@ use crate::display_geometry::{
 };
 use crate::document_kind::{
     DocumentKind, DocumentProfile, git_config_document_kind, template_document_kind,
-    yaml_document_kind,
+    toml_document_kind, yaml_document_kind,
 };
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
@@ -1427,7 +1427,7 @@ pub(crate) fn detect_document_kind(
 
     let toml = grammar("toml");
     if matches_path(toml, source_path) {
-        return Some(DocumentKind::plain("toml"));
+        return Some(toml_document_kind(source_path));
     }
 
     let yaml = grammar("yaml");
@@ -5820,6 +5820,14 @@ mod tests {
         assert_eq!(action_kind.runtime_name(), "yaml");
         assert_eq!(action_kind.profile(), DocumentProfile::GitHubActionMetadata);
 
+        let prek_kind = detect_document_kind(
+            Some(Path::new("prek.toml")),
+            "minimum_prek_version = \"0.3.8\"\n",
+        )
+        .expect("expected prek.toml path to detect as TOML");
+        assert_eq!(prek_kind.runtime_name(), "toml");
+        assert_eq!(prek_kind.profile(), DocumentProfile::PrekConfig);
+
         assert!(matches!(
             detect_language(
                 Some(Path::new("proto/theme.proto")),
@@ -9797,6 +9805,81 @@ mod tests {
         assert!(
             workflow_rendered.contains("\x1b[38;2;139;233;253mself-hosted"),
             "expected runs-on array labels to receive GitHub Actions runner styling"
+        );
+    }
+
+    #[test]
+    fn prek_toml_profile_injects_system_hook_entries_into_bash_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let source = r#"minimum_prek_version = "0.3.8"
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "clippy"
+language = "system"
+entry = "cargo clippy --workspace --locked --all-targets --all-features -- -D warnings"
+
+[[repos.hooks]]
+id = "pytest"
+language = "python"
+entry = "python -m pytest -q"
+"#;
+        let document_kind = detect_document_kind(Some(Path::new("prek.toml")), source)
+            .expect("expected prek.toml to resolve as TOML");
+        let regions = collect_top_level_injection_regions(document_kind, source, &theme, 1, None)
+            .expect("expected prek.toml injections to resolve");
+
+        assert_eq!(
+            regions
+                .iter()
+                .map(|region| region.resolved_document_kind.runtime_name())
+                .collect::<Vec<_>>(),
+            vec!["bash"],
+            "expected only system hook entries to inject a shell runtime"
+        );
+        assert!(
+            regions.iter().any(|region| {
+                region.overlays.iter().any(|span| {
+                    &source[span.range.clone()] == "cargo"
+                        && span.style == theme.token_style_for("function", "cargo")
+                })
+            }),
+            "expected prek.toml system entry to reuse Bash command-name styling"
+        );
+    }
+
+    #[test]
+    fn prek_toml_system_entry_stays_inline_without_block_tint() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let source = r#"minimum_prek_version = "0.3.8"
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "clippy"
+language = "system"
+entry = "cargo clippy --workspace --locked --all-targets --all-features -- -D warnings"
+"#;
+        let analysis = analysis_snapshot_for_path(Path::new("prek.toml"), source, &theme);
+        let region = find_nested_region(&analysis, "bash", "cargo clippy --workspace", source);
+        let segment = segment_for_line(region, source, "cargo clippy --workspace");
+
+        assert_eq!(
+            region.visual_kind, "transparent",
+            "expected single-line prek hook entries to stay inline instead of becoming block regions"
+        );
+        assert!(
+            region_covers_line(region, source, "cargo clippy --workspace"),
+            "expected injected shell region to cover the entry line"
+        );
+        assert_eq!(
+            segment_trailing_padding(segment),
+            0,
+            "expected inline prek hook entries to avoid rectangular trailing padding"
         );
     }
 
