@@ -5,6 +5,7 @@ use serde::Serialize;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DocumentProfile {
     Plain,
+    PrekConfig,
     GitHubActionsWorkflow,
     GitHubActionMetadata,
     GitConfig,
@@ -22,6 +23,7 @@ impl DocumentProfile {
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::Plain => "plain",
+            Self::PrekConfig => "prek_config",
             Self::GitHubActionsWorkflow => "github_actions_workflow",
             Self::GitHubActionMetadata => "github_action_metadata",
             Self::GitConfig => "git_config",
@@ -87,6 +89,13 @@ pub(crate) fn yaml_document_kind(source_path: Option<&Path>) -> DocumentKind {
     }
 }
 
+pub(crate) fn toml_document_kind(source_path: Option<&Path>) -> DocumentKind {
+    match toml_profile(source_path) {
+        Some(profile) => DocumentKind::with_profile("toml", profile),
+        None => DocumentKind::plain("toml"),
+    }
+}
+
 pub(crate) fn git_config_document_kind(source_path: Option<&Path>) -> DocumentKind {
     match git_config_profile(source_path) {
         Some(profile) => DocumentKind::with_profile("git_config", profile),
@@ -115,6 +124,11 @@ fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile>
     }
 
     None
+}
+
+fn toml_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+    let path = source_path?;
+    is_prek_config_path(path).then_some(DocumentProfile::PrekConfig)
 }
 
 fn git_config_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
@@ -183,6 +197,13 @@ fn is_github_action_metadata_path(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
         Some("action.yml" | "action.yaml")
+    )
+}
+
+fn is_prek_config_path(path: &Path) -> bool {
+    matches!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some("prek.toml")
     )
 }
 

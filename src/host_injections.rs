@@ -235,6 +235,9 @@ fn collect_host_injection_candidates(
             document_kind.profile(),
             tree.root_node(),
         )),
+        ("toml", DocumentProfile::PrekConfig) => candidates.extend(
+            collect_prek_toml_injection_candidates(tree.root_node(), source),
+        ),
         (
             "yaml",
             DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata,
@@ -256,6 +259,134 @@ fn collect_host_injection_candidates(
     }
 
     Ok(candidates)
+}
+
+fn collect_prek_toml_injection_candidates(root: Node, source: &str) -> Vec<InjectionCandidate> {
+    let mut candidates = Vec::new();
+    let mut current_repo_is_local = false;
+
+    for node in named_children(root) {
+        if node.kind() != "table_array_element" {
+            continue;
+        }
+
+        let Some(header) = toml_table_header(node, source) else {
+            continue;
+        };
+
+        match header.as_str() {
+            "repos" => {
+                current_repo_is_local = toml_table_string_value_for_key(node, source, "repo")
+                    .is_some_and(|value| value == "local");
+            }
+            "repos.hooks" if current_repo_is_local => {
+                if let Some(candidate) = prek_hook_entry_candidate(node, source) {
+                    candidates.push(candidate);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    candidates
+}
+
+fn prek_hook_entry_candidate(node: Node, source: &str) -> Option<InjectionCandidate> {
+    let language = toml_table_string_value_for_key(node, source, "language")?;
+    if language != "system" {
+        return None;
+    }
+
+    let entry_value = toml_table_value_for_key(node, source, "entry")?;
+    let entry_range = toml_string_content_range(entry_value, source)?;
+    if entry_range.start >= entry_range.end {
+        return None;
+    }
+
+    Some(InjectionCandidate {
+        document_kind: plain_document_kind("bash"),
+        ranges: vec![entry_range],
+        projection: InjectionProjection::RawRanges,
+        is_combined: false,
+        strip_shared_indent: false,
+        merge_parent_styles: false,
+        decode: InjectionDecode::None,
+        highlight_github_expressions: false,
+        visual_kind: Some(InjectionVisualKind::Transparent),
+        visual_level_bump: Some(0),
+        visual_anchor: Some(InjectionVisualAnchor::Content),
+    })
+}
+
+fn toml_table_header(node: Node, source: &str) -> Option<String> {
+    (node.kind() == "table_array_element")
+        .then(|| named_children(node).next())
+        .flatten()
+        .and_then(|header| toml_key_text(header, source))
+}
+
+fn toml_table_value_for_key<'a>(node: Node<'a>, source: &str, key_name: &str) -> Option<Node<'a>> {
+    named_children(node).find_map(|child| {
+        if child.kind() != "pair" {
+            return None;
+        }
+
+        let mut children = named_children(child);
+        let key = children.next()?;
+        let value = children.next()?;
+        (toml_key_text(key, source).as_deref() == Some(key_name)).then_some(value)
+    })
+}
+
+fn toml_table_string_value_for_key(node: Node, source: &str, key_name: &str) -> Option<String> {
+    let value = toml_table_value_for_key(node, source, key_name)?;
+    toml_string_text(value, source)
+}
+
+fn toml_key_text(node: Node, source: &str) -> Option<String> {
+    match node.kind() {
+        "bare_key" | "quoted_key" => Some(
+            source[node.byte_range()]
+                .trim_matches(|ch| matches!(ch, '"' | '\''))
+                .to_owned(),
+        ),
+        "dotted_key" => {
+            let parts = named_children(node)
+                .filter_map(|child| toml_key_text(child, source))
+                .collect::<Vec<_>>();
+            (!parts.is_empty()).then(|| parts.join("."))
+        }
+        _ => None,
+    }
+}
+
+fn toml_string_text(node: Node, source: &str) -> Option<String> {
+    let range = toml_string_content_range(node, source)?;
+    Some(source[range].to_owned())
+}
+
+fn toml_string_content_range(node: Node, source: &str) -> Option<Range<usize>> {
+    if node.kind() != "string" {
+        return None;
+    }
+
+    let range = node.byte_range();
+    let text = &source[range.clone()];
+    if text.len() >= 6
+        && ((text.starts_with("\"\"\"") && text.ends_with("\"\"\""))
+            || (text.starts_with("'''") && text.ends_with("'''")))
+    {
+        return Some(range.start + 3..range.end - 3);
+    }
+
+    if text.len() >= 2
+        && ((text.starts_with('"') && text.ends_with('"'))
+            || (text.starts_with('\'') && text.ends_with('\'')))
+    {
+        return Some(range.start + 1..range.end - 1);
+    }
+
+    Some(range)
 }
 
 fn collect_template_injection_candidates(
