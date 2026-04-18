@@ -410,7 +410,10 @@ fn segment_content_slices(
         return Vec::new();
     };
 
-    let left_column = display_column(source, segment.line_start, segment.left);
+    let left_column = segment
+        .left_column_override
+        .map(|column| column.as_usize())
+        .unwrap_or_else(|| display_column(source, segment.line_start, segment.left));
     let content_end = trim_trailing_whitespace(source, segment.left, segment.text_end);
     let right_column = display_column(source, segment.line_start, content_end);
     if right_column <= left_column {
@@ -431,7 +434,10 @@ fn segment_rect_slices(
         return Vec::new();
     };
 
-    let left_column = display_column(source, segment.line_start, segment.left);
+    let left_column = segment
+        .left_column_override
+        .map(|column| column.as_usize())
+        .unwrap_or_else(|| display_column(source, segment.line_start, segment.left));
     let right_column = display_column(source, segment.line_start, segment.text_end)
         + segment.right_padding.as_usize();
     if right_column <= left_column {

@@ -10,6 +10,11 @@ pub(crate) enum DocumentProfile {
     GitHubActionMetadata,
     GitConfig,
     GitModules,
+    PythonDocstringAuto,
+    PythonDocstringPlain,
+    PythonDocstringRest,
+    PythonDocstringGoogle,
+    PythonDocstringNumpy,
     TemplateHtml,
     TemplateXml,
     TemplateYaml,
@@ -28,6 +33,11 @@ impl DocumentProfile {
             Self::GitHubActionMetadata => "github_action_metadata",
             Self::GitConfig => "git_config",
             Self::GitModules => "git_modules",
+            Self::PythonDocstringAuto => "python_docstring_auto",
+            Self::PythonDocstringPlain => "python_docstring_plain",
+            Self::PythonDocstringRest => "python_docstring_rest",
+            Self::PythonDocstringGoogle => "python_docstring_google",
+            Self::PythonDocstringNumpy => "python_docstring_numpy",
             Self::TemplateHtml => "template_html",
             Self::TemplateXml => "template_xml",
             Self::TemplateYaml => "template_yaml",
@@ -35,6 +45,21 @@ impl DocumentProfile {
             Self::TemplateCss => "template_css",
             Self::TemplateCoffeeScript => "template_coffeescript",
             Self::TemplateJavaScript => "template_javascript",
+        }
+    }
+}
+
+impl DocumentProfile {
+    pub(crate) fn from_query_value(value: &str) -> Option<Self> {
+        match value {
+            "python_docstring_auto" | "python-docstring-auto" => Some(Self::PythonDocstringAuto),
+            "python_docstring_plain" | "python-docstring-plain" => Some(Self::PythonDocstringPlain),
+            "python_docstring_rest" | "python-docstring-rest" => Some(Self::PythonDocstringRest),
+            "python_docstring_google" | "python-docstring-google" => {
+                Some(Self::PythonDocstringGoogle)
+            }
+            "python_docstring_numpy" | "python-docstring-numpy" => Some(Self::PythonDocstringNumpy),
+            _ => None,
         }
     }
 }
