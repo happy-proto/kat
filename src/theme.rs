@@ -535,6 +535,7 @@ fn token_style_for(capture: &str, text: &str) -> TokenStyle {
         "identifier" | "storageclass" | "text" | "variable" | "property" => {
             TokenStyle::new(DraculaColor::Foreground).with_color_priority(0)
         }
+        "variable.local" => TokenStyle::new(DraculaColor::Purple),
         "parameter" | "variable.parameter" | "lifetime" => {
             TokenStyle::new(DraculaColor::Orange).italic()
         }

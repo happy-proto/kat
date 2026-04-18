@@ -525,6 +525,12 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         &mut cli_command()
             .try_get_matches_from_mut(std::iter::once(OsString::from("kat")).chain(args))?,
     )?;
+    let language = cli
+        .language
+        .as_deref()
+        .map(kat::canonical_language_name)
+        .transpose()?
+        .map(str::to_owned);
 
     let mode = if cli.version {
         OutputMode::Version
@@ -550,7 +556,7 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         mode,
         paging: cli.paging,
         debug_timing: cli.debug_timing,
-        language: cli.language,
+        language,
         paths: cli.paths,
     })
 }
@@ -562,7 +568,10 @@ fn render_output(
     source: &str,
 ) -> Result<String> {
     match mode {
-        OutputMode::Render => kat::render(source_path, source),
+        OutputMode::Render => match language {
+            Some(language_name) => kat::render_named_language(language_name, source),
+            None => kat::render(source_path, source),
+        },
         OutputMode::DebugAst => {
             let language_name = resolve_debug_language_name(language, source_path, source)?;
             let mut output = kat::debug_named_language_tree(&language_name, source)?;
@@ -643,8 +652,16 @@ fn render_output_with_timing(
 ) -> Result<String> {
     if matches!(options.mode, OutputMode::Render) {
         let terminal_width = io::stdout().is_terminal().then(terminal_columns).flatten();
-        let render_output =
-            kat::render_with_timing_and_terminal_width(source_path, source, terminal_width)?;
+        let render_output = match options.language.as_deref() {
+            Some(language_name) => kat::render_named_language_with_timing_and_terminal_width(
+                language_name,
+                source,
+                terminal_width,
+            )?,
+            None => {
+                kat::render_with_timing_and_terminal_width(source_path, source, terminal_width)?
+            }
+        };
         if let Some(timings) = timings {
             timings.render_pipeline.detect_document_kind +=
                 render_output.timings.detect_document_kind;
@@ -1226,6 +1243,34 @@ mod tests {
     }
 
     #[test]
+    fn rejects_unknown_explicit_language_during_cli_parse() {
+        let error = parse_cli_args([OsString::from("--language"), OsString::from("janus")])
+            .expect_err("unknown language should fail during cli parse");
+
+        assert!(
+            format!("{error:#}").contains("unknown language"),
+            "unexpected error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn normalizes_language_alias_during_cli_parse() {
+        let options = parse_cli_args([OsString::from("--language"), OsString::from("py")])
+            .expect("python alias should parse");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::Render,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: Some("python".to_owned()),
+                paths: vec![],
+            }
+        );
+    }
+
+    #[test]
     fn version_output_includes_build_metadata() {
         let output = version_output();
 
@@ -1611,6 +1656,70 @@ mod tests {
         assert!(
             output.contains("(program") && output.contains("(command"),
             "unexpected debug ast output: {output}"
+        );
+    }
+
+    #[test]
+    fn render_mode_respects_explicit_language_override() {
+        let source = "printf '%s\\n' \"$HOME\"\n";
+        let source_path = Path::new("notes.txt");
+
+        let output = render_output(OutputMode::Render, Some("bash"), Some(source_path), source)
+            .expect("explicit render language should succeed");
+
+        assert_eq!(
+            output,
+            kat::highlight_bash(source).expect("bash highlighting should succeed")
+        );
+    }
+
+    #[test]
+    fn render_mode_rejects_unknown_explicit_language() {
+        let error = render_output(
+            OutputMode::Render,
+            Some("not_a_real_language"),
+            None,
+            "kat\n",
+        )
+        .expect_err("unknown explicit render language should fail");
+
+        assert!(
+            format!("{error:#}").contains("unknown language"),
+            "unexpected error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn render_mode_normalizes_explicit_language_aliases() {
+        let source = "def answer() -> int:\n    return 42\n";
+
+        let output = render_output(
+            OutputMode::Render,
+            Some("py"),
+            Some(Path::new("notes.txt")),
+            source,
+        )
+        .expect("python alias should resolve");
+
+        assert_eq!(
+            output,
+            kat::highlight_python(source).expect("python highlighting should succeed")
+        );
+    }
+
+    #[test]
+    fn debug_modes_reject_unknown_explicit_language() {
+        let error = render_output(
+            OutputMode::DebugAst,
+            Some("not_a_real_language"),
+            None,
+            "kat\n",
+        )
+        .expect_err("unknown explicit debug language should fail");
+
+        assert!(
+            format!("{error:#}").contains("unknown language"),
+            "unexpected error: {error:#}"
         );
     }
 

@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::{
     HighlightRenderData, NestedRegion, RenderTimings, StyledSpan, detect_document_kind,
     document_kind::{DocumentKind, DocumentKindSnapshot},
-    plain_document_kind,
+    named_document_kind,
     theme::{ColorMode, Theme, TokenStyleSnapshot},
 };
 
@@ -72,7 +72,7 @@ impl AnalysisDocument {
         timings: Option<&mut RenderTimings>,
     ) -> Result<Self> {
         Self::document_kind(
-            plain_document_kind(language_name),
+            named_document_kind(language_name)?,
             None,
             source,
             theme,

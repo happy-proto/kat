@@ -23,7 +23,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::Serialize;
 use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
@@ -44,7 +44,7 @@ use crate::host_injections::{
     default_visual_level_bump,
 };
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
-use crate::language_runtime::{global_highlight_name, runtime};
+use crate::language_runtime::{global_highlight_name, runtime, supports_runtime};
 use crate::layout::LayoutDocument;
 use crate::python_docstrings::{render_python_docstring, resolve_python_docstring_document_kind};
 use crate::render_ops::RenderPlan;
@@ -190,6 +190,10 @@ pub fn render(source_path: Option<&Path>, source: &str) -> Result<String> {
     Ok(render_with_timing(source_path, source)?.output)
 }
 
+pub fn render_named_language(language_name: &str, source: &str) -> Result<String> {
+    Ok(render_named_language_with_timing(language_name, source)?.output)
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RenderTimings {
     pub detect_document_kind: Duration,
@@ -245,6 +249,13 @@ pub fn render_with_timing(source_path: Option<&Path>, source: &str) -> Result<Re
     render_with_timing_and_terminal_width(source_path, source, None)
 }
 
+pub fn render_named_language_with_timing(
+    language_name: &str,
+    source: &str,
+) -> Result<RenderOutput> {
+    render_named_language_with_timing_and_terminal_width(language_name, source, None)
+}
+
 pub fn render_with_timing_and_terminal_width(
     source_path: Option<&Path>,
     source: &str,
@@ -252,6 +263,15 @@ pub fn render_with_timing_and_terminal_width(
 ) -> Result<RenderOutput> {
     let theme = detected_theme();
     render_with_theme_and_timing(source_path, source, &theme, terminal_width)
+}
+
+pub fn render_named_language_with_timing_and_terminal_width(
+    language_name: &str,
+    source: &str,
+    terminal_width: Option<usize>,
+) -> Result<RenderOutput> {
+    let theme = detected_theme();
+    render_named_language_with_theme_and_timing(language_name, source, &theme, terminal_width)
 }
 
 pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
@@ -488,10 +508,37 @@ fn render_with_theme_and_timing(
     let mut timings = RenderTimings::default();
     let analysis = AnalysisDocument::detect(source_path, source, *theme, Some(&mut timings))?;
 
-    let output = if analysis.is_plain_passthrough() {
+    let output = render_analysis_output(&analysis, source, theme, terminal_width, &mut timings);
+
+    Ok(RenderOutput { output, timings })
+}
+
+fn render_named_language_with_theme_and_timing(
+    language_name: &str,
+    source: &str,
+    theme: &Theme,
+    terminal_width: Option<usize>,
+) -> Result<RenderOutput> {
+    let mut timings = RenderTimings::default();
+    let analysis =
+        AnalysisDocument::named_language(language_name, source, *theme, Some(&mut timings))?;
+
+    let output = render_analysis_output(&analysis, source, theme, terminal_width, &mut timings);
+
+    Ok(RenderOutput { output, timings })
+}
+
+fn render_analysis_output(
+    analysis: &AnalysisDocument,
+    source: &str,
+    theme: &Theme,
+    terminal_width: Option<usize>,
+    timings: &mut RenderTimings,
+) -> String {
+    if analysis.is_plain_passthrough() {
         source.to_owned()
     } else {
-        let visual = VisualDocument::from_analysis(&analysis);
+        let visual = VisualDocument::from_analysis(analysis);
         let layout = LayoutDocument::from_visual(
             source,
             visual.spans(),
@@ -503,9 +550,7 @@ fn render_with_theme_and_timing(
         let output = RenderPlan::compile(&layout, *theme).encode(*theme);
         timings.record_render_styled_spans(render_started_at);
         output
-    };
-
-    Ok(RenderOutput { output, timings })
+    }
 }
 
 pub fn debug_analysis_json(source_path: Option<&Path>, source: &str) -> Result<String> {
@@ -981,11 +1026,11 @@ pub fn highlight_nasm(source: &str) -> Result<String> {
 }
 
 pub fn debug_named_language_tree(language_name: &str, source: &str) -> Result<String> {
-    debug_language_tree_impl(language_name, source)
+    debug_language_tree_impl(canonical_language_name(language_name)?, source)
 }
 
 pub fn debug_semantics(language_name: &str, source: &str) -> Result<String> {
-    debug_semantics_impl(language_name, source)
+    debug_semantics_impl(canonical_language_name(language_name)?, source)
 }
 
 pub fn debug_shell_semantics(language_name: &str, source: &str) -> Result<String> {
@@ -994,12 +1039,26 @@ pub fn debug_shell_semantics(language_name: &str, source: &str) -> Result<String
 
 fn highlight_named_language(language_name: &str, source: &str, theme: &Theme) -> Result<String> {
     highlight_document_kind(
-        plain_document_kind(language_name),
+        named_document_kind(language_name)?,
         None,
         source,
         theme,
         None,
     )
+}
+
+pub fn canonical_language_name(language_name: &str) -> Result<&str> {
+    let normalized = normalize_language_name(language_name)
+        .ok_or_else(|| anyhow!("unknown language override '{language_name}'"))?;
+    if supports_runtime(normalized) {
+        Ok(normalized)
+    } else {
+        Err(anyhow!("unknown language override '{language_name}'"))
+    }
+}
+
+pub(crate) fn named_document_kind(language_name: &str) -> Result<DocumentKind> {
+    Ok(plain_document_kind(canonical_language_name(language_name)?))
 }
 
 fn highlight_document_kind(
@@ -3956,7 +4015,11 @@ fn map_virtual_region_segments_to_source(
 }
 
 fn overlay_nested_region(parent_spans: Vec<StyledSpan>, region: &NestedRegion) -> Vec<StyledSpan> {
-    apply_overlay_spans(parent_spans, &region.overlays, region.merge_parent_styles)
+    let spans = apply_overlay_spans(parent_spans, &region.overlays, region.merge_parent_styles);
+    region
+        .child_nested_regions
+        .iter()
+        .fold(spans, overlay_nested_region)
 }
 
 fn overlay_style_spans(
@@ -8947,6 +9010,75 @@ mod tests {
             rendered.contains("\x1b[38;2;80;250;123mrender"),
             "expected method call styling"
         );
+        assert!(
+            rendered.contains("\x1b[38;2;189;147;249mpreview"),
+            "expected local binding styling for preview"
+        );
+    }
+
+    #[test]
+    fn python_docstring_doctest_highlights_local_bindings_and_receivers() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let doctest_region = find_nested_region(
+            &analysis,
+            "python",
+            ">>> preview = ThemePreview(\"Dracula\")",
+            &source,
+        );
+        let local_style = theme
+            .token_style_for("variable.local", "preview")
+            .expect("expected local variable style")
+            .snapshot(ColorMode::TrueColor);
+        let assignment_preview = source
+            .find("preview = ThemePreview(\"Dracula\")")
+            .expect("expected doctest assignment preview");
+        let receiver_preview = source
+            .find("preview.render()")
+            .expect("expected doctest receiver preview");
+
+        for offset in [assignment_preview, receiver_preview] {
+            assert!(
+                doctest_region.overlays.iter().any(|span| {
+                    span.start <= offset
+                        && offset < span.end
+                        && span.style == Some(local_style.clone())
+                }),
+                "expected doctest preview at byte offset {offset} to reuse local variable styling"
+            );
+        }
+    }
+
+    #[test]
+    fn python_docstring_doctest_child_python_overlays_reach_final_analysis_spans() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let local_style = theme
+            .token_style_for("variable.local", "preview")
+            .expect("expected local variable style")
+            .snapshot(ColorMode::TrueColor);
+        let method_style = theme
+            .token_style_for("function.method.call", "render")
+            .expect("expected method call style")
+            .snapshot(ColorMode::TrueColor);
+
+        for (needle, style) in [
+            ("preview = ThemePreview(\"Dracula\")", local_style.clone()),
+            ("preview.render()", local_style.clone()),
+            ("render()", method_style),
+        ] {
+            let offset = source.find(needle).expect("expected doctest fragment");
+            assert!(
+                analysis.spans.iter().any(|span| {
+                    span.start <= offset && offset < span.end && span.style == Some(style.clone())
+                }),
+                "expected final analysis spans to retain doctest child overlay for {needle}"
+            );
+        }
     }
 
     #[test]
