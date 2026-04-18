@@ -183,6 +183,20 @@
     (expression_statement
       (string) @string.doc)+))
 
+(decorated_definition
+  definition: (function_definition
+    body: (block
+      .
+      (expression_statement
+        (string) @string.doc)+)))
+
+(decorated_definition
+  definition: (class_definition
+    body: (block
+      .
+      (expression_statement
+        (string) @string.doc)+)))
+
 (class_definition
   body: (block
     (function_definition

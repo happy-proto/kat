@@ -16,6 +16,7 @@ pub(crate) enum InjectionDecode {
     None,
     JavaScriptLiteral,
     JavaScriptString,
+    PythonLiteral,
     PythonString,
     RustString,
     GoString,
@@ -1091,6 +1092,7 @@ impl InjectionDecode {
         match value {
             "javascript-literal" => Self::JavaScriptLiteral,
             "javascript-string" => Self::JavaScriptString,
+            "python-literal" => Self::PythonLiteral,
             "python-string" => Self::PythonString,
             "rust-string" => Self::RustString,
             "go-string" => Self::GoString,

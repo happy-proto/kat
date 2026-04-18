@@ -52,7 +52,7 @@ use crate::semantic_overlays::{
 };
 use crate::sql_dialect::resolve_sql_runtime;
 use crate::terminal::TerminalCapabilities;
-use crate::theme::{Theme, TokenStyle};
+use crate::theme::{ColorMode, Theme, TokenStyle};
 use crate::visual::VisualDocument;
 
 #[cfg(test)]
@@ -579,7 +579,7 @@ fn detected_theme() -> Theme {
 }
 
 fn debug_theme() -> Theme {
-    TerminalCapabilities::for_debug_layers().theme()
+    Theme::new(ColorMode::TrueColor, Some(anstyle::RgbColor(16, 24, 32)))
 }
 
 fn to_pretty_json<T: Serialize>(value: &T) -> Result<String> {
@@ -1194,6 +1194,7 @@ pub(crate) struct RegionSegment {
     pub(crate) line_start: usize,
     pub(crate) left: usize,
     pub(crate) text_end: usize,
+    pub(crate) left_column_override: Option<DisplayColumn>,
     pub(crate) right_padding: DisplayColumn,
 }
 
@@ -3302,20 +3303,40 @@ fn build_block_region_segments(
         .map(|line| content_start_offset(source, *line))
         .min()
         .unwrap_or(0);
+    let block_left_column = block_lines
+        .iter()
+        .filter(|line| line.role == CoveredLineRole::Content)
+        .map(|line| {
+            let line_text = &source[line.line_start..line.line_end];
+            let left_in_line = ByteOffset::new(content_start_offset(source, *line));
+            display_column_for_byte_offset(line_text, left_in_line)
+        })
+        .min()
+        .unwrap_or(DisplayColumn::new(0));
 
     block_lines
         .iter()
         .filter(|line| line.role != CoveredLineRole::Wrapper)
-        .map(|line| RegionSegment {
-            line_start: line.line_start,
-            left: match visual_anchor {
+        .map(|line| {
+            let (left, left_column_override) = match visual_anchor {
                 InjectionVisualAnchor::Content => {
-                    (line.line_start + block_left_offset).min(line.line_end)
+                    let desired_left = line.line_start + block_left_offset;
+                    if desired_left <= line.line_end {
+                        (desired_left, None)
+                    } else {
+                        (line.line_end, Some(block_left_column))
+                    }
                 }
-                InjectionVisualAnchor::LineStart => line.line_start,
-            },
-            text_end: line.line_end,
-            right_padding: DisplayColumn::new(0),
+                InjectionVisualAnchor::LineStart => (line.line_start, None),
+            };
+
+            RegionSegment {
+                line_start: line.line_start,
+                left,
+                text_end: line.line_end,
+                left_column_override,
+                right_padding: DisplayColumn::new(0),
+            }
         })
         .collect()
 }
@@ -3384,6 +3405,7 @@ fn build_region_segment_for_line(
         line_start: line.line_start,
         left,
         text_end: line.line_end,
+        left_column_override: None,
         right_padding: DisplayColumn::new(0),
     }
 }
@@ -3409,6 +3431,9 @@ fn append_injection_content(
         }
         InjectionDecode::JavaScriptString => {
             decode_javascript_string_content(source, range, virtual_source, source_map)
+        }
+        InjectionDecode::PythonLiteral => {
+            decode_python_string_literal(source, range, virtual_source, source_map)
         }
         InjectionDecode::PythonString => {
             decode_python_string_content(source, range, virtual_source, source_map)
@@ -3504,6 +3529,22 @@ fn decode_python_string_content(
             source_map,
         );
     }
+}
+
+fn decode_python_string_literal(
+    source: &str,
+    range: Range<usize>,
+    virtual_source: &mut String,
+    source_map: &mut Vec<Range<usize>>,
+) {
+    let slice = &source[range.clone()];
+    let Some((content_start, content_end)) = python_string_literal_content_bounds(slice) else {
+        append_raw_range(source, range, virtual_source, source_map);
+        return;
+    };
+
+    let content_range = (range.start + content_start)..(range.start + content_end);
+    decode_python_string_content(source, content_range, virtual_source, source_map);
 }
 
 fn decode_rust_string_content(
@@ -3686,6 +3727,27 @@ fn python_string_is_raw(source: &str, range: &Range<usize>) -> bool {
     prefix.chars().any(|ch| matches!(ch, 'r' | 'R'))
 }
 
+fn python_string_literal_content_bounds(literal: &str) -> Option<(usize, usize)> {
+    let bytes = literal.as_bytes();
+    let prefix_len = bytes
+        .iter()
+        .take_while(|byte| byte.is_ascii_alphabetic())
+        .count();
+    let quote = *bytes.get(prefix_len)?;
+    if !matches!(quote, b'"' | b'\'') {
+        return None;
+    }
+
+    let quote_width = if bytes.get(prefix_len..prefix_len + 3) == Some(&[quote, quote, quote]) {
+        3
+    } else {
+        1
+    };
+    let content_start = prefix_len + quote_width;
+    let content_end = literal.len().checked_sub(quote_width)?;
+    (content_start <= content_end).then_some((content_start, content_end))
+}
+
 fn rust_string_is_raw(source: &str, range: &Range<usize>) -> bool {
     let prefix = literal_prefix(source, range, &['"']);
     prefix.chars().any(|ch| matches!(ch, 'r' | 'R'))
@@ -3792,6 +3854,7 @@ fn map_virtual_regions_to_source(
                 line_start: line_start_offset(source, mapped_left),
                 left: mapped_left,
                 text_end: mapped_text_end,
+                left_column_override: segment.left_column_override,
                 right_padding: segment.right_padding,
             });
         }
@@ -3874,6 +3937,7 @@ fn map_virtual_region_segments_to_source(
             line_start: line_start_offset(source, mapped_left),
             left: mapped_left,
             text_end: mapped_text_end,
+            left_column_override: segment.left_column_override,
             right_padding: segment.right_padding,
         });
     }
@@ -4058,8 +4122,9 @@ mod tests {
         render_with_theme,
     };
     use crate::{
+        DisplayColumn,
         analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
-        display_geometry::{display_width, strip_ansi},
+        display_geometry::{display_width, display_width_from_column, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
         language_runtime::runtime,
         layout::{LayoutRowSnapshot, LayoutSnapshot},
@@ -4507,6 +4572,20 @@ mod tests {
             relative_path: "python/injections.py",
             expect_highlight: true,
             expected_fragments: &["CREATE", "AUTOINCREMENT", "WITHOUT", "re", "compile"],
+        },
+        FixtureCase {
+            relative_path: "python/docstrings.py",
+            expect_highlight: true,
+            expected_fragments: &[
+                "Theme preview helpers.",
+                "module-level prose",
+                "inline code",
+                "ThemePreview",
+                "from_name",
+                "state_label",
+                "Raises:",
+                ":class:`ThemePreview`",
+            ],
         },
         FixtureCase {
             relative_path: "c/rich.c",
@@ -8431,6 +8510,229 @@ mod tests {
     }
 
     #[test]
+    fn python_docstrings_highlight_markdown_content() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert!(
+            rendered.contains("\x1b[1m\x1b[38;2;189;147;249mPreview"),
+            "expected python docstring heading styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;80;250;123minline code"),
+            "expected python docstring inline-code styling"
+        );
+    }
+
+    #[test]
+    fn python_docstrings_reuse_markdown_and_fenced_python_runtimes() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let module_markdown_region =
+            find_nested_region(&analysis, "markdown", "Theme preview helpers.", &source);
+        let classmethod_markdown_region = find_nested_region(
+            &analysis,
+            "markdown",
+            "Create a preview from a plain theme name.",
+            &source,
+        );
+        let property_markdown_region =
+            find_nested_region(&analysis, "markdown", "Return the state label.", &source);
+
+        assert!(
+            module_markdown_region
+                .child_nested_regions
+                .iter()
+                .any(|region| region.resolved_document_kind.runtime_name == "python"),
+            "expected python docstring markdown region to preserve fenced python child runtime"
+        );
+        assert!(
+            classmethod_markdown_region.visual_level >= 1,
+            "expected classmethod docstring to produce a markdown nested region"
+        );
+        assert!(
+            property_markdown_region.visual_level >= 1,
+            "expected property docstring to produce a markdown nested region"
+        );
+    }
+
+    #[test]
+    fn python_docstring_markdown_uses_rectangular_block_visuals() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let markdown_region =
+            find_nested_region(&analysis, "markdown", "Theme preview helpers.", &source);
+        let heading_segment = segment_for_line(markdown_region, &source, "# Preview");
+        let prose_segment = segment_for_line(
+            markdown_region,
+            &source,
+            "This module exercises several common docstring shapes:",
+        );
+        let list_segment = segment_for_line(markdown_region, &source, "- module-level prose");
+
+        assert_eq!(
+            markdown_region.visual_kind, "rect_block",
+            "expected python docstring markdown to render as a rectangular block"
+        );
+        assert!(
+            segment_trailing_padding(heading_segment) > 0,
+            "expected narrower heading line to keep visible block padding"
+        );
+        assert!(
+            segment_rendered_right_edge(&source, heading_segment)
+                == segment_rendered_right_edge(&source, prose_segment)
+                && segment_rendered_right_edge(&source, list_segment)
+                    == segment_rendered_right_edge(&source, prose_segment),
+            "expected python docstring lines to share one rectangular block right edge"
+        );
+    }
+
+    #[test]
+    fn python_docstring_block_left_edge_starts_at_triple_quotes() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let markdown_region = find_nested_region(
+            &analysis,
+            "markdown",
+            "Initialize the preview instance.",
+            &source,
+        );
+        let first_segment = segment_for_line(
+            markdown_region,
+            &source,
+            "\"\"\"Initialize the preview instance.",
+        );
+        let line_start = line_start_containing(&source, "\"\"\"Initialize the preview instance.");
+        let quote_column = display_width(
+            &source[line_start
+                ..source[line_start..]
+                    .find("\"\"\"Initialize the preview instance.")
+                    .map(|offset| line_start + offset)
+                    .expect("expected init docstring line")],
+        )
+        .as_usize();
+
+        assert_eq!(
+            segment_left_column(&source, first_segment),
+            quote_column,
+            "expected python docstring block left edge to align with opening triple quotes"
+        );
+    }
+
+    #[test]
+    fn python_docstring_blank_lines_keep_block_tint_geometry() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let args_row = layout_row_containing(&layout.rows, "        Args:");
+        let raises_row = layout_row_containing(&layout.rows, "        Raises:");
+        let blank_after_intro = layout
+            .rows
+            .iter()
+            .find(|row| row.source_line_start == line_start_for_line_number(&source, 42))
+            .expect("expected blank line between init docstring intro and Args section");
+        let blank_before_raises = layout
+            .rows
+            .iter()
+            .find(|row| row.source_line_start == line_start_for_line_number(&source, 46))
+            .expect("expected blank line between init docstring Args and Raises sections");
+
+        assert_eq!(
+            blank_after_intro
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            args_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            "expected blank line after the init summary to keep the same docstring block tint as Args"
+        );
+        assert_eq!(
+            blank_before_raises
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            raises_row
+                .background_runs
+                .first()
+                .map(|run| (run.start_column, run.end_column)),
+            "expected blank line before Raises to keep the same docstring block tint as Raises"
+        );
+    }
+
+    #[test]
+    fn python_docstring_blank_lines_render_background_width_as_spaces() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let render_plan = render_plan_snapshot_for_path(path.as_path(), &source, &theme);
+        let rendered_text = render_plan_text(&render_plan);
+        let rendered_lines: Vec<_> = rendered_text.lines().collect();
+        let blank_after_intro = rendered_lines
+            .get(41)
+            .copied()
+            .expect("expected render plan to retain blank init docstring line");
+        let blank_before_raises = rendered_lines
+            .get(45)
+            .copied()
+            .expect("expected render plan to retain blank Raises separator line");
+
+        assert!(
+            !blank_after_intro.is_empty()
+                && blank_after_intro.chars().all(|ch| ch == ' ')
+                && blank_after_intro.starts_with("        "),
+            "expected blank init docstring line to render as background-bearing spaces, got {blank_after_intro:?}"
+        );
+        assert!(
+            !blank_before_raises.is_empty()
+                && blank_before_raises.chars().all(|ch| ch == ' ')
+                && blank_before_raises.starts_with("        "),
+            "expected blank Raises separator line to render as background-bearing spaces, got {blank_before_raises:?}"
+        );
+    }
+
+    #[test]
+    fn python_docstring_blank_lines_switch_into_background_after_indent() {
+        let tint = RgbColor(1, 2, 3);
+        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let render_plan = render_plan_snapshot_for_path(path.as_path(), &source, &theme);
+        let blank_after_intro = render_plan_lines(&render_plan)
+            .get(41)
+            .cloned()
+            .expect("expected init docstring blank line in render plan");
+
+        assert!(
+            matches!(
+                blank_after_intro.as_slice(),
+                [
+                    RenderOpSnapshot::Text { text: indent },
+                    RenderOpSnapshot::SetStyle { .. },
+                    RenderOpSnapshot::Text { text: tinted },
+                    RenderOpSnapshot::ResetStyle,
+                ] if indent == "        " && !tinted.is_empty() && tinted.chars().all(|ch| ch == ' ')
+            ),
+            "expected blank init docstring line to switch into a tinted space run after the shared indent, got {blank_after_intro:?}"
+        );
+    }
+
+    #[test]
     fn python_highlights_class_and_method_names() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = fixture_path("python/main.py");
@@ -10341,7 +10643,9 @@ priority: 7
     }
 
     fn segment_left_column(source: &str, segment: &RegionSegmentSnapshot) -> usize {
-        display_width(&source[segment.line_start..segment.left]).as_usize()
+        segment
+            .left_column_override
+            .unwrap_or_else(|| display_width(&source[segment.line_start..segment.left]).as_usize())
     }
 
     fn segment_trailing_padding(segment: &RegionSegmentSnapshot) -> usize {
@@ -10349,7 +10653,13 @@ priority: 7
     }
 
     fn segment_rendered_right_edge(source: &str, segment: &RegionSegmentSnapshot) -> usize {
-        display_width(&source[segment.line_start..segment.text_end]).as_usize()
+        let left_column = segment_left_column(source, segment);
+        left_column
+            + display_width_from_column(
+                DisplayColumn::new(left_column),
+                &source[segment.left..segment.text_end],
+            )
+            .as_usize()
             + segment_trailing_padding(segment)
     }
 
@@ -10363,6 +10673,20 @@ priority: 7
             }
         }
         text
+    }
+
+    fn render_plan_lines(snapshot: &RenderPlanSnapshot) -> Vec<Vec<RenderOpSnapshot>> {
+        let mut lines = vec![Vec::new()];
+        for op in &snapshot.ops {
+            match op {
+                RenderOpSnapshot::Newline => lines.push(Vec::new()),
+                other => lines
+                    .last_mut()
+                    .expect("render plan should always have a current line")
+                    .push(other.clone()),
+            }
+        }
+        lines
     }
 
     fn layout_row_containing<'a>(
@@ -10890,6 +11214,30 @@ priority: 7
         let value: Value = serde_json::from_str(&json).expect("layout json should parse");
 
         assert!(value["rows"].is_array());
+    }
+
+    #[test]
+    fn debug_layout_json_preserves_python_docstring_blank_line_background_runs() {
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let json = debug_layout_json(Some(path.as_path()), &source)
+            .expect("layout debug json for python docstrings should render");
+        let value: Value = serde_json::from_str(&json).expect("layout json should parse");
+        let blank_line_start = line_start_for_line_number(&source, 42);
+        let rows = value["rows"]
+            .as_array()
+            .unwrap_or_else(|| panic!("expected layout rows array: {json}"));
+        let blank_row = rows
+            .iter()
+            .find(|row| row["source_line_start"].as_u64() == Some(blank_line_start as u64))
+            .unwrap_or_else(|| panic!("expected layout row for blank init docstring line: {json}"));
+
+        assert!(
+            blank_row["background_runs"]
+                .as_array()
+                .is_some_and(|runs| !runs.is_empty()),
+            "expected debug-layout json to preserve block background runs for blank python docstring lines: {json}"
+        );
     }
 
     #[test]
