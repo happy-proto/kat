@@ -2900,7 +2900,7 @@ fn covered_line_ranges<'a>(
     })
 }
 
-fn render_virtual_injection_render_data(
+pub(crate) fn render_virtual_injection_render_data(
     document_kind: DocumentKind,
     source: &str,
     highlight_github_expressions: bool,
@@ -3241,7 +3241,7 @@ fn append_projected_synthetic_text(
     }
 }
 
-fn build_region_segments(
+pub(crate) fn build_region_segments(
     source: &str,
     ranges: &[Range<usize>],
     visual_anchor: InjectionVisualAnchor,
@@ -3420,7 +3420,7 @@ fn build_region_segment_for_line(
     }
 }
 
-fn line_start_offset(source: &str, offset: usize) -> usize {
+pub(crate) fn line_start_offset(source: &str, offset: usize) -> usize {
     source[..offset]
         .rfind('\n')
         .map(|index| index + 1)
@@ -3799,7 +3799,7 @@ fn shared_leading_indent(source: &str, ranges: &[Range<usize>]) -> usize {
         .unwrap_or(0)
 }
 
-fn map_virtual_spans_to_source(
+pub(crate) fn map_virtual_spans_to_source(
     virtual_spans: &[StyledSpan],
     source_map: &[Range<usize>],
 ) -> Vec<StyledSpan> {
@@ -3838,7 +3838,7 @@ fn map_virtual_spans_to_source(
     mapped
 }
 
-fn map_virtual_regions_to_source(
+pub(crate) fn map_virtual_regions_to_source(
     source: &str,
     virtual_regions: &[VisualRegion],
     source_map: &[Range<usize>],
@@ -3885,7 +3885,7 @@ fn map_virtual_regions_to_source(
     mapped
 }
 
-fn map_virtual_nested_regions_to_source(
+pub(crate) fn map_virtual_nested_regions_to_source(
     source: &str,
     virtual_regions: &[NestedRegion],
     source_map: &[Range<usize>],
@@ -8665,6 +8665,56 @@ mod tests {
                     && span.style == Some(punctuation_style.clone())
             }),
             "expected NumPy parameter separator to receive punctuation styling"
+        );
+    }
+
+    #[test]
+    fn python_docstring_doctest_reuses_python_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let doctest_region = find_nested_region(
+            &analysis,
+            "python",
+            ">>> preview = ThemePreview(\"Dracula\")",
+            &source,
+        );
+
+        assert!(
+            doctest_region.visual_level >= 2,
+            "expected doctest code to render as a deeper nested python runtime"
+        );
+        assert!(
+            doctest_region
+                .layout_segments
+                .iter()
+                .all(|segment| segment.left > segment.line_start),
+            "expected doctest runtime to begin after the doctest prompt"
+        );
+    }
+
+    #[test]
+    fn python_docstring_doctest_highlights_inner_python_literals() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let string_style = theme
+            .token_style_for("string", "\"Dracula\"")
+            .expect("expected string style")
+            .snapshot(ColorMode::TrueColor);
+        let string_offset = source
+            .find("\"Dracula\"")
+            .expect("expected doctest string literal");
+
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= string_offset
+                    && string_offset < span.end
+                    && span.style == Some(string_style.clone())
+            }),
+            "expected doctest string literal to reuse Python string styling"
         );
     }
 

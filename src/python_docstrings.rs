@@ -3,8 +3,11 @@ use std::ops::Range;
 use anyhow::Result;
 
 use crate::{
-    HighlightRenderData, NestedRegion, StyledSpan,
+    HighlightRenderData, NestedRegion, StyledSpan, VisualRegion, build_region_segments,
     document_kind::{DocumentKind, DocumentProfile},
+    host_injections::{InjectionVisualAnchor, InjectionVisualKind},
+    map_virtual_nested_regions_to_source, map_virtual_regions_to_source,
+    map_virtual_spans_to_source, plain_document_kind, render_virtual_injection_render_data,
     theme::Theme,
 };
 
@@ -47,11 +50,12 @@ pub(crate) fn render_python_docstring(
     document_kind: DocumentKind,
     source: &str,
     theme: &Theme,
-    _nested_visual_level: usize,
+    nested_visual_level: usize,
 ) -> Result<HighlightRenderData> {
     let resolved_document_kind = resolve_python_docstring_document_kind(document_kind, source);
     let lines = docstring_lines(source);
     let mut spans = Vec::new();
+    let mut nested_regions = Vec::new();
 
     let mut google_section = None;
     let mut numpy_section = None;
@@ -102,6 +106,8 @@ pub(crate) fn render_python_docstring(
         highlight_doctest_prompt(&mut spans, theme, source, line);
     }
 
+    nested_regions.extend(collect_doctest_regions(source, theme, nested_visual_level)?);
+
     spans.sort_by(|left, right| {
         left.range
             .start
@@ -113,7 +119,7 @@ pub(crate) fn render_python_docstring(
     Ok(HighlightRenderData {
         resolved_document_kind,
         spans,
-        nested_regions: Vec::<NestedRegion>::new(),
+        nested_regions,
     })
 }
 
@@ -408,6 +414,126 @@ fn highlight_doctest_prompt(
             break;
         }
     }
+}
+
+fn collect_doctest_regions(
+    source: &str,
+    theme: &Theme,
+    nested_visual_level: usize,
+) -> Result<Vec<NestedRegion>> {
+    let sessions = doctest_sessions(source);
+    let mut regions = Vec::with_capacity(sessions.len());
+
+    for session in sessions {
+        let (virtual_source, source_map) = build_doctest_virtual_source(source, &session);
+        if virtual_source.trim().is_empty() {
+            continue;
+        }
+
+        let child_render = render_virtual_injection_render_data(
+            plain_document_kind("python"),
+            &virtual_source,
+            false,
+            theme,
+            nested_visual_level.saturating_add(1),
+            None,
+        )?;
+
+        regions.push(NestedRegion {
+            visual_level: nested_visual_level.saturating_add(1),
+            resolved_document_kind: child_render.resolved_document_kind,
+            visual_kind: InjectionVisualKind::Transparent,
+            layout_segments: build_region_segments(
+                source,
+                &session.code_ranges,
+                InjectionVisualAnchor::Content,
+                InjectionVisualKind::Transparent,
+            ),
+            child_regions: map_virtual_regions_to_source(
+                source,
+                &collect_child_visual_regions(&child_render.nested_regions),
+                &source_map,
+            ),
+            child_nested_regions: map_virtual_nested_regions_to_source(
+                source,
+                &child_render.nested_regions,
+                &source_map,
+            ),
+            overlays: map_virtual_spans_to_source(&child_render.spans, &source_map),
+            merge_parent_styles: false,
+        });
+    }
+
+    Ok(regions)
+}
+
+#[derive(Default)]
+struct DoctestSession {
+    code_ranges: Vec<Range<usize>>,
+}
+
+fn doctest_sessions(source: &str) -> Vec<DoctestSession> {
+    let lines = docstring_lines(source);
+    let mut sessions = Vec::new();
+    let mut current = DoctestSession::default();
+
+    for line in lines {
+        if let Some(code_range) = doctest_code_range(line) {
+            current.code_ranges.push(code_range);
+        } else if !current.code_ranges.is_empty() {
+            sessions.push(std::mem::take(&mut current));
+        }
+    }
+
+    if !current.code_ranges.is_empty() {
+        sessions.push(current);
+    }
+
+    sessions
+}
+
+fn doctest_code_range(line: DocstringLine<'_>) -> Option<Range<usize>> {
+    for prompt in [">>> ", "... "] {
+        if line.trimmed.starts_with(prompt) {
+            let code_start = line.trimmed_start + prompt.len();
+            return Some(code_start..line.end);
+        }
+    }
+    None
+}
+
+fn build_doctest_virtual_source(
+    source: &str,
+    session: &DoctestSession,
+) -> (String, Vec<Range<usize>>) {
+    let mut virtual_source = String::new();
+    let mut source_map = Vec::new();
+
+    for (index, range) in session.code_ranges.iter().enumerate() {
+        let slice = &source[range.clone()];
+        virtual_source.push_str(slice);
+        for offset in 0..slice.len() {
+            source_map.push((range.start + offset)..(range.start + offset + 1));
+        }
+
+        if index + 1 < session.code_ranges.len() {
+            virtual_source.push('\n');
+            source_map.push(0..0);
+        }
+    }
+
+    (virtual_source, source_map)
+}
+
+fn collect_child_visual_regions(nested_regions: &[NestedRegion]) -> Vec<VisualRegion> {
+    nested_regions
+        .iter()
+        .map(|region| VisualRegion {
+            visual_kind: region.visual_kind,
+            visual_level: region.visual_level,
+            segments: region.layout_segments.clone(),
+        })
+        .collect()
 }
 
 fn google_section_header(line: &str) -> Option<SectionKind> {
