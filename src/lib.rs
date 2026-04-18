@@ -8,6 +8,7 @@ mod host_injections;
 mod language_aliases;
 mod language_runtime;
 mod layout;
+mod python_docstrings;
 mod render_ops;
 mod semantic_overlays;
 mod sql_dialect;
@@ -45,6 +46,7 @@ use crate::host_injections::{
 use crate::language_aliases::{normalize_language_name, shebang_interpreter_name};
 use crate::language_runtime::{global_highlight_name, runtime};
 use crate::layout::LayoutDocument;
+use crate::python_docstrings::{render_python_docstring, resolve_python_docstring_document_kind};
 use crate::render_ops::RenderPlan;
 use crate::semantic_overlays::{
     debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
@@ -1058,6 +1060,9 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "hcl" => DocumentKind::plain("hcl"),
         "rust" => DocumentKind::plain("rust"),
         "python" => DocumentKind::plain("python"),
+        "python_docstring" => {
+            DocumentKind::with_profile("python_docstring", DocumentProfile::PythonDocstringAuto)
+        }
         "c" => DocumentKind::plain("c"),
         "cpp" => DocumentKind::plain("cpp"),
         "java" => DocumentKind::plain("java"),
@@ -2593,6 +2598,7 @@ fn resolve_highlight_document_kind(
     source: &str,
 ) -> DocumentKind {
     match document_kind.runtime_name() {
+        "python_docstring" => resolve_python_docstring_document_kind(document_kind, source),
         "sql" | "sql_postgres" | "sql_mysql" | "sql_sqlite" => DocumentKind::with_profile(
             resolve_sql_runtime(source_path, document_kind.runtime_name(), source),
             document_kind.profile(),
@@ -2902,6 +2908,10 @@ fn render_virtual_injection_render_data(
     nested_visual_level: usize,
     timings: Option<&mut RenderTimings>,
 ) -> Result<HighlightRenderData> {
+    if document_kind.runtime_name() == "python_docstring" {
+        return render_python_docstring(document_kind, source, theme, nested_visual_level);
+    }
+
     let mut render_data = highlight_named_language_render_data_with_depth(
         document_kind,
         None,
@@ -4578,13 +4588,14 @@ mod tests {
             expect_highlight: true,
             expected_fragments: &[
                 "Theme preview helpers.",
-                "module-level prose",
-                "inline code",
+                ":class:`ThemePreview`",
+                "Attributes:",
+                "Args:",
                 "ThemePreview",
                 "from_name",
-                "state_label",
+                "Parameters",
                 "Raises:",
-                ":class:`ThemePreview`",
+                "uppercase : bool",
             ],
         },
         FixtureCase {
@@ -8510,86 +8521,190 @@ mod tests {
     }
 
     #[test]
-    fn python_docstrings_highlight_markdown_content() {
-        let theme = Theme::for_mode(ColorMode::TrueColor);
-        let path = fixture_path("python/docstrings.py");
-        let source = read_file(&path);
-        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
-
-        assert!(
-            rendered.contains("\x1b[1m\x1b[38;2;189;147;249mPreview"),
-            "expected python docstring heading styling"
-        );
-        assert!(
-            rendered.contains("\x1b[38;2;80;250;123minline code"),
-            "expected python docstring inline-code styling"
-        );
-    }
-
-    #[test]
-    fn python_docstrings_reuse_markdown_and_fenced_python_runtimes() {
+    fn python_docstrings_use_dedicated_runtime_and_detect_styles() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
         let path = fixture_path("python/docstrings.py");
         let source = read_file(&path);
         let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
-        let module_markdown_region =
-            find_nested_region(&analysis, "markdown", "Theme preview helpers.", &source);
-        let classmethod_markdown_region = find_nested_region(
+        let module_docstring = find_nested_region(
             &analysis,
-            "markdown",
+            "python_docstring",
+            "Theme preview helpers.",
+            &source,
+        );
+        let init_docstring = find_nested_region(
+            &analysis,
+            "python_docstring",
+            "Initialize the preview instance.",
+            &source,
+        );
+        let classmethod_docstring = find_nested_region(
+            &analysis,
+            "python_docstring",
             "Create a preview from a plain theme name.",
             &source,
         );
-        let property_markdown_region =
-            find_nested_region(&analysis, "markdown", "Return the state label.", &source);
+        let render_docstring = find_nested_region(
+            &analysis,
+            "python_docstring",
+            "Render the preview value.",
+            &source,
+        );
 
         assert!(
-            module_markdown_region
-                .child_nested_regions
-                .iter()
-                .any(|region| region.resolved_document_kind.runtime_name == "python"),
-            "expected python docstring markdown region to preserve fenced python child runtime"
+            !nested_runtime_names(&analysis).contains(&"markdown"),
+            "expected python docstrings to stop defaulting to markdown runtime"
         );
         assert!(
-            classmethod_markdown_region.visual_level >= 1,
-            "expected classmethod docstring to produce a markdown nested region"
+            module_docstring.resolved_document_kind.profile == "python_docstring_rest",
+            "expected module docstring to resolve to reST-style profile"
         );
         assert!(
-            property_markdown_region.visual_level >= 1,
-            "expected property docstring to produce a markdown nested region"
+            init_docstring.resolved_document_kind.profile == "python_docstring_google",
+            "expected __init__ docstring to resolve to Google-style profile"
+        );
+        assert!(
+            classmethod_docstring.resolved_document_kind.profile == "python_docstring_rest",
+            "expected classmethod docstring to resolve to reST-style profile"
+        );
+        assert!(
+            render_docstring.resolved_document_kind.profile == "python_docstring_numpy",
+            "expected render docstring to resolve to NumPy-style profile"
         );
     }
 
     #[test]
-    fn python_docstring_markdown_uses_rectangular_block_visuals() {
+    fn python_docstrings_highlight_rest_google_and_numpy_structures() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("python/docstrings.py");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
+        let keyword_style = theme
+            .token_style_for("keyword.directive", "Args")
+            .expect("expected keyword.directive style")
+            .snapshot(ColorMode::TrueColor);
+        let parameter_style = theme
+            .token_style_for("variable.parameter", "name")
+            .expect("expected variable.parameter style")
+            .snapshot(ColorMode::TrueColor);
+        let type_style = theme
+            .token_style_for("type", "ThemePreview")
+            .expect("expected type style")
+            .snapshot(ColorMode::TrueColor);
+        let punctuation_style = theme
+            .token_style_for("punctuation.special", ":")
+            .expect("expected punctuation.special style")
+            .snapshot(ColorMode::TrueColor);
+
+        let args_offset = source.find("Args:").expect("expected Args section");
+        let param_field_offset = source
+            .find(":param name:")
+            .expect("expected reST param field");
+        let role_offset = source
+            .find(":class:`ThemePreview`")
+            .expect("expected reST class role");
+        let numpy_section_offset = source
+            .find("Parameters\n        ----------")
+            .expect("expected NumPy section header");
+        let numpy_param_offset = source
+            .find("uppercase : bool")
+            .expect("expected NumPy parameter entry");
+
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= args_offset
+                    && args_offset < span.end
+                    && span.style == Some(keyword_style.clone())
+            }),
+            "expected Google section header to receive directive styling"
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= param_field_offset + 1
+                    && param_field_offset + 1 < span.end
+                    && span.style == Some(keyword_style.clone())
+            }),
+            "expected reST field name to receive directive styling"
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= param_field_offset + 7
+                    && param_field_offset + 7 < span.end
+                    && span.style == Some(parameter_style.clone())
+            }),
+            "expected reST parameter name to receive parameter styling"
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= role_offset + 8
+                    && role_offset + 8 < span.end
+                    && span.style == Some(type_style.clone())
+            }),
+            "expected reST role target to receive type styling"
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= numpy_section_offset
+                    && numpy_section_offset < span.end
+                    && span.style == Some(keyword_style.clone())
+            }),
+            "expected NumPy section title to receive directive styling"
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= numpy_param_offset
+                    && numpy_param_offset < span.end
+                    && span.style == Some(parameter_style.clone())
+            }),
+            "expected NumPy parameter name to receive parameter styling"
+        );
+        assert!(
+            analysis.spans.iter().any(|span| {
+                span.start <= numpy_param_offset + "uppercase ".len()
+                    && numpy_param_offset + "uppercase ".len() < span.end
+                    && span.style == Some(punctuation_style.clone())
+            }),
+            "expected NumPy parameter separator to receive punctuation styling"
+        );
+    }
+
+    #[test]
+    fn python_docstring_runtime_uses_rectangular_block_visuals() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("python/docstrings.py");
         let source = read_file(&path);
         let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
-        let markdown_region =
-            find_nested_region(&analysis, "markdown", "Theme preview helpers.", &source);
-        let heading_segment = segment_for_line(markdown_region, &source, "# Preview");
-        let prose_segment = segment_for_line(
-            markdown_region,
+        let docstring_region = find_nested_region(
+            &analysis,
+            "python_docstring",
+            "Theme preview helpers.",
             &source,
-            "This module exercises several common docstring shapes:",
         );
-        let list_segment = segment_for_line(markdown_region, &source, "- module-level prose");
+        let first_segment = segment_for_line(docstring_region, &source, "Theme preview helpers.");
+        let prose_segment = segment_for_line(
+            docstring_region,
+            &source,
+            "This module exercises several common docstring styles.",
+        );
+        let role_segment = segment_for_line(
+            docstring_region,
+            &source,
+            "The public entrypoint is :class:`ThemePreview`.",
+        );
 
         assert_eq!(
-            markdown_region.visual_kind, "rect_block",
-            "expected python docstring markdown to render as a rectangular block"
+            docstring_region.visual_kind, "rect_block",
+            "expected python docstring runtime to render as a rectangular block"
         );
         assert!(
-            segment_trailing_padding(heading_segment) > 0,
-            "expected narrower heading line to keep visible block padding"
+            segment_trailing_padding(first_segment) > 0,
+            "expected narrower summary line to keep visible block padding"
         );
         assert!(
-            segment_rendered_right_edge(&source, heading_segment)
+            segment_rendered_right_edge(&source, first_segment)
                 == segment_rendered_right_edge(&source, prose_segment)
-                && segment_rendered_right_edge(&source, list_segment)
+                && segment_rendered_right_edge(&source, role_segment)
                     == segment_rendered_right_edge(&source, prose_segment),
             "expected python docstring lines to share one rectangular block right edge"
         );
@@ -8602,14 +8717,14 @@ mod tests {
         let path = fixture_path("python/docstrings.py");
         let source = read_file(&path);
         let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
-        let markdown_region = find_nested_region(
+        let docstring_region = find_nested_region(
             &analysis,
-            "markdown",
+            "python_docstring",
             "Initialize the preview instance.",
             &source,
         );
         let first_segment = segment_for_line(
-            markdown_region,
+            docstring_region,
             &source,
             "\"\"\"Initialize the preview instance.",
         );
@@ -8642,12 +8757,12 @@ mod tests {
         let blank_after_intro = layout
             .rows
             .iter()
-            .find(|row| row.source_line_start == line_start_for_line_number(&source, 42))
+            .find(|row| row.source_line_start == line_start_for_line_number(&source, 24))
             .expect("expected blank line between init docstring intro and Args section");
         let blank_before_raises = layout
             .rows
             .iter()
-            .find(|row| row.source_line_start == line_start_for_line_number(&source, 46))
+            .find(|row| row.source_line_start == line_start_for_line_number(&source, 28))
             .expect("expected blank line between init docstring Args and Raises sections");
 
         assert_eq!(
@@ -8684,11 +8799,11 @@ mod tests {
         let rendered_text = render_plan_text(&render_plan);
         let rendered_lines: Vec<_> = rendered_text.lines().collect();
         let blank_after_intro = rendered_lines
-            .get(41)
+            .get(23)
             .copied()
             .expect("expected render plan to retain blank init docstring line");
         let blank_before_raises = rendered_lines
-            .get(45)
+            .get(27)
             .copied()
             .expect("expected render plan to retain blank Raises separator line");
 
@@ -8714,7 +8829,7 @@ mod tests {
         let source = read_file(&path);
         let render_plan = render_plan_snapshot_for_path(path.as_path(), &source, &theme);
         let blank_after_intro = render_plan_lines(&render_plan)
-            .get(41)
+            .get(23)
             .cloned()
             .expect("expected init docstring blank line in render plan");
 

@@ -1,26 +1,8 @@
 """Theme preview helpers.
 
-# Preview
+This module exercises several common docstring styles.
 
-This module exercises several common docstring shapes:
-
-- module-level prose
-- class-level documentation
-- method docstrings with sections
-
-1. Parse configuration
-2. Build the preview
-3. Render the result
-
-`inline code`
-
-```python
-preview = ThemePreview.from_name("kat")
-print(preview.render())
-```
-
-:mod:`theme_preview`
-:class:`ThemePreview`
+The public entrypoint is :class:`ThemePreview`.
 """
 
 
@@ -58,26 +40,31 @@ class ThemePreview:
         """Create a preview from a plain theme name.
 
         :param name: Source theme name.
-        :returns: A new ``ThemePreview`` instance.
+        :returns: A new :class:`ThemePreview` instance.
+        :raises ValueError: If the theme name is empty.
         """
         return cls(name)
 
     @property
     def state_label(self) -> str:
-        """Return the state label.
-
-        Returns:
-            ``"enabled"`` when the preview is active, otherwise ``"disabled"``.
-        """
+        """Return the state label."""
         return "enabled" if self.enabled else "disabled"
 
     def render(self) -> str:
         """Render the preview value.
 
-        Notes:
-            The return shape is ``"<name>:<state>"``.
+        Parameters
+        ----------
+        uppercase : bool
+            Whether to uppercase the rendered label.
 
-        See Also:
-            :meth:`from_name`
+        Returns
+        -------
+        str
+            The preview label.
+
+        See Also
+        --------
+        from_name
         """
         return f"{self.name}:{self.state_label}"

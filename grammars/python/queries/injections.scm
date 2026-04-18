@@ -11,7 +11,8 @@
     (string) @injection.content))
   (#set! injection.combined)
   (#set! kat.decode "python-literal")
-  (#set! injection.language "markdown")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
   (#set! kat.visual "block")
   (#set! kat.visual-anchor "content"))
 
@@ -24,7 +25,8 @@
       (string) @injection.content)))
   (#set! injection.combined)
   (#set! kat.decode "python-literal")
-  (#set! injection.language "markdown")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
   (#set! kat.visual "block")
   (#set! kat.visual-anchor "content"))
 
@@ -35,7 +37,8 @@
       (string) @injection.content)))
   (#set! injection.combined)
   (#set! kat.decode "python-literal")
-  (#set! injection.language "markdown")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
   (#set! kat.visual "block")
   (#set! kat.visual-anchor "content"))
 
@@ -47,7 +50,8 @@
         (string) @injection.content))))
   (#set! injection.combined)
   (#set! kat.decode "python-literal")
-  (#set! injection.language "markdown")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
   (#set! kat.visual "block")
   (#set! kat.visual-anchor "content"))
 
@@ -59,7 +63,8 @@
         (string) @injection.content))))
   (#set! injection.combined)
   (#set! kat.decode "python-literal")
-  (#set! injection.language "markdown")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
   (#set! kat.visual "block")
   (#set! kat.visual-anchor "content"))
 

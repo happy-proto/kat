@@ -129,6 +129,12 @@ fn collect_query_injection_candidates(
             .map(InjectionDecode::from_query_value)
             .unwrap_or(InjectionDecode::None);
         let mut content_ranges = Vec::new();
+        let document_profile = query
+            .property_settings(query_match.pattern_index)
+            .iter()
+            .find(|property| property.key.as_ref() == "kat.document-profile")
+            .and_then(|property| property.value.as_deref())
+            .and_then(DocumentProfile::from_query_value);
         let visual_kind = query
             .property_settings(query_match.pattern_index)
             .iter()
@@ -169,9 +175,14 @@ fn collect_query_injection_candidates(
             continue;
         }
 
+        let base_document_kind = plain_document_kind(&injection_language);
+        let document_kind = document_profile.map_or(base_document_kind, |profile| {
+            DocumentKind::with_profile(base_document_kind.runtime_name(), profile)
+        });
+
         if injection_combined {
             candidates.push(InjectionCandidate {
-                document_kind: plain_document_kind(&injection_language),
+                document_kind,
                 ranges: normalize_ranges(content_ranges),
                 projection: InjectionProjection::RawRanges,
                 is_combined: true,
@@ -189,7 +200,7 @@ fn collect_query_injection_candidates(
         for range in content_ranges {
             if range.start < range.end {
                 candidates.push(InjectionCandidate {
-                    document_kind: plain_document_kind(&injection_language),
+                    document_kind,
                     ranges: vec![range],
                     projection: InjectionProjection::RawRanges,
                     is_combined: false,
