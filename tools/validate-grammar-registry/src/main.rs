@@ -99,6 +99,23 @@ fn validate_repository_layout(manifest_dir: &Path) -> Result<(), String> {
                 )),
             },
         }
+
+        match scanner_sources_with_raw_gnu_attributes(&grammar_dir) {
+            Ok(scanner_paths) => {
+                for (path, line_number) in scanner_paths {
+                    errors.push(format!(
+                        "scanner source `{}` uses raw `__attribute__` on line {}; wrap compiler-specific attributes in macros or remove them so MSVC builds keep working",
+                        path.display(),
+                        line_number
+                    ));
+                }
+            }
+            Err(error) => errors.push(format!(
+                "failed to inspect scanner sources under `{}` for grammar `{}`: {error}",
+                grammar_dir.display(),
+                grammar.name
+            )),
+        }
     }
 
     if errors.is_empty() {
@@ -133,11 +150,56 @@ fn directory_contains_tracked_assets(dir: &Path) -> std::io::Result<bool> {
     Ok(false)
 }
 
+fn scanner_sources_with_raw_gnu_attributes(
+    grammar_dir: &Path,
+) -> std::io::Result<Vec<(PathBuf, usize)>> {
+    let mut violations = Vec::new();
+
+    for entry in WalkDir::new(grammar_dir)
+        .min_depth(1)
+        .into_iter()
+        .filter_map(Result::ok)
+    {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        let path = entry.path();
+        let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if !matches!(file_name, "scanner.c" | "scanner.cc" | "scanner.cpp") {
+            continue;
+        }
+
+        let contents = fs::read_to_string(path)?;
+        for (index, line) in contents.lines().enumerate() {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with('#')
+                || trimmed.starts_with("//")
+                || trimmed.starts_with("/*")
+                || trimmed.starts_with('*')
+            {
+                continue;
+            }
+
+            if trimmed.contains("__attribute__") {
+                violations.push((path.to_path_buf(), index + 1));
+            }
+        }
+    }
+
+    Ok(violations)
+}
+
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::{collections::BTreeSet, fs};
 
-    use super::{ParserSource, default_repository_root, load_registry, validate_repository_layout};
+    use super::{
+        ParserSource, default_repository_root, load_registry,
+        scanner_sources_with_raw_gnu_attributes, validate_repository_layout,
+    };
 
     const VENDORED_GRAMMAR_EXCEPTIONS_MD: &str =
         include_str!("../../../docs/vendor-grammar-exceptions.md");
@@ -169,6 +231,32 @@ mod tests {
     fn repository_layout_matches_registry_requirements() {
         let manifest_dir = default_repository_root();
         validate_repository_layout(&manifest_dir).unwrap_or_else(|error| panic!("{error}"));
+    }
+
+    #[test]
+    fn scanner_sources_avoid_raw_gnu_attributes() {
+        let manifest_dir = default_repository_root();
+        let grammars_dir = manifest_dir.join("grammars");
+        let mut violations = Vec::new();
+
+        for entry in fs::read_dir(&grammars_dir).expect("workspace grammars directory must exist") {
+            let entry = entry.expect("grammar directory entry must load");
+            let file_type = entry
+                .file_type()
+                .expect("grammar directory file type must load");
+            if !file_type.is_dir() {
+                continue;
+            }
+
+            let mut scanner_violations = scanner_sources_with_raw_gnu_attributes(&entry.path())
+                .expect("scanner source portability check must be readable for every grammar");
+            violations.append(&mut scanner_violations);
+        }
+
+        assert!(
+            violations.is_empty(),
+            "scanner sources must not use raw GNU __attribute__ annotations outside preprocessor guards: {violations:?}"
+        );
     }
 
     fn documented_grammar_names(markdown: &str) -> BTreeSet<&str> {

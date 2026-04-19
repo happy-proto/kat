@@ -19,6 +19,7 @@
 ## Grammar 与 Query 维护
 
 - `grammar.js`、`scanner.*` 和 grammar 构建必需的 support 源文件，默认按上游 revision 快照管理。
+- 对 vendored `scanner.c` / `scanner.cc` / `scanner.cpp` 的本地改动，优先保持跨编译器可移植；不要在函数声明里直接写裸 `__attribute__(...)` 之类的 GNU 扩展，确实需要编译器特定属性时要通过可移植宏封装。
 - `queries/*.scm` 默认按仓库内集成资产管理，可以独立于 grammar revision 演进。
 - 如果某个 grammar 改为 crate-backed parser，要在 `grammars/registry.toml` 明确标记 parser 来源，并同步更新相关文档与第三方归属说明；此时仓库内默认不再保留会误导维护者的本地 parser 源文件。
 - `grammars/registry.toml` 中的每个 grammar 都必须对应一个 `grammars/<name>/` 目录；vendored grammar 必须保留 `grammar.js`，crate-backed grammar 也必须至少保留一个本地资产文件（通常是 `queries/*.scm`），这样仓库级校验、构建缓存和维护流程才能稳定工作。
