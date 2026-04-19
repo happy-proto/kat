@@ -60,14 +60,14 @@ jobs:
         with:
           components: clippy
 
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
       - name: Validate grammar registry layout
         shell: bash
         run: |
           set -euo pipefail
           cargo run --quiet --locked -p validate-grammar-registry
-
-      - name: Set up sccache
-        uses: ./.github/actions/sccache
 
       - name: Restore tree-sitter build cache
         id: tree-sitter-cache
