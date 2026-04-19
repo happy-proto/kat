@@ -66,6 +66,7 @@ struct BuildContext {
 struct BuildProfiler {
     enabled: bool,
     log_path: Option<PathBuf>,
+    emit_stdout: bool,
 }
 
 struct GrammarBuildResult {
@@ -311,6 +312,10 @@ impl BuildProfiler {
         let enabled = env::var("KAT_BUILD_PROFILE")
             .ok()
             .is_some_and(|value| value != "0" && !value.is_empty());
+        let emit_stdout = match env::var("KAT_BUILD_PROFILE_STDOUT").ok() {
+            None => true,
+            Some(value) => value != "0" && value.to_lowercase() != "false",
+        };
         let log_path = enabled.then(|| {
             env::var("KAT_BUILD_PROFILE_LOG")
                 .map(PathBuf::from)
@@ -319,7 +324,11 @@ impl BuildProfiler {
                 })
         });
 
-        Self { enabled, log_path }
+        Self {
+            enabled,
+            log_path,
+            emit_stdout,
+        }
     }
 
     fn log_global(&self, message: String) {
@@ -345,7 +354,9 @@ impl BuildProfiler {
     }
 
     fn emit(&self, line: String) {
-        println!("cargo:warning={line}");
+        if self.emit_stdout {
+            println!("cargo:warning={line}");
+        }
 
         let Some(log_path) = &self.log_path else {
             return;
