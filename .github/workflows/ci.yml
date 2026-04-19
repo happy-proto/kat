@@ -146,6 +146,9 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
+
       - name: Validate grammar registry layout
         shell: bash
         run: |
@@ -156,9 +159,6 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: nextest
-
-      - name: Set up sccache
-        uses: ./.github/actions/sccache
 
       - name: Restore tree-sitter build cache
         id: tree-sitter-cache
