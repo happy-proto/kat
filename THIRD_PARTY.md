@@ -856,7 +856,7 @@ Upstream projects:
   Source: [briot/tree-sitter-ada](https://github.com/briot/tree-sitter-ada)
   Revision: `6b58259a08b1a22ba0247a7ce30be384db618da6`
   License: MIT
-  Notes: repository-local copies of the upstream Ada query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on `tree-sitter-ada`.
+  Notes: repository-local copies of the upstream Ada query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on `tree-sitter-ada`. `kat` intentionally stays on the git revision instead of crates.io `0.1.0`, because the pinned commit already includes newer Ada constructs such as `parallel_block_statement`, `procedural_iterator`, and `parallel for`-style iteration support that are not present in the published crate release.
 
 - `grammars/applescript/*`
   Source: [waddie/tree-sitter-applescript](https://github.com/waddie/tree-sitter-applescript)
