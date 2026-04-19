@@ -32,17 +32,35 @@ inputs:
 outputs:
   cargo-timings-count:
     description: Number of cargo-timings directories staged into the artifact directory
+    value: ${{ steps.collect.outputs.cargo-timings-count }}
   build-profile-present:
     description: Whether the build profile log was found and copied
+    value: ${{ steps.collect.outputs.build-profile-present }}
   build-profile-file:
     description: Basename of the copied build profile log file
+    value: ${{ steps.collect.outputs.build-profile-file }}
   link-log-present:
     description: Whether the link timing log was found and copied
+    value: ${{ steps.collect.outputs.link-log-present }}
   link-log-file:
     description: Basename of the copied link timing log file
+    value: ${{ steps.collect.outputs.link-log-file }}
   link-log-record-count:
     description: Number of records in the copied link timing log
+    value: ${{ steps.collect.outputs.link-log-record-count }}
 
 runs:
-  using: node24
-  main: index.cjs
+  using: composite
+  steps:
+    - id: collect
+      shell: bash
+      run: node "${{ github.action_path }}/index.cjs"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        INPUT_SUMMARY_TITLE: ${{ inputs.summary-title }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_CARGO_TIMINGS_ROOT: ${{ inputs.cargo-timings-root }}
+        INPUT_BUILD_PROFILE_LOG: ${{ inputs.build-profile-log }}
+        INPUT_LINK_LOG: ${{ inputs.link-log }}
+        INPUT_WRITE_SUMMARY: ${{ inputs.write-summary }}
