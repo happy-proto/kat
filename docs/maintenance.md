@@ -23,7 +23,7 @@
 - `queries/*.scm` 默认按仓库内集成资产管理，可以独立于 grammar revision 演进。
 - 如果某个 grammar 改为 crate-backed parser，要在 `grammars/registry.toml` 明确标记 parser 来源，并同步更新相关文档与第三方归属说明；此时仓库内默认不再保留会误导维护者的本地 parser 源文件。
 - `grammars/registry.toml` 中的每个 grammar 都必须对应一个 `grammars/<name>/` 目录；vendored grammar 必须保留 `grammar.js`，crate-backed grammar 也必须至少保留一个本地资产文件（通常是 `queries/*.scm`），这样仓库级校验、构建缓存和维护流程才能稳定工作。
-- 仓库级 grammar 布局校验默认通过 workspace 内的独立工具包 `validate-grammar-registry` 执行；不要再把这类轻量校验重新挂回主 crate，否则 CI 会为了跑校验而额外触发 `kat` 的 `build.rs`。
+- 仓库级 grammar 布局校验默认通过 workspace 内的独立 test crate `validate-grammar-registry` 覆盖；不要再把这类轻量校验重新挂回主 crate，否则 CI 会为了跑校验而额外触发 `kat` 的 `build.rs`。
 - 升级 grammar 时，优先按单个 upstream revision 同步最小必需源码资产。
 - 调整 query 时，优先服务当前仓库的 capture 语义、nested runtime 和 detector 设计，而不是机械贴近某个上游仓库。
 - 如果只是为了高亮效果或 injection 行为调整 query，默认不要顺手升级 grammar；只有当 query 目标明确受 upstream AST 或 grammar 变化驱动时，才一起升级 grammar。
@@ -46,4 +46,5 @@
 ## Release 与分发
 
 - CI、发布与缓存的具体行为以仓库里的 workflow 和配置文件为准；文档只保留长期约定，不重复维护实现级细节。
+- CI 中的构建观测数据（例如 cargo timings、link timing、tree-sitter build profile）默认优先写入 step summary 与 artifact；不要把原始 profile 明细长期直接刷到 stdout 里。
 - 如果调整了发布资产或 `cargo binstall` 下载约定，要同步更新相关 workflow、[Cargo.toml](../Cargo.toml) 与 [README.md](../README.md)。

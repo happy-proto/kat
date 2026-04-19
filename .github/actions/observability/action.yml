@@ -1,0 +1,66 @@
+name: Observability Collector
+description: Collect CI observability files into an artifact directory and publish a short summary.
+
+inputs:
+  artifact-name:
+    description: Artifact name shown in the GitHub Actions summary
+    required: true
+  summary-title:
+    description: Markdown heading used in the GitHub Actions summary
+    required: false
+    default: Observability
+  output-dir:
+    description: Directory where collected files should be staged
+    required: true
+  cargo-timings-root:
+    description: Root directory used to search for cargo-timings directories
+    required: false
+    default: target
+  build-profile-log:
+    description: Optional build profile log to copy into the artifact directory
+    required: false
+    default: ""
+  link-log:
+    description: Optional link timing log to copy into the artifact directory
+    required: false
+    default: ""
+  write-summary:
+    description: Whether to append a summary section to GITHUB_STEP_SUMMARY
+    required: false
+    default: "true"
+
+outputs:
+  cargo-timings-count:
+    description: Number of cargo-timings directories staged into the artifact directory
+    value: ${{ steps.collect.outputs.cargo-timings-count }}
+  build-profile-present:
+    description: Whether the build profile log was found and copied
+    value: ${{ steps.collect.outputs.build-profile-present }}
+  build-profile-file:
+    description: Basename of the copied build profile log file
+    value: ${{ steps.collect.outputs.build-profile-file }}
+  link-log-present:
+    description: Whether the link timing log was found and copied
+    value: ${{ steps.collect.outputs.link-log-present }}
+  link-log-file:
+    description: Basename of the copied link timing log file
+    value: ${{ steps.collect.outputs.link-log-file }}
+  link-log-record-count:
+    description: Number of records in the copied link timing log
+    value: ${{ steps.collect.outputs.link-log-record-count }}
+
+runs:
+  using: composite
+  steps:
+    - id: collect
+      shell: bash
+      run: node "${{ github.action_path }}/index.cjs"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        INPUT_SUMMARY_TITLE: ${{ inputs.summary-title }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_CARGO_TIMINGS_ROOT: ${{ inputs.cargo-timings-root }}
+        INPUT_BUILD_PROFILE_LOG: ${{ inputs.build-profile-log }}
+        INPUT_LINK_LOG: ${{ inputs.link-log }}
+        INPUT_WRITE_SUMMARY: ${{ inputs.write-summary }}

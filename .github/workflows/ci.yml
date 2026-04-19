@@ -60,12 +60,6 @@ jobs:
         with:
           components: clippy
 
-      - name: Validate grammar registry layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo run --quiet --locked -p validate-grammar-registry
-
       - name: Set up sccache
         uses: ./.github/actions/sccache
 
@@ -81,10 +75,15 @@ jobs:
 
       - name: Run clippy
         shell: bash
+        env:
+          KAT_BUILD_PROFILE: "1"
+          KAT_BUILD_PROFILE_STDOUT: "0"
+          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/clippy-tree-sitter-build-profile.log
         run: |
           set -euo pipefail
+          : > "${KAT_BUILD_PROFILE_LOG}"
           "${SCCACHE_PATH}" --zero-stats
-          cargo clippy --workspace --locked --all-targets --all-features -- -D warnings
+          cargo clippy --timings --workspace --locked --all-targets --all-features -- -D warnings
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
@@ -103,6 +102,23 @@ jobs:
           key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs') }}
           target: x86_64-unknown-linux-gnu
           profile: debug
+
+      - name: Collect clippy observability artifacts
+        if: always()
+        uses: ./.github/actions/observability
+        with:
+          artifact-name: kat-clippy-observability-ubuntu-latest
+          summary-title: Clippy observability
+          output-dir: ${{ runner.temp }}/kat-clippy-observability
+          build-profile-log: ${{ runner.temp }}/clippy-tree-sitter-build-profile.log
+
+      - name: Upload clippy observability artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: kat-clippy-observability-ubuntu-latest
+          path: ${{ runner.temp }}/kat-clippy-observability
+          if-no-files-found: warn
 
   test:
     name: test (ubuntu-latest)
@@ -124,19 +140,13 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Validate grammar registry layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo run --quiet --locked -p validate-grammar-registry
+      - name: Set up sccache
+        uses: ./.github/actions/sccache
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
           tool: nextest
-
-      - name: Set up sccache
-        uses: ./.github/actions/sccache
 
       - name: Restore tree-sitter build cache
         id: tree-sitter-cache
@@ -150,10 +160,20 @@ jobs:
 
       - name: Run test suite
         shell: bash
+        env:
+          KAT_LINK_LOG: ${{ runner.temp }}/test-rust-link-timings.tsv
+          KAT_BUILD_PROFILE: "1"
+          KAT_BUILD_PROFILE_STDOUT: "0"
+          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/test-tree-sitter-build-profile.log
+          KAT_REAL_LINKER: cc
         run: |
           set -euo pipefail
+          : > "${KAT_LINK_LOG}"
+          : > "${KAT_BUILD_PROFILE_LOG}"
           "${SCCACHE_PATH}" --zero-stats
+          export RUSTFLAGS="-Clinker=${GITHUB_WORKSPACE}/.github/scripts/rust-link-wrapper.sh"
           cargo nextest run \
+            --timings \
             --workspace \
             --config-file .config/nextest.toml \
             --cargo-quiet \
@@ -177,6 +197,24 @@ jobs:
           key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs') }}
           target: x86_64-unknown-linux-gnu
           profile: debug
+
+      - name: Collect test observability artifacts
+        if: always()
+        uses: ./.github/actions/observability
+        with:
+          artifact-name: kat-test-observability-ubuntu-latest
+          summary-title: Test observability
+          output-dir: ${{ runner.temp }}/kat-test-observability
+          build-profile-log: ${{ runner.temp }}/test-tree-sitter-build-profile.log
+          link-log: ${{ runner.temp }}/test-rust-link-timings.tsv
+
+      - name: Upload test observability artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: kat-test-observability-ubuntu-latest
+          path: ${{ runner.temp }}/kat-test-observability
+          if-no-files-found: warn
 
   build:
     name: >-
@@ -243,12 +281,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Validate grammar registry layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo run --quiet --locked -p validate-grammar-registry
-
       - name: Set up sccache
         if: matrix.use_sccache
         uses: ./.github/actions/sccache
@@ -269,6 +301,7 @@ jobs:
           TARGET: ${{ matrix.target }}
           KAT_LINK_LOG: ${{ runner.temp }}/rust-link-timings.tsv
           KAT_BUILD_PROFILE: "1"
+          KAT_BUILD_PROFILE_STDOUT: "0"
           KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/tree-sitter-build-profile.log
           BINARY_EXT: ${{ matrix.binary_ext }}
           USE_LINK_WRAPPER: ${{ matrix.use_link_wrapper }}
@@ -386,25 +419,56 @@ jobs:
           target: ${{ matrix.target }}
           profile: release
 
+      - name: Collect build observability artifacts
+        if: always()
+        id: build-observability
+        uses: ./.github/actions/observability
+        with:
+          artifact-name: kat-build-observability-${{ matrix.target }}
+          summary-title: Build observability
+          output-dir: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
+          build-profile-log: ${{ runner.temp }}/tree-sitter-build-profile.log
+          link-log: ${{ runner.temp }}/rust-link-timings.tsv
+
       - name: Publish job summary
+        if: always()
         shell: bash
         run: |
+          build_seconds="${BUILD_SECONDS:-n/a}"
+          total_seconds="${TOTAL_SECONDS:-n/a}"
+          artifact_path="${ARTIFACT_PATH:-not-built}"
+          artifact_size="${ARTIFACT_SIZE:-n/a}"
+          link_invocations="${LINK_INVOCATIONS:-n/a}"
+          link_total_ms="${LINK_TOTAL_MS:-n/a}"
+          longest_link_ms="${LONGEST_LINK_MS:-n/a}"
+          longest_link_status="${LONGEST_LINK_STATUS:-n/a}"
+          longest_link_output="${LONGEST_LINK_OUTPUT:-n/a}"
+
           {
             echo "## Build summary"
             echo
             echo "- Runner: \`${{ matrix.runner }}\`"
             echo "- Target: \`${{ matrix.target }}\`"
-            echo "- cargo build --release --locked: \`${BUILD_SECONDS}s\`"
-            echo "- Total: \`${TOTAL_SECONDS}s\`"
-            echo "- Binary: \`${ARTIFACT_PATH}\`"
-            echo "- Size: \`${ARTIFACT_SIZE} bytes\`"
-            echo "- Link invocations: \`${LINK_INVOCATIONS}\`"
-            echo "- Total linker wall time: \`${LINK_TOTAL_MS} ms\`"
-            echo "- Longest linker invocation: \`${LONGEST_LINK_MS} ms\`"
-            echo "- Longest linker status: \`${LONGEST_LINK_STATUS}\`"
-            echo "- Longest linker output: \`${LONGEST_LINK_OUTPUT}\`"
-            echo "- Cargo timings: \`target/cargo-timings/cargo-timing.html\`"
-            echo "- Tree-sitter build profile: \`${TREE_SITTER_BUILD_PROFILE_PATH}\`"
+            echo "- cargo build --release --locked: \`${build_seconds}s\`"
+            echo "- Total: \`${total_seconds}s\`"
+            echo "- Binary: \`${artifact_path}\`"
+            echo "- Size: \`${artifact_size} bytes\`"
+            echo "- Link invocations: \`${link_invocations}\`"
+            echo "- Total linker wall time: \`${link_total_ms} ms\`"
+            echo "- Longest linker invocation: \`${longest_link_ms} ms\`"
+            echo "- Longest linker status: \`${longest_link_status}\`"
+            echo "- Longest linker output: \`${longest_link_output}\`"
+            if [[ "${{ steps.build-observability.outputs.build-profile-present }}" == "true" ]]; then
+              echo "- Tree-sitter build profile: \`${{ steps.build-observability.outputs.build-profile-file }}\`"
+            else
+              echo "- Tree-sitter build profile: not generated"
+            fi
+            if [[ "${{ steps.build-observability.outputs.cargo-timings-count }}" != "0" ]]; then
+              echo "- Cargo timings: captured in observability artifact"
+            else
+              echo "- Cargo timings: not generated"
+            fi
+            echo "- Observability artifact: \`kat-build-observability-${{ matrix.target }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload release artifact
@@ -415,14 +479,12 @@ jobs:
           if-no-files-found: error
 
       - name: Upload build observability artifacts
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: kat-build-observability-${{ matrix.target }}
-          path: |
-            target/cargo-timings/
-            ${{ env.LINK_LOG_PATH }}
-            ${{ env.TREE_SITTER_BUILD_PROFILE_PATH }}
-          if-no-files-found: error
+          path: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
+          if-no-files-found: warn
 
   release-latest:
     name: release latest
