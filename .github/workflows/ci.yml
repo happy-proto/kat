@@ -111,52 +111,12 @@ jobs:
 
       - name: Collect clippy observability artifacts
         if: always()
-        shell: bash
-        env:
-          OBSERVABILITY_DIR: ${{ runner.temp }}/kat-clippy-observability
-          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/clippy-tree-sitter-build-profile.log
-        run: |
-          set -euo pipefail
-
-          rm -rf "${OBSERVABILITY_DIR}"
-          mkdir -p "${OBSERVABILITY_DIR}"
-
-          if [[ -f "${KAT_BUILD_PROFILE_LOG}" ]]; then
-            cp "${KAT_BUILD_PROFILE_LOG}" "${OBSERVABILITY_DIR}/"
-          fi
-
-          while IFS= read -r timings_dir; do
-            rel_path="${timings_dir#target/}"
-            dest_path="${OBSERVABILITY_DIR}/${rel_path}"
-            mkdir -p "$(dirname "${dest_path}")"
-            cp -R "${timings_dir}" "${dest_path}"
-          done < <(find target -type d -path '*/cargo-timings' -print | sort)
-
-      - name: Publish clippy observability summary
-        if: always()
-        shell: bash
-        env:
-          OBSERVABILITY_DIR: ${{ runner.temp }}/kat-clippy-observability
-        run: |
-          set -euo pipefail
-
-          {
-            echo "## Clippy observability"
-            echo
-            echo "- Artifact: \`kat-clippy-observability-ubuntu-latest\`"
-            if [[ -f "${OBSERVABILITY_DIR}/clippy-tree-sitter-build-profile.log" ]]; then
-              echo "- Tree-sitter build profile: \`clippy-tree-sitter-build-profile.log\`"
-            else
-              echo "- Tree-sitter build profile: not generated"
-            fi
-
-            timings_count=$(find "${OBSERVABILITY_DIR}" -type d -path '*/cargo-timings' | wc -l | tr -d ' ')
-            if [[ "${timings_count}" != "0" ]]; then
-              echo "- Cargo timings directories: \`${timings_count}\`"
-            else
-              echo "- Cargo timings directories: not generated"
-            fi
-          } >> "${GITHUB_STEP_SUMMARY}"
+        uses: ./.github/actions/observability
+        with:
+          artifact-name: kat-clippy-observability-ubuntu-latest
+          summary-title: Clippy observability
+          output-dir: ${{ runner.temp }}/kat-clippy-observability
+          build-profile-log: ${{ runner.temp }}/clippy-tree-sitter-build-profile.log
 
       - name: Upload clippy observability artifacts
         if: always()
@@ -252,64 +212,13 @@ jobs:
 
       - name: Collect test observability artifacts
         if: always()
-        shell: bash
-        env:
-          OBSERVABILITY_DIR: ${{ runner.temp }}/kat-test-observability
-          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/test-tree-sitter-build-profile.log
-          KAT_LINK_LOG: ${{ runner.temp }}/test-rust-link-timings.tsv
-        run: |
-          set -euo pipefail
-
-          rm -rf "${OBSERVABILITY_DIR}"
-          mkdir -p "${OBSERVABILITY_DIR}"
-
-          if [[ -f "${KAT_BUILD_PROFILE_LOG}" ]]; then
-            cp "${KAT_BUILD_PROFILE_LOG}" "${OBSERVABILITY_DIR}/"
-          fi
-
-          if [[ -f "${KAT_LINK_LOG}" ]]; then
-            cp "${KAT_LINK_LOG}" "${OBSERVABILITY_DIR}/"
-          fi
-
-          while IFS= read -r timings_dir; do
-            rel_path="${timings_dir#target/}"
-            dest_path="${OBSERVABILITY_DIR}/${rel_path}"
-            mkdir -p "$(dirname "${dest_path}")"
-            cp -R "${timings_dir}" "${dest_path}"
-          done < <(find target -type d -path '*/cargo-timings' -print | sort)
-
-      - name: Publish test observability summary
-        if: always()
-        shell: bash
-        env:
-          OBSERVABILITY_DIR: ${{ runner.temp }}/kat-test-observability
-        run: |
-          set -euo pipefail
-
-          {
-            echo "## Test observability"
-            echo
-            echo "- Artifact: \`kat-test-observability-ubuntu-latest\`"
-            if [[ -f "${OBSERVABILITY_DIR}/test-tree-sitter-build-profile.log" ]]; then
-              echo "- Tree-sitter build profile: \`test-tree-sitter-build-profile.log\`"
-            else
-              echo "- Tree-sitter build profile: not generated"
-            fi
-
-            if [[ -f "${OBSERVABILITY_DIR}/test-rust-link-timings.tsv" ]]; then
-              link_invocations=$(wc -l < "${OBSERVABILITY_DIR}/test-rust-link-timings.tsv" | tr -d ' ')
-              echo "- Link timing records: \`${link_invocations}\`"
-            else
-              echo "- Link timing records: not generated"
-            fi
-
-            timings_count=$(find "${OBSERVABILITY_DIR}" -type d -path '*/cargo-timings' | wc -l | tr -d ' ')
-            if [[ "${timings_count}" != "0" ]]; then
-              echo "- Cargo timings directories: \`${timings_count}\`"
-            else
-              echo "- Cargo timings directories: not generated"
-            fi
-          } >> "${GITHUB_STEP_SUMMARY}"
+        uses: ./.github/actions/observability
+        with:
+          artifact-name: kat-test-observability-ubuntu-latest
+          summary-title: Test observability
+          output-dir: ${{ runner.temp }}/kat-test-observability
+          build-profile-log: ${{ runner.temp }}/test-tree-sitter-build-profile.log
+          link-log: ${{ runner.temp }}/test-rust-link-timings.tsv
 
       - name: Upload test observability artifacts
         if: always()
@@ -530,31 +439,14 @@ jobs:
 
       - name: Collect build observability artifacts
         if: always()
-        shell: bash
-        env:
-          OBSERVABILITY_DIR: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
-          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/tree-sitter-build-profile.log
-          KAT_LINK_LOG: ${{ runner.temp }}/rust-link-timings.tsv
-        run: |
-          set -euo pipefail
-
-          rm -rf "${OBSERVABILITY_DIR}"
-          mkdir -p "${OBSERVABILITY_DIR}"
-
-          if [[ -f "${KAT_BUILD_PROFILE_LOG}" ]]; then
-            cp "${KAT_BUILD_PROFILE_LOG}" "${OBSERVABILITY_DIR}/"
-          fi
-
-          if [[ -f "${KAT_LINK_LOG}" ]]; then
-            cp "${KAT_LINK_LOG}" "${OBSERVABILITY_DIR}/"
-          fi
-
-          while IFS= read -r timings_dir; do
-            rel_path="${timings_dir#target/}"
-            dest_path="${OBSERVABILITY_DIR}/${rel_path}"
-            mkdir -p "$(dirname "${dest_path}")"
-            cp -R "${timings_dir}" "${dest_path}"
-          done < <(find target -type d -path '*/cargo-timings' -print | sort)
+        id: build-observability
+        uses: ./.github/actions/observability
+        with:
+          artifact-name: kat-build-observability-${{ matrix.target }}
+          summary-title: Build observability
+          output-dir: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
+          build-profile-log: ${{ runner.temp }}/tree-sitter-build-profile.log
+          link-log: ${{ runner.temp }}/rust-link-timings.tsv
 
       - name: Publish job summary
         if: always()
@@ -584,12 +476,12 @@ jobs:
             echo "- Longest linker invocation: \`${longest_link_ms} ms\`"
             echo "- Longest linker status: \`${longest_link_status}\`"
             echo "- Longest linker output: \`${longest_link_output}\`"
-            if [[ -f "${RUNNER_TEMP}/tree-sitter-build-profile.log" ]]; then
-              echo "- Tree-sitter build profile: \`tree-sitter-build-profile.log\`"
+            if [[ "${{ steps.build-observability.outputs.build-profile-present }}" == "true" ]]; then
+              echo "- Tree-sitter build profile: \`${{ steps.build-observability.outputs.build-profile-file }}\`"
             else
               echo "- Tree-sitter build profile: not generated"
             fi
-            if find "${RUNNER_TEMP}/kat-build-observability-${{ matrix.target }}" -type d -path '*/cargo-timings' | read -r _; then
+            if [[ "${{ steps.build-observability.outputs.cargo-timings-count }}" != "0" ]]; then
               echo "- Cargo timings: captured in observability artifact"
             else
               echo "- Cargo timings: not generated"

@@ -1,0 +1,48 @@
+name: Observability Collector
+description: Collect CI observability files into an artifact directory and publish a short summary.
+
+inputs:
+  artifact-name:
+    description: Artifact name shown in the GitHub Actions summary
+    required: true
+  summary-title:
+    description: Markdown heading used in the GitHub Actions summary
+    required: false
+    default: Observability
+  output-dir:
+    description: Directory where collected files should be staged
+    required: true
+  cargo-timings-root:
+    description: Root directory used to search for cargo-timings directories
+    required: false
+    default: target
+  build-profile-log:
+    description: Optional build profile log to copy into the artifact directory
+    required: false
+    default: ""
+  link-log:
+    description: Optional link timing log to copy into the artifact directory
+    required: false
+    default: ""
+  write-summary:
+    description: Whether to append a summary section to GITHUB_STEP_SUMMARY
+    required: false
+    default: "true"
+
+outputs:
+  cargo-timings-count:
+    description: Number of cargo-timings directories staged into the artifact directory
+  build-profile-present:
+    description: Whether the build profile log was found and copied
+  build-profile-file:
+    description: Basename of the copied build profile log file
+  link-log-present:
+    description: Whether the link timing log was found and copied
+  link-log-file:
+    description: Basename of the copied link timing log file
+  link-log-record-count:
+    description: Number of records in the copied link timing log
+
+runs:
+  using: node24
+  main: index.cjs
