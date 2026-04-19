@@ -305,6 +305,7 @@ fn semantic_capture_spans_for(
         "bash"
             | "batch"
             | "fish"
+            | "python"
             | "powershell"
             | "zsh"
             | "regex"
@@ -342,6 +343,10 @@ fn semantic_capture_spans_for(
 
         if language_name == "powershell" {
             collect_powershell_node_spans(node, source, &mut spans);
+        }
+
+        if language_name == "python" {
+            collect_python_node_spans(node, source, &mut spans);
         }
 
         if language_name == "batch" {
@@ -1042,6 +1047,54 @@ fn collect_jsdoc_node_spans(node: Node<'_>, source: &str, spans: &mut Vec<Semant
     }
 }
 
+fn collect_python_node_spans(node: Node<'_>, source: &str, spans: &mut Vec<SemanticCaptureSpan>) {
+    match node.kind() {
+        "assignment" => {
+            if let Some(left) = node.child_by_field_name("left") {
+                collect_python_binding_target_spans(left, source, spans);
+            }
+        }
+        "attribute" => collect_python_attribute_object_spans(node, source, spans),
+        _ => {}
+    }
+}
+
+fn collect_python_binding_target_spans(
+    node: Node<'_>,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    match node.kind() {
+        "identifier" if node_text(node, source).is_some_and(is_python_local_name) => {
+            push_capture(spans, node.byte_range(), "variable.local");
+        }
+        "pattern_list" | "tuple" | "list" | "list_pattern" | "tuple_pattern" => {
+            for child in node.children(&mut node.walk()) {
+                if child.is_named() {
+                    collect_python_binding_target_spans(child, source, spans);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_python_attribute_object_spans(
+    node: Node<'_>,
+    source: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let Some(object) = node.child_by_field_name("object") else {
+        return;
+    };
+    if object.kind() != "identifier" {
+        return;
+    }
+    if node_text(object, source).is_some_and(is_python_local_name) {
+        push_capture(spans, object.byte_range(), "variable.local");
+    }
+}
+
 fn collect_command_family_spans(
     node: Node<'_>,
     source: &str,
@@ -1545,6 +1598,14 @@ fn looks_like_identifierish(text: &str) -> bool {
         && text
             .chars()
             .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | ':' | '-'))
+}
+
+fn is_python_local_name(text: &str) -> bool {
+    let mut chars = text.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    first == '_' || first.is_ascii_lowercase()
 }
 
 fn is_powershell_builtin_command(name: &str) -> bool {

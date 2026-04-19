@@ -169,7 +169,7 @@ fn compile_row(builder: &mut RenderPlanBuilder, row: &crate::layout::LayoutRow) 
         let style = background_style_at(row, column);
         let run_end = next_cell_column(row, cell_index)
             .unwrap_or(row.display_width)
-            .min(background_run_end(row, column).unwrap_or(row.display_width))
+            .min(next_background_boundary(row, column).unwrap_or(row.display_width))
             .max(column + 1);
         builder.push_text(&" ".repeat(run_end - column), style);
         column = run_end;
@@ -195,11 +195,19 @@ fn background_style_at(row: &crate::layout::LayoutRow, column: usize) -> Option<
         .map(|run| run.style)
 }
 
-fn background_run_end(row: &crate::layout::LayoutRow, column: usize) -> Option<usize> {
+fn next_background_boundary(row: &crate::layout::LayoutRow, column: usize) -> Option<usize> {
     row.background_runs
         .iter()
-        .find(|run| run.start_column <= column && run.end_column > column)
-        .map(|run| run.end_column)
+        .filter_map(|run| {
+            if run.start_column > column {
+                Some(run.start_column)
+            } else if run.start_column <= column && run.end_column > column {
+                Some(run.end_column)
+            } else {
+                None
+            }
+        })
+        .min()
 }
 
 fn next_cell_column(row: &crate::layout::LayoutRow, cell_index: usize) -> Option<usize> {

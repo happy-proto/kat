@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::{
     HighlightRenderData, NestedRegion, RenderTimings, StyledSpan, detect_document_kind,
     document_kind::{DocumentKind, DocumentKindSnapshot},
-    plain_document_kind,
+    named_document_kind,
     theme::{ColorMode, Theme, TokenStyleSnapshot},
 };
 
@@ -72,7 +72,7 @@ impl AnalysisDocument {
         timings: Option<&mut RenderTimings>,
     ) -> Result<Self> {
         Self::document_kind(
-            plain_document_kind(language_name),
+            named_document_kind(language_name)?,
             None,
             source,
             theme,
@@ -204,6 +204,7 @@ pub(crate) struct RegionSegmentSnapshot {
     pub line_start: usize,
     pub left: usize,
     pub text_end: usize,
+    pub left_column_override: Option<usize>,
     pub right_padding: usize,
 }
 
@@ -213,6 +214,7 @@ impl From<crate::RegionSegment> for RegionSegmentSnapshot {
             line_start: segment.line_start,
             left: segment.left,
             text_end: segment.text_end,
+            left_column_override: segment.left_column_override.map(|column| column.as_usize()),
             right_padding: segment.right_padding.as_usize(),
         }
     }

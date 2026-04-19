@@ -5,6 +5,69 @@
 ((comment) @injection.content
   (#set! injection.language "comment"))
 
+((module
+  .
+  (expression_statement
+    (string) @injection.content))
+  (#set! injection.combined)
+  (#set! kat.decode "python-literal")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
+  (#set! kat.visual "block")
+  (#set! kat.visual-anchor "content"))
+
+((class_definition
+  body: (block
+    .
+    (comment)*
+    .
+    (expression_statement
+      (string) @injection.content)))
+  (#set! injection.combined)
+  (#set! kat.decode "python-literal")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
+  (#set! kat.visual "block")
+  (#set! kat.visual-anchor "content"))
+
+((function_definition
+  body: (block
+    .
+    (expression_statement
+      (string) @injection.content)))
+  (#set! injection.combined)
+  (#set! kat.decode "python-literal")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
+  (#set! kat.visual "block")
+  (#set! kat.visual-anchor "content"))
+
+((decorated_definition
+  definition: (class_definition
+    body: (block
+      .
+      (expression_statement
+        (string) @injection.content))))
+  (#set! injection.combined)
+  (#set! kat.decode "python-literal")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
+  (#set! kat.visual "block")
+  (#set! kat.visual-anchor "content"))
+
+((decorated_definition
+  definition: (function_definition
+    body: (block
+      .
+      (expression_statement
+        (string) @injection.content))))
+  (#set! injection.combined)
+  (#set! kat.decode "python-literal")
+  (#set! injection.language "python_docstring")
+  (#set! kat.document-profile "python_docstring_auto")
+  (#set! kat.visual "block")
+  (#set! kat.visual-anchor "content"))
+
 (
   [
     (call
