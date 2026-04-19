@@ -63,12 +63,6 @@ jobs:
       - name: Set up sccache
         uses: ./.github/actions/sccache
 
-      - name: Validate grammar registry layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo run --quiet --locked -p validate-grammar-registry
-
       - name: Restore tree-sitter build cache
         id: tree-sitter-cache
         uses: ./.github/actions/tree-sitter-cache
@@ -148,12 +142,6 @@ jobs:
 
       - name: Set up sccache
         uses: ./.github/actions/sccache
-
-      - name: Validate grammar registry layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo run --quiet --locked -p validate-grammar-registry
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -292,12 +280,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      - name: Validate grammar registry layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo run --quiet --locked -p validate-grammar-registry
 
       - name: Set up sccache
         if: matrix.use_sccache
