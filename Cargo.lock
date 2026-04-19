@@ -2040,7 +2040,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-kat-parsers"
 version = "0.1.0"
-source = "git+https://github.com/happy-proto/kat-parsers?rev=c96e76a0af9988793b79d080e06406f67a74d569#c96e76a0af9988793b79d080e06406f67a74d569"
+source = "git+https://github.com/happy-proto/kat-parsers?branch=feat%2Fmigrate-kat-vendored-grammars#2c7fa7df6b3a70433b02b838207d7334b3e3df4b"
 dependencies = [
  "cc",
  "tree-sitter-language",
