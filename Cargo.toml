@@ -98,10 +98,4 @@ unicode-segmentation = "1.13.2"
 unicode-width = "0.2.2"
 
 [build-dependencies]
-blake3 = "1.8.3"
-cc = "1.2.60"
-serde = { version = "1.0.228", features = ["derive"] }
 shadow-rs = { version = "1.7.1", default-features = false, features = ["build"] }
-toml = "1.1.0"
-tree-sitter-generate = "0.26.7"
-walkdir = "2.5.0"

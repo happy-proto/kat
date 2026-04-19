@@ -47,5 +47,5 @@
 ## Release 与分发
 
 - CI、发布与缓存的具体行为以仓库里的 workflow 和配置文件为准；文档只保留长期约定，不重复维护实现级细节。
-- CI 中的构建观测数据（例如 cargo timings、link timing、tree-sitter build profile）默认优先写入 step summary 与 artifact；不要把原始 profile 明细长期直接刷到 stdout 里。
+- CI 中的构建观测数据（例如 cargo timings、link timing）默认优先写入 step summary 与 artifact；不要把原始明细长期直接刷到 stdout 里。
 - 如果调整了发布资产或 `cargo binstall` 下载约定，要同步更新相关 workflow、[Cargo.toml](../Cargo.toml) 与 [README.md](../README.md)。

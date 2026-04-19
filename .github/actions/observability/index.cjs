@@ -97,7 +97,6 @@ async function main() {
   const summaryTitle = getInput("summary-title", "Observability");
   const outputDir = getInput("output-dir");
   const cargoTimingsRoot = getInput("cargo-timings-root", "target");
-  const buildProfileLog = getInput("build-profile-log");
   const linkLog = getInput("link-log");
   const writeSummary = getInput("write-summary", "true").toLowerCase() !== "false";
 
@@ -111,15 +110,12 @@ async function main() {
   await fs.rm(outputDir, { recursive: true, force: true });
   await fs.mkdir(outputDir, { recursive: true });
 
-  const buildProfileFile = await copyIfExists(buildProfileLog, outputDir);
   const linkLogFile = await copyIfExists(linkLog, outputDir);
   const cargoTimingsCount = await copyCargoTimingsDirs(cargoTimingsRoot, outputDir);
   const linkLogRecordCount =
     linkLogFile === null ? 0 : await countLines(path.join(outputDir, linkLogFile));
 
   await setOutput("cargo-timings-count", String(cargoTimingsCount));
-  await setOutput("build-profile-present", buildProfileFile === null ? "false" : "true");
-  await setOutput("build-profile-file", buildProfileFile ?? "");
   await setOutput("link-log-present", linkLogFile === null ? "false" : "true");
   await setOutput("link-log-file", linkLogFile ?? "");
   await setOutput("link-log-record-count", String(linkLogRecordCount));
@@ -133,12 +129,6 @@ async function main() {
     "",
     `- Artifact: \`${artifactName}\``,
   ];
-
-  if (buildProfileFile === null) {
-    summaryLines.push("- Tree-sitter build profile: not generated");
-  } else {
-    summaryLines.push(`- Tree-sitter build profile: \`${buildProfileFile}\``);
-  }
 
   if (linkLogFile === null) {
     summaryLines.push("- Link timing records: not generated");
