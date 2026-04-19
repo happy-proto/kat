@@ -21,6 +21,7 @@ highlight_names = [
 [[grammar]]
 name = "query"
 library_name = "tree-sitter-query"
+parser_source = "crate"
 extensions = []
 filenames = []
 filename_prefixes = []
@@ -43,6 +44,7 @@ highlight_names = [
 [[grammar]]
 name = "ignore"
 library_name = "tree-sitter-ignore"
+parser_source = "crate"
 extensions = ["gitignore", "dockerignore", "npmignore", "ignore"]
 filenames = [".gitignore", ".dockerignore", ".npmignore", ".ignore"]
 filename_prefixes = []
@@ -62,6 +64,7 @@ highlight_names = [
 [[grammar]]
 name = "git_link"
 library_name = "tree-sitter-git-link"
+parser_source = "crate"
 extensions = []
 filenames = [".git"]
 filename_prefixes = []
@@ -77,6 +80,7 @@ highlight_names = [
 [[grammar]]
 name = "git_mailmap"
 library_name = "tree-sitter-git-mailmap"
+parser_source = "crate"
 extensions = []
 filenames = [".mailmap", "mailmap"]
 filename_prefixes = []
@@ -91,6 +95,7 @@ highlight_names = [
 [[grammar]]
 name = "git_log"
 library_name = "tree-sitter-git-log"
+parser_source = "crate"
 extensions = ["gitlog"]
 filenames = ["gitlog"]
 filename_prefixes = []
@@ -111,6 +116,7 @@ highlight_names = [
 [[grammar]]
 name = "git_config"
 library_name = "tree-sitter-git-config"
+parser_source = "crate"
 extensions = []
 filenames = [".gitconfig", "gitconfig", ".gitmodules", "config.worktree"]
 filename_prefixes = []
@@ -132,6 +138,7 @@ highlight_names = [
 [[grammar]]
 name = "dockerfile"
 library_name = "tree-sitter-dockerfile"
+parser_source = "crate"
 extensions = ["dockerfile"]
 filenames = ["Dockerfile", "Containerfile"]
 filename_prefixes = ["Dockerfile.", "Containerfile."]
@@ -158,6 +165,7 @@ highlight_names = [
 [[grammar]]
 name = "actionscript"
 library_name = "tree-sitter-actionscript"
+parser_source = "crate"
 extensions = ["as"]
 filenames = []
 filename_prefixes = []
@@ -212,6 +220,7 @@ highlight_names = [
 [[grammar]]
 name = "applescript"
 library_name = "tree-sitter-applescript"
+parser_source = "crate"
 extensions = ["applescript"]
 filenames = ["script editor", "Script Editor"]
 filename_prefixes = []
@@ -244,6 +253,7 @@ highlight_names = [
 [[grammar]]
 name = "asm"
 library_name = "tree-sitter-asm"
+parser_source = "crate"
 extensions = ["s", "S"]
 filenames = []
 filename_prefixes = []
@@ -268,6 +278,7 @@ highlight_names = [
 [[grammar]]
 name = "nasm"
 library_name = "tree-sitter-nasm"
+parser_source = "crate"
 extensions = ["asm", "nasm", "yasm", "inc", "mac"]
 filenames = []
 filename_prefixes = []
@@ -298,6 +309,7 @@ highlight_names = [
 [[grammar]]
 name = "asciidoc"
 library_name = "tree-sitter-asciidoc"
+parser_source = "crate"
 extensions = ["adoc", "ad", "asciidoc"]
 filenames = []
 filename_prefixes = []
@@ -464,6 +476,7 @@ highlight_names = [
 [[grammar]]
 name = "authorized_keys"
 library_name = "tree-sitter-authorized-keys"
+parser_source = "crate"
 extensions = []
 filenames = ["authorized_keys", "authorized_keys2"]
 filename_prefixes = []
@@ -483,6 +496,7 @@ highlight_names = [
 [[grammar]]
 name = "awk"
 library_name = "tree-sitter-awk"
+parser_source = "crate"
 extensions = ["awk"]
 filenames = []
 filename_prefixes = []
@@ -505,6 +519,7 @@ highlight_names = [
 [[grammar]]
 name = "bibtex"
 library_name = "tree-sitter-bibtex"
+parser_source = "crate"
 extensions = ["bib"]
 filenames = []
 filename_prefixes = []
@@ -528,6 +543,7 @@ highlight_names = [
 [[grammar]]
 name = "cabal"
 library_name = "tree-sitter-cabal"
+parser_source = "crate"
 extensions = ["cabal"]
 filenames = []
 filename_prefixes = []
@@ -612,6 +628,7 @@ highlight_names = [
 [[grammar]]
 name = "cmakecache"
 library_name = "tree-sitter-cmakecache"
+parser_source = "crate"
 extensions = []
 filenames = ["CMakeCache.txt"]
 filename_prefixes = []
@@ -662,6 +679,7 @@ highlight_names = [
 [[grammar]]
 name = "command_help"
 library_name = "tree-sitter-command-help"
+parser_source = "crate"
 extensions = ["cmd-help", "help"]
 filenames = ["help"]
 filename_prefixes = []
@@ -678,6 +696,7 @@ highlight_names = [
 [[grammar]]
 name = "cpuinfo"
 library_name = "tree-sitter-cpuinfo"
+parser_source = "crate"
 extensions = ["cpuinfo"]
 filenames = ["cpuinfo"]
 filename_prefixes = []
@@ -693,6 +712,7 @@ highlight_names = [
 [[grammar]]
 name = "crontab"
 library_name = "tree-sitter-crontab"
+parser_source = "crate"
 extensions = ["tab"]
 filenames = ["crontab"]
 filename_prefixes = []
@@ -798,6 +818,7 @@ highlight_names = [
 [[grammar]]
 name = "debsources"
 library_name = "tree-sitter-debsources"
+parser_source = "crate"
 extensions = []
 filenames = ["sources.list"]
 filename_prefixes = []
@@ -853,6 +874,7 @@ highlight_names = [
 [[grammar]]
 name = "email"
 library_name = "tree-sitter-mail"
+parser_source = "crate"
 extensions = ["eml", "msg", "mbx", "mboxz"]
 filenames = []
 filename_prefixes = []
@@ -931,6 +953,7 @@ highlight_names = [
 [[grammar]]
 name = "fortran_namelist"
 library_name = "tree-sitter-fortran-namelist"
+parser_source = "crate"
 extensions = ["namelist"]
 filenames = []
 filename_prefixes = []
@@ -1067,6 +1090,7 @@ highlight_names = [
 [[grammar]]
 name = "fstab"
 library_name = "tree-sitter-fstab"
+parser_source = "crate"
 extensions = []
 filenames = ["fstab", "crypttab", "mtab"]
 filename_prefixes = []
@@ -1114,6 +1138,7 @@ highlight_names = [
 [[grammar]]
 name = "fish"
 library_name = "tree-sitter-fish"
+parser_source = "crate"
 extensions = ["fish"]
 filenames = ["config.fish", "fishfile"]
 filename_prefixes = []
@@ -1264,6 +1289,7 @@ highlight_names = [
 [[grammar]]
 name = "hcl"
 library_name = "tree-sitter-hcl"
+parser_source = "crate"
 extensions = ["hcl", "nomad", "tf", "tfvars"]
 filenames = []
 filename_prefixes = []
@@ -1420,6 +1446,7 @@ highlight_names = [
 [[grammar]]
 name = "gomod"
 library_name = "tree-sitter-gomod"
+parser_source = "crate"
 extensions = []
 filenames = ["go.mod"]
 shebang_substrings = []
@@ -1439,6 +1466,7 @@ highlight_names = [
 [[grammar]]
 name = "gowork"
 library_name = "tree-sitter-gowork"
+parser_source = "crate"
 extensions = []
 filenames = ["go.work"]
 shebang_substrings = []
@@ -1457,6 +1485,7 @@ highlight_names = [
 [[grammar]]
 name = "gosum"
 library_name = "tree-sitter-gosum"
+parser_source = "crate"
 extensions = []
 filenames = ["go.sum"]
 shebang_substrings = []
@@ -1604,6 +1633,7 @@ highlight_names = [
 [[grammar]]
 name = "graphql"
 library_name = "tree-sitter-graphql"
+parser_source = "crate"
 extensions = ["graphql", "gql", "graphqls"]
 filenames = []
 shebang_substrings = []
@@ -1629,6 +1659,7 @@ highlight_names = [
 [[grammar]]
 name = "proto"
 library_name = "tree-sitter-proto"
+parser_source = "crate"
 extensions = ["proto", "protobuf", "protodevel"]
 filenames = []
 shebang_substrings = []
@@ -1646,6 +1677,7 @@ highlight_names = [
 [[grammar]]
 name = "textproto"
 library_name = "tree-sitter-textproto"
+parser_source = "crate"
 extensions = ["textproto", "textpb", "pbtxt", "prototxt"]
 filenames = []
 shebang_substrings = []
@@ -1662,6 +1694,7 @@ highlight_names = [
 [[grammar]]
 name = "latex"
 library_name = "tree-sitter-latex"
+parser_source = "crate"
 extensions = ["tex", "ltx", "sty", "cls"]
 filenames = []
 filename_prefixes = []
@@ -1693,6 +1726,7 @@ highlight_names = [
 [[grammar]]
 name = "tcl"
 library_name = "tree-sitter-tcl"
+parser_source = "crate"
 extensions = ["tcl", "tk", "tm"]
 filenames = []
 filename_prefixes = []
@@ -1719,6 +1753,7 @@ highlight_names = [
 [[grammar]]
 name = "textile"
 library_name = "tree-sitter-textile"
+parser_source = "crate"
 extensions = ["textile"]
 filenames = []
 filename_prefixes = []
@@ -1735,6 +1770,7 @@ highlight_names = [
 [[grammar]]
 name = "csv"
 library_name = "tree-sitter-csv"
+parser_source = "crate"
 extensions = ["csv"]
 filenames = []
 filename_prefixes = []
@@ -1751,6 +1787,7 @@ highlight_names = [
 [[grammar]]
 name = "tsv"
 library_name = "tree-sitter-tsv"
+parser_source = "crate"
 extensions = ["tsv"]
 filenames = []
 filename_prefixes = []
@@ -1767,6 +1804,7 @@ highlight_names = [
 [[grammar]]
 name = "typst"
 library_name = "tree-sitter-typst"
+parser_source = "crate"
 extensions = ["typ"]
 filenames = []
 filename_prefixes = []
@@ -1851,6 +1889,7 @@ highlight_names = [
 [[grammar]]
 name = "userscript_metadata"
 library_name = "tree-sitter-userscript-metadata"
+parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
@@ -1873,6 +1912,7 @@ highlight_names = [
 [[grammar]]
 name = "markdown"
 library_name = "tree-sitter-markdown"
+parser_source = "crate"
 extensions = ["md", "markdown", "mdown", "markdn", "mkd"]
 filenames = ["README.md"]
 shebang_substrings = []
@@ -1897,6 +1937,7 @@ highlight_names = [
 [[grammar]]
 name = "markdown_inline"
 library_name = "tree-sitter-markdown-inline"
+parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
@@ -1918,6 +1959,7 @@ highlight_names = [
 [[grammar]]
 name = "just"
 library_name = "tree-sitter-just"
+parser_source = "crate"
 extensions = ["just"]
 filenames = ["justfile", "Justfile", "JUSTFILE"]
 shebang_substrings = []
@@ -2157,6 +2199,7 @@ highlight_names = [
 [[grammar]]
 name = "jq"
 library_name = "tree-sitter-jq"
+parser_source = "crate"
 extensions = ["jq"]
 filenames = []
 filename_prefixes = []
@@ -2180,6 +2223,7 @@ highlight_names = [
 [[grammar]]
 name = "less"
 library_name = "tree-sitter-less"
+parser_source = "crate"
 extensions = ["less"]
 filenames = []
 filename_prefixes = []
@@ -2199,6 +2243,7 @@ highlight_names = [
 [[grammar]]
 name = "stylus"
 library_name = "tree-sitter-stylus"
+parser_source = "crate"
 extensions = ["styl", "stylus"]
 filenames = []
 filename_prefixes = []
@@ -2222,6 +2267,7 @@ highlight_names = [
 [[grammar]]
 name = "dot"
 library_name = "tree-sitter-dot"
+parser_source = "crate"
 extensions = ["dot", "DOT", "gv"]
 filenames = []
 filename_prefixes = []
@@ -2359,6 +2405,7 @@ highlight_names = [
 [[grammar]]
 name = "vue"
 library_name = "tree-sitter-vue"
+parser_source = "crate"
 extensions = ["vue"]
 filenames = []
 shebang_substrings = []
@@ -2377,6 +2424,7 @@ highlight_names = [
 [[grammar]]
 name = "svelte"
 library_name = "tree-sitter-svelte"
+parser_source = "crate"
 extensions = ["svelte", "svlt"]
 filenames = []
 shebang_substrings = []
@@ -2395,6 +2443,7 @@ highlight_names = [
 [[grammar]]
 name = "dotenv"
 library_name = "tree-sitter-dotenv"
+parser_source = "crate"
 extensions = []
 filenames = [".env", "env", ".flaskenv"]
 filename_prefixes = [".env.", "env."]
@@ -2625,6 +2674,7 @@ highlight_names = [
 [[grammar]]
 name = "ninja"
 library_name = "tree-sitter-ninja"
+parser_source = "crate"
 extensions = ["ninja"]
 filenames = []
 shebang_substrings = []
@@ -2651,6 +2701,7 @@ highlight_names = [
 [[grammar]]
 name = "jinja"
 library_name = "tree-sitter-jinja"
+parser_source = "crate"
 extensions = ["j2", "jinja2", "jinja", "sls"]
 filenames = []
 shebang_substrings = []
@@ -2697,6 +2748,7 @@ highlight_names = [
 [[grammar]]
 name = "twig"
 library_name = "tree-sitter-twig"
+parser_source = "crate"
 extensions = ["twig"]
 filenames = []
 shebang_substrings = []
@@ -2962,6 +3014,7 @@ highlight_names = [
 [[grammar]]
 name = "ssh_config"
 library_name = "tree-sitter-ssh-config"
+parser_source = "crate"
 extensions = []
 filenames = ["ssh_config", "sshd_config"]
 filename_prefixes = []
@@ -2988,6 +3041,7 @@ highlight_names = [
 [[grammar]]
 name = "gitattributes"
 library_name = "tree-sitter-gitattributes"
+parser_source = "crate"
 extensions = []
 filenames = [".gitattributes", "gitattributes"]
 filename_prefixes = []
@@ -3014,6 +3068,7 @@ highlight_names = [
 [[grammar]]
 name = "git_commit"
 library_name = "tree-sitter-git-commit"
+parser_source = "crate"
 extensions = []
 filenames = ["COMMIT_EDITMSG", "MERGE_MSG", "TAG_EDITMSG"]
 filename_prefixes = []
@@ -3035,6 +3090,7 @@ highlight_names = [
 [[grammar]]
 name = "git_rebase"
 library_name = "tree-sitter-git-rebase"
+parser_source = "crate"
 extensions = []
 filenames = ["git-rebase-todo"]
 filename_prefixes = []
@@ -3051,6 +3107,7 @@ highlight_names = [
 [[grammar]]
 name = "requirements"
 library_name = "tree-sitter-requirements"
+parser_source = "crate"
 extensions = []
 filenames = ["requirements.txt", "requirements.in", "pip"]
 filename_prefixes = []
@@ -3073,6 +3130,7 @@ highlight_names = [
 [[grammar]]
 name = "apache"
 library_name = "tree-sitter-apache"
+parser_source = "crate"
 extensions = []
 filenames = ["envvars", "htaccess", "HTACCESS", "htgroups", "HTGROUPS", "htpasswd", "HTPASSWD", ".htaccess", ".HTACCESS", ".htgroups", ".HTGROUPS", ".htpasswd", ".HTPASSWD", "httpd.conf"]
 filename_prefixes = []
@@ -3091,6 +3149,7 @@ highlight_names = [
 [[grammar]]
 name = "scss"
 library_name = "tree-sitter-scss"
+parser_source = "crate"
 extensions = ["scss"]
 filenames = []
 filename_prefixes = []
@@ -3114,6 +3173,7 @@ highlight_names = [
 [[grammar]]
 name = "sass"
 library_name = "tree-sitter-sass"
+parser_source = "crate"
 extensions = ["sass"]
 filenames = []
 filename_prefixes = []
@@ -3149,6 +3209,7 @@ highlight_names = [
 [[grammar]]
 name = "todotxt"
 library_name = "tree-sitter-todotxt"
+parser_source = "crate"
 extensions = []
 filenames = ["todo.txt", "done.txt", "TODO.txt", "DONE.txt"]
 filename_prefixes = []
@@ -3164,6 +3225,7 @@ highlight_names = [
 [[grammar]]
 name = "strace"
 library_name = "tree-sitter-strace"
+parser_source = "crate"
 extensions = []
 filenames = ["strace"]
 filename_prefixes = []
@@ -3181,6 +3243,7 @@ highlight_names = [
 [[grammar]]
 name = "syslog"
 library_name = "tree-sitter-syslog"
+parser_source = "crate"
 extensions = []
 filenames = ["syslog"]
 filename_prefixes = []
@@ -3377,6 +3440,7 @@ highlight_names = [
 [[grammar]]
 name = "vimhelp"
 library_name = "tree-sitter-vimhelp"
+parser_source = "crate"
 extensions = ["vimhelp"]
 filenames = []
 filename_prefixes = []
@@ -3405,6 +3469,7 @@ highlight_names = [
 [[grammar]]
 name = "sml"
 library_name = "tree-sitter-sml"
+parser_source = "crate"
 extensions = ["sml", "cm", "sig"]
 filenames = []
 filename_prefixes = []
@@ -3494,6 +3559,7 @@ highlight_names = [
 [[grammar]]
 name = "vyper"
 library_name = "tree-sitter-vyper"
+parser_source = "crate"
 extensions = ["vy"]
 filenames = []
 filename_prefixes = []
@@ -3517,6 +3583,7 @@ highlight_names = [
 [[grammar]]
 name = "wgsl"
 library_name = "tree-sitter-wgsl"
+parser_source = "crate"
 extensions = ["wgsl"]
 filenames = []
 filename_prefixes = []

@@ -21,13 +21,13 @@
   `grammar.js`、`queries/*.scm`，以及可选的 `scanner.*` 或必要 support 文件。
 - 不提交生成出来的 parser 产物，例如 `parser.c`、`grammar.json`、`node-types.json`。
 - `grammars/registry.toml` 是 grammar 注册、parser 来源、构建参数和运行时识别规则的单一事实来源。
-- 当某个 grammar 标记为 crate-backed 时，仓库内只保留 queries 等集成资产；底层 parser AST 由对应 Rust crate 提供。
+- 当某个 grammar 标记为 crate-backed 时，仓库内只保留 queries 等集成资产；底层 parser AST 由对应 Rust crate 或外部 parser bundle crate 提供。
 
 ### 构建模型
 
-- `build.rs` 对 vendored grammar 统一在构建期通过 `tree-sitter-generate` 生成 parser C 源码；默认不再为单个高成本语言额外保留仓库级 build-time 特殊优化。
-- vendored grammar 的 `parser.c` 会与仓库内 `scanner.c` / `scanner.cc` / `scanner.cpp` 一起参与本地编译并静态链接进最终二进制。
-- 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 提供的预生成 parser。
+- `kat` 主仓库当前默认只消费预生成 parser crate，不再把 vendored grammar 的 parser 生成作为常规构建路径。
+- 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 或外部 parser bundle crate 提供的预生成 parser。
+- 如果未来确实重新引入需要在主仓库内生成 parser 的 vendored grammar，应优先把它当作例外处理，而不是恢复“大量语言都在 `kat` 内本地生成 parser”的旧模式。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
 
 ### 运行时模型
@@ -81,7 +81,7 @@
 
 - grammar 与 query 默认分开治理：grammar 源文件按上游 revision 快照管理，query 按仓库内集成资产独立演进。
 - 具体同步和归属约定见 [maintenance.md](maintenance.md)。
-- 仍保留 vendored 模式的 grammar 以及保留原因，统一记录在 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
+- 主仓库当前不再保留需要本地生成 parser 的 vendored grammar；现状与后续原则统一记录在 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 
 ### 文档分工
 
@@ -89,7 +89,7 @@
 - 当前支持现状统一放在 [language-coverage.md](language-coverage.md)。
 - 未完成事项统一放在 [roadmap.md](roadmap.md)。
 - 仓库维护约定见 [maintenance.md](maintenance.md)。
-- vendored grammar 保留清单见 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
+- 主仓库 vendored parser 现状见 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 - 测试样例约定见 [test-assets.md](test-assets.md)。
 
 ## 已知边界
@@ -97,5 +97,5 @@
 - 大多数注入目标都需要是仓库里已注册并构建的 runtime；少数 host-owned pseudo-runtime（例如 `python_docstring`）是例外，它们不依赖独立 parser，而是直接复用 host 提取和仓库内语义层。
 - 无扩展名内容检测目前仍是有限启发式，不是完整内容识别系统。
 - 部分共享 grammar 的表达能力仍然限制了 query 可细化的上限，例如 SQL、Regex、JSDoc 一类场景。
-- 少数 vendored 大型 grammar 的首次 parser 生成成本仍然偏高；这类语言应优先继续评估能否迁回 crate-backed，但默认不再通过 CLI fallback 分叉构建路径。
+- 如果未来再次出现需要在主仓库内保留 vendored parser 生成链路的语言，应优先先证明外部 parser bundle 或公开 crate 路线都不可行，再接受这类额外构建成本。
 - `scanner.cc` 路线已经在当前环境验证过，但仍需要补 Linux 构建确认。

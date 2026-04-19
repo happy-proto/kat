@@ -16,7 +16,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  TREE_SITTER_CACHE_KEY_PREFIX: tree-sitter-cache-v1
 
 jobs:
   fmt:
@@ -63,25 +62,10 @@ jobs:
       - name: Set up sccache
         uses: ./.github/actions/sccache
 
-      - name: Restore tree-sitter build cache
-        id: tree-sitter-cache
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: restore
-          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs') }}
-          target: x86_64-unknown-linux-gnu
-          profile: debug
-          enabled: ${{ github.ref_name != 'master' }}
-
       - name: Run clippy
         shell: bash
-        env:
-          KAT_BUILD_PROFILE: "1"
-          KAT_BUILD_PROFILE_STDOUT: "0"
-          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/clippy-tree-sitter-build-profile.log
         run: |
           set -euo pipefail
-          : > "${KAT_BUILD_PROFILE_LOG}"
           "${SCCACHE_PATH}" --zero-stats
           cargo clippy --timings --workspace --locked --all-targets --all-features -- -D warnings
 
@@ -94,15 +78,6 @@ jobs:
             ~/.cargo/registry/index
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
-      - name: Save tree-sitter build cache
-        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: save
-          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs') }}
-          target: x86_64-unknown-linux-gnu
-          profile: debug
-
       - name: Collect clippy observability artifacts
         if: always()
         uses: ./.github/actions/observability
@@ -110,7 +85,6 @@ jobs:
           artifact-name: kat-clippy-observability-ubuntu-latest
           summary-title: Clippy observability
           output-dir: ${{ runner.temp }}/kat-clippy-observability
-          build-profile-log: ${{ runner.temp }}/clippy-tree-sitter-build-profile.log
 
       - name: Upload clippy observability artifacts
         if: always()
@@ -148,28 +122,14 @@ jobs:
         with:
           tool: nextest
 
-      - name: Restore tree-sitter build cache
-        id: tree-sitter-cache
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: restore
-          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs') }}
-          target: x86_64-unknown-linux-gnu
-          profile: debug
-          enabled: ${{ github.ref_name != 'master' }}
-
       - name: Run test suite
         shell: bash
         env:
           KAT_LINK_LOG: ${{ runner.temp }}/test-rust-link-timings.tsv
-          KAT_BUILD_PROFILE: "1"
-          KAT_BUILD_PROFILE_STDOUT: "0"
-          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/test-tree-sitter-build-profile.log
           KAT_REAL_LINKER: cc
         run: |
           set -euo pipefail
           : > "${KAT_LINK_LOG}"
-          : > "${KAT_BUILD_PROFILE_LOG}"
           "${SCCACHE_PATH}" --zero-stats
           export RUSTFLAGS="-Clinker=${GITHUB_WORKSPACE}/.github/scripts/rust-link-wrapper.sh"
           cargo nextest run \
@@ -189,15 +149,6 @@ jobs:
             ~/.cargo/registry/index
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
-      - name: Save tree-sitter build cache
-        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: save
-          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-x86_64-unknown-linux-gnu-${{ hashFiles('build.rs') }}
-          target: x86_64-unknown-linux-gnu
-          profile: debug
-
       - name: Collect test observability artifacts
         if: always()
         uses: ./.github/actions/observability
@@ -205,7 +156,6 @@ jobs:
           artifact-name: kat-test-observability-ubuntu-latest
           summary-title: Test observability
           output-dir: ${{ runner.temp }}/kat-test-observability
-          build-profile-log: ${{ runner.temp }}/test-tree-sitter-build-profile.log
           link-log: ${{ runner.temp }}/test-rust-link-timings.tsv
 
       - name: Upload test observability artifacts
@@ -285,24 +235,11 @@ jobs:
         if: matrix.use_sccache
         uses: ./.github/actions/sccache
 
-      - name: Restore tree-sitter build cache
-        id: tree-sitter-cache
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: restore
-          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('build.rs') }}
-          target: ${{ matrix.target }}
-          profile: release
-          enabled: ${{ github.ref_name != 'master' }}
-
       - name: Build release binary
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
           KAT_LINK_LOG: ${{ runner.temp }}/rust-link-timings.tsv
-          KAT_BUILD_PROFILE: "1"
-          KAT_BUILD_PROFILE_STDOUT: "0"
-          KAT_BUILD_PROFILE_LOG: ${{ runner.temp }}/tree-sitter-build-profile.log
           BINARY_EXT: ${{ matrix.binary_ext }}
           USE_LINK_WRAPPER: ${{ matrix.use_link_wrapper }}
           USE_SCCACHE: ${{ matrix.use_sccache }}
@@ -317,7 +254,6 @@ jobs:
             "${SCCACHE_PATH}" --zero-stats
           fi
           : > "${KAT_LINK_LOG}"
-          : > "${KAT_BUILD_PROFILE_LOG}"
 
           if [[ "${USE_LINK_WRAPPER}" == "true" ]]; then
             export RUSTFLAGS="-Clinker=${GITHUB_WORKSPACE}/.github/scripts/rust-link-wrapper.sh"
@@ -356,7 +292,6 @@ jobs:
             echo "LONGEST_LINK_STATUS=${longest_link_status}"
             echo "LONGEST_LINK_OUTPUT=${longest_link_output}"
             echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
-            echo "TREE_SITTER_BUILD_PROFILE_PATH=${KAT_BUILD_PROFILE_LOG}"
           } >> "${GITHUB_ENV}"
 
       - name: Package latest release asset (Unix)
@@ -410,15 +345,6 @@ jobs:
             ~/.cargo/registry/index
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
-      - name: Save tree-sitter build cache
-        if: always() && (github.ref_name == 'master' || steps.tree-sitter-cache.outputs.cache-hit != 'true')
-        uses: ./.github/actions/tree-sitter-cache
-        with:
-          mode: save
-          key-prefix: ${{ env.TREE_SITTER_CACHE_KEY_PREFIX }}-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('build.rs') }}
-          target: ${{ matrix.target }}
-          profile: release
-
       - name: Collect build observability artifacts
         if: always()
         id: build-observability
@@ -427,7 +353,6 @@ jobs:
           artifact-name: kat-build-observability-${{ matrix.target }}
           summary-title: Build observability
           output-dir: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
-          build-profile-log: ${{ runner.temp }}/tree-sitter-build-profile.log
           link-log: ${{ runner.temp }}/rust-link-timings.tsv
 
       - name: Publish job summary
@@ -458,11 +383,6 @@ jobs:
             echo "- Longest linker invocation: \`${longest_link_ms} ms\`"
             echo "- Longest linker status: \`${longest_link_status}\`"
             echo "- Longest linker output: \`${longest_link_output}\`"
-            if [[ "${{ steps.build-observability.outputs.build-profile-present }}" == "true" ]]; then
-              echo "- Tree-sitter build profile: \`${{ steps.build-observability.outputs.build-profile-file }}\`"
-            else
-              echo "- Tree-sitter build profile: not generated"
-            fi
             if [[ "${{ steps.build-observability.outputs.cargo-timings-count }}" != "0" ]]; then
               echo "- Cargo timings: captured in observability artifact"
             else

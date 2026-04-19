@@ -71,7 +71,7 @@ echo 'COMPLETE=fish kat | source' >> ~/.config/fish/completions/kat.fish
 - 架构说明：[`docs/architecture.md`](docs/architecture.md)
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
 - 仓库维护约定：[`docs/maintenance.md`](docs/maintenance.md)
-- vendored grammar 例外清单：[`docs/vendor-grammar-exceptions.md`](docs/vendor-grammar-exceptions.md)
+- 主仓库 vendored parser 现状：[`docs/vendor-grammar-exceptions.md`](docs/vendor-grammar-exceptions.md)
 - 测试样例约定：[`docs/test-assets.md`](docs/test-assets.md)
 - 面向 Agent 的开发调试入口：[SKILL.md](.agents/skills/kat-dev/SKILL.md)
 

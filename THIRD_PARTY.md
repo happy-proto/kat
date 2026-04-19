@@ -1,67 +1,233 @@
 # Third-Party Sources
 
-This repository includes selected upstream Tree-sitter grammar source files and queries, plus a small number of repository-local grammar assets when no suitable upstream source is vendored.
+This repository now primarily keeps Tree-sitter query and other kat-side integration assets. Parser source files that still need vendored maintenance are externalized to [kat-parsers](https://github.com/happy-proto/kat-parsers), while this repository only retains the local assets required for runtime integration.
 
 Included sources:
-
-- `grammars/json/queries/highlights.scm`
-- `grammars/query/grammar.js`
-- `grammars/query/queries/highlights.scm`
-- `grammars/ignore/grammar.js`
-- `grammars/ignore/queries/highlights.scm`
-- `grammars/git_config/grammar.js`
-- `grammars/git_config/queries/highlights.scm`
-- `grammars/dockerfile/grammar.js`
-- `grammars/dockerfile/queries/highlights.scm`
-- `grammars/dockerfile/queries/injections.scm`
-- `grammars/dockerfile/scanner.c`
+- `grammars/actionscript/queries/highlights.scm`
+- `grammars/ada/queries/highlights.scm`
+- `grammars/ada/queries/locals.scm`
+- `grammars/adp/queries/highlights.scm`
+- `grammars/apache/queries/highlights.scm`
+- `grammars/applescript/queries/highlights.scm`
+- `grammars/asciidoc/queries/highlights.scm`
+- `grammars/asm/queries/highlights.scm`
+- `grammars/asp/queries/highlights.scm`
+- `grammars/authorized_keys/queries/highlights.scm`
+- `grammars/awk/queries/highlights.scm`
 - `grammars/bash/queries/highlights.scm`
 - `grammars/bash/queries/injections.scm`
-- `grammars/fish/grammar.js`
+- `grammars/batch/queries/highlights.scm`
+- `grammars/bibtex/queries/highlights.scm`
+- `grammars/bibtex/queries/locals.scm`
+- `grammars/c/queries/highlights.scm`
+- `grammars/cabal/queries/highlights.scm`
+- `grammars/cfml/queries/highlights.scm`
+- `grammars/cfml/queries/injections.scm`
+- `grammars/clojure/queries/highlights.scm`
+- `grammars/cmake/queries/highlights.scm`
+- `grammars/cmakecache/queries/highlights.scm`
+- `grammars/coffeescript/queries/highlights.scm`
+- `grammars/coffeescript/queries/injections.scm`
+- `grammars/command_help/queries/highlights.scm`
+- `grammars/cpp/queries/highlights.scm`
+- `grammars/cpp/queries/injections.scm`
+- `grammars/cpuinfo/queries/highlights.scm`
+- `grammars/crontab/queries/highlights.scm`
+- `grammars/crystal/queries/highlights.scm`
+- `grammars/crystal/queries/injections.scm`
+- `grammars/csharp/queries/highlights.scm`
+- `grammars/css/queries/highlights.scm`
+- `grammars/csv/queries/highlights.scm`
+- `grammars/d/queries/highlights.scm`
+- `grammars/d/queries/injections.scm`
+- `grammars/dart/queries/highlights.scm`
+- `grammars/dart/queries/locals.scm`
+- `grammars/debsources/queries/highlights.scm`
+- `grammars/diff/queries/highlights.scm`
+- `grammars/dockerfile/queries/highlights.scm`
+- `grammars/dockerfile/queries/injections.scm`
+- `grammars/dot/queries/highlights.scm`
+- `grammars/dot/queries/injections.scm`
+- `grammars/dotenv/queries/highlights.scm`
+- `grammars/eex/queries/highlights.scm`
+- `grammars/elixir/queries/highlights.scm`
+- `grammars/elixir/queries/injections.scm`
+- `grammars/elm/queries/highlights.scm`
+- `grammars/elm/queries/injections.scm`
+- `grammars/elm/queries/locals.scm`
+- `grammars/email/queries/highlights.scm`
+- `grammars/erb/queries/highlights.scm`
+- `grammars/erlang/queries/highlights.scm`
 - `grammars/fish/queries/highlights.scm`
-- `grammars/fish/scanner.c`
+- `grammars/fortran/queries/highlights.scm`
+- `grammars/fortran_namelist/queries/highlights.scm`
+- `grammars/fsharp/queries/highlights.scm`
+- `grammars/fsharp/queries/injections.scm`
+- `grammars/fsharp/queries/locals.scm`
+- `grammars/fsharp_signature/queries/highlights.scm`
+- `grammars/fsharp_signature/queries/injections.scm`
+- `grammars/fsharp_signature/queries/locals.scm`
+- `grammars/fstab/queries/highlights.scm`
+- `grammars/git_commit/queries/highlights.scm`
+- `grammars/git_config/queries/highlights.scm`
+- `grammars/git_link/queries/highlights.scm`
+- `grammars/git_log/queries/highlights.scm`
+- `grammars/git_log/queries/injections.scm`
+- `grammars/git_mailmap/queries/highlights.scm`
+- `grammars/git_rebase/queries/highlights.scm`
+- `grammars/gitattributes/queries/highlights.scm`
+- `grammars/go/queries/highlights.scm`
+- `grammars/go/queries/injections.scm`
+- `grammars/gomod/queries/highlights.scm`
+- `grammars/gosum/queries/highlights.scm`
+- `grammars/gowork/queries/highlights.scm`
+- `grammars/graphql/queries/highlights.scm`
+- `grammars/groovy/queries/highlights.scm`
+- `grammars/hcl/queries/highlights.scm`
+- `grammars/html/queries/highlights.scm`
+- `grammars/html/queries/injections.scm`
+- `grammars/ignore/queries/highlights.scm`
+- `grammars/ini/queries/highlights.scm`
+- `grammars/java/queries/highlights.scm`
+- `grammars/javascript/queries/highlights.scm`
+- `grammars/javascript/queries/injections.scm`
+- `grammars/javascript/queries/locals.scm`
+- `grammars/jinja/queries/highlights.scm`
+- `grammars/jq/queries/highlights.scm`
+- `grammars/jsdoc/queries/highlights.scm`
+- `grammars/json/queries/highlights.scm`
+- `grammars/jsp/queries/highlights.scm`
+- `grammars/just/queries/highlights.scm`
+- `grammars/just/queries/injections.scm`
+- `grammars/kotlin/queries/highlights.scm`
+- `grammars/latex/queries/highlights.scm`
+- `grammars/latex/queries/injections.scm`
+- `grammars/less/queries/highlights.scm`
+- `grammars/lua/queries/highlights.scm`
+- `grammars/lua/queries/injections.scm`
+- `grammars/lua/queries/locals.scm`
+- `grammars/make/queries/highlights.scm`
+- `grammars/markdown/queries/highlights.scm`
+- `grammars/markdown/queries/injections.scm`
+- `grammars/markdown_inline/queries/highlights.scm`
+- `grammars/markdown_inline/queries/injections.scm`
+- `grammars/nasm/queries/highlights.scm`
+- `grammars/nginx/queries/highlights.scm`
+- `grammars/nginx/queries/injections.scm`
+- `grammars/ninja/queries/highlights.scm`
+- `grammars/nix/queries/highlights.scm`
+- `grammars/nix/queries/injections.scm`
+- `grammars/php/queries/highlights.scm`
+- `grammars/php/queries/injections-text.scm`
+- `grammars/php/queries/injections.scm`
+- `grammars/powershell/queries/highlights.scm`
+- `grammars/properties/queries/highlights.scm`
+- `grammars/proto/queries/highlights.scm`
+- `grammars/python/queries/highlights.scm`
+- `grammars/python/queries/injections.scm`
+- `grammars/query/queries/highlights.scm`
+- `grammars/regex/queries/highlights-go.scm`
+- `grammars/regex/queries/highlights-javascript.scm`
+- `grammars/regex/queries/highlights-posix.scm`
+- `grammars/regex/queries/highlights-python.scm`
+- `grammars/regex/queries/highlights-rust.scm`
+- `grammars/regex/queries/highlights.scm`
+- `grammars/registry.toml`
+- `grammars/requirements/queries/highlights.scm`
+- `grammars/ruby/queries/highlights.scm`
+- `grammars/ruby/queries/locals.scm`
+- `grammars/rust/queries/highlights.scm`
+- `grammars/rust/queries/injections.scm`
+- `grammars/sass/queries/highlights.scm`
+- `grammars/scala/queries/highlights.scm`
+- `grammars/scala/queries/locals.scm`
+- `grammars/scss/queries/highlights.scm`
+- `grammars/sml/queries/highlights.scm`
+- `grammars/solidity/queries/highlights.scm`
+- `grammars/sql/queries/highlights-mysql.scm`
+- `grammars/sql/queries/highlights-postgres.scm`
+- `grammars/sql/queries/highlights-sqlite.scm`
+- `grammars/sql/queries/highlights.scm`
+- `grammars/ssh_config/queries/highlights.scm`
+- `grammars/ssh_config/queries/injections.scm`
+- `grammars/strace/queries/highlights.scm`
+- `grammars/stylus/queries/highlights.scm`
+- `grammars/svelte/queries/highlights.scm`
+- `grammars/svelte/queries/injections.scm`
+- `grammars/swift/queries/highlights.scm`
+- `grammars/swift/queries/injections.scm`
+- `grammars/swift/queries/locals.scm`
+- `grammars/syslog/queries/highlights.scm`
+- `grammars/systemverilog/queries/highlights.scm`
+- `grammars/tcl/queries/highlights.scm`
+- `grammars/textile/queries/highlights.scm`
+- `grammars/textproto/queries/highlights.scm`
+- `grammars/todotxt/queries/highlights.scm`
+- `grammars/toml/queries/highlights.scm`
+- `grammars/tsv/queries/highlights.scm`
+- `grammars/tsx/queries/highlights.scm`
+- `grammars/tsx/queries/injections.scm`
+- `grammars/tsx/queries/locals.scm`
+- `grammars/twig/queries/highlights.scm`
+- `grammars/typescript/queries/highlights.scm`
+- `grammars/typescript/queries/injections.scm`
+- `grammars/typescript/queries/locals.scm`
+- `grammars/typst/queries/highlights.scm`
+- `grammars/typst/queries/injections.scm`
+- `grammars/userscript_metadata/queries/highlights.scm`
+- `grammars/varlink/queries/highlights.scm`
+- `grammars/verilog/queries/highlights.scm`
+- `grammars/vhdl/queries/highlights.scm`
+- `grammars/vim/queries/highlights.scm`
+- `grammars/vim/queries/injections.scm`
+- `grammars/vimhelp/queries/highlights.scm`
+- `grammars/vimhelp/queries/injections.scm`
+- `grammars/vue/queries/highlights.scm`
+- `grammars/vue/queries/injections.scm`
+- `grammars/vyper/queries/highlights.scm`
+- `grammars/wgsl/queries/highlights.scm`
+- `grammars/xml/queries/highlights.scm`
+- `grammars/yaml/queries/highlights.scm`
+- `grammars/yaml/queries/injections.scm`
+- `grammars/zig/queries/highlights.scm`
+- `grammars/zig/queries/injections.scm`
+- `grammars/zig/queries/locals.scm`
+- `grammars/zsh/queries/highlights.scm`
+- `grammars/zsh/queries/injections.scm`
+
+- `grammars/json/queries/highlights.scm`
+- `grammars/query/queries/highlights.scm`
+- `grammars/ignore/queries/highlights.scm`
+- `grammars/git_config/queries/highlights.scm`
+- `grammars/dockerfile/queries/highlights.scm`
+- `grammars/dockerfile/queries/injections.scm`
+- `grammars/bash/queries/highlights.scm`
+- `grammars/bash/queries/injections.scm`
+- `grammars/fish/queries/highlights.scm`
 - `grammars/zsh/queries/highlights.scm`
 - `grammars/zsh/queries/injections.scm`
 - `grammars/powershell/queries/highlights.scm`
 - `grammars/batch/queries/highlights.scm`
 - `grammars/toml/queries/highlights.scm`
 - `grammars/yaml/queries/highlights.scm`
-- `grammars/hcl/grammar.js`
 - `grammars/hcl/queries/highlights.scm`
-- `grammars/hcl/scanner.c`
 - `grammars/rust/queries/highlights.scm`
 - `grammars/rust/queries/injections.scm`
 - `grammars/python/queries/highlights.scm`
 - `grammars/python/queries/injections.scm`
 - `grammars/go/queries/highlights.scm`
 - `grammars/go/queries/injections.scm`
-- `grammars/gomod/grammar.js`
 - `grammars/gomod/queries/highlights.scm`
-- `grammars/gowork/grammar.js`
 - `grammars/gowork/queries/highlights.scm`
-- `grammars/gosum/grammar.js`
 - `grammars/gosum/queries/highlights.scm`
-- `grammars/graphql/grammar.js`
 - `grammars/graphql/queries/highlights.scm`
-- `grammars/proto/grammar.js`
 - `grammars/proto/queries/highlights.scm`
-- `grammars/textproto/grammar.js`
 - `grammars/textproto/queries/highlights.scm`
-- `grammars/latex/grammar.js`
-- `grammars/latex/scanner.c`
 - `grammars/latex/queries/highlights.scm`
 - `grammars/latex/queries/injections.scm`
-- `grammars/tcl/grammar.js`
-- `grammars/tcl/scanner.c`
 - `grammars/tcl/queries/highlights.scm`
-- `grammars/textile/grammar.js`
 - `grammars/textile/queries/highlights.scm`
-- `grammars/tsv/grammar.js`
-- `grammars/tsv/common/define-grammar.js`
 - `grammars/tsv/queries/highlights.scm`
-- `grammars/typst/grammar.js`
-- `grammars/typst/scanner.c`
-- `grammars/typst/unicode.h`
 - `grammars/typst/queries/highlights.scm`
 - `grammars/typst/queries/injections.scm`
 - `grammars/sql/queries/highlights.scm`
@@ -70,7 +236,6 @@ Included sources:
 - `grammars/sql/queries/highlights-sqlite.scm`
 - `grammars/html/queries/highlights.scm`
 - `grammars/html/queries/injections.scm`
-- `grammars/css/grammar.js`
 - `grammars/css/queries/highlights.scm`
 - `grammars/javascript/queries/highlights.scm`
 - `grammars/javascript/queries/injections.scm`
@@ -82,57 +247,31 @@ Included sources:
 - `grammars/regex/queries/highlights-go.scm`
 - `grammars/regex/queries/highlights-posix.scm`
 - `grammars/jsdoc/queries/highlights.scm`
-- `grammars/markdown/grammar.js`
-- `grammars/markdown/common.js`
-- `grammars/markdown/html_entities.json`
 - `grammars/markdown/queries/highlights.scm`
 - `grammars/markdown/queries/injections.scm`
-- `grammars/markdown/scanner.c`
-- `grammars/markdown_inline/grammar.js`
 - `grammars/markdown_inline/queries/highlights.scm`
 - `grammars/markdown_inline/queries/injections.scm`
-- `grammars/markdown_inline/scanner.c`
-- `grammars/just/grammar.js`
 - `grammars/just/queries/highlights.scm`
 - `grammars/just/queries/injections.scm`
-- `grammars/just/scanner.c`
 - `grammars/typescript/queries/highlights.scm`
 - `grammars/typescript/queries/injections.scm`
 - `grammars/typescript/queries/locals.scm`
 - `grammars/tsx/queries/highlights.scm`
 - `grammars/tsx/queries/injections.scm`
 - `grammars/tsx/queries/locals.scm`
-- `grammars/vue/grammar.js`
 - `grammars/vue/queries/highlights.scm`
 - `grammars/vue/queries/injections.scm`
-- `grammars/vue/scanner.cc`
-- `grammars/vue/tree_sitter_html/scanner.cc`
-- `grammars/vue/tree_sitter_html/tag.h`
-- `grammars/svelte/grammar.js`
 - `grammars/svelte/queries/highlights.scm`
 - `grammars/svelte/queries/injections.scm`
-- `grammars/svelte/scanner.c`
-- `grammars/svelte/tag.h`
-- `grammars/dotenv/grammar.js`
 - `grammars/dotenv/queries/highlights.scm`
-- `grammars/dotenv/scanner.c`
 - `grammars/ini/queries/highlights.scm`
 - `grammars/xml/queries/highlights.scm`
 - `grammars/make/queries/highlights.scm`
 - `grammars/cmake/queries/highlights.scm`
-- `grammars/ninja/grammar.js`
 - `grammars/ninja/queries/highlights.scm`
-- `grammars/jinja/grammar.js`
-- `grammars/jinja/base_grammar.js`
-- `grammars/jinja/common/common.js`
-- `grammars/jinja/common/expression.js`
-- `grammars/jinja/common/literal.js`
 - `grammars/jinja/queries/highlights.scm`
-- `grammars/jinja/scanner.c`
 - `grammars/eex/queries/highlights.scm`
-- `grammars/twig/grammar.js`
 - `grammars/twig/queries/highlights.scm`
-- `grammars/twig/scanner.c`
 - `grammars/erb/queries/highlights.scm`
 - `grammars/jsp/queries/highlights.scm`
 - `grammars/asp/queries/highlights.scm`
@@ -152,79 +291,45 @@ Included sources:
 - `grammars/zig/queries/highlights.scm`
 - `grammars/zig/queries/injections.scm`
 - `grammars/zig/queries/locals.scm`
-- `grammars/ssh_config/grammar.js`
 - `grammars/ssh_config/queries/highlights.scm`
 - `grammars/ssh_config/queries/injections.scm`
-- `grammars/gitattributes/grammar.js`
 - `grammars/gitattributes/queries/highlights.scm`
-- `grammars/git_commit/grammar.js`
 - `grammars/git_commit/queries/highlights.scm`
-- `grammars/git_rebase/grammar.js`
 - `grammars/git_rebase/queries/highlights.scm`
-- `grammars/requirements/grammar.js`
 - `grammars/requirements/queries/highlights.scm`
-- `grammars/apache/grammar.js`
 - `grammars/apache/queries/highlights.scm`
-- `grammars/actionscript/grammar.js`
 - `grammars/actionscript/queries/highlights.scm`
 - `grammars/ada/queries/highlights.scm`
 - `grammars/ada/queries/locals.scm`
-- `grammars/applescript/grammar.js`
-- `grammars/applescript/scanner.c`
 - `grammars/applescript/queries/highlights.scm`
-- `grammars/asm/grammar.js`
 - `grammars/asm/queries/highlights.scm`
-- `grammars/nasm/grammar.js`
 - `grammars/nasm/queries/highlights.scm`
-- `grammars/asciidoc/grammar.js`
-- `grammars/asciidoc/common/grammar.js`
-- `grammars/asciidoc/scanner.c`
 - `grammars/asciidoc/queries/highlights.scm`
-- `grammars/asciidoc/tree_sitter_asciidoc/chars.c`
-- `grammars/asciidoc/tree_sitter_asciidoc/chars.h`
-- `grammars/asciidoc/tree_sitter_asciidoc/markers.h`
-- `grammars/asciidoc/tree_sitter_asciidoc/marker_types.h`
-- `grammars/asciidoc/tree_sitter_asciidoc/scanner.c`
-- `grammars/asciidoc/tree_sitter_asciidoc/scanner.h`
-- `grammars/asciidoc/tree_sitter_asciidoc/tokens.h`
-- `grammars/authorized_keys/grammar.js`
 - `grammars/authorized_keys/queries/highlights.scm`
-- `grammars/awk/grammar.js`
-- `grammars/awk/scanner.c`
 - `grammars/awk/queries/highlights.scm`
-- `grammars/bibtex/grammar.js`
 - `grammars/bibtex/queries/highlights.scm`
 - `grammars/bibtex/queries/locals.scm`
-- `grammars/cabal/grammar.js`
 - `grammars/cabal/queries/highlights.scm`
-- `grammars/cabal/scanner.c`
 - `grammars/cfml/queries/highlights.scm`
 - `grammars/cfml/queries/injections.scm`
 - `grammars/clojure/queries/highlights.scm`
-- `grammars/cmakecache/grammar.js`
 - `grammars/cmakecache/queries/highlights.scm`
 - `grammars/coffeescript/queries/highlights.scm`
 - `grammars/coffeescript/queries/injections.scm`
-- `grammars/command_help/grammar.js`
 - `grammars/command_help/queries/highlights.scm`
-- `grammars/cpuinfo/grammar.js`
 - `grammars/cpuinfo/queries/highlights.scm`
-- `grammars/crontab/grammar.js`
 - `grammars/crontab/queries/highlights.scm`
 - `grammars/crystal/queries/highlights.scm`
 - `grammars/crystal/queries/injections.scm`
 - `grammars/d/queries/highlights.scm`
 - `grammars/d/queries/injections.scm`
-- `grammars/debsources/grammar.js`
 - `grammars/debsources/queries/highlights.scm`
 - `grammars/elm/queries/highlights.scm`
 - `grammars/elm/queries/injections.scm`
 - `grammars/elm/queries/locals.scm`
-- `grammars/email/grammar.js`
 - `grammars/email/queries/highlights.scm`
 - `grammars/erlang/queries/highlights.scm`
 - `grammars/fortran/queries/highlights.scm`
-- `grammars/fortran_namelist/grammar.js`
 - `grammars/fortran_namelist/queries/highlights.scm`
 - `grammars/fsharp/queries/highlights.scm`
 - `grammars/fsharp/queries/injections.scm`
@@ -232,15 +337,9 @@ Included sources:
 - `grammars/fsharp_signature/queries/highlights.scm`
 - `grammars/fsharp_signature/queries/injections.scm`
 - `grammars/fsharp_signature/queries/locals.scm`
-- `grammars/fstab/grammar.js`
 - `grammars/fstab/queries/highlights.scm`
-- `grammars/scss/grammar.js`
 - `grammars/scss/queries/highlights.scm`
-- `grammars/scss/scanner.c`
-- `grammars/sass/grammar.js`
 - `grammars/sass/queries/highlights.scm`
-- `grammars/sass/scanner.c`
-- `grammars/todotxt/grammar.js`
 - `grammars/todotxt/queries/highlights.scm`
 - `grammars/vhdl/queries/highlights.scm`
 - `grammars/vim/queries/highlights.scm`
@@ -249,12 +348,8 @@ Included sources:
 - `grammars/groovy/queries/highlights.scm`
 - `grammars/diff/queries/highlights.scm`
 - `grammars/properties/queries/highlights.scm`
-- `grammars/jq/grammar.js`
 - `grammars/jq/queries/highlights.scm`
-- `grammars/less/grammar.js`
 - `grammars/less/queries/highlights.scm`
-- `grammars/less/scanner.c`
-- `grammars/dot/grammar.js`
 - `grammars/dot/queries/highlights.scm`
 - `grammars/dot/queries/injections.scm`
 - `grammars/nginx/queries/highlights.scm`
@@ -270,37 +365,29 @@ Upstream projects:
   Licenses: MIT and Apache-2.0
   Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. JSON parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-json](https://crates.io/crates/tree-sitter-json).
 
-- `grammars/query/grammar.js`
-  Source: [nvim-treesitter/tree-sitter-query](https://github.com/nvim-treesitter/tree-sitter-query)
-  Revision: `not recorded during the initial import`
-  License: Apache-2.0
-  Notes: vendored Tree-sitter query grammar source used by kat's local build pipeline.
-
 - `grammars/query/queries/highlights.scm`
   Source: local integration query built around [nvim-treesitter/tree-sitter-query](https://github.com/nvim-treesitter/tree-sitter-query)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local highlights query for Tree-sitter query files, maintained in-repo alongside the vendored grammar source.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/query/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/ignore/*`
   Source: [shunsambongi/tree-sitter-gitignore](https://github.com/shunsambongi/tree-sitter-gitignore)
   Revision: `f4685bf11ac466dd278449bcfe5fd014e94aa504`
   License: MIT
-  Notes: repository-local adapted copy of the upstream ignore-pattern grammar, renamed to `ignore` so `.gitignore`, `.dockerignore`, `.npmignore` and similar files can share one runtime.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/ignore/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/git_config/*`
   Source: [the-mikedavis/tree-sitter-git-config](https://github.com/the-mikedavis/tree-sitter-git-config)
   Revision: `0fbc9f99d5a28865f9de8427fb0672d66f9d83a5`
   License: MIT
-  Notes: repository-local copy of the upstream Git config grammar and highlights query, kept as a dedicated runtime so `.gitconfig`, `.gitmodules`, `.git/config` and related paths can share one parser while preserving room for future Git-specific profile overlays.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/git_config/` directory now only keeps kat-side integration assets such as queries.
 
-- `grammars/dockerfile/grammar.js`
 - `grammars/dockerfile/queries/highlights.scm`
-- `grammars/dockerfile/scanner.c`
   Source: [camdencheek/tree-sitter-dockerfile](https://github.com/camdencheek/tree-sitter-dockerfile)
   Revision: `971acdd908568b4531b0ba28a445bf0bb720aba5`
   License: MIT
-  Notes: repository-local adapted copy of the upstream Dockerfile grammar/scanner/highlights.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/dockerfile/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/dockerfile/queries/injections.scm`
   Sources:
@@ -308,7 +395,7 @@ Upstream projects:
   - [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash)
   Revisions: not recorded during the initial import
   License: MIT
-  Notes: repository-local injection query that routes Dockerfile shell-form instruction bodies into kat's shared Bash runtime. The exact upstream commits used as the starting point still need a later audit.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/dockerfile/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/bash/queries/highlights.scm`
   Sources:
@@ -328,7 +415,7 @@ Upstream projects:
   Source: [ram02z/tree-sitter-fish](https://github.com/ram02z/tree-sitter-fish)
   Revision: `fa2143f5d66a9eb6c007ba9173525ea7aaafe788`
   License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/fish/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/zsh/queries/highlights.scm`
   Source: [georgeharker/tree-sitter-zsh](https://github.com/georgeharker/tree-sitter-zsh)
@@ -370,19 +457,12 @@ Upstream projects:
   License: MIT
   Notes: repository-local copy of the upstream YAML highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-yaml](https://crates.io/crates/tree-sitter-yaml).
 
-- `grammars/hcl/grammar.js`
-- `grammars/hcl/scanner.c`
-  Source: [tree-sitter-grammars/tree-sitter-hcl](https://github.com/tree-sitter-grammars/tree-sitter-hcl)
-  Revision: `fad991865fee927dd1de5e172fb3f08ac674d914`
-  License: Apache-2.0
-  Notes: repository-local adapted copy of the upstream HCL grammar/scanner, kept as a dedicated runtime for `.hcl` and `.nomad` files.
-
 - `grammars/hcl/queries/highlights.scm`
   Sources:
   - [helix-editor/helix](https://github.com/helix-editor/helix/blob/035450a2de62142b4117c01b89fff3d4f1b4d51f/runtime/queries/hcl/highlights.scm)
   - [tree-sitter-grammars/tree-sitter-hcl](https://github.com/tree-sitter-grammars/tree-sitter-hcl)
   License: MPL-2.0 and Apache-2.0
-  Notes: repository-local adapted HCL highlights query, starting from Helix's query and tuned for kat's capture/theme model.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/hcl/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/rust/queries/highlights.scm`
   Sources:
@@ -405,17 +485,11 @@ Upstream projects:
   License: Apache-2.0
   Notes: repository-local adapted copies of Zed's Go query assets, further tuned for kat's runtime reuse and terminal rendering. Go parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-go](https://crates.io/crates/tree-sitter-go).
 
-- `grammars/gomod/grammar.js`
-  Source: [camdencheek/tree-sitter-go-mod](https://github.com/camdencheek/tree-sitter-go-mod)
-  Revision: not recorded during the initial import
-  License: MIT
-  Notes: repository-local adapted grammar source for `go.mod`. The exact upstream commit for the initial import still needs a later audit.
-
 - `grammars/gomod/queries/highlights.scm`
   Source: [camdencheek/tree-sitter-go-mod](https://github.com/camdencheek/tree-sitter-go-mod)
   Revision: not recorded during the initial import
   License: MIT
-  Notes: repository-local adapted highlights query for `go.mod`, further refined for kat's terminal rendering.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/gomod/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/gowork/*`
   Sources:
@@ -423,108 +497,68 @@ Upstream projects:
   - [Go Modules Reference](https://go.dev/ref/mod#workspaces)
   Revisions: not recorded during the initial import
   License: MIT
-  Notes: repository-local adapted copy of the upstream grammar/query, kept as a dedicated runtime for `go.work` instead of mixing workspace files into the Go source runtime. The exact upstream commit for the grammar/query starting point still needs a later audit.
-
-- `grammars/gosum/grammar.js`
-  Source: [amaanq/tree-sitter-go-sum](https://github.com/amaanq/tree-sitter-go-sum)
-  Revision: not recorded during the initial import
-  License: MIT
-  Notes: repository-local adapted grammar source for `go.sum`. The exact upstream commit for the initial import still needs a later audit.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/gowork/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/gosum/queries/highlights.scm`
   Source: [amaanq/tree-sitter-go-sum](https://github.com/amaanq/tree-sitter-go-sum)
   Revision: not recorded during the initial import
   License: MIT
-  Notes: repository-local adapted highlights query for `go.sum`, further refined for kat's terminal rendering.
-
-- `grammars/graphql/grammar.js`
-  Source: [joowani/tree-sitter-graphql](https://github.com/joowani/tree-sitter-graphql)
-  Revision: not recorded during the initial import
-  License: MIT
-  Notes: repository-local adapted grammar source. The exact upstream commit for the initial import still needs a later audit.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/gosum/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/graphql/queries/highlights.scm`
   Source: repository-local query maintained against the node structure of [joowani/tree-sitter-graphql](https://github.com/joowani/tree-sitter-graphql)
   Revision: not recorded during the initial import
   License: MIT
-  Notes: highlights query maintained in-repo and tuned for kat's renderer/runtime model.
-
-- `grammars/proto/grammar.js`
-  Source: [mitchellh/tree-sitter-proto](https://github.com/mitchellh/tree-sitter-proto)
-  Revision: `42d82fa18f8afe59b5fc0b16c207ee4f84cb185f`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source, with a minimal local JavaScript syntax fix applied so the vendored grammar can build correctly in kat's grammar pipeline.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/graphql/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/proto/queries/highlights.scm`
   Source: [mitchellh/tree-sitter-proto](https://github.com/mitchellh/tree-sitter-proto)
   Revision: `42d82fa18f8afe59b5fc0b16c207ee4f84cb185f`
   License: MIT
-  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model.
-
-- `grammars/textproto/grammar.js`
-  Source: [PorterAtGoogle/tree-sitter-textproto](https://github.com/PorterAtGoogle/tree-sitter-textproto)
-  Revision: `568471b80fd8793d37ed01865d8c2208a9fefd1b`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/proto/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/textproto/queries/highlights.scm`
   Source: [PorterAtGoogle/tree-sitter-textproto](https://github.com/PorterAtGoogle/tree-sitter-textproto)
   Revision: `568471b80fd8793d37ed01865d8c2208a9fefd1b`
   License: MIT
-  Notes: repository-local adapted highlights query for kat's capture model, including local semantic adjustments for field names and scalar literals.
-
-- `grammars/latex/grammar.js`
-- `grammars/latex/scanner.c`
-  Source: [latex-lsp/tree-sitter-latex](https://github.com/latex-lsp/tree-sitter-latex)
-  Revision: `7e0ecdc02926c7b9b2e0c76003d4fe7b0944f957`
-  License: MIT
-  Notes: repository-local copy of the upstream LaTeX grammar and scanner, kept as a dedicated runtime for `.tex` / `.ltx` / `.sty` / `.cls`.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/textproto/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/latex/queries/highlights.scm`
 - `grammars/latex/queries/injections.scm`
   Source: [nvim-treesitter/nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter)
   Revision: `cf12346a3414fa1b06af75c79faebe7f76df080a`
   License: Apache-2.0
-  Notes: repository-local adapted LaTeX query assets based on nvim-treesitter, retuned for kat's capture model and nested-runtime integration. The injections query keeps high-value `minted` / `pycode` / `luacode` style environments routed into kat's shared runtimes.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/latex/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/tcl/*`
   Source: [tree-sitter-grammars/tree-sitter-tcl](https://github.com/tree-sitter-grammars/tree-sitter-tcl)
   Revision: `8f11ac7206a54ed11210491cee1e0657e2962c47`
   License: MIT
-  Notes: repository-local copy of the upstream Tcl grammar, scanner and highlights query, kept as a dedicated runtime for `.tcl` / `.tk` / `.tm` files and Tcl shebang scripts.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/tcl/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/textile/*`
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for Textile markup. An upstream Tree-sitter repository was evaluated, but it is not vendored here because its licensing metadata is currently unclear.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/textile/` directory now only keeps kat-side integration assets such as queries.
 
-- `grammars/tsv/grammar.js`
-- `grammars/tsv/common/define-grammar.js`
 - `grammars/tsv/queries/highlights.scm`
   Source: [tree-sitter-grammars/tree-sitter-csv](https://github.com/tree-sitter-grammars/tree-sitter-csv)
   Revision: `f6bf6e35eb0b95fbadea4bb39cb9709507fcb181`
   License: MIT
-  Notes: repository-local extracted TSV subset built from the upstream separated-values grammar support file, with a kat-local TSV wrapper and highlights query kept as a dedicated runtime for tab-separated data files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/tsv/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/typst/*`
   Source: [uben0/tree-sitter-typst](https://github.com/uben0/tree-sitter-typst)
   Revision: `46cf4ded12ee974a70bf8457263b67ad7ee0379d`
   License: MIT
-  Notes: repository-local copy of the upstream Typst grammar, scanner and required unicode support header, plus kat-local adapted highlights / injections queries for Typst markup and raw block nested runtimes.
-
-- `grammars/csv/grammar.js`
-- `grammars/csv/common/define-grammar.js`
-  Source: [tree-sitter-grammars/tree-sitter-csv](https://github.com/tree-sitter-grammars/tree-sitter-csv)
-  Revision: `f6bf6e35eb0b95fbadea4bb39cb9709507fcb181`
-  License: MIT
-  Notes: repository-local extracted CSV subset built from the upstream separated-values grammar support file, with a kat-local wrapper kept as a dedicated runtime for comma-separated data files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/typst/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/sml/*`
   Source: [matthew-fluet/tree-sitter-sml](https://github.com/matthew-fluet/tree-sitter-sml)
   Revision: `fd4b4955bb998262840ab8119885b3edf20ea75a`
   License: MIT
-  Notes: repository-local copy of the upstream SML grammar, scanner and highlights query, kept as a dedicated runtime for `.sml` / `.cm` / `.sig`.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/sml/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/solidity/queries/highlights.scm`
   Source: [JoranHonig/tree-sitter-solidity](https://github.com/JoranHonig/tree-sitter-solidity)
@@ -536,7 +570,7 @@ Upstream projects:
   Source: [sigmaSd/tree-sitter-strace](https://github.com/sigmaSd/tree-sitter-strace)
   Revision: `ac874ddfcc08d689fee1f4533789e06d88388f29`
   License: MIT
-  Notes: repository-local copy of the upstream Strace grammar and highlights query, kept as a dedicated runtime for `strace` output files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/strace/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/systemverilog/queries/highlights.scm`
   Source: [gmlarumbe/tree-sitter-systemverilog](https://github.com/gmlarumbe/tree-sitter-systemverilog)
@@ -554,14 +588,7 @@ Upstream projects:
   Source: [neovim/tree-sitter-vimdoc](https://github.com/neovim/tree-sitter-vimdoc)
   Revision: `f061895a0eff1d5b90e4fb60d21d87be3267031a`
   License: Apache-2.0
-  Notes: repository-local copy of the upstream Vim help grammar and query assets, kept as a dedicated runtime for `.vimhelp` files.
-
-- `grammars/wgsl/grammar.js`
-- `grammars/wgsl/scanner.c`
-  Source: [szebniok/tree-sitter-wgsl](https://github.com/szebniok/tree-sitter-wgsl)
-  Revision: `27ae4db1458d5ea7555300c9e93c6273723d420c`
-  License: CC0-1.0
-  Notes: repository-local copy of the upstream WGSL grammar and scanner, kept vendored because the published crate still depends on an older `tree-sitter` ABI. The highlights query is maintained locally for kat's capture model.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/vimhelp/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/sql/queries/highlights.scm`
 - `grammars/sql/queries/highlights-postgres.scm`
@@ -579,17 +606,11 @@ Upstream projects:
   License: MIT
   Notes: repository-local adapted query assets for kat's terminal renderer and nested-runtime model. HTML parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-html](https://crates.io/crates/tree-sitter-html).
 
-- `grammars/css/grammar.js`
-  Source: [tree-sitter/tree-sitter-css](https://github.com/tree-sitter/tree-sitter-css)
-  Revision: `4a9aab1668bf13d024710420648ef9a9ee6ccc17`
-  License: MIT
-  Notes: repository-local copy of the upstream grammar source, retained because the vendored Less and SCSS grammars import this file during their own build step. CSS parser sources are otherwise no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-css](https://crates.io/crates/tree-sitter-css).
-
 - `grammars/css/queries/highlights.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copy of Zed's CSS highlights query. CSS parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-css](https://crates.io/crates/tree-sitter-css).
+  Notes: repository-local adapted CSS highlights query. Parser code is linked from the Rust crate [tree-sitter-css](https://crates.io/crates/tree-sitter-css).
 
 - `grammars/javascript/queries/locals.scm`
   Source: [tree-sitter/tree-sitter-javascript](https://github.com/tree-sitter/tree-sitter-javascript)
@@ -626,31 +647,19 @@ Upstream projects:
   Source: [tree-sitter-grammars/tree-sitter-markdown](https://github.com/tree-sitter-grammars/tree-sitter-markdown)
   Revision: not recorded during the initial import
   License: MIT
-  Notes: repository-local copy of selected grammar sources only; generated parser artifacts are not stored. The exact upstream commit for the initial import still needs a later audit. `grammars/markdown/common.js` and `grammars/markdown/html_entities.json` are copied from the upstream shared support files because the block and inline Markdown grammars depend on them at build time.
-
-- `grammars/just/grammar.js`
-  Source: [IndianBoy42/tree-sitter-just](https://github.com/IndianBoy42/tree-sitter-just)
-  Revision: `d9da862c156020c1a83d3c6ccdda32be6d8a5d4a`
-  License: Apache-2.0
-  Notes: repository-local copy of the upstream grammar source.
-
-- `grammars/just/scanner.c`
-  Source: [IndianBoy42/tree-sitter-just](https://github.com/IndianBoy42/tree-sitter-just)
-  Revision: not recorded during the initial import
-  License: Apache-2.0
-  Notes: repository-local copy of the upstream scanner source. The exact upstream commit for the initial import still needs a later audit.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/markdown/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/just/queries/highlights.scm`
   Source: [IndianBoy42/tree-sitter-just](https://github.com/IndianBoy42/tree-sitter-just)
   Revision: `7333f8c150aaac5bb46decc2d225a2d4cde8c51e`
   License: Apache-2.0
-  Notes: repository-local copy of the upstream generated highlights query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/just/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/just/queries/injections.scm`
   Source: [IndianBoy42/tree-sitter-just](https://github.com/IndianBoy42/tree-sitter-just)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted injections query. The vendored file is not currently pinned to a verified upstream commit.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/just/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/regex/queries/highlights.scm`
 - `grammars/python/queries/injections.scm`
@@ -689,19 +698,19 @@ Upstream projects:
   Source: [ikatyang/tree-sitter-vue](https://github.com/ikatyang/tree-sitter-vue)
   Revision: `91fe2754796cd8fba5f229505a23fa08f3546c06`
   License: MIT
-  Notes: repository-local copy of the upstream Vue grammar and scanner support files, plus kat-local highlights / injections queries. `grammars/vue/scanner.cc` keeps the upstream logic but renames the embedded HTML scanner symbols so the dedicated Vue runtime can coexist with kat's standalone HTML runtime.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/vue/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/svelte/*`
   Source: [Himujjal/tree-sitter-svelte](https://github.com/Himujjal/tree-sitter-svelte)
   Revision: `60ea1d673a1a3eeeb597e098d9ada9ed0c79ef4b`
   License: MIT
-  Notes: repository-local copy of the upstream Svelte grammar, scanner and required support headers, plus kat-local highlights / injections queries.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/svelte/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/dotenv/*`
   Source: [pnx/tree-sitter-dotenv](https://github.com/pnx/tree-sitter-dotenv)
   Revision: `f3b1f1f20d255082f2fd4761f6961ab5cf01d4f4`
   License: MIT
-  Notes: repository-local copy of the upstream DotENV grammar, highlights query and scanner.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/dotenv/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/ini/queries/highlights.scm`
   Source: [justinmk/tree-sitter-ini](https://github.com/justinmk/tree-sitter-ini)
@@ -731,19 +740,19 @@ Upstream projects:
   Source: [alemuller/tree-sitter-ninja](https://github.com/alemuller/tree-sitter-ninja)
   Revision: `0a95cfdc0745b6ae82f60d3a339b37f19b7b9267`
   License: MIT
-  Notes: repository-local copy of the upstream Ninja grammar and highlights query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/ninja/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/jinja/*`
   Source: [cathaysia/tree-sitter-jinja](https://github.com/cathaysia/tree-sitter-jinja)
   Revision: `7e254abb76618227806f6881525980231faa1610`
   License: Apache-2.0
-  Notes: repository-local adapted copy of the upstream Jinja grammar and support files. `grammars/jinja/grammar.js` is a kat-local wrapper that points at the vendored base grammar file layout. Template host dispatch is now handled by kat's document-profile + host-resolver layer instead of a dedicated Jinja injections query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/jinja/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/twig/*`
   Source: [kaermorchen/tree-sitter-twig](https://github.com/kaermorchen/tree-sitter-twig)
   Revision: `dac11024e40536d05c958d920139c310cbe86625`
   License: MPL-2.0
-  Notes: repository-local copy of the upstream Twig grammar and scanner, with a kat-local highlights query layered on top. Template host dispatch is handled by kat's document-profile + host-resolver layer.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/twig/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/eex/queries/highlights.scm`
 - `grammars/erb/queries/highlights.scm`
@@ -804,98 +813,98 @@ Upstream projects:
   Source: [tree-sitter-grammars/tree-sitter-ssh-config](https://github.com/tree-sitter-grammars/tree-sitter-ssh-config)
   Revision: `71d2693deadaca8cdc09e38ba41d2f6042da1616`
   License: MIT
-  Notes: repository-local copy of the upstream OpenSSH config grammar and query assets.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/ssh_config/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/gitattributes/*`
   Source: [tree-sitter-grammars/tree-sitter-gitattributes](https://github.com/tree-sitter-grammars/tree-sitter-gitattributes)
   Revision: `1b7af09d45b579f9f288453b95ad555f1f431645`
   License: MIT
-  Notes: repository-local copy of the upstream gitattributes grammar and highlights query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/gitattributes/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/git_commit/*`
   Source: [the-mikedavis/tree-sitter-git-commit](https://github.com/the-mikedavis/tree-sitter-git-commit)
   Revision: `5a50da19b3841ac51e9d483cd9c856a85232233d`
   License: MIT
-  Notes: repository-local copy of the upstream git commit grammar, with highlights query adapted to kat's capture model.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/git_commit/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/git_rebase/*`
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for `git-rebase-todo`.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/git_rebase/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/requirements/*`
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for `requirements.txt` / `requirements.in` style files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/requirements/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/apache/*`
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for Apache-style configuration files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/apache/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/actionscript/*`
   Source: [jcs090218/tree-sitter-actionscript](https://github.com/jcs090218/tree-sitter-actionscript)
   Revision: `12fc0c4c822c6edd924c13b328a93fe69454b299`
   License: MIT
-  Notes: repository-local copy of the upstream ActionScript grammar and highlights query, kept as a dedicated runtime for `.as` source files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/actionscript/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/ada/queries/highlights.scm`
 - `grammars/ada/queries/locals.scm`
   Source: [briot/tree-sitter-ada](https://github.com/briot/tree-sitter-ada)
   Revision: `6b58259a08b1a22ba0247a7ce30be384db618da6`
   License: MIT
-  Notes: repository-local copies of the upstream Ada query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on `tree-sitter-ada`.
+  Notes: repository-local copies of the upstream Ada query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on `tree-sitter-ada`. `kat` intentionally stays on the git revision instead of crates.io `0.1.0`, because the pinned commit already includes newer Ada constructs such as `parallel_block_statement`, `procedural_iterator`, and `parallel for`-style iteration support that are not present in the published crate release.
 
 - `grammars/applescript/*`
   Source: [waddie/tree-sitter-applescript](https://github.com/waddie/tree-sitter-applescript)
   Revision: `adff3f4de87033350050232c8dd23947c7b34850`
   License: MIT
-  Notes: repository-local copy of the upstream AppleScript grammar, scanner and highlights query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/applescript/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/asm/*`
   Source: [RubixDev/tree-sitter-asm](https://github.com/RubixDev/tree-sitter-asm)
   Revision: `839741fef4dab5128952334624905c82b40c7133`
   License: MIT
-  Notes: repository-local copy of the upstream assembly grammar and highlights query, currently used for `.s` / `.S` source files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/asm/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/nasm/*`
   Source: [naclsn/tree-sitter-nasm](https://github.com/naclsn/tree-sitter-nasm)
   Revision: `d1b3638d017f2a8585e26dcfc66fe1df94185e30`
   License: MIT
-  Notes: repository-local copy of the upstream NASM grammar and highlights query, kept as a dedicated runtime for x86 / x86_64-flavored `.asm` / `.nasm` / `.yasm` / `.inc` / `.mac` sources.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/nasm/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/asciidoc/*`
   Source: [cpkio/tree-sitter-asciidoc](https://github.com/cpkio/tree-sitter-asciidoc)
   Revision: `a00a91dd44cd6c228f3bc10b3e548f651058e0db`
   License: MIT
-  Notes: repository-local copy of the upstream AsciiDoc grammar, scanner, required support files and highlights query. The vendored `tree_sitter_asciidoc/*` support sources are kept because the scanner depends on them at build time.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/asciidoc/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/authorized_keys/*`
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for `authorized_keys` / `.pub` style SSH public key files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/authorized_keys/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/awk/*`
   Source: [Beaglefoot/tree-sitter-awk](https://github.com/Beaglefoot/tree-sitter-awk)
   Revision: `34bbdc7cce8e803096f47b625979e34c1be38127`
   License: MIT
-  Notes: repository-local copy of the upstream AWK grammar, scanner and highlights query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/awk/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/bibtex/*`
   Source: [latex-lsp/tree-sitter-bibtex](https://github.com/latex-lsp/tree-sitter-bibtex)
   Revision: `8d04ed27b3bc7929f14b7df9236797dab9f3fa66`
   License: MIT
-  Notes: repository-local copy of the upstream BibTeX grammar, highlights query and locals query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/bibtex/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/cabal/*`
   Source: [thomasvergne/tree-sitter-cabal](https://github.com/thomasvergne/tree-sitter-cabal)
   Revision: `1762ded13e5351c0bc662a2273d523b80d314b4e`
   License: MIT
-  Notes: repository-local copy of the upstream Cabal grammar and scanner, plus a kat-local highlights query maintained against that AST.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/cabal/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/cfml/queries/*`
   Source: [cfmleditor/tree-sitter-cfml](https://github.com/cfmleditor/tree-sitter-cfml)
@@ -913,7 +922,7 @@ Upstream projects:
   Source: repository-local
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for `CMakeCache.txt`.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/cmakecache/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/coffeescript/queries/highlights.scm`
 - `grammars/coffeescript/queries/injections.scm`
@@ -926,19 +935,19 @@ Upstream projects:
   Source: repository-local
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for command help text files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/command_help/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/cpuinfo/*`
   Source: repository-local
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for `cpuinfo`-style key/value files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/cpuinfo/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/crontab/*`
   Source: [slqy123/tree-sitter-crontab](https://github.com/slqy123/tree-sitter-crontab)
   Revision: `70b5628278756c3dc429fac6545fe7b2e8c553a0`
   License: MIT
-  Notes: repository-local copy of the upstream crontab grammar and highlights query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/crontab/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/crystal/queries/highlights.scm`
 - `grammars/crystal/queries/injections.scm`
@@ -957,7 +966,7 @@ Upstream projects:
   Source: repository-local
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for Debian `sources.list` files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/debsources/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/elm/queries/*`
   Source: [elm-tooling/tree-sitter-elm](https://github.com/elm-tooling/tree-sitter-elm)
@@ -969,7 +978,7 @@ Upstream projects:
   Source: [stevenxxiu/tree-sitter-mail](https://github.com/stevenxxiu/tree-sitter-mail)
   Revision: `8d2905d06a15586652c3a73387b4170424201e1a`
   License: MIT
-  Notes: repository-local copy of the upstream mail grammar and highlights query, adapted to the repository build pipeline.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/email/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/erlang/queries/highlights.scm`
   Source: [WhatsApp/tree-sitter-erlang](https://github.com/WhatsApp/tree-sitter-erlang)
@@ -987,7 +996,7 @@ Upstream projects:
   Source: repository-local
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for Fortran namelist files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/fortran_namelist/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/fsharp/queries/*`
 - `grammars/fsharp_signature/queries/*`
@@ -1000,25 +1009,25 @@ Upstream projects:
   Source: repository-local
   Revision: n/a
   License: project-local
-  Notes: repository-local minimal grammar and highlights query for `fstab` / `crypttab` / `mtab` style files.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/fstab/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/scss/*`
   Source: [tree-sitter-grammars/tree-sitter-scss](https://github.com/tree-sitter-grammars/tree-sitter-scss)
   Revision: `2ef6d42e3ad7a8208900f9346f4529806ae0f9f9`
   License: MIT
-  Notes: repository-local copy of the upstream SCSS grammar, scanner and highlights query. `grammars/scss/grammar.js` is locally adjusted to reuse kat's vendored CSS grammar instead of depending on a second external CSS package.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/scss/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/sass/*`
   Source: [bajrangCoder/tree-sitter-sass](https://github.com/bajrangCoder/tree-sitter-sass)
   Revision: `fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8`
   License: MIT
-  Notes: repository-local copy of the upstream Sass grammar, scanner and highlights query.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/sass/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/todotxt/*`
   Source: [arnarg/tree-sitter-todotxt](https://github.com/arnarg/tree-sitter-todotxt)
   Revision: `3937c5cd105ec4127448651a21aef45f52d19609`
   License: MIT
-  Notes: repository-local copy of the upstream todo.txt grammar and highlights query, kept as a dedicated runtime for `todo.txt` / `done.txt` style task lists.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/todotxt/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/vhdl/queries/highlights.scm`
   Source: [jpt13653903/tree-sitter-vhdl](https://github.com/jpt13653903/tree-sitter-vhdl)
@@ -1057,29 +1066,23 @@ Upstream projects:
   License: MIT
   Notes: repository-local copy of the upstream Java properties highlights query. Parser code is linked from the Rust crate `tree-sitter-properties`.
 
-- `grammars/jq/grammar.js`
-  Source: [flurie/tree-sitter-jq](https://github.com/flurie/tree-sitter-jq)
-  Revision: `c204e36d2c3c6fce1f57950b12cabcc24e5cc4d9`
-  License: BSD-3-Clause
-  Notes: repository-local copy of the upstream jq grammar. This vendor source is used instead of the GPL-licensed `nverno/tree-sitter-jq` line so kat can keep a permissive third-party baseline.
-
 - `grammars/jq/queries/highlights.scm`
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: repository-local jq highlights query written for kat against the vendored BSD jq grammar.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/jq/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/less/*`
   Source: [amaanq/tree-sitter-less](https://github.com/amaanq/tree-sitter-less)
   Revision: `e5ae6245f841b5778c79ac93b28fa4f56b679c5d`
   License: MIT
-  Notes: repository-local copy of the upstream Less grammar, scanner and highlights query. `grammars/less/grammar.js` is locally adjusted to reuse kat's vendored CSS grammar instead of depending on a second external CSS package.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/less/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/dot/*`
   Source: [rydesun/tree-sitter-dot](https://github.com/rydesun/tree-sitter-dot)
   Revision: `80327abbba6f47530edeb0df9f11bd5d5c93c14d`
   License: MIT
-  Notes: repository-local copy of the upstream Graphviz DOT grammar plus highlights / injections queries.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/dot/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/nginx/queries/highlights.scm`
 - `grammars/nginx/queries/injections.scm`

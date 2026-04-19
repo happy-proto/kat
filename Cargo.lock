@@ -27,12 +27,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "allocator-api2"
-version = "0.2.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -98,18 +92,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
-name = "arrayref"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76a2e8124351fda1ef8aaaa3bbd7ebbcb486bbcd4225aca0aa0d84bb2db8fecb"
-
-[[package]]
-name = "arrayvec"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
-
-[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -146,26 +128,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
-name = "bindgen"
-version = "0.72.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
-dependencies = [
- "bitflags 2.11.1",
- "cexpr",
- "clang-sys",
- "itertools",
- "log",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash",
- "shlex",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -193,20 +155,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
-name = "blake3"
-version = "1.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d2d5991425dfd0785aed03aedcf0b321d61975c9b5b3689c774a2610ae0b51e"
-dependencies = [
- "arrayref",
- "arrayvec",
- "cc",
- "cfg-if",
- "constant_time_eq",
- "cpufeatures 0.3.0",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -232,15 +180,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cexpr"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fac387a98bb7c37292057cffc56d62ecb629900026402633ae9160df93a8766"
-dependencies = [
- "nom",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -253,21 +192,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
-name = "clang-sys"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b023947811758c97c59bf9d1c188fd619ad4718dcaa767947df1cadb14f39f4"
-dependencies = [
- "glob",
- "libc",
- "libloading",
-]
-
-[[package]]
 name = "clap"
-version = "4.6.0"
+version = "4.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b193af5b67834b676abd72466a96c1024e6a6ad978a1f484bd90b85c94041351"
+checksum = "1ddb117e43bbf7dacf0a4190fef4d345b9bad68dfc649cb349e7d17d28428e51"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -299,9 +227,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.6.0"
+version = "4.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1110bd8a634a1ab8cb04345d8d878267d57c3cf1b38d91b71af6686408bbca6a"
+checksum = "f2ce8604710f6733aa641a2b3731eaa1e8b3d9973d5e3565da11800813f997a9"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -323,11 +251,12 @@ checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "const_format"
-version = "0.2.35"
+version = "0.2.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7faa7469a93a566e9ccc1c73fe783b4a65c274c5ace346038dca9c39fe0030ad"
+checksum = "4481a617ad9a412be3b97c5d403fef8ed023103368908b9c50af598ff467cc1e"
 dependencies = [
  "const_format_proc_macros",
+ "konst",
 ]
 
 [[package]]
@@ -342,21 +271,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "constant_time_eq"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
-
-[[package]]
-name = "convert_case"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baaaa0ecca5b51987b9423ccdc971514dd8b0bb7b4060b983d3664dad3f1f89f"
-dependencies = [
- "unicode-segmentation",
-]
-
-[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -367,15 +281,6 @@ name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "cpufeatures"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b2a41393f66f16b0823bb79094d54ac5fbd34ab292ddafb9a0456ac9f87d201"
 dependencies = [
  "libc",
 ]
@@ -397,7 +302,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb2a7d3066da2de787b7f032c736763eb7ae5d355f81a68bab2675a96008b0bf"
 dependencies = [
  "lab",
- "phf 0.11.3",
+ "phf",
 ]
 
 [[package]]
@@ -424,18 +329,6 @@ dependencies = [
  "block-buffer",
  "crypto-common",
 ]
-
-[[package]]
-name = "dunce"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
-
-[[package]]
-name = "either"
-version = "1.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "equivalent"
@@ -472,12 +365,6 @@ dependencies = [
  "regex-automata",
  "regex-syntax",
 ]
-
-[[package]]
-name = "fastrand"
-version = "2.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 
 [[package]]
 name = "filedescriptor"
@@ -517,12 +404,6 @@ name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
-
-[[package]]
-name = "foldhash"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "generic-array"
@@ -566,29 +447,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
-name = "glob"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
-
-[[package]]
 name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
- "foldhash 0.1.5",
-]
-
-[[package]]
-name = "hashbrown"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
-dependencies = [
- "allocator-api2",
- "equivalent",
- "foldhash 0.2.0",
+ "foldhash",
 ]
 
 [[package]]
@@ -640,12 +504,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d3067d79b975e8844ca9eb072e16b31c3c1c36928edf9c6789548c524d0d954"
 
 [[package]]
-name = "ident_case"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
-
-[[package]]
 name = "indexmap"
 version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -655,15 +513,6 @@ dependencies = [
  "hashbrown 0.17.0",
  "serde",
  "serde_core",
-]
-
-[[package]]
-name = "indoc"
-version = "2.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79cf5c93f93228cf8efb3ba362535fb11199ac548a09ce117c9b1adc3030d706"
-dependencies = [
- "rustversion",
 ]
 
 [[package]]
@@ -694,15 +543,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
-name = "itertools"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -724,8 +564,6 @@ version = "0.1.0"
 dependencies = [
  "anstyle",
  "anyhow",
- "blake3",
- "cc",
  "clap",
  "clap_complete",
  "miette",
@@ -756,7 +594,6 @@ dependencies = [
  "tree-sitter-erlang",
  "tree-sitter-fortran",
  "tree-sitter-fsharp",
- "tree-sitter-generate",
  "tree-sitter-go",
  "tree-sitter-groovy",
  "tree-sitter-highlight",
@@ -797,8 +634,30 @@ dependencies = [
  "tree-sitter-zsh",
  "unicode-segmentation",
  "unicode-width 0.2.2",
- "walkdir",
 ]
+
+[[package]]
+name = "kat-parser-common"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "konst"
+version = "0.2.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "128133ed7824fcd73d6e7b17957c5eb7bacb885649bd8c69708b2331a10bcefb"
+dependencies = [
+ "konst_macro_rules",
+]
+
+[[package]]
+name = "konst_macro_rules"
+version = "0.2.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4933f3f57a8e9d9da04db23fb153356ecaf00cbd14aee46279c33dc80925c37"
 
 [[package]]
 name = "lab"
@@ -817,16 +676,6 @@ name = "libc"
 version = "0.2.185"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52ff2c0fe9bc6cb6b14a0592c2ff4fa9ceb83eea9db979b0487cd054946a2b8f"
-
-[[package]]
-name = "libloading"
-version = "0.8.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
-dependencies = [
- "cfg-if",
- "windows-link",
-]
 
 [[package]]
 name = "libm"
@@ -998,12 +847,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d211803b9b6b570f68772237e415a029d5a50c65d382910b879fb19d3271f94d"
 
 [[package]]
-name = "pathdiff"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
-
-[[package]]
 name = "pest"
 version = "2.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1053,17 +896,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd6780a80ae0c52cc120a26a1a42c1ae51b247a253e4e06113d23d2c2edd078"
 dependencies = [
  "phf_macros",
- "phf_shared 0.11.3",
-]
-
-[[package]]
-name = "phf"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1562dc717473dbaa4c1f85a36410e03c047b2e7df7f45ee938fbef64ae7fadf"
-dependencies = [
- "phf_shared 0.13.1",
- "serde",
+ "phf_shared",
 ]
 
 [[package]]
@@ -1072,8 +905,8 @@ version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aef8048c789fa5e851558d709946d6d79a8ff88c0440c587967f8e94bfb1216a"
 dependencies = [
- "phf_generator 0.11.3",
- "phf_shared 0.11.3",
+ "phf_generator",
+ "phf_shared",
 ]
 
 [[package]]
@@ -1082,18 +915,8 @@ version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c80231409c20246a13fddb31776fb942c38553c51e871f8cbd687a4cfb5843d"
 dependencies = [
- "phf_shared 0.11.3",
+ "phf_shared",
  "rand",
-]
-
-[[package]]
-name = "phf_generator"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "135ace3a761e564ec88c03a77317a7c6b80bb7f7135ef2544dbe054243b89737"
-dependencies = [
- "fastrand",
- "phf_shared 0.13.1",
 ]
 
 [[package]]
@@ -1102,8 +925,8 @@ version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f84ac04429c13a7ff43785d75ad27569f2951ce0ffd30a3321230db2fc727216"
 dependencies = [
- "phf_generator 0.11.3",
- "phf_shared 0.11.3",
+ "phf_generator",
+ "phf_shared",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -1114,15 +937,6 @@ name = "phf_shared"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67eabc2ef2a60eb7faa00097bd1ffdb5bd28e62bf39990626a582201b7a754e5"
-dependencies = [
- "siphasher",
-]
-
-[[package]]
-name = "phf_shared"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
 dependencies = [
  "siphasher",
 ]
@@ -1141,15 +955,6 @@ checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
 dependencies = [
  "proc-macro2",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "proc-macro-crate"
-version = "3.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e67ba7e9b2b56446f1d419b1d807906278ffa1a658a8a5d8a39dcb1f5a78614f"
-dependencies = [
- "toml_edit",
 ]
 
 [[package]]
@@ -1184,9 +989,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rand"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
 dependencies = [
  "rand_core",
 ]
@@ -1227,76 +1032,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
-name = "relative-path"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bca40a312222d8ba74837cb474edef44b37f561da5f773981007a10bbaa992b0"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "rquickjs"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a135375fbac5ba723bb6a48f432a72f81539cedde422f0121a86c7c4e96d8e0d"
-dependencies = [
- "rquickjs-core",
- "rquickjs-macro",
-]
-
-[[package]]
-name = "rquickjs-core"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bccb7121a123865c8ace4dea42e7ed84d78b90cbaf4ca32c59849d8d210c9672"
-dependencies = [
- "hashbrown 0.16.1",
- "phf 0.13.1",
- "relative-path",
- "rquickjs-sys",
-]
-
-[[package]]
-name = "rquickjs-macro"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89f93602cc3112c7f30bf5f29e722784232138692c7df4c52ebbac7e035d900d"
-dependencies = [
- "convert_case",
- "fnv",
- "ident_case",
- "indexmap",
- "phf_generator 0.13.1",
- "phf_shared 0.13.1",
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "rquickjs-core",
- "syn 2.0.117",
-]
-
-[[package]]
-name = "rquickjs-sys"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57b1b6528590d4d65dc86b5159eae2d0219709546644c66408b2441696d1d725"
-dependencies = [
- "bindgen",
- "cc",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
-
-[[package]]
-name = "rustc-hash"
-version = "2.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94300abf3f1ae2e2b8ffb7b58043de3d399c73fa6f4b73826402a5c457614dbe"
 
 [[package]]
 name = "rustix"
@@ -1331,10 +1070,6 @@ name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
-dependencies = [
- "serde",
- "serde_core",
-]
 
 [[package]]
 name = "serde"
@@ -1396,7 +1131,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
 dependencies = [
  "cfg-if",
- "cpufeatures 0.2.17",
+ "cpufeatures",
  "digest",
 ]
 
@@ -1443,12 +1178,6 @@ name = "siphasher"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
-
-[[package]]
-name = "smallbitvec"
-version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d31d263dd118560e1a492922182ab6ca6dc1d03a3bf54e7699993f31a4150e3f"
 
 [[package]]
 name = "streaming-iterator"
@@ -1523,7 +1252,7 @@ checksum = "d4ea810f0692f9f51b382fff5893887bb4580f5fa246fde546e0b13e7fcee662"
 dependencies = [
  "fnv",
  "nom",
- "phf 0.11.3",
+ "phf",
  "phf_codegen",
 ]
 
@@ -1556,7 +1285,7 @@ dependencies = [
  "ordered-float",
  "pest",
  "pest_derive",
- "phf 0.11.3",
+ "phf",
  "sha2",
  "signal-hook",
  "siphasher",
@@ -1686,18 +1415,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml_edit"
-version = "0.25.11+spec-1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b59c4d22ed448339746c59b905d24568fcbb3ab65a500494f7b8c3e97739f2b"
-dependencies = [
- "indexmap",
- "toml_datetime",
- "toml_parser",
- "winnow",
-]
-
-[[package]]
 name = "toml_parser"
 version = "1.1.2+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1711,12 +1428,6 @@ name = "toml_writer"
 version = "1.1.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "756daf9b1013ebe47a8776667b466417e2d4c5679d441c26230efd9ef78692db"
-
-[[package]]
-name = "topological-sort"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea68304e134ecd095ac6c3574494fc62b909f416c4fca77e440530221e549d3d"
 
 [[package]]
 name = "tree-sitter"
@@ -1773,9 +1484,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-c-sharp"
-version = "0.23.1"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67f06accca7b45351758663b8215089e643d53bd9a660ce0349314263737fcb0"
+checksum = "c1aac67f1ad71de1d6d39708d34811081c26dfa495658de6c14c34200849357c"
 dependencies = [
  "cc",
  "tree-sitter-language",
@@ -1922,30 +1633,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-generate"
-version = "0.26.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3fb2e1bdb1d5f9d23cd5fa68cf98b3bedbd223c92a2edd60bbcf30bcf7180a5"
-dependencies = [
- "bitflags 2.11.1",
- "dunce",
- "indexmap",
- "indoc",
- "log",
- "pathdiff",
- "regex",
- "regex-syntax",
- "rquickjs",
- "rustc-hash",
- "semver",
- "serde",
- "serde_json",
- "smallbitvec",
- "thiserror 2.0.18",
- "topological-sort",
-]
-
-[[package]]
 name = "tree-sitter-go"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2038,11 +1725,709 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-kat-actionscript"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-apache"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-applescript"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-asciidoc"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-asm"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-authorized-keys"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-awk"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-bibtex"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-cabal"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-cmakecache"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-coffeescript"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-command-help"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-cpuinfo"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-crontab"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-crystal"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-css"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-csv"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-debsources"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-dockerfile"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-dot"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-dotenv"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-email"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-fish"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-fortran-namelist"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-fstab"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-git-commit"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-git-config"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-git-link"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-git-log"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-git-mailmap"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-git-rebase"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-gitattributes"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-gomod"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-gosum"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-gowork"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-graphql"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-hcl"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-ignore"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-jinja"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-jq"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-just"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-latex"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-less"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-markdown"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-markdown-inline"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-nasm"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-ninja"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
 name = "tree-sitter-kat-parsers"
 version = "0.1.0"
-source = "git+https://github.com/happy-proto/kat-parsers?rev=c96e76a0af9988793b79d080e06406f67a74d569#c96e76a0af9988793b79d080e06406f67a74d569"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
 dependencies = [
- "cc",
+ "tree-sitter-kat-actionscript",
+ "tree-sitter-kat-apache",
+ "tree-sitter-kat-applescript",
+ "tree-sitter-kat-asciidoc",
+ "tree-sitter-kat-asm",
+ "tree-sitter-kat-authorized-keys",
+ "tree-sitter-kat-awk",
+ "tree-sitter-kat-bibtex",
+ "tree-sitter-kat-cabal",
+ "tree-sitter-kat-cmakecache",
+ "tree-sitter-kat-coffeescript",
+ "tree-sitter-kat-command-help",
+ "tree-sitter-kat-cpuinfo",
+ "tree-sitter-kat-crontab",
+ "tree-sitter-kat-crystal",
+ "tree-sitter-kat-css",
+ "tree-sitter-kat-csv",
+ "tree-sitter-kat-debsources",
+ "tree-sitter-kat-dockerfile",
+ "tree-sitter-kat-dot",
+ "tree-sitter-kat-dotenv",
+ "tree-sitter-kat-email",
+ "tree-sitter-kat-fish",
+ "tree-sitter-kat-fortran-namelist",
+ "tree-sitter-kat-fstab",
+ "tree-sitter-kat-git-commit",
+ "tree-sitter-kat-git-config",
+ "tree-sitter-kat-git-link",
+ "tree-sitter-kat-git-log",
+ "tree-sitter-kat-git-mailmap",
+ "tree-sitter-kat-git-rebase",
+ "tree-sitter-kat-gitattributes",
+ "tree-sitter-kat-gomod",
+ "tree-sitter-kat-gosum",
+ "tree-sitter-kat-gowork",
+ "tree-sitter-kat-graphql",
+ "tree-sitter-kat-hcl",
+ "tree-sitter-kat-ignore",
+ "tree-sitter-kat-jinja",
+ "tree-sitter-kat-jq",
+ "tree-sitter-kat-just",
+ "tree-sitter-kat-latex",
+ "tree-sitter-kat-less",
+ "tree-sitter-kat-markdown",
+ "tree-sitter-kat-markdown-inline",
+ "tree-sitter-kat-nasm",
+ "tree-sitter-kat-ninja",
+ "tree-sitter-kat-proto",
+ "tree-sitter-kat-query",
+ "tree-sitter-kat-requirements",
+ "tree-sitter-kat-sass",
+ "tree-sitter-kat-scss",
+ "tree-sitter-kat-sml",
+ "tree-sitter-kat-ssh-config",
+ "tree-sitter-kat-strace",
+ "tree-sitter-kat-stylus",
+ "tree-sitter-kat-svelte",
+ "tree-sitter-kat-syslog",
+ "tree-sitter-kat-tcl",
+ "tree-sitter-kat-textile",
+ "tree-sitter-kat-textproto",
+ "tree-sitter-kat-todotxt",
+ "tree-sitter-kat-tsv",
+ "tree-sitter-kat-twig",
+ "tree-sitter-kat-typst",
+ "tree-sitter-kat-userscript-metadata",
+ "tree-sitter-kat-vimhelp",
+ "tree-sitter-kat-vue",
+ "tree-sitter-kat-vyper",
+ "tree-sitter-kat-wgsl",
+]
+
+[[package]]
+name = "tree-sitter-kat-proto"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-query"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-requirements"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-sass"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-scss"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-sml"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-ssh-config"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-strace"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-stylus"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-svelte"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-syslog"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-tcl"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-textile"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-textproto"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-todotxt"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-tsv"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-twig"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-typst"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-userscript-metadata"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-vimhelp"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-vue"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-vyper"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-kat-wgsl"
+version = "0.1.0"
+source = "git+https://github.com/happy-proto/kat-parsers#0dda87d89fa576d673143b3c807e2716af283658"
+dependencies = [
+ "kat-parser-common",
  "tree-sitter-language",
 ]
 
@@ -2174,9 +2559,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-scala"
-version = "0.25.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83079f50ea7d03e0faf6be6260ed97538e6df7349ec3cbcbf5771f7b38e3c8b7"
+checksum = "3394d6bc99bceae03c75482a93f1bcefff11e69d3a405f1410e864212b52739a"
 dependencies = [
  "cc",
  "tree-sitter-language",
@@ -2324,9 +2709,9 @@ dependencies = [
 
 [[package]]
 name = "typenum"
-version = "1.19.0"
+version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
+checksum = "40ce102ab67701b8526c123c1bab5cbe42d7040ccfd0f64af1a385808d2f43de"
 
 [[package]]
 name = "tz-rs"
@@ -2404,9 +2789,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.23.0"
+version = "1.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ac8b6f42ead25368cf5b098aeb3dc8a1a2c05a3eee8a9a1a68c640edbfc79d9"
+checksum = "ddd74a9687298c6858e9b88ec8935ec45d22e8fd5e6394fa1bd4e99a87789c76"
 dependencies = [
  "getrandom 0.4.2",
  "js-sys",
@@ -2448,11 +2833,11 @@ dependencies = [
 
 [[package]]
 name = "wasip2"
-version = "1.0.2+wasi-0.2.9"
+version = "1.0.3+wasi-0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9517f9239f02c069db75e65f174b3da828fe5f5b945c4dd26bd25d89c03ebcf5"
+checksum = "20064672db26d7cdc89c7798c48a0fdfac8213434a1186e5ef29fd560ae223d6"
 dependencies = [
- "wit-bindgen",
+ "wit-bindgen 0.57.1",
 ]
 
 [[package]]
@@ -2461,7 +2846,7 @@ version = "0.4.0+wasi-0.3.0-rc-2026-01-06"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5428f8bf88ea5ddc08faddef2ac4a67e390b88186c703ce6dbd955e1c145aca5"
 dependencies = [
- "wit-bindgen",
+ "wit-bindgen 0.51.0",
 ]
 
 [[package]]
@@ -2581,7 +2966,7 @@ name = "wezterm-char-props"
 version = "0.1.3"
 source = "git+https://github.com/DCjanus/wezterm.git?branch=feat%2Fupstream-termwiz-default-color-probe#90b1d62ca9489a07b9cfd7fa4d94f44372288a65"
 dependencies = [
- "phf 0.11.3",
+ "phf",
  "serde",
  "ucd-trie",
 ]
@@ -2853,9 +3238,6 @@ name = "winnow"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09dac053f1cd375980747450bfc7250c264eaae0583872e845c0c7cd578872b5"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "wit-bindgen"
@@ -2865,6 +3247,12 @@ checksum = "d7249219f66ced02969388cf2bb044a09756a083d0fab1e566056b04d9fbcaa5"
 dependencies = [
  "wit-bindgen-rust-macro",
 ]
+
+[[package]]
+name = "wit-bindgen"
+version = "0.57.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "wit-bindgen-core"
