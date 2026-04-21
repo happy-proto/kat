@@ -323,7 +323,8 @@ fn semantic_capture_spans_for(
     let has_profile_overlays = matches!(
         profile,
         DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata
-    ) && language_name == "yaml";
+    ) && language_name == "yaml"
+        || profile == DocumentProfile::FishVariables && language_name == "fish";
 
     if !has_runtime_overlays && !has_profile_overlays {
         return Ok(Vec::new());
@@ -374,6 +375,10 @@ fn semantic_capture_spans_for(
             collect_github_actions_node_spans(node, source, &mut spans);
         }
     });
+
+    if language_name == "fish" && profile == DocumentProfile::FishVariables {
+        collect_fish_variables_spans(source, &mut spans);
+    }
 
     spans.sort_by(|left, right| {
         left.range
@@ -914,6 +919,193 @@ fn collect_fish_node_spans(node: Node<'_>, source: &str, spans: &mut Vec<Semanti
         "case_clause" => collect_case_clause_pattern_spans(node, spans),
         _ => {}
     }
+}
+
+fn collect_fish_variables_spans(source: &str, spans: &mut Vec<SemanticCaptureSpan>) {
+    let mut line_start = 0;
+    for (index, ch) in source.char_indices() {
+        if ch == '\n' {
+            collect_fish_variables_line_spans(line_start, &source[line_start..index], spans);
+            line_start = index + 1;
+        }
+    }
+
+    if line_start < source.len() {
+        collect_fish_variables_line_spans(line_start, &source[line_start..], spans);
+    }
+}
+
+fn collect_fish_variables_line_spans(
+    line_start: usize,
+    line: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let directive_end = line
+        .char_indices()
+        .find_map(|(index, ch)| ch.is_ascii_whitespace().then_some(index));
+    let Some(directive_end) = directive_end else {
+        return;
+    };
+    let directive = &line[..directive_end];
+    if directive.is_empty()
+        || !directive
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch == '_')
+    {
+        return;
+    }
+
+    let rest_start = directive_end
+        + line[directive_end..]
+            .chars()
+            .take_while(|ch| ch.is_ascii_whitespace())
+            .map(char::len_utf8)
+            .sum::<usize>();
+    if rest_start >= line.len() {
+        return;
+    }
+
+    let rest = &line[rest_start..];
+    let Some(separator_offset) = rest.find(':') else {
+        return;
+    };
+    let name = &rest[..separator_offset];
+    if name.is_empty() {
+        return;
+    }
+
+    push_capture(
+        spans,
+        line_start..line_start + directive_end,
+        "keyword.directive",
+    );
+    push_capture(
+        spans,
+        line_start + rest_start..line_start + rest_start + separator_offset,
+        "string.special.key",
+    );
+    let separator_start = line_start + rest_start + separator_offset;
+    push_capture(
+        spans,
+        separator_start..separator_start + 1,
+        "punctuation.special",
+    );
+
+    let value_start = separator_start + 1;
+    let value = &rest[separator_offset + 1..];
+    if value.is_empty() {
+        return;
+    }
+
+    if value.chars().all(|ch| ch.is_ascii_digit()) {
+        push_capture(spans, value_start..value_start + value.len(), "number");
+        return;
+    }
+
+    if is_fish_variables_path_name(name) {
+        push_fish_variables_path_value_spans(value_start, value, spans);
+        return;
+    }
+
+    push_capture(spans, value_start..value_start + value.len(), "string");
+    push_fish_variables_escape_spans(value_start, value, spans);
+}
+
+fn push_fish_variables_path_value_spans(
+    absolute_start: usize,
+    value: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let mut segment_start = 0;
+    let mut index = 0;
+
+    while index < value.len() {
+        let Some((escape_start, escape_end, code)) = find_next_fish_variables_escape(value, index)
+        else {
+            break;
+        };
+
+        if code.eq_ignore_ascii_case("1e") {
+            if segment_start < escape_start {
+                push_capture(
+                    spans,
+                    absolute_start + segment_start..absolute_start + escape_start,
+                    "string.special.path",
+                );
+            }
+            push_capture(
+                spans,
+                absolute_start + escape_start..absolute_start + escape_end,
+                "punctuation.special",
+            );
+            segment_start = escape_end;
+        } else {
+            push_capture(
+                spans,
+                absolute_start + escape_start..absolute_start + escape_end,
+                "string.escape",
+            );
+        }
+
+        index = escape_end;
+    }
+
+    if segment_start < value.len() {
+        push_capture(
+            spans,
+            absolute_start + segment_start..absolute_start + value.len(),
+            "string.special.path",
+        );
+    }
+}
+
+fn push_fish_variables_escape_spans(
+    absolute_start: usize,
+    value: &str,
+    spans: &mut Vec<SemanticCaptureSpan>,
+) {
+    let mut index = 0;
+    while let Some((escape_start, escape_end, code)) = find_next_fish_variables_escape(value, index)
+    {
+        let capture = if code.eq_ignore_ascii_case("1e") {
+            "punctuation.special"
+        } else {
+            "string.escape"
+        };
+        push_capture(
+            spans,
+            absolute_start + escape_start..absolute_start + escape_end,
+            capture,
+        );
+        index = escape_end;
+    }
+}
+
+fn find_next_fish_variables_escape(value: &str, from: usize) -> Option<(usize, usize, &str)> {
+    let bytes = value.as_bytes();
+    let mut index = from;
+
+    while index + 3 < bytes.len() {
+        if bytes[index] == b'\\'
+            && bytes[index + 1] == b'x'
+            && bytes[index + 2].is_ascii_hexdigit()
+            && bytes[index + 3].is_ascii_hexdigit()
+        {
+            return Some((index, index + 4, &value[index + 2..index + 4]));
+        }
+        index += 1;
+    }
+
+    None
+}
+
+fn is_fish_variables_path_name(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    matches!(name, "fish_user_paths")
+        || upper == "PATH"
+        || upper.ends_with("_PATH")
+        || upper.ends_with("_PATHS")
+        || upper.ends_with("PATH")
 }
 
 fn collect_bash_node_spans(node: Node<'_>, source: &str, spans: &mut Vec<SemanticCaptureSpan>) {

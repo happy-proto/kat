@@ -34,8 +34,8 @@ use crate::display_geometry::{
     ByteOffset, DisplayColumn, display_column_for_byte_offset, display_width_from_column,
 };
 use crate::document_kind::{
-    DocumentKind, DocumentProfile, git_config_document_kind, template_document_kind,
-    toml_document_kind, yaml_document_kind,
+    DocumentKind, DocumentProfile, fish_document_kind, git_config_document_kind,
+    template_document_kind, toml_document_kind, yaml_document_kind,
 };
 use crate::grammar_registry::grammar;
 use crate::host_injections::{
@@ -1976,7 +1976,7 @@ pub(crate) fn detect_document_kind(
 
     let fish = grammar("fish");
     if matches_path(fish, source_path) || matches_shebang(fish, source) {
-        return Some(DocumentKind::plain("fish"));
+        return Some(fish_document_kind(source_path));
     }
 
     let zsh = grammar("zsh");
@@ -4192,10 +4192,10 @@ mod tests {
         debug_layout_json, debug_render_ops_json, debug_semantics, debug_terminal_json,
         debug_visual_json, detect_document_kind, detect_language, highlight_named_language,
         overlay_nested_region, overlay_style_spans, plain_document_kind, render_plan_with_theme,
-        render_with_theme,
+        render_with_theme, semantic_capture_spans,
     };
     use crate::{
-        DisplayColumn,
+        DisplayColumn, DocumentKind,
         analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
         display_geometry::{display_width, display_width_from_column, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
@@ -5814,6 +5814,13 @@ mod tests {
             Some(SupportedLanguage::Fish)
         ));
         assert!(matches!(
+            detect_language(
+                Some(Path::new("fish_variables")),
+                "SETUVAR __fish_initialized:4300\n"
+            ),
+            Some(SupportedLanguage::Fish)
+        ));
+        assert!(matches!(
             detect_language(Some(Path::new(".zshrc")), "emulate -L zsh\n"),
             Some(SupportedLanguage::Zsh)
         ));
@@ -5840,6 +5847,16 @@ mod tests {
             detect_language(None, "#!/usr/bin/env fish\nset theme Dracula\n"),
             Some(SupportedLanguage::Fish)
         ));
+        assert_eq!(
+            detect_document_kind(
+                Some(Path::new("fish_variables")),
+                "SETUVAR fish_user_paths:/opt/homebrew/bin\\x1e/Users/example/bin\n"
+            ),
+            Some(DocumentKind::with_profile(
+                "fish",
+                DocumentProfile::FishVariables
+            ))
+        );
         assert!(matches!(
             detect_language(None, "#!/usr/bin/env zsh\nemulate -L zsh\n"),
             Some(SupportedLanguage::Zsh)
@@ -7002,6 +7019,70 @@ mod tests {
         assert!(
             zsh_rendered.contains("\x1b[3m\x1b[38;2;80;250;123m(I)"),
             "expected zsh subscript flag styling"
+        );
+    }
+
+    #[test]
+    fn fish_variables_profile_detects_and_highlights_persistent_record_syntax() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("fish/fish_variables");
+        let source = read_file(&path);
+        let document_kind = detect_document_kind(Some(path.as_path()), &source)
+            .expect("expected fish_variables fixture to detect as fish");
+        let overlays = semantic_capture_spans(document_kind, &source)
+            .expect("expected fish_variables semantic overlays to resolve");
+        let rendered = render_with_theme(Some(path.as_path()), &source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()));
+
+        assert_eq!(document_kind.runtime_name(), "fish");
+        assert_eq!(document_kind.profile(), DocumentProfile::FishVariables);
+        assert!(
+            overlays.iter().any(|span| {
+                span.capture == "keyword.directive" && &source[span.range.clone()] == "SETUVAR"
+            }),
+            "expected fish_variables profile to capture record directives"
+        );
+        assert!(
+            overlays.iter().any(|span| {
+                span.capture == "string.special.key"
+                    && &source[span.range.clone()] == "fish_user_paths"
+            }),
+            "expected fish_variables profile to capture variable names as keys"
+        );
+        assert!(
+            overlays.iter().any(|span| {
+                span.capture == "punctuation.special" && &source[span.range.clone()] == "\\x1e"
+            }),
+            "expected fish_variables profile to treat list separators specially"
+        );
+        assert!(
+            overlays.iter().any(|span| {
+                span.capture == "string.escape" && &source[span.range.clone()] == "\\x20"
+            }),
+            "expected fish_variables profile to capture hex escapes inside values"
+        );
+        assert!(
+            overlays.iter().any(|span| {
+                span.capture == "string.special.path"
+                    && &source[span.range.clone()] == "/opt/homebrew/bin"
+            }),
+            "expected fish_variables profile to classify path-like list entries"
+        );
+        assert!(
+            rendered.contains("\x1b[3m\x1b[38;2;80;250;123mSETUVAR"),
+            "expected fish_variables directives to receive directive styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;139;233;253mfish_user_paths"),
+            "expected fish_variables keys to reuse config-key styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;255;184;108m4300"),
+            "expected numeric persistent values to receive number styling"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;241;250;140m/opt/homebrew/bin"),
+            "expected path-like values to remain visible and string-highlighted"
         );
     }
 

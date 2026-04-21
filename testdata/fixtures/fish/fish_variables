@@ -1,0 +1,9 @@
+# This file contains fish universal variable definitions.
+# VERSION: 3.0
+SETUVAR __fish_initialized:4300
+SETUVAR fish_color_command:39BAE6
+SETUVAR fish_color_history_current:\x2d\x2dbold
+SETUVAR fish_color_host_remote:\x1d
+SETUVAR fish_key_bindings:fish_default_key_bindings
+SETUVAR fish_pager_color_progress:brwhite\x1e\x2d\x2dbackground\x3dcyan
+SETUVAR fish_user_paths:/Users/example/\x2elocal/bin\x1e/Users/example/Library/Application\x20Support/JetBrains/Toolbox/scripts\x1e/opt/homebrew/bin
