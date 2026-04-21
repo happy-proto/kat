@@ -57,7 +57,21 @@ kat --debug-timing --paging=never path/to/file >/dev/null
 kat --version
 ```
 
-启用基于 `clap` 动态补全：
+安装 shell completion 到用户目录：
+
+```bash
+kat --install-completion bash
+kat --install-completion fish
+kat --install-completion zsh
+```
+
+默认安装位置（若设置了 XDG 目录变量，会优先使用对应 XDG 路径）：
+
+- `bash`：`~/.local/share/bash-completion/completions/kat`
+- `fish`：`~/.config/fish/completions/kat.fish`
+- `zsh`：`~/.local/share/zsh/site-functions/_kat`
+
+如果你更想手动启用，也可以继续直接 source 动态补全脚本：
 
 ```bash
 echo 'source <(COMPLETE=bash kat)' >> ~/.bashrc
