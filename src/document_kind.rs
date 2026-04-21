@@ -10,6 +10,7 @@ pub(crate) enum DocumentProfile {
     GitHubActionMetadata,
     GitConfig,
     GitModules,
+    FishVariables,
     PythonDocstringAuto,
     PythonDocstringPlain,
     PythonDocstringRest,
@@ -33,6 +34,7 @@ impl DocumentProfile {
             Self::GitHubActionMetadata => "github_action_metadata",
             Self::GitConfig => "git_config",
             Self::GitModules => "git_modules",
+            Self::FishVariables => "fish_variables",
             Self::PythonDocstringAuto => "python_docstring_auto",
             Self::PythonDocstringPlain => "python_docstring_plain",
             Self::PythonDocstringRest => "python_docstring_rest",
@@ -128,6 +130,13 @@ pub(crate) fn git_config_document_kind(source_path: Option<&Path>) -> DocumentKi
     }
 }
 
+pub(crate) fn fish_document_kind(source_path: Option<&Path>) -> DocumentKind {
+    match fish_profile(source_path) {
+        Some(profile) => DocumentKind::with_profile("fish", profile),
+        None => DocumentKind::plain("fish"),
+    }
+}
+
 pub(crate) fn template_document_kind(
     runtime_name: &'static str,
     source_path: Option<&Path>,
@@ -194,6 +203,11 @@ fn template_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     })
 }
 
+fn fish_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+    let path = source_path?;
+    is_fish_variables_path(path).then_some(DocumentProfile::FishVariables)
+}
+
 fn is_github_actions_workflow_path(path: &Path) -> bool {
     if !matches!(
         path.extension().and_then(|extension| extension.to_str()),
@@ -244,5 +258,12 @@ fn is_git_config_path(path: &Path) -> bool {
     ) || matches!(
         path.file_name().and_then(|name| name.to_str()),
         Some(".gitconfig" | "gitconfig" | "config.worktree")
+    )
+}
+
+fn is_fish_variables_path(path: &Path) -> bool {
+    matches!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some("fish_variables")
     )
 }
