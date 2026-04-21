@@ -4,7 +4,7 @@ use std::{
     ffi::OsString,
     fs,
     io::{self, IsTerminal, Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, ExitCode, Stdio},
     time::{Duration, Instant},
 };
@@ -73,12 +73,8 @@ fn complete_env() -> Option<ExitCode> {
     let current_dir = std::env::current_dir().ok();
     let mut buf = Vec::new();
     if argv.is_empty() {
-        let cmd = completion_command();
-        let name = cmd.get_name().to_owned();
-        let bin = cmd.get_bin_name().unwrap_or(&name).to_owned();
         let completer = completer.to_string_lossy().into_owned();
-        shell
-            .write_registration("COMPLETE", &name, &bin, &completer, &mut buf)
+        write_completion_registration(shell.as_ref(), &completer, &mut buf)
             .expect("failed to write completion registration");
     } else {
         let mut cmd = completion_command_for(&argv);
@@ -120,6 +116,11 @@ fn env_completer(name: &std::path::Path) -> clap::error::Result<Box<dyn EnvCompl
 
 fn try_main() -> Result<()> {
     let options = parse_cli_args(env::args_os().skip(1))?;
+    if let Some(shell) = options.install_completion {
+        print!("{}", install_completion(shell)?);
+        return Ok(());
+    }
+
     let total_started_at = Instant::now();
     let mut built_output = build_output(&options)?;
     let write_started_at = Instant::now();
@@ -230,6 +231,7 @@ struct CliOptions {
     paging: PagingMode,
     debug_timing: bool,
     language: Option<String>,
+    install_completion: Option<CompletionShell>,
     paths: Vec<PathBuf>,
 }
 
@@ -297,6 +299,39 @@ enum PagingMode {
     Never,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum CompletionShell {
+    Bash,
+    Fish,
+    Zsh,
+}
+
+impl CompletionShell {
+    fn env_completer(self) -> &'static dyn EnvCompleter {
+        match self {
+            Self::Bash => &Bash,
+            Self::Fish => &Fish,
+            Self::Zsh => &Zsh,
+        }
+    }
+
+    fn script_file_name(self) -> &'static str {
+        match self {
+            Self::Bash => "kat",
+            Self::Fish => "kat.fish",
+            Self::Zsh => "_kat",
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Bash => "bash",
+            Self::Fish => "fish",
+            Self::Zsh => "zsh",
+        }
+    }
+}
+
 #[derive(Debug, Parser)]
 #[command(
     name = "kat",
@@ -327,6 +362,13 @@ struct CliArgs {
     help: Option<bool>,
     #[arg(long = "version", short = 'V', group = "mode")]
     version: bool,
+    #[arg(
+        long = "install-completion",
+        value_enum,
+        group = "mode",
+        value_name = "SHELL"
+    )]
+    install_completion: Option<CompletionShell>,
     #[arg(long)]
     language: Option<String>,
     #[arg(long, value_enum, default_value_t = PagingMode::Auto)]
@@ -344,6 +386,17 @@ fn cli_command() -> clap::Command {
 
 fn completion_command() -> clap::Command {
     completion_command_for(&[])
+}
+
+fn write_completion_registration(
+    shell: &dyn EnvCompleter,
+    completer: &str,
+    buf: &mut dyn Write,
+) -> io::Result<()> {
+    let cmd = completion_command();
+    let name = cmd.get_name().to_owned();
+    let bin = cmd.get_bin_name().unwrap_or(&name).to_owned();
+    shell.write_registration("COMPLETE", &name, &bin, completer, buf)
 }
 
 fn completion_command_for(args: &[OsString]) -> clap::Command {
@@ -525,6 +578,16 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         &mut cli_command()
             .try_get_matches_from_mut(std::iter::once(OsString::from("kat")).chain(args))?,
     )?;
+    if cli.install_completion.is_some() {
+        if cli.language.is_some() || cli.debug_timing || cli.paging != PagingMode::Auto {
+            bail!(
+                "--install-completion cannot be combined with --language, --debug-timing, or --paging"
+            );
+        }
+        if !cli.paths.is_empty() {
+            bail!("--install-completion does not take input paths");
+        }
+    }
     let language = cli
         .language
         .as_deref()
@@ -557,8 +620,104 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         paging: cli.paging,
         debug_timing: cli.debug_timing,
         language,
+        install_completion: cli.install_completion,
         paths: cli.paths,
     })
+}
+
+fn completion_install_path(shell: CompletionShell) -> Result<PathBuf> {
+    let home = env::var_os("HOME").map(PathBuf::from);
+    let xdg_config_home = env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
+    let xdg_data_home = env::var_os("XDG_DATA_HOME").map(PathBuf::from);
+    completion_install_path_from_env(
+        shell,
+        home.as_deref(),
+        xdg_config_home.as_deref(),
+        xdg_data_home.as_deref(),
+    )
+}
+
+fn completion_install_path_from_env(
+    shell: CompletionShell,
+    home: Option<&Path>,
+    xdg_config_home: Option<&Path>,
+    xdg_data_home: Option<&Path>,
+) -> Result<PathBuf> {
+    let home = home.context("could not determine home directory for completion install")?;
+    let path = match shell {
+        CompletionShell::Fish => xdg_config_home
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| home.join(".config"))
+            .join("fish/completions")
+            .join(shell.script_file_name()),
+        CompletionShell::Bash => xdg_data_home
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| home.join(".local/share"))
+            .join("bash-completion/completions")
+            .join(shell.script_file_name()),
+        CompletionShell::Zsh => xdg_data_home
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| home.join(".local/share"))
+            .join("zsh/site-functions")
+            .join(shell.script_file_name()),
+    };
+    Ok(path)
+}
+
+fn completion_registration_script(shell: CompletionShell) -> Result<String> {
+    let completer = env::current_exe()
+        .context("failed to resolve current executable for completion install")?
+        .to_string_lossy()
+        .into_owned();
+    completion_registration_script_for(shell, &completer)
+}
+
+fn completion_registration_script_for(shell: CompletionShell, completer: &str) -> Result<String> {
+    let mut buf = Vec::new();
+    write_completion_registration(shell.env_completer(), completer, &mut buf)
+        .context("failed to generate completion registration")?;
+    String::from_utf8(buf).context("generated completion script was not valid UTF-8")
+}
+
+fn install_completion(shell: CompletionShell) -> Result<String> {
+    let destination = completion_install_path(shell)?;
+    let script = completion_registration_script(shell)?;
+    install_completion_script(shell, &destination, &script)
+}
+
+fn install_completion_script(
+    shell: CompletionShell,
+    destination: &Path,
+    script: &str,
+) -> Result<String> {
+    let parent = destination.parent().with_context(|| {
+        format!(
+            "completion install target has no parent directory: {}",
+            destination.display()
+        )
+    })?;
+    fs::create_dir_all(parent)
+        .with_context(|| format!("failed to create completion directory {}", parent.display()))?;
+    fs::write(destination, script).with_context(|| {
+        format!(
+            "failed to write {} completion to {}",
+            shell.name(),
+            destination.display()
+        )
+    })?;
+
+    let mut output = format!(
+        "installed {} completion to {}\n",
+        shell.name(),
+        destination.display()
+    );
+    if matches!(shell, CompletionShell::Zsh) {
+        output.push_str(&format!(
+            "if zsh does not pick it up automatically, add {} to `fpath` and rerun `compinit`\n",
+            parent.display()
+        ));
+    }
+    Ok(output)
 }
 
 fn render_output(
@@ -970,18 +1129,18 @@ mod tests {
         ffi::OsStr,
         ffi::OsString,
         fs,
-        path::PathBuf,
+        path::{Path, PathBuf},
         time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
     use clap_complete::engine::complete;
-    use std::path::Path;
 
     use super::{
-        CliOptions, DebugTimingStats, OutputMode, PagerCommand, PagingMode, cli_command,
-        completion_command_for, format_cli_error, page_output_via_command, parse_cli_args,
-        read_source_from_path, render_output, resolve_pager_command, should_page_output,
-        version_output,
+        CliOptions, CompletionShell, DebugTimingStats, OutputMode, PagerCommand, PagingMode,
+        cli_command, completion_command_for, completion_install_path_from_env,
+        completion_registration_script_for, format_cli_error, install_completion_script,
+        page_output_via_command, parse_cli_args, read_source_from_path, render_output,
+        resolve_pager_command, should_page_output, version_output,
     };
 
     #[test]
@@ -1057,6 +1216,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: Some("fish".to_owned()),
+                install_completion: None,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
             }
         );
@@ -1078,6 +1238,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: Some("regex".to_owned()),
+                install_completion: None,
                 paths: vec![PathBuf::from("pattern.re")],
             }
         );
@@ -1098,6 +1259,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: None,
+                install_completion: None,
                 paths: vec![PathBuf::from("docs/architecture.md")],
             }
         );
@@ -1120,6 +1282,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: Some("markdown".to_owned()),
+                install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1138,6 +1301,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: None,
+                install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1158,6 +1322,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: None,
+                install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1178,6 +1343,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: None,
+                install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1200,6 +1366,7 @@ mod tests {
                 paging: PagingMode::Never,
                 debug_timing: false,
                 language: Some("rust".to_owned()),
+                install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
             }
         );
@@ -1217,8 +1384,61 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: None,
+                install_completion: None,
                 paths: vec![],
             }
+        );
+    }
+
+    #[test]
+    fn parses_install_completion_flag() {
+        let options = parse_cli_args([
+            OsString::from("--install-completion"),
+            OsString::from("bash"),
+        ])
+        .expect("failed to parse completion install flag");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::Render,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                language: None,
+                install_completion: Some(CompletionShell::Bash),
+                paths: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn install_completion_rejects_render_flags() {
+        let error = parse_cli_args([
+            OsString::from("--install-completion"),
+            OsString::from("fish"),
+            OsString::from("--language"),
+            OsString::from("rust"),
+        ])
+        .expect_err("install completion should reject render flags");
+
+        assert!(
+            format!("{error:#}").contains("--install-completion cannot be combined"),
+            "unexpected error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn install_completion_rejects_input_paths() {
+        let error = parse_cli_args([
+            OsString::from("--install-completion"),
+            OsString::from("fish"),
+            OsString::from("src/main.rs"),
+        ])
+        .expect_err("install completion should reject input paths");
+
+        assert!(
+            format!("{error:#}").contains("--install-completion does not take input paths"),
+            "unexpected error: {error:#}"
         );
     }
 
@@ -1237,6 +1457,7 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: true,
                 language: None,
+                install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
             }
         );
@@ -1265,9 +1486,84 @@ mod tests {
                 paging: PagingMode::Auto,
                 debug_timing: false,
                 language: Some("python".to_owned()),
+                install_completion: None,
                 paths: vec![],
             }
         );
+    }
+
+    #[test]
+    fn completion_install_path_prefers_xdg_directories() {
+        let path = completion_install_path_from_env(
+            CompletionShell::Fish,
+            Some(Path::new("/tmp/home")),
+            Some(Path::new("/tmp/config")),
+            Some(Path::new("/tmp/data")),
+        )
+        .expect("fish completion path should resolve");
+        assert_eq!(path, Path::new("/tmp/config/fish/completions/kat.fish"));
+
+        let path = completion_install_path_from_env(
+            CompletionShell::Bash,
+            Some(Path::new("/tmp/home")),
+            Some(Path::new("/tmp/config")),
+            Some(Path::new("/tmp/data")),
+        )
+        .expect("bash completion path should resolve");
+        assert_eq!(path, Path::new("/tmp/data/bash-completion/completions/kat"));
+    }
+
+    #[test]
+    fn completion_install_path_falls_back_to_home_defaults() {
+        let path = completion_install_path_from_env(
+            CompletionShell::Zsh,
+            Some(Path::new("/tmp/home")),
+            None,
+            None,
+        )
+        .expect("zsh completion path should resolve");
+        assert_eq!(
+            path,
+            Path::new("/tmp/home/.local/share/zsh/site-functions/_kat")
+        );
+    }
+
+    #[test]
+    fn completion_registration_script_contains_completer_path() {
+        let script = completion_registration_script_for(CompletionShell::Bash, "/tmp/bin/kat")
+            .expect("bash completion registration should render");
+
+        assert!(
+            script.contains("/tmp/bin/kat") && script.contains("complete -o nospace"),
+            "unexpected registration script: {script}"
+        );
+    }
+
+    #[test]
+    fn install_completion_writes_script_and_reports_destination() {
+        let dir = unique_temp_dir("kat-install-completion");
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
+        let destination = dir.join("kat");
+
+        let output =
+            install_completion_script(CompletionShell::Bash, &destination, "# bash completion\n")
+                .expect("completion install should succeed");
+
+        let written = fs::read_to_string(&destination).unwrap_or_else(|error| {
+            panic!(
+                "failed to read installed completion {}: {error}",
+                destination.display()
+            )
+        });
+        assert_eq!(written, "# bash completion\n");
+        assert!(
+            output.contains(destination.to_string_lossy().as_ref()),
+            "expected install output to mention destination, got {output}"
+        );
+
+        fs::remove_dir_all(&dir)
+            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
     }
 
     #[test]
