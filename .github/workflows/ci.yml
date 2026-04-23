@@ -60,7 +60,18 @@ jobs:
           components: clippy
 
       - name: Set up sccache
-        uses: ./.github/actions/sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Enable sccache integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "SCCACHE_GHA_ENABLED=true"
+            echo "RUSTC_WRAPPER=sccache"
+            echo "CC=sccache cc"
+            echo "CXX=sccache c++"
+          } >> "${GITHUB_ENV}"
 
       - name: Run clippy
         shell: bash
@@ -115,7 +126,18 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up sccache
-        uses: ./.github/actions/sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Enable sccache integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "SCCACHE_GHA_ENABLED=true"
+            echo "RUSTC_WRAPPER=sccache"
+            echo "CC=sccache cc"
+            echo "CXX=sccache c++"
+          } >> "${GITHUB_ENV}"
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -233,7 +255,19 @@ jobs:
 
       - name: Set up sccache
         if: matrix.use_sccache
-        uses: ./.github/actions/sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Enable sccache integration
+        if: matrix.use_sccache
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "SCCACHE_GHA_ENABLED=true"
+            echo "RUSTC_WRAPPER=sccache"
+            echo "CC=sccache cc"
+            echo "CXX=sccache c++"
+          } >> "${GITHUB_ENV}"
 
       - name: Build release binary
         shell: bash
