@@ -30,7 +30,7 @@ base64 = "0.22.1"
 clap = { version = "4.6.0", features = ["derive"] }
 clap_complete = { version = "4.6.0", features = ["unstable-dynamic"] }
 icy_sixel = "0.5.0"
-image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp"] }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp", "ico", "qoi", "pnm", "ff", "hdr", "dds"] }
 miette = { version = "7.6.0", features = ["fancy"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"

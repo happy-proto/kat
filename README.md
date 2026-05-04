@@ -52,7 +52,7 @@ kat path/to/image.png
 ```
 
 当前会自动选择 iTerm2 inline image、Kitty graphics 或 Sixel；必要时可用 `KAT_IMAGE_PROTOCOL=iterm2|kitty|sixel|auto|none` 覆盖。
-当前图片识别覆盖 PNG、JPEG、GIF、WebP、TIFF 和 BMP。
+当前图片识别覆盖 PNG、JPEG、GIF、WebP、TIFF、BMP、ICO、QOI、PNM、Farbfeld、HDR 和 DDS。
 图片默认会按当前终端宽度和约 80% 终端高度做等比缩放；可用 `--image-width`、`--image-height` 或 `--image-fit=original` 覆盖。
 透明图片默认保留透明通道；如果终端协议对透明支持不理想，可用 `--image-background=black|white|checker` 先合成背景。
 如果 stdout 不是 TTY，或者当前终端没有可用图片协议，`kat` 会输出图片尺寸、格式和原因说明；可用 `--debug-image` 查看图片检测、EXIF orientation、目标尺寸和协议选择的 JSON。

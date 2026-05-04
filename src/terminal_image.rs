@@ -22,9 +22,15 @@ const APPROX_CELL_PIXEL_HEIGHT: usize = 16;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ImageFormat {
     Bmp,
+    Dds,
+    Farbfeld,
     Gif,
+    Hdr,
+    Ico,
     Jpeg,
+    Pnm,
     Png,
+    Qoi,
     Tiff,
     Webp,
 }
@@ -33,9 +39,15 @@ impl ImageFormat {
     fn as_str(self) -> &'static str {
         match self {
             Self::Bmp => "bmp",
+            Self::Dds => "dds",
+            Self::Farbfeld => "farbfeld",
             Self::Gif => "gif",
+            Self::Hdr => "hdr",
+            Self::Ico => "ico",
             Self::Jpeg => "jpeg",
+            Self::Pnm => "pnm",
             Self::Png => "png",
+            Self::Qoi => "qoi",
             Self::Tiff => "tiff",
             Self::Webp => "webp",
         }
@@ -93,6 +105,14 @@ pub(crate) fn sniff_image_format(bytes: &[u8]) -> Option<ImageFormat> {
         return Some(ImageFormat::Bmp);
     }
 
+    if is_ico_file_header(bytes) {
+        return Some(ImageFormat::Ico);
+    }
+
+    if is_pnm_file_header(bytes) {
+        return Some(ImageFormat::Pnm);
+    }
+
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return Some(ImageFormat::Png);
     }
@@ -117,6 +137,22 @@ pub(crate) fn sniff_image_format(bytes: &[u8]) -> Option<ImageFormat> {
         return Some(ImageFormat::Webp);
     }
 
+    if bytes.starts_with(b"qoif") {
+        return Some(ImageFormat::Qoi);
+    }
+
+    if bytes.starts_with(b"farbfeld") {
+        return Some(ImageFormat::Farbfeld);
+    }
+
+    if bytes.starts_with(b"#?RADIANCE") {
+        return Some(ImageFormat::Hdr);
+    }
+
+    if bytes.starts_with(b"DDS ") {
+        return Some(ImageFormat::Dds);
+    }
+
     None
 }
 
@@ -128,6 +164,22 @@ fn is_bmp_file_header(bytes: &[u8]) -> bool {
     let reserved = u32::from_le_bytes([bytes[6], bytes[7], bytes[8], bytes[9]]);
     let dib_header_size = u32::from_le_bytes([bytes[14], bytes[15], bytes[16], bytes[17]]);
     reserved == 0 && matches!(dib_header_size, 12 | 40 | 52 | 56 | 108 | 124)
+}
+
+fn is_ico_file_header(bytes: &[u8]) -> bool {
+    if bytes.len() < 6 || &bytes[..4] != b"\0\0\x01\0" {
+        return false;
+    }
+
+    let image_count = u16::from_le_bytes([bytes[4], bytes[5]]);
+    image_count > 0
+}
+
+fn is_pnm_file_header(bytes: &[u8]) -> bool {
+    bytes.len() >= 3
+        && bytes[0] == b'P'
+        && matches!(bytes[1], b'1'..=b'7')
+        && bytes[2].is_ascii_whitespace()
 }
 
 pub(crate) fn render_inline_image(
@@ -458,7 +510,16 @@ fn frame_note(format: ImageFormat) -> Option<&'static str> {
             "animated GIF inputs are rendered as their first frame outside the raw iTerm2 path",
         ),
         ImageFormat::Tiff => Some("multi-page TIFF inputs are rendered as their first page"),
-        ImageFormat::Bmp | ImageFormat::Jpeg | ImageFormat::Png | ImageFormat::Webp => None,
+        ImageFormat::Bmp
+        | ImageFormat::Dds
+        | ImageFormat::Farbfeld
+        | ImageFormat::Hdr
+        | ImageFormat::Ico
+        | ImageFormat::Jpeg
+        | ImageFormat::Pnm
+        | ImageFormat::Png
+        | ImageFormat::Qoi
+        | ImageFormat::Webp => None,
     }
 }
 
@@ -817,6 +878,27 @@ mod tests {
         cursor.into_inner()
     }
 
+    fn one_pixel_encoded(format: EncodedImageFormat) -> Vec<u8> {
+        let image =
+            DynamicImage::ImageRgba8(RgbaImage::from_pixel(1, 1, image::Rgba([255, 0, 0, 255])));
+        let mut cursor = Cursor::new(Vec::new());
+        image
+            .write_to(&mut cursor, format)
+            .expect("test image should encode");
+        cursor.into_inner()
+    }
+
+    fn one_pixel_farbfeld() -> Vec<u8> {
+        let mut bytes = Vec::from(&b"farbfeld"[..]);
+        bytes.extend_from_slice(&1u32.to_be_bytes());
+        bytes.extend_from_slice(&1u32.to_be_bytes());
+        bytes.extend_from_slice(&u16::MAX.to_be_bytes());
+        bytes.extend_from_slice(&0u16.to_be_bytes());
+        bytes.extend_from_slice(&0u16.to_be_bytes());
+        bytes.extend_from_slice(&u16::MAX.to_be_bytes());
+        bytes
+    }
+
     #[test]
     fn sniffs_common_image_formats() {
         assert_eq!(sniff_image_format(&one_pixel_bmp()), Some(ImageFormat::Bmp));
@@ -837,7 +919,27 @@ mod tests {
             sniff_image_format(b"RIFF\x00\x00\x00\x00WEBPrest"),
             Some(ImageFormat::Webp)
         );
+        assert_eq!(
+            sniff_image_format(b"\0\0\x01\0\x01\0rest"),
+            Some(ImageFormat::Ico)
+        );
+        assert_eq!(sniff_image_format(b"qoifrest"), Some(ImageFormat::Qoi));
+        assert_eq!(
+            sniff_image_format(b"P6\n1 1\n255\nrest"),
+            Some(ImageFormat::Pnm)
+        );
+        assert_eq!(
+            sniff_image_format(b"farbfeldrest"),
+            Some(ImageFormat::Farbfeld)
+        );
+        assert_eq!(
+            sniff_image_format(b"#?RADIANCE\nrest"),
+            Some(ImageFormat::Hdr)
+        );
+        assert_eq!(sniff_image_format(b"DDS rest"), Some(ImageFormat::Dds));
         assert_eq!(sniff_image_format(b"BMrest"), None);
+        assert_eq!(sniff_image_format(b"\0\0\x01\0\0\0rest"), None);
+        assert_eq!(sniff_image_format(b"Println"), None);
         assert_eq!(sniff_image_format(b"hello"), None);
     }
 
@@ -1004,6 +1106,47 @@ mod tests {
         assert!(json.contains(r#""format": "bmp""#));
         assert!(json.contains(r#""display_width": 1"#));
         assert!(json.contains(r#""display_height": 1"#));
+    }
+
+    #[test]
+    fn debug_image_json_reports_new_low_dependency_format_metadata() {
+        for (name, bytes, expected_format) in [
+            (
+                "image.ico",
+                one_pixel_encoded(EncodedImageFormat::Ico),
+                "ico",
+            ),
+            (
+                "image.qoi",
+                one_pixel_encoded(EncodedImageFormat::Qoi),
+                "qoi",
+            ),
+            (
+                "image.pnm",
+                one_pixel_encoded(EncodedImageFormat::Pnm),
+                "pnm",
+            ),
+            ("image.ff", one_pixel_farbfeld(), "farbfeld"),
+        ] {
+            let json = debug_image_json(
+                name.as_ref(),
+                &bytes,
+                false,
+                ImageRenderOptions {
+                    width_cells: None,
+                    height_cells: None,
+                    fit: ImageFit::Contain,
+                    background: ImageBackground::Terminal,
+                    terminal_columns: None,
+                    terminal_rows: None,
+                },
+            )
+            .expect("debug image metadata should render");
+
+            assert!(json.contains(&format!(r#""format": "{expected_format}""#)));
+            assert!(json.contains(r#""display_width": 1"#));
+            assert!(json.contains(r#""display_height": 1"#));
+        }
     }
 
     #[test]
