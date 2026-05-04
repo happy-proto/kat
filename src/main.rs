@@ -17,6 +17,8 @@ use miette::{Report, miette};
 use shadow_rs::shadow;
 use terminal_size::{Height, Width, terminal_size};
 
+mod terminal_image;
+
 const DEFAULT_TERMINAL_ROWS: usize = 24;
 
 shadow!(build);
@@ -124,7 +126,11 @@ fn try_main() -> Result<()> {
     let total_started_at = Instant::now();
     let mut built_output = build_output(&options)?;
     let write_started_at = Instant::now();
-    write_output(&built_output.output, &options)?;
+    write_output(
+        &built_output.output,
+        &options,
+        built_output.contains_terminal_image,
+    )?;
 
     if let Some(timings) = built_output.timings.as_mut() {
         timings.write_output += write_started_at.elapsed();
@@ -222,6 +228,7 @@ enum OutputMode {
     DebugLayout,
     DebugRenderOps,
     DebugTerminal,
+    DebugImage,
     Version,
 }
 
@@ -230,6 +237,10 @@ struct CliOptions {
     mode: OutputMode,
     paging: PagingMode,
     debug_timing: bool,
+    image_width: Option<usize>,
+    image_height: Option<usize>,
+    image_fit: ImageFitArg,
+    image_background: ImageBackgroundArg,
     language: Option<String>,
     install_completion: Option<CompletionShell>,
     paths: Vec<PathBuf>,
@@ -286,6 +297,7 @@ impl DebugTimingStats {
 struct BuiltOutput {
     output: String,
     timings: Option<DebugTimingStats>,
+    contains_terminal_image: bool,
 }
 
 fn format_duration(duration: Duration) -> String {
@@ -297,6 +309,40 @@ enum PagingMode {
     Auto,
     Always,
     Never,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum ImageFitArg {
+    Contain,
+    Original,
+}
+
+impl From<ImageFitArg> for terminal_image::ImageFit {
+    fn from(value: ImageFitArg) -> Self {
+        match value {
+            ImageFitArg::Contain => Self::Contain,
+            ImageFitArg::Original => Self::Original,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum ImageBackgroundArg {
+    Terminal,
+    Black,
+    White,
+    Checker,
+}
+
+impl From<ImageBackgroundArg> for terminal_image::ImageBackground {
+    fn from(value: ImageBackgroundArg) -> Self {
+        match value {
+            ImageBackgroundArg::Terminal => Self::Terminal,
+            ImageBackgroundArg::Black => Self::Black,
+            ImageBackgroundArg::White => Self::White,
+            ImageBackgroundArg::Checker => Self::Checker,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -356,8 +402,18 @@ struct CliArgs {
     debug_render_ops: bool,
     #[arg(long = "debug-terminal", group = "mode")]
     debug_terminal: bool,
+    #[arg(long = "debug-image", group = "mode")]
+    debug_image: bool,
     #[arg(long = "debug-timing")]
     debug_timing: bool,
+    #[arg(long = "image-width", value_name = "COLUMNS")]
+    image_width: Option<usize>,
+    #[arg(long = "image-height", value_name = "ROWS")]
+    image_height: Option<usize>,
+    #[arg(long = "image-fit", value_enum, default_value_t = ImageFitArg::Contain)]
+    image_fit: ImageFitArg,
+    #[arg(long = "image-background", value_enum, default_value_t = ImageBackgroundArg::Terminal)]
+    image_background: ImageBackgroundArg,
     #[arg(long = "help", short = 'h', action = ArgAction::Help)]
     help: Option<bool>,
     #[arg(long = "version", short = 'V', group = "mode")]
@@ -409,7 +465,12 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
         "debug_visual",
         "debug_render_ops",
         "debug_terminal",
+        "debug_image",
         "debug_timing",
+        "image_width",
+        "image_height",
+        "image_fit",
+        "image_background",
     ] {
         command = command.mut_arg(arg_id, |arg| arg.hide(true));
     }
@@ -418,7 +479,16 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
     if current_token.starts_with('-') {
         command = command.mut_arg("paths", |arg| arg.hide(true));
     } else {
-        for arg_id in ["help", "version", "language", "paging"] {
+        for arg_id in [
+            "help",
+            "version",
+            "language",
+            "paging",
+            "image_width",
+            "image_height",
+            "image_fit",
+            "image_background",
+        ] {
             command = command.mut_arg(arg_id, |arg| arg.hide(true));
         }
     }
@@ -579,9 +649,16 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
             .try_get_matches_from_mut(std::iter::once(OsString::from("kat")).chain(args))?,
     )?;
     if cli.install_completion.is_some() {
-        if cli.language.is_some() || cli.debug_timing || cli.paging != PagingMode::Auto {
+        if cli.language.is_some()
+            || cli.debug_timing
+            || cli.paging != PagingMode::Auto
+            || cli.image_width.is_some()
+            || cli.image_height.is_some()
+            || cli.image_fit != ImageFitArg::Contain
+            || cli.image_background != ImageBackgroundArg::Terminal
+        {
             bail!(
-                "--install-completion cannot be combined with --language, --debug-timing, or --paging"
+                "--install-completion cannot be combined with --language, --debug-timing, --paging, or image display options"
             );
         }
         if !cli.paths.is_empty() {
@@ -611,14 +688,27 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         OutputMode::DebugRenderOps
     } else if cli.debug_terminal {
         OutputMode::DebugTerminal
+    } else if cli.debug_image {
+        OutputMode::DebugImage
     } else {
         OutputMode::Render
     };
+
+    if cli.image_width == Some(0) {
+        bail!("--image-width must be greater than zero");
+    }
+    if cli.image_height == Some(0) {
+        bail!("--image-height must be greater than zero");
+    }
 
     Ok(CliOptions {
         mode,
         paging: cli.paging,
         debug_timing: cli.debug_timing,
+        image_width: cli.image_width,
+        image_height: cli.image_height,
+        image_fit: cli.image_fit,
+        image_background: cli.image_background,
         language,
         install_completion: cli.install_completion,
         paths: cli.paths,
@@ -782,6 +872,7 @@ fn render_output(
             kat::debug_terminal_json,
             kat::debug_named_language_terminal_json,
         ),
+        OutputMode::DebugImage => bail!("--debug-image requires an image file path"),
         OutputMode::Version => Ok(version_output()),
     }
 }
@@ -976,12 +1067,16 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         return Ok(BuiltOutput {
             output: version_output(),
             timings: options.debug_timing.then_some(DebugTimingStats::default()),
+            contains_terminal_image: false,
         });
     }
 
     let mut timings = options.debug_timing.then_some(DebugTimingStats::default());
 
     if options.paths.is_empty() {
+        if matches!(options.mode, OutputMode::DebugImage) {
+            bail!("--debug-image requires an image file path");
+        }
         let stdin = read_stdin().context("failed to read stdin")?;
         if let Some(timings) = timings.as_mut() {
             timings.files += 1;
@@ -991,11 +1086,16 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         if let Some(timings) = timings.as_mut() {
             timings.output_bytes = output.len();
         }
-        return Ok(BuiltOutput { output, timings });
+        return Ok(BuiltOutput {
+            output,
+            timings,
+            contains_terminal_image: false,
+        });
     }
 
     let mut output = String::new();
     let multiple_paths = options.paths.len() > 1;
+    let mut contains_terminal_image = false;
 
     for (index, path) in options.paths.iter().enumerate() {
         if path.as_os_str() == OsStr::new("-") {
@@ -1017,15 +1117,43 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         }
 
         let read_started_at = Instant::now();
-        let source = read_source_from_path(path)?;
+        let bytes = read_bytes_from_path(path)?;
         if let Some(timings) = timings.as_mut() {
             timings.files += 1;
-            timings.input_bytes += source.len();
+            timings.input_bytes += bytes.len();
             timings.read_source += read_started_at.elapsed();
         }
         if multiple_paths {
             push_header(&mut output, &path.display().to_string(), index > 0);
         }
+        if matches!(options.mode, OutputMode::DebugImage) {
+            if !is_image_bytes(&bytes) {
+                bail!("{} is not a supported image file", path.display());
+            }
+            output.push_str(&terminal_image::debug_image_json(
+                path.as_path(),
+                &bytes,
+                io::stdout().is_terminal(),
+                image_render_options(options),
+            )?);
+            if !output.ends_with('\n') {
+                output.push('\n');
+            }
+            continue;
+        }
+        if should_render_path_as_image(options, &bytes) {
+            let image_output = terminal_image::render_inline_image(
+                path.as_path(),
+                bytes,
+                io::stdout().is_terminal(),
+                image_render_options(options),
+            )?;
+            contains_terminal_image |= image_output.contains_terminal_image;
+            output.push_str(&image_output.output);
+            continue;
+        }
+
+        let source = String::from_utf8_lossy(&bytes).into_owned();
         output.push_str(&render_output_with_timing(
             options,
             Some(path.as_path()),
@@ -1038,11 +1166,16 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         timings.output_bytes = output.len();
     }
 
-    Ok(BuiltOutput { output, timings })
+    Ok(BuiltOutput {
+        output,
+        timings,
+        contains_terminal_image,
+    })
 }
 
-fn write_output(output: &str, options: &CliOptions) -> Result<()> {
+fn write_output(output: &str, options: &CliOptions, contains_terminal_image: bool) -> Result<()> {
     let should_page = matches!(options.mode, OutputMode::Render)
+        && !contains_terminal_image
         && should_page_output(output, options.paging, io::stdout().is_terminal());
     if !should_page {
         return write_output_direct(output);
@@ -1108,13 +1241,39 @@ fn count_output_lines(output: &str) -> usize {
     output.bytes().filter(|byte| *byte == b'\n').count() + usize::from(!output.ends_with('\n'))
 }
 
+#[cfg(test)]
 fn read_source_from_path(path: &PathBuf) -> Result<String> {
+    let bytes = read_bytes_from_path(path)?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+fn read_bytes_from_path(path: &PathBuf) -> Result<Vec<u8>> {
     if path.is_dir() {
         return Err(ReadSourceError::directory(path.clone()).into());
     }
 
-    let bytes = fs::read(path).map_err(|error| ReadSourceError::io(path.clone(), error))?;
-    Ok(String::from_utf8_lossy(&bytes).into_owned())
+    fs::read(path).map_err(|error| ReadSourceError::io(path.clone(), error).into())
+}
+
+fn should_render_path_as_image(options: &CliOptions, bytes: &[u8]) -> bool {
+    matches!(options.mode, OutputMode::Render)
+        && options.language.is_none()
+        && is_image_bytes(bytes)
+}
+
+fn is_image_bytes(bytes: &[u8]) -> bool {
+    terminal_image::sniff_image_format(bytes).is_some()
+}
+
+fn image_render_options(options: &CliOptions) -> terminal_image::ImageRenderOptions {
+    terminal_image::ImageRenderOptions {
+        width_cells: options.image_width,
+        height_cells: options.image_height,
+        fit: options.image_fit.into(),
+        background: options.image_background.into(),
+        terminal_columns: io::stdout().is_terminal().then(terminal_columns).flatten(),
+        terminal_rows: io::stdout().is_terminal().then(terminal_rows).flatten(),
+    }
 }
 
 fn read_stdin() -> io::Result<String> {
@@ -1136,11 +1295,11 @@ mod tests {
     use clap_complete::engine::complete;
 
     use super::{
-        CliOptions, CompletionShell, DebugTimingStats, OutputMode, PagerCommand, PagingMode,
-        cli_command, completion_command_for, completion_install_path_from_env,
-        completion_registration_script_for, format_cli_error, install_completion_script,
-        page_output_via_command, parse_cli_args, read_source_from_path, render_output,
-        resolve_pager_command, should_page_output, version_output,
+        CliOptions, CompletionShell, DebugTimingStats, ImageBackgroundArg, ImageFitArg, OutputMode,
+        PagerCommand, PagingMode, cli_command, completion_command_for,
+        completion_install_path_from_env, completion_registration_script_for, format_cli_error,
+        install_completion_script, page_output_via_command, parse_cli_args, read_source_from_path,
+        render_output, resolve_pager_command, should_page_output, version_output,
     };
 
     #[test]
@@ -1215,6 +1374,10 @@ mod tests {
                 mode: OutputMode::DebugSemantics,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: Some("fish".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
@@ -1237,6 +1400,10 @@ mod tests {
                 mode: OutputMode::DebugSemantics,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: Some("regex".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("pattern.re")],
@@ -1258,6 +1425,10 @@ mod tests {
                 mode: OutputMode::DebugAnalysis,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("docs/architecture.md")],
@@ -1281,6 +1452,10 @@ mod tests {
                 mode: OutputMode::DebugVisual,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: Some("markdown".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1300,6 +1475,10 @@ mod tests {
                 mode: OutputMode::DebugLayout,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1321,6 +1500,10 @@ mod tests {
                 mode: OutputMode::DebugRenderOps,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1342,6 +1525,10 @@ mod tests {
                 mode: OutputMode::DebugTerminal,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1365,9 +1552,42 @@ mod tests {
                 mode: OutputMode::Render,
                 paging: PagingMode::Never,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: Some("rust".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_image_display_options() {
+        let options = parse_cli_args([
+            OsString::from("--image-width=80"),
+            OsString::from("--image-height"),
+            OsString::from("30"),
+            OsString::from("--image-fit=original"),
+            OsString::from("--image-background=checker"),
+            OsString::from("image.tiff"),
+        ])
+        .expect("failed to parse image display options");
+
+        assert_eq!(
+            options,
+            CliOptions {
+                mode: OutputMode::Render,
+                paging: PagingMode::Auto,
+                debug_timing: false,
+                image_width: Some(80),
+                image_height: Some(30),
+                image_fit: ImageFitArg::Original,
+                image_background: ImageBackgroundArg::Checker,
+                language: None,
+                install_completion: None,
+                paths: vec![PathBuf::from("image.tiff")],
             }
         );
     }
@@ -1383,6 +1603,10 @@ mod tests {
                 mode: OutputMode::Version,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: None,
                 install_completion: None,
                 paths: vec![],
@@ -1404,6 +1628,10 @@ mod tests {
                 mode: OutputMode::Render,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: None,
                 install_completion: Some(CompletionShell::Bash),
                 paths: vec![],
@@ -1456,6 +1684,10 @@ mod tests {
                 mode: OutputMode::Render,
                 paging: PagingMode::Auto,
                 debug_timing: true,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
@@ -1485,6 +1717,10 @@ mod tests {
                 mode: OutputMode::Render,
                 paging: PagingMode::Auto,
                 debug_timing: false,
+                image_width: None,
+                image_height: None,
+                image_fit: ImageFitArg::Contain,
+                image_background: ImageBackgroundArg::Terminal,
                 language: Some("python".to_owned()),
                 install_completion: None,
                 paths: vec![],
@@ -1630,6 +1866,20 @@ mod tests {
 
         assert!(
             format!("{error:#}").contains("invalid value"),
+            "unexpected error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn rejects_zero_image_dimensions() {
+        let error = parse_cli_args([
+            OsString::from("--image-width=0"),
+            OsString::from("image.png"),
+        ])
+        .expect_err("zero image width should fail");
+
+        assert!(
+            format!("{error:#}").contains("--image-width must be greater than zero"),
             "unexpected error: {error:#}"
         );
     }
