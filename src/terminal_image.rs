@@ -21,6 +21,7 @@ const APPROX_CELL_PIXEL_HEIGHT: usize = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ImageFormat {
+    Bmp,
     Gif,
     Jpeg,
     Png,
@@ -31,6 +32,7 @@ pub(crate) enum ImageFormat {
 impl ImageFormat {
     fn as_str(self) -> &'static str {
         match self {
+            Self::Bmp => "bmp",
             Self::Gif => "gif",
             Self::Jpeg => "jpeg",
             Self::Png => "png",
@@ -87,6 +89,10 @@ pub(crate) struct TerminalImageOutput {
 }
 
 pub(crate) fn sniff_image_format(bytes: &[u8]) -> Option<ImageFormat> {
+    if is_bmp_file_header(bytes) {
+        return Some(ImageFormat::Bmp);
+    }
+
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return Some(ImageFormat::Png);
     }
@@ -112,6 +118,16 @@ pub(crate) fn sniff_image_format(bytes: &[u8]) -> Option<ImageFormat> {
     }
 
     None
+}
+
+fn is_bmp_file_header(bytes: &[u8]) -> bool {
+    if bytes.len() < 18 || !bytes.starts_with(b"BM") {
+        return false;
+    }
+
+    let reserved = u32::from_le_bytes([bytes[6], bytes[7], bytes[8], bytes[9]]);
+    let dib_header_size = u32::from_le_bytes([bytes[14], bytes[15], bytes[16], bytes[17]]);
+    reserved == 0 && matches!(dib_header_size, 12 | 40 | 52 | 56 | 108 | 124)
 }
 
 pub(crate) fn render_inline_image(
@@ -442,7 +458,7 @@ fn frame_note(format: ImageFormat) -> Option<&'static str> {
             "animated GIF inputs are rendered as their first frame outside the raw iTerm2 path",
         ),
         ImageFormat::Tiff => Some("multi-page TIFF inputs are rendered as their first page"),
-        ImageFormat::Jpeg | ImageFormat::Png | ImageFormat::Webp => None,
+        ImageFormat::Bmp | ImageFormat::Jpeg | ImageFormat::Png | ImageFormat::Webp => None,
     }
 }
 
@@ -772,13 +788,15 @@ fn encode_sixel_rgba_image(image: &DecodedRgbaImage) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::{
         DecodedRgbaImage, ImageBackground, ImageCellSize, ImageFit, ImageFormat,
         ImageRenderOptions, debug_image_json, encode_dynamic_png, encode_iterm2_inline_image,
         encode_kitty_png_image, encode_kitty_rgba_image, encode_sixel_rgba_image,
         render_inline_image, resize_to_cell_size, resolve_cell_size, sniff_image_format,
     };
-    use image::{DynamicImage, GenericImageView, RgbaImage};
+    use image::{DynamicImage, GenericImageView, ImageFormat as EncodedImageFormat, RgbaImage};
 
     fn one_pixel_png() -> Vec<u8> {
         encode_dynamic_png(&DynamicImage::ImageRgba8(RgbaImage::from_pixel(
@@ -789,8 +807,19 @@ mod tests {
         .expect("test png should encode")
     }
 
+    fn one_pixel_bmp() -> Vec<u8> {
+        let image =
+            DynamicImage::ImageRgba8(RgbaImage::from_pixel(1, 1, image::Rgba([255, 0, 0, 255])));
+        let mut cursor = Cursor::new(Vec::new());
+        image
+            .write_to(&mut cursor, EncodedImageFormat::Bmp)
+            .expect("test bmp should encode");
+        cursor.into_inner()
+    }
+
     #[test]
     fn sniffs_common_image_formats() {
+        assert_eq!(sniff_image_format(&one_pixel_bmp()), Some(ImageFormat::Bmp));
         assert_eq!(
             sniff_image_format(b"\x89PNG\r\n\x1a\nrest"),
             Some(ImageFormat::Png)
@@ -808,6 +837,7 @@ mod tests {
             sniff_image_format(b"RIFF\x00\x00\x00\x00WEBPrest"),
             Some(ImageFormat::Webp)
         );
+        assert_eq!(sniff_image_format(b"BMrest"), None);
         assert_eq!(sniff_image_format(b"hello"), None);
     }
 
@@ -952,6 +982,28 @@ mod tests {
         assert!(json.contains(r#""target_cells""#));
         assert!(json.contains(r#""background": "checker""#));
         assert!(json.contains(r#""stdout_is_terminal": false"#));
+    }
+
+    #[test]
+    fn debug_image_json_reports_bmp_metadata() {
+        let json = debug_image_json(
+            "image.bmp".as_ref(),
+            &one_pixel_bmp(),
+            false,
+            ImageRenderOptions {
+                width_cells: None,
+                height_cells: None,
+                fit: ImageFit::Contain,
+                background: ImageBackground::Terminal,
+                terminal_columns: None,
+                terminal_rows: None,
+            },
+        )
+        .expect("debug image metadata should render");
+
+        assert!(json.contains(r#""format": "bmp""#));
+        assert!(json.contains(r#""display_width": 1"#));
+        assert!(json.contains(r#""display_height": 1"#));
     }
 
     #[test]
