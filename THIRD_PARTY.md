@@ -419,7 +419,7 @@ Upstream projects:
 
 - `grammars/zsh/queries/highlights.scm`
   Source: [georgeharker/tree-sitter-zsh](https://github.com/georgeharker/tree-sitter-zsh)
-  Revision: `bd344c23a7683e293d077c6648e88f209782fedb`
+  Revision: `7a593401efb5418ffdedbe3c0e4c61c6d240166d`
   License: MIT
   Notes: repository-local adapted highlights query. Zsh parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-zsh](https://crates.io/crates/tree-sitter-zsh).
 
@@ -433,7 +433,7 @@ Upstream projects:
 
 - `grammars/powershell/queries/highlights.scm`
   Source: [airbus-cert/tree-sitter-powershell](https://github.com/airbus-cert/tree-sitter-powershell)
-  Revision: `da65ba3acc93777255781b447f5e7448245df4bf`
+  Revision: `d398441825243b00e317e87e1829b9d6a3e54ce0`
   License: MIT
   Notes: repository-local copy of the upstream PowerShell highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-powershell](https://crates.io/crates/tree-sitter-powershell).
 
@@ -783,16 +783,16 @@ Upstream projects:
 - `grammars/swift/queries/injections.scm`
 - `grammars/swift/queries/locals.scm`
   Source: [alex-pinkus/tree-sitter-swift](https://github.com/alex-pinkus/tree-sitter-swift)
-  Revision: `da7f9370b70ba31357122c211734db98eb6f6a35`
+  Revision: `78521a22771afcc0ed007e79aa94ad788027c91a`
   License: MIT
   Notes: repository-local copies of the upstream Swift query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-swift](https://crates.io/crates/tree-sitter-swift).
 
 - `grammars/dart/queries/highlights.scm`
 - `grammars/dart/queries/locals.scm`
   Source: [nielsenko/tree-sitter-dart](https://github.com/nielsenko/tree-sitter-dart)
-  Revision: `316b9743b2d45b7e7b71fdbdb28e3e8971d64c13`
+  Revision: `b57d734c84f510bbd524097902cab671e4dbfca9`
   License: MIT
-  Notes: repository-local copies of the upstream Dart query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-dart](https://crates.io/crates/tree-sitter-dart).
+  Notes: repository-local adapted copies of the upstream Dart query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-dart](https://crates.io/crates/tree-sitter-dart).
 
 - `grammars/elixir/queries/highlights.scm`
 - `grammars/elixir/queries/injections.scm`
@@ -908,9 +908,9 @@ Upstream projects:
 
 - `grammars/cfml/queries/*`
   Source: [cfmleditor/tree-sitter-cfml](https://github.com/cfmleditor/tree-sitter-cfml)
-  Revision: `4628d0be345c033330acc8e8b36d7c6eaf201c87`
+  Revision: `6b4a43943c191950ee2c77f7b94cec5e903318a4`
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-cfml](https://crates.io/crates/tree-sitter-cfml); the repository only keeps the upstream highlights and injections queries as integration assets.
+  Notes: parser now comes from the Rust crate [tree-sitter-cfml](https://crates.io/crates/tree-sitter-cfml); the repository only keeps repository-local adapted highlights and injections queries as integration assets.
 
 - `grammars/clojure/queries/highlights.scm`
   Source: [grammar-orchard/tree-sitter-clojure-orchard](https://codeberg.org/grammar-orchard/tree-sitter-clojure-orchard)
@@ -982,15 +982,15 @@ Upstream projects:
 
 - `grammars/erlang/queries/highlights.scm`
   Source: [WhatsApp/tree-sitter-erlang](https://github.com/WhatsApp/tree-sitter-erlang)
-  Revision: `1d78195c4fbb1fc027eb3e4220427f1eb8bfc89e`
+  Revision: `e446ec60022a7cafe157805742b41c04b499cc5d`
   License: Apache-2.0
   Notes: parser now comes from the Rust crate [tree-sitter-erlang](https://crates.io/crates/tree-sitter-erlang); the repository only keeps the upstream highlights query as an integration asset.
 
 - `grammars/fortran/queries/highlights.scm`
   Source: [stadelmanma/tree-sitter-fortran](https://github.com/stadelmanma/tree-sitter-fortran)
-  Revision: `be30d90dc7dfa4080b9c4abed3f400c9163a88df`
+  Revision: `48593829df8a929bfe58528eedcf405171921005`
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-fortran](https://crates.io/crates/tree-sitter-fortran); the repository only keeps the upstream highlights query as an integration asset.
+  Notes: parser now comes from the Rust crate [tree-sitter-fortran](https://crates.io/crates/tree-sitter-fortran); the repository only keeps a repository-local adapted highlights query as an integration asset.
 
 - `grammars/fortran_namelist/*`
   Source: repository-local
@@ -1093,7 +1093,7 @@ Upstream projects:
 
 - `grammars/c/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-c](https://github.com/tree-sitter/tree-sitter-c)
-  Revision: crate release `0.24.1`
+  Revision: crate release `0.24.2`
   License: MIT
   Notes: repository-local copy of the upstream C highlights query. Parser code is linked from the Rust crate `tree-sitter-c`.
 

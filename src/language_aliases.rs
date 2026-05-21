@@ -41,6 +41,8 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         "less" => "less",
         "kt" | "kts" | "kotlin" => "kotlin",
         "nginx" => "nginx",
+        "cert" | "certificate" | "crt" | "csr" | "pem" => "pem",
+        "gpg" | "openpgp" | "pgp" | "pgp-armor" | "openpgp-armor" => "openpgp_armor",
         "php" => "php",
         "properties" => "properties",
         "pip-requirements" | "requirements" | "requirements.txt" => "requirements",

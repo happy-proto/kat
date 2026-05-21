@@ -1485,7 +1485,8 @@ pub fn runtime(name: &str) -> Option<&'static LanguageRuntime> {
 }
 
 pub fn supports_runtime(name: &str) -> bool {
-    name == "python_docstring" || LANGUAGE_ASSETS_BY_NAME.contains_key(name)
+    matches!(name, "python_docstring" | "pem" | "openpgp_armor")
+        || LANGUAGE_ASSETS_BY_NAME.contains_key(name)
 }
 
 pub fn global_highlight_name(highlight_index: usize) -> &'static str {

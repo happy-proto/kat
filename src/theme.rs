@@ -557,6 +557,7 @@ fn token_style_for(capture: &str, text: &str) -> TokenStyle {
         "text.strong" => TokenStyle::new(DraculaColor::Orange).bold(),
         "text.title" => TokenStyle::new(DraculaColor::Purple).bold(),
         "text.uri" => TokenStyle::new(DraculaColor::Cyan),
+        "text.warning" => TokenStyle::new(DraculaColor::Orange).bold(),
         "type.qualifier" => TokenStyle::new(DraculaColor::Pink),
         "type.builtin" => TokenStyle::new(DraculaColor::Cyan).italic(),
         "type.unit" => TokenStyle::new(DraculaColor::Purple),
