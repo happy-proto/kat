@@ -9,13 +9,17 @@
 (attribute_name) @attribute
 (cf_attribute_name) @attribute
 (attribute_value) @string
-(raw_text) @embedded
+[
+  (script_text)
+  (style_text)
+] @embedded
 (start_tag) @tag
 (end_tag) @tag
 (self_closing_tag) @tag
 (cf_selfclose_tag) @tag
 (cf_start_tag_with_selfclose) @tag
 (cf_output_tag) @tag
+(cf_function_tag) @tag
 (cf_script_tag) @tag
 (cf_start_tag) @tag
 (cf_end_tag) @tag
@@ -24,19 +28,22 @@
 (cf_else_tag) @tag
 (cf_elseif_tag) @tag
 (cf_return_tag) @tag
+(cf_xml_tag) @tag
+
+(tag_name) @tag
+(cf_tag_name) @tag
 
 ; Variables
 ;----------
 
 (identifier) @variable
 
-; CFML scopes (variables, session, etc.)
-(cf_scope_identifier) @namespace
-
 ; Properties
 ;-----------
 
 (property_identifier) @property
+
+(shorthand_property_identifier) @property
 
 ; Function and method definitions
 ;--------------------------------
@@ -50,15 +57,6 @@
 (function_declaration
   (access_type) @keyword)
 
-(function_declaration
-  (return_type) @type)
-
-(generator_function
-  name: (identifier) @function)
-
-(generator_function_declaration
-  name: (identifier) @function)
-
 (method_definition
   name: [
     (property_identifier)
@@ -68,12 +66,6 @@
 (method_definition
   name: (property_identifier) @constructor
   (#eq? @constructor "constructor"))
-
-(formal_parameters
-  (type) @type)
-
-(formal_parameters
-  (required) @keyword)
 
 (pair
   key: (property_identifier) @function.method
@@ -260,10 +252,7 @@
   "in"
   "of"
   "instanceof"
-  "async"
   "static"
-  "export"
-  "yield"
   "with"
 ] @keyword
 
@@ -277,5 +266,4 @@
   "<"
   ">"
   "</"
-  "/>"
 ] @punctuation.bracket

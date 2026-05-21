@@ -82,11 +82,12 @@
   "operator" @keyword)
 
 ; Property access
-(unconditional_assignable_selector
-  (identifier) @property)
-
-(conditional_assignable_selector
-  (identifier) @property)
+[
+  (member_expression)
+  (null_aware_member_expression)
+  (cascade_member_expression)
+  (cascade_null_aware_member_expression)
+] property: (identifier) @property
 
 ; ============================================================================
 ; Declarations

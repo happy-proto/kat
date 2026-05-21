@@ -120,15 +120,15 @@
  ] @operator
 
 [
- "\\.and\\."
- "\\.or\\."
- "\\.lt\\."
- "\\.gt\\."
- "\\.ge\\."
- "\\.le\\."
- "\\.eq\\."
- "\\.eqv\\."
- "\\.neqv\\."
+ ".and."
+ ".or."
+ ".lt."
+ ".gt."
+ ".ge."
+ ".le."
+ ".eq."
+ ".eqv."
+ ".neqv."
  ] @keyword.operator
 
 ;; Brackets
