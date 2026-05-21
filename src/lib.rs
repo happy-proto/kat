@@ -1,4 +1,5 @@
 mod analysis;
+mod armor_formats;
 mod debug_progress;
 mod debug_runtime_log;
 mod display_geometry;
@@ -29,6 +30,10 @@ use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
 use crate::analysis::AnalysisDocument;
+use crate::armor_formats::{
+    is_openpgp_armor_extension, is_pem_extension, looks_like_openpgp_armor, looks_like_pem,
+    render_armor_format,
+};
 use crate::debug_progress::log as progress_log;
 use crate::display_geometry::{
     ByteOffset, DisplayColumn, display_column_for_byte_offset, display_width_from_column,
@@ -68,6 +73,7 @@ enum SupportedLanguage {
     Asp,
     Asm,
     AuthorizedKeys,
+    OpenPgpArmor,
     Awk,
     Bash,
     Batch,
@@ -137,6 +143,7 @@ enum SupportedLanguage {
     Nginx,
     Ninja,
     Nix,
+    Pem,
     Php,
     Properties,
     Proto,
@@ -291,6 +298,8 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "nasm" => SupportedLanguage::Nasm,
         "asciidoc" => SupportedLanguage::AsciiDoc,
         "authorized_keys" => SupportedLanguage::AuthorizedKeys,
+        "pem" => SupportedLanguage::Pem,
+        "openpgp_armor" => SupportedLanguage::OpenPgpArmor,
         "awk" => SupportedLanguage::Awk,
         "bash" => SupportedLanguage::Bash,
         "batch" => SupportedLanguage::Batch,
@@ -1082,6 +1091,8 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "nasm" => DocumentKind::plain("nasm"),
         "asciidoc" => DocumentKind::plain("asciidoc"),
         "authorized_keys" => DocumentKind::plain("authorized_keys"),
+        "pem" => DocumentKind::plain("pem"),
+        "openpgp_armor" => DocumentKind::plain("openpgp_armor"),
         "awk" => DocumentKind::plain("awk"),
         "ignore" => DocumentKind::plain("ignore"),
         "git_link" => DocumentKind::plain("git_link"),
@@ -1290,6 +1301,9 @@ fn highlight_named_language_render_data_with_depth(
     let resolved_document_kind =
         resolve_highlight_document_kind(document_kind, source_path, source);
     let resolved_runtime_name = resolved_document_kind.runtime_name();
+    if matches!(resolved_runtime_name, "pem" | "openpgp_armor") {
+        return render_armor_format(resolved_document_kind, source, theme);
+    }
     let log_progress = source_path.is_some();
     if log_progress {
         progress_log(
@@ -1548,6 +1562,14 @@ pub(crate) fn detect_document_kind(
         || is_authorized_keys_pub_path(source_path, source)
     {
         return Some(DocumentKind::plain("authorized_keys"));
+    }
+
+    if is_pem_path(source_path, source) || looks_like_pem(source) {
+        return Some(DocumentKind::plain("pem"));
+    }
+
+    if is_openpgp_armor_path(source_path, source) || looks_like_openpgp_armor(source) {
+        return Some(DocumentKind::plain("openpgp_armor"));
     }
 
     let awk = grammar("awk");
@@ -2304,6 +2326,24 @@ fn is_authorized_keys_pub_path(source_path: Option<&Path>, source: &str) -> bool
     source_path.is_some_and(|path| {
         path.extension().and_then(|extension| extension.to_str()) == Some("pub")
             && looks_like_authorized_keys(source)
+    })
+}
+
+fn is_pem_path(source_path: Option<&Path>, source: &str) -> bool {
+    source_path.is_some_and(|path| {
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(is_pem_extension)
+            && looks_like_pem(source)
+    })
+}
+
+fn is_openpgp_armor_path(source_path: Option<&Path>, source: &str) -> bool {
+    source_path.is_some_and(|path| {
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(is_openpgp_armor_extension)
+            && looks_like_openpgp_armor(source)
     })
 }
 
@@ -4226,6 +4266,7 @@ mod tests {
         "yaml",
         "markdown",
         "asciidoc",
+        "armor",
         "bibtex",
         "html",
         "css",
@@ -5199,6 +5240,16 @@ mod tests {
             relative_path: "authorized_keys/authorized_keys",
             expect_highlight: true,
             expected_fragments: &["restrict", "command=", "ssh-ed25519", "kat@example"],
+        },
+        FixtureCase {
+            relative_path: "armor/server.pem",
+            expect_highlight: true,
+            expected_fragments: &["BEGIN CERTIFICATE", "END CERTIFICATE"],
+        },
+        FixtureCase {
+            relative_path: "armor/public.asc",
+            expect_highlight: true,
+            expected_fragments: &["PGP PUBLIC KEY BLOCK", "Version", "=abcd"],
         },
         FixtureCase {
             relative_path: "git_commit/COMMIT_EDITMSG",
@@ -6477,6 +6528,35 @@ mod tests {
             ),
             Some(SupportedLanguage::AuthorizedKeys)
         ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("server.pem")),
+                "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n",
+            ),
+            Some(SupportedLanguage::Pem)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("private.key")),
+                concat!(
+                    "-----BEGIN ENCRYPTED PRIVATE ",
+                    "KEY-----\nMIIB\n-----END ENCRYPTED PRIVATE ",
+                    "KEY-----\n",
+                ),
+            ),
+            Some(SupportedLanguage::Pem)
+        ));
+        assert!(matches!(
+            detect_language(
+                Some(Path::new("public.asc")),
+                "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQEN\n=abcd\n-----END PGP PUBLIC KEY BLOCK-----\n",
+            ),
+            Some(SupportedLanguage::OpenPgpArmor)
+        ));
+        assert_eq!(
+            detect_language(Some(Path::new("archive.gpg")), "not ascii armor\n"),
+            None
+        );
         assert!(matches!(
             detect_language(Some(Path::new("theme.awk")), "BEGIN { print \"kat\" }\n"),
             Some(SupportedLanguage::Awk)
@@ -8152,6 +8232,83 @@ mod tests {
             rendered.contains("\x1b[38;2;241;250;140m.direnv"),
             "expected local exclude patterns to reuse ignore string styling"
         );
+    }
+
+    #[test]
+    fn armor_files_detect_and_highlight_textual_boundaries() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+
+        let cert_path = fixture_path("armor/server.pem");
+        let cert_source = read_file(&cert_path);
+        let cert_rendered = render_with_theme(Some(cert_path.as_path()), &cert_source, &theme)
+            .unwrap_or_else(|error| panic!("failed to render {}: {error}", cert_path.display()));
+        assert!(
+            cert_rendered.contains("\x1b[3m\x1b[38;2;80;250;123m-----BEGIN "),
+            "expected PEM boundaries to receive directive styling"
+        );
+        assert!(
+            cert_rendered.contains("\x1b[38;2;139;233;253mCERTIFICATE"),
+            "expected PEM labels to receive type styling"
+        );
+
+        let private_source = concat!(
+            "-----BEGIN ENCRYPTED PRIVATE ",
+            "KEY-----\n",
+            "Proc-Type: 4,ENCRYPTED\n",
+            "DEK-Info: AES-256-CBC,0123456789ABCDEF0123456789ABCDEF\n\n",
+            "MIIBvTBXBgkqhkiG9w0BBQ0wSjApBgkqhkiG9w0BBQwwHAQIkatprivatefixture\n",
+            "-----END ENCRYPTED PRIVATE ",
+            "KEY-----\n",
+        );
+        let private_analysis =
+            analysis_snapshot_for_path(Path::new("private.key"), private_source, &theme);
+        assert_eq!(
+            private_analysis
+                .detected_document_kind
+                .expect("kind")
+                .runtime_name,
+            "pem"
+        );
+        let private_label = private_source
+            .find("ENCRYPTED PRIVATE KEY")
+            .expect("private label should exist");
+        let private_style = private_analysis
+            .spans
+            .iter()
+            .find(|span| span.start <= private_label && private_label < span.end)
+            .and_then(|span| span.style.as_ref())
+            .expect("private label should be styled");
+        assert_eq!(private_style.color_name, "orange");
+        assert!(private_style.bold);
+
+        let pgp_path = fixture_path("armor/public.asc");
+        let pgp_source = read_file(&pgp_path);
+        let pgp_analysis = analysis_snapshot_for_path(pgp_path.as_path(), &pgp_source, &theme);
+        assert_eq!(
+            pgp_analysis
+                .detected_document_kind
+                .expect("kind")
+                .runtime_name,
+            "openpgp_armor"
+        );
+
+        let version_start = pgp_source.find("Version").expect("header should exist");
+        let version_style = pgp_analysis
+            .spans
+            .iter()
+            .find(|span| span.start <= version_start && version_start < span.end)
+            .and_then(|span| span.style.as_ref())
+            .expect("header key should be styled");
+        assert_eq!(version_style.color_name, "foreground");
+
+        let checksum_start = pgp_source.find("=abcd").expect("checksum should exist");
+        let checksum_style = pgp_analysis
+            .spans
+            .iter()
+            .find(|span| span.start <= checksum_start && checksum_start < span.end)
+            .and_then(|span| span.style.as_ref())
+            .expect("checksum should be styled");
+        assert_eq!(checksum_style.color_name, "yellow");
     }
 
     #[test]
