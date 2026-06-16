@@ -755,18 +755,61 @@ fn completion_install_path_from_env(
 }
 
 fn completion_registration_script(shell: CompletionShell) -> Result<String> {
-    let completer = env::current_exe()
-        .context("failed to resolve current executable for completion install")?
-        .to_string_lossy()
-        .into_owned();
-    completion_registration_script_for(shell, &completer)
+    completion_registration_script_for(shell, "kat")
 }
 
-fn completion_registration_script_for(shell: CompletionShell, completer: &str) -> Result<String> {
+fn completion_registration_script_for(
+    shell: CompletionShell,
+    command_name: &str,
+) -> Result<String> {
+    if matches!(shell, CompletionShell::Fish) {
+        return Ok(format!(
+            "\
+function __kat_complete
+    set -l kat_bin (builtin type --force-path {command_name})
+    test -n \"$kat_bin\"; or return
+
+    COMPLETE=fish \"$kat_bin\" -- (commandline --current-process --tokenize --cut-at-cursor) (commandline --current-token)
+end
+
+complete --keep-order --exclusive --command {command_name} --arguments \"(__kat_complete)\"
+"
+        ));
+    }
+
     let mut buf = Vec::new();
-    write_completion_registration(shell.env_completer(), completer, &mut buf)
+    write_completion_registration(shell.env_completer(), "__KAT_COMPLETER__", &mut buf)
         .context("failed to generate completion registration")?;
-    String::from_utf8(buf).context("generated completion script was not valid UTF-8")
+    let script =
+        String::from_utf8(buf).context("generated completion script was not valid UTF-8")?;
+    Ok(match shell {
+        CompletionShell::Bash => script
+            .replace(
+                "    local words=(\"${COMP_WORDS[@]}\")",
+                &format!(
+                    "\
+    local kat_bin
+    kat_bin=$(builtin type -P {command_name}) || return
+    [[ -n \"$kat_bin\" ]] || return
+    local words=(\"${{COMP_WORDS[@]}}\")"
+                ),
+            )
+            .replace("\"__KAT_COMPLETER__\" --", "\"$kat_bin\" --"),
+        CompletionShell::Zsh => script
+            .replace(
+                "function _clap_dynamic_completer_kat() {\n",
+                &format!(
+                    "\
+function _clap_dynamic_completer_kat() {{
+    local kat_bin
+    kat_bin=\"$(builtin whence -p {command_name})\" || return
+    [[ -n \"$kat_bin\" ]] || return
+"
+                ),
+            )
+            .replace("__KAT_COMPLETER__ --", "\"$kat_bin\" --"),
+        CompletionShell::Fish => unreachable!("fish completion script is generated above"),
+    })
 }
 
 fn install_completion(shell: CompletionShell) -> Result<String> {
@@ -1297,7 +1340,7 @@ mod tests {
     use super::{
         CliOptions, CompletionShell, DebugTimingStats, ImageBackgroundArg, ImageFitArg, OutputMode,
         PagerCommand, PagingMode, cli_command, completion_command_for,
-        completion_install_path_from_env, completion_registration_script_for, format_cli_error,
+        completion_install_path_from_env, completion_registration_script, format_cli_error,
         install_completion_script, page_output_via_command, parse_cli_args, read_source_from_path,
         render_output, resolve_pager_command, should_page_output, version_output,
     };
@@ -1765,12 +1808,41 @@ mod tests {
     }
 
     #[test]
-    fn completion_registration_script_contains_completer_path() {
-        let script = completion_registration_script_for(CompletionShell::Bash, "/tmp/bin/kat")
+    fn bash_completion_registration_resolves_external_command_from_path() {
+        let script = completion_registration_script(CompletionShell::Bash)
             .expect("bash completion registration should render");
 
         assert!(
-            script.contains("/tmp/bin/kat") && script.contains("complete -o nospace"),
+            script.contains("COMPLETE=\"bash\"")
+                && script.contains("kat_bin=$(builtin type -P kat) || return")
+                && script.contains("\"$kat_bin\" --")
+                && script.contains("complete -o nospace"),
+            "unexpected registration script: {script}"
+        );
+    }
+
+    #[test]
+    fn fish_completion_registration_resolves_external_command_from_path() {
+        let script = completion_registration_script(CompletionShell::Fish)
+            .expect("fish completion registration should render");
+
+        assert!(
+            script.contains("builtin type --force-path kat")
+                && script.contains("COMPLETE=fish \"$kat_bin\" --")
+                && script.contains("complete --keep-order --exclusive --command kat"),
+            "unexpected registration script: {script}"
+        );
+    }
+
+    #[test]
+    fn zsh_completion_registration_resolves_external_command_from_path() {
+        let script = completion_registration_script(CompletionShell::Zsh)
+            .expect("zsh completion registration should render");
+
+        assert!(
+            script.contains("kat_bin=\"$(builtin whence -p kat)\" || return")
+                && script.contains("\"$kat_bin\" --")
+                && script.contains("compdef _clap_dynamic_completer_kat kat"),
             "unexpected registration script: {script}"
         );
     }
