@@ -755,11 +755,7 @@ fn completion_install_path_from_env(
 }
 
 fn completion_registration_script(shell: CompletionShell) -> Result<String> {
-    let completer = env::current_exe()
-        .context("failed to resolve current executable for completion install")?
-        .to_string_lossy()
-        .into_owned();
-    completion_registration_script_for(shell, &completer)
+    completion_registration_script_for(shell, "kat")
 }
 
 fn completion_registration_script_for(shell: CompletionShell, completer: &str) -> Result<String> {
@@ -1297,7 +1293,7 @@ mod tests {
     use super::{
         CliOptions, CompletionShell, DebugTimingStats, ImageBackgroundArg, ImageFitArg, OutputMode,
         PagerCommand, PagingMode, cli_command, completion_command_for,
-        completion_install_path_from_env, completion_registration_script_for, format_cli_error,
+        completion_install_path_from_env, completion_registration_script, format_cli_error,
         install_completion_script, page_output_via_command, parse_cli_args, read_source_from_path,
         render_output, resolve_pager_command, should_page_output, version_output,
     };
@@ -1765,12 +1761,14 @@ mod tests {
     }
 
     #[test]
-    fn completion_registration_script_contains_completer_path() {
-        let script = completion_registration_script_for(CompletionShell::Bash, "/tmp/bin/kat")
+    fn completion_registration_script_uses_path_resolved_command_name() {
+        let script = completion_registration_script(CompletionShell::Bash)
             .expect("bash completion registration should render");
 
         assert!(
-            script.contains("/tmp/bin/kat") && script.contains("complete -o nospace"),
+            script.contains("COMPLETE=\"bash\"")
+                && script.contains("\"kat\" --")
+                && script.contains("complete -o nospace"),
             "unexpected registration script: {script}"
         );
     }
