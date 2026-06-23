@@ -125,21 +125,17 @@ pub fn terminal_hyperlink_destination(destination: &str) -> Option<String> {
         .strip_prefix('<')
         .and_then(|value| value.strip_suffix('>'))
         .unwrap_or(destination);
-    let safe_destination = destination
-        .chars()
-        .filter(|ch| !ch.is_control())
-        .collect::<String>();
-    if safe_destination.contains(char::is_whitespace) {
+    if destination.contains(char::is_control) || destination.contains(char::is_whitespace) {
         return None;
     }
-    let rest = safe_destination
+    let rest = destination
         .strip_prefix("https://")
-        .or_else(|| safe_destination.strip_prefix("http://"))?;
+        .or_else(|| destination.strip_prefix("http://"))?;
     let host_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     if host_end == 0 {
         return None;
     }
-    Some(safe_destination)
+    Some(destination.to_owned())
 }
 
 pub(crate) fn osc8_open(destination: &str) -> String {
@@ -300,7 +296,7 @@ mod tests {
         );
         assert_eq!(
             terminal_hyperlink_destination("https://example.com/\x1bpath"),
-            Some("https://example.com/path".to_owned())
+            None
         );
     }
 

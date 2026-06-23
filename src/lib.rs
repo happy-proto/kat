@@ -11244,6 +11244,19 @@ priority: 7
         assert_eq!(plain, markdown);
     }
 
+    #[test]
+    fn control_characters_disable_terminal_hyperlinks() {
+        let markdown = "See <https://example.com/\x1bpath>.\n";
+        let rendered = render_named_language_with_timing_and_terminal_options(
+            "markdown", markdown, /*terminal_width*/ None, /*hyperlinks_enabled*/ true,
+        )
+        .expect("markdown render should succeed")
+        .output;
+
+        assert!(!rendered.contains("\x1b]8;;"));
+        assert_eq!(strip_ansi(&rendered), markdown);
+    }
+
     fn find_nested_region<'a>(
         snapshot: &'a AnalysisSnapshot,
         runtime_name: &str,
