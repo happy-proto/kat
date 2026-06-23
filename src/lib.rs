@@ -1541,8 +1541,7 @@ fn collect_styled_spans<'a>(
                     .merged_token_style_for(active_captures.iter().copied(), text)
                     .or_else(|| theme.default_style());
                 let hyperlink = active_captures
-                    .iter()
-                    .any(|capture| *capture == "text.uri")
+                    .contains(&"text.uri")
                     .then(|| crate::terminal::terminal_hyperlink_destination(text))
                     .flatten();
                 push_span(&mut spans, start..end, style, hyperlink);

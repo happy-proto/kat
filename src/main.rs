@@ -1013,7 +1013,7 @@ fn render_hyperlinks_enabled(options: &CliOptions) -> bool {
         HyperlinkMode::Auto => {
             io::stdout().is_terminal()
                 && env::var("TERM").map_or(true, |term| term != "dumb")
-                && !env::var_os("NO_COLOR").is_some()
+                && env::var_os("NO_COLOR").is_none()
         }
     }
 }
