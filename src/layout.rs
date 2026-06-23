@@ -5,7 +5,7 @@ use serde::Serialize;
 use crate::{
     StyledSpan, VisualRegion,
     display_geometry::{display_text_spans, display_width},
-    style_covering_span_from,
+    span_covering_range_from,
     theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
 };
 
@@ -87,6 +87,7 @@ pub(crate) struct LayoutCell {
     pub(crate) width: usize,
     pub(crate) text: String,
     pub(crate) style: Option<TokenStyle>,
+    pub(crate) hyperlink: Option<String>,
 }
 
 impl LayoutCell {
@@ -96,6 +97,7 @@ impl LayoutCell {
             width: self.width,
             text: self.text.clone(),
             style: self.style.map(|style| style.snapshot(color_mode)),
+            hyperlink: self.hyperlink.clone(),
         }
     }
 }
@@ -142,6 +144,7 @@ pub(crate) struct LayoutCellSnapshot {
     pub width: usize,
     pub text: String,
     pub style: Option<TokenStyleSnapshot>,
+    pub hyperlink: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -204,7 +207,7 @@ fn build_rows(source: &str, spans: &[StyledSpan], terminal_width: Option<usize>)
             for row in wrapped_rows {
                 let mut cells = Vec::new();
                 for grapheme in &graphemes[row.grapheme_start..row.grapheme_end] {
-                    let style = style_covering_span_from(
+                    let span = span_covering_range_from(
                         spans,
                         &mut span_cursor,
                         grapheme.byte_start,
@@ -214,7 +217,8 @@ fn build_rows(source: &str, spans: &[StyledSpan], terminal_width: Option<usize>)
                         column: grapheme.column_start - row.start_column,
                         width: grapheme.width,
                         text: grapheme.rendered_text.clone(),
-                        style,
+                        style: span.and_then(|span| span.style),
+                        hyperlink: span.and_then(|span| span.hyperlink.clone()),
                     });
                 }
                 rows.push(LayoutRow {

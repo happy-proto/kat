@@ -232,6 +232,13 @@ enum OutputMode {
     Version,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum HyperlinkMode {
+    Auto,
+    Always,
+    Never,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 struct CliOptions {
     mode: OutputMode,
@@ -241,6 +248,7 @@ struct CliOptions {
     image_height: Option<usize>,
     image_fit: ImageFitArg,
     image_background: ImageBackgroundArg,
+    hyperlinks: HyperlinkMode,
     language: Option<String>,
     install_completion: Option<CompletionShell>,
     paths: Vec<PathBuf>,
@@ -427,6 +435,8 @@ struct CliArgs {
     install_completion: Option<CompletionShell>,
     #[arg(long)]
     language: Option<String>,
+    #[arg(long, value_enum)]
+    hyperlinks: Option<HyperlinkMode>,
     #[arg(long, value_enum, default_value_t = PagingMode::Auto)]
     paging: PagingMode,
     #[arg(
@@ -709,10 +719,24 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         image_height: cli.image_height,
         image_fit: cli.image_fit,
         image_background: cli.image_background,
+        hyperlinks: resolve_hyperlink_mode(cli.hyperlinks)?,
         language,
         install_completion: cli.install_completion,
         paths: cli.paths,
     })
+}
+
+fn resolve_hyperlink_mode(cli_mode: Option<HyperlinkMode>) -> Result<HyperlinkMode> {
+    if let Some(mode) = cli_mode {
+        return Ok(mode);
+    }
+
+    let Some(env_mode) = env::var_os("KAT_HYPERLINKS") else {
+        return Ok(HyperlinkMode::Auto);
+    };
+    let env_mode = env_mode.to_string_lossy();
+    HyperlinkMode::from_str(&env_mode, true)
+        .map_err(|_| anyhow::anyhow!("KAT_HYPERLINKS must be auto, always, or never"))
 }
 
 fn completion_install_path(shell: CompletionShell) -> Result<PathBuf> {
@@ -945,15 +969,20 @@ fn render_output_with_timing(
 ) -> Result<String> {
     if matches!(options.mode, OutputMode::Render) {
         let terminal_width = io::stdout().is_terminal().then(terminal_columns).flatten();
+        let hyperlinks_enabled = render_hyperlinks_enabled(options);
         let render_output = match options.language.as_deref() {
-            Some(language_name) => kat::render_named_language_with_timing_and_terminal_width(
+            Some(language_name) => kat::render_named_language_with_timing_and_terminal_options(
                 language_name,
                 source,
                 terminal_width,
+                hyperlinks_enabled,
             )?,
-            None => {
-                kat::render_with_timing_and_terminal_width(source_path, source, terminal_width)?
-            }
+            None => kat::render_with_timing_and_terminal_options(
+                source_path,
+                source,
+                terminal_width,
+                hyperlinks_enabled,
+            )?,
         };
         if let Some(timings) = timings {
             timings.render_pipeline.detect_document_kind +=
@@ -975,6 +1004,18 @@ fn render_output_with_timing(
         source_path,
         source,
     )
+}
+
+fn render_hyperlinks_enabled(options: &CliOptions) -> bool {
+    match options.hyperlinks {
+        HyperlinkMode::Never => false,
+        HyperlinkMode::Always => true,
+        HyperlinkMode::Auto => {
+            io::stdout().is_terminal()
+                && env::var("TERM").map_or(true, |term| term != "dumb")
+                && !env::var_os("NO_COLOR").is_some()
+        }
+    }
 }
 
 fn resolve_debug_language_name(
@@ -1335,14 +1376,16 @@ mod tests {
         time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
+    use clap::ValueEnum;
     use clap_complete::engine::complete;
 
     use super::{
-        CliOptions, CompletionShell, DebugTimingStats, ImageBackgroundArg, ImageFitArg, OutputMode,
-        PagerCommand, PagingMode, cli_command, completion_command_for,
+        CliOptions, CompletionShell, DebugTimingStats, HyperlinkMode, ImageBackgroundArg,
+        ImageFitArg, OutputMode, PagerCommand, PagingMode, cli_command, completion_command_for,
         completion_install_path_from_env, completion_registration_script, format_cli_error,
         install_completion_script, page_output_via_command, parse_cli_args, read_source_from_path,
-        render_output, resolve_pager_command, should_page_output, version_output,
+        render_output, resolve_hyperlink_mode, resolve_pager_command, should_page_output,
+        version_output,
     };
 
     #[test]
@@ -1421,6 +1464,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: Some("fish".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
@@ -1447,6 +1491,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: Some("regex".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("pattern.re")],
@@ -1472,6 +1517,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("docs/architecture.md")],
@@ -1499,6 +1545,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: Some("markdown".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1522,6 +1569,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1547,6 +1595,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1572,6 +1621,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1599,10 +1649,34 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: Some("rust".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
             }
+        );
+    }
+
+    #[test]
+    fn parses_hyperlink_mode() {
+        let options = parse_cli_args([
+            OsString::from("--hyperlinks=never"),
+            OsString::from("README.md"),
+        ])
+        .expect("failed to parse hyperlink mode");
+
+        assert_eq!(options.hyperlinks, HyperlinkMode::Never);
+    }
+
+    #[test]
+    fn resolves_explicit_hyperlink_mode_before_environment() {
+        assert_eq!(
+            resolve_hyperlink_mode(Some(HyperlinkMode::Always)).expect("explicit mode"),
+            HyperlinkMode::Always
+        );
+        assert_eq!(
+            HyperlinkMode::from_str("never", true).expect("value enum should parse"),
+            HyperlinkMode::Never
         );
     }
 
@@ -1628,6 +1702,7 @@ mod tests {
                 image_height: Some(30),
                 image_fit: ImageFitArg::Original,
                 image_background: ImageBackgroundArg::Checker,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("image.tiff")],
@@ -1650,6 +1725,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: None,
                 paths: vec![],
@@ -1675,6 +1751,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: Some(CompletionShell::Bash),
                 paths: vec![],
@@ -1731,6 +1808,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
@@ -1764,6 +1842,7 @@ mod tests {
                 image_height: None,
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
+                hyperlinks: HyperlinkMode::Auto,
                 language: Some("python".to_owned()),
                 install_completion: None,
                 paths: vec![],

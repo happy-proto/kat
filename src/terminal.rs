@@ -119,6 +119,65 @@ pub fn escape_control_sequences(text: &str) -> String {
     escaped
 }
 
+pub fn terminal_hyperlink_destination(destination: &str) -> Option<String> {
+    let destination = destination.trim();
+    let destination = destination
+        .strip_prefix('<')
+        .and_then(|value| value.strip_suffix('>'))
+        .unwrap_or(destination);
+    let safe_destination = destination
+        .chars()
+        .filter(|ch| !ch.is_control())
+        .collect::<String>();
+    if safe_destination.contains(char::is_whitespace) {
+        return None;
+    }
+    let rest = safe_destination
+        .strip_prefix("https://")
+        .or_else(|| safe_destination.strip_prefix("http://"))?;
+    let host_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    if host_end == 0 {
+        return None;
+    }
+    Some(safe_destination)
+}
+
+pub(crate) fn osc8_open(destination: &str) -> String {
+    format!("\x1b]8;;{destination}\x07")
+}
+
+pub(crate) const OSC8_CLOSE: &str = "\x1b]8;;\x07";
+
+pub fn strip_osc8_hyperlinks(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut stripped = String::with_capacity(text.len());
+    let mut index = 0usize;
+
+    while index < bytes.len() {
+        if bytes[index..].starts_with(b"\x1b]8;;") {
+            index += 5;
+            while index < bytes.len() {
+                if bytes[index] == b'\x07' {
+                    index += 1;
+                    break;
+                }
+                if index + 1 < bytes.len() && bytes[index] == b'\x1b' && bytes[index + 1] == b'\\' {
+                    index += 2;
+                    break;
+                }
+                index += 1;
+            }
+            continue;
+        }
+
+        let ch = text[index..].chars().next().unwrap_or_default();
+        stripped.push(ch);
+        index += ch.len_utf8();
+    }
+
+    stripped
+}
+
 fn background_queries_disabled(value: Option<&OsStr>) -> bool {
     match value.and_then(|value| value.to_str()) {
         None => false,
@@ -195,7 +254,7 @@ fn detect_color_mode() -> ColorMode {
 mod tests {
     use super::{
         NestedRegionTintSource, TerminalCapabilities, background_queries_disabled,
-        escape_control_sequences,
+        escape_control_sequences, strip_osc8_hyperlinks, terminal_hyperlink_destination,
     };
     use std::ffi::OsStr;
 
@@ -221,6 +280,35 @@ mod tests {
         assert_eq!(
             escape_control_sequences("\x1b[31mhi\r\n"),
             "\\e[31mhi\\r\\n"
+        );
+    }
+
+    #[test]
+    fn terminal_hyperlinks_accept_only_safe_web_urls() {
+        assert_eq!(
+            terminal_hyperlink_destination("https://example.com/path"),
+            Some("https://example.com/path".to_owned())
+        );
+        assert_eq!(
+            terminal_hyperlink_destination("<http://example.com>"),
+            Some("http://example.com".to_owned())
+        );
+        assert_eq!(terminal_hyperlink_destination("mailto:a@example.com"), None);
+        assert_eq!(
+            terminal_hyperlink_destination("https:///missing-host"),
+            None
+        );
+        assert_eq!(
+            terminal_hyperlink_destination("https://example.com/\x1bpath"),
+            Some("https://example.com/path".to_owned())
+        );
+    }
+
+    #[test]
+    fn strip_osc8_hyperlinks_keeps_visible_text() {
+        assert_eq!(
+            strip_osc8_hyperlinks("\x1b]8;;https://example.com\x07visible\x1b]8;;\x07"),
+            "visible"
         );
     }
 }

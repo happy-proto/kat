@@ -203,6 +203,7 @@ fn push_capture(
     spans.push(StyledSpan {
         range,
         style: Some(style),
+        hyperlink: None,
     });
 }
 

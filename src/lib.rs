@@ -268,8 +268,28 @@ pub fn render_with_timing_and_terminal_width(
     source: &str,
     terminal_width: Option<usize>,
 ) -> Result<RenderOutput> {
+    render_with_timing_and_terminal_options(
+        source_path,
+        source,
+        terminal_width,
+        /*hyperlinks_enabled*/ false,
+    )
+}
+
+pub fn render_with_timing_and_terminal_options(
+    source_path: Option<&Path>,
+    source: &str,
+    terminal_width: Option<usize>,
+    hyperlinks_enabled: bool,
+) -> Result<RenderOutput> {
     let theme = detected_theme();
-    render_with_theme_and_timing(source_path, source, &theme, terminal_width)
+    render_with_theme_and_timing(
+        source_path,
+        source,
+        &theme,
+        terminal_width,
+        hyperlinks_enabled,
+    )
 }
 
 pub fn render_named_language_with_timing_and_terminal_width(
@@ -277,8 +297,32 @@ pub fn render_named_language_with_timing_and_terminal_width(
     source: &str,
     terminal_width: Option<usize>,
 ) -> Result<RenderOutput> {
+    render_named_language_with_timing_and_terminal_options(
+        language_name,
+        source,
+        terminal_width,
+        /*hyperlinks_enabled*/ false,
+    )
+}
+
+pub fn render_named_language_with_timing_and_terminal_options(
+    language_name: &str,
+    source: &str,
+    terminal_width: Option<usize>,
+    hyperlinks_enabled: bool,
+) -> Result<RenderOutput> {
     let theme = detected_theme();
-    render_named_language_with_theme_and_timing(language_name, source, &theme, terminal_width)
+    render_named_language_with_theme_and_timing(
+        language_name,
+        source,
+        &theme,
+        terminal_width,
+        hyperlinks_enabled,
+    )
+}
+
+pub fn strip_terminal_hyperlinks(text: &str) -> String {
+    terminal::strip_osc8_hyperlinks(text)
 }
 
 pub fn detected_language_name(source_path: Option<&Path>, source: &str) -> Option<&'static str> {
@@ -421,7 +465,14 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
 
 #[cfg_attr(not(test), allow(dead_code))]
 fn render_with_theme(source_path: Option<&Path>, source: &str, theme: &Theme) -> Result<String> {
-    Ok(render_with_theme_and_timing(source_path, source, theme, None)?.output)
+    Ok(render_with_theme_and_timing(
+        source_path,
+        source,
+        theme,
+        None,
+        /*hyperlinks_enabled*/ false,
+    )?
+    .output)
 }
 
 fn analyze_with_theme(
@@ -513,11 +564,19 @@ fn render_with_theme_and_timing(
     source: &str,
     theme: &Theme,
     terminal_width: Option<usize>,
+    hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
     let mut timings = RenderTimings::default();
     let analysis = AnalysisDocument::detect(source_path, source, *theme, Some(&mut timings))?;
 
-    let output = render_analysis_output(&analysis, source, theme, terminal_width, &mut timings);
+    let output = render_analysis_output(
+        &analysis,
+        source,
+        theme,
+        terminal_width,
+        hyperlinks_enabled,
+        &mut timings,
+    );
 
     Ok(RenderOutput { output, timings })
 }
@@ -527,12 +586,20 @@ fn render_named_language_with_theme_and_timing(
     source: &str,
     theme: &Theme,
     terminal_width: Option<usize>,
+    hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
     let mut timings = RenderTimings::default();
     let analysis =
         AnalysisDocument::named_language(language_name, source, *theme, Some(&mut timings))?;
 
-    let output = render_analysis_output(&analysis, source, theme, terminal_width, &mut timings);
+    let output = render_analysis_output(
+        &analysis,
+        source,
+        theme,
+        terminal_width,
+        hyperlinks_enabled,
+        &mut timings,
+    );
 
     Ok(RenderOutput { output, timings })
 }
@@ -542,6 +609,7 @@ fn render_analysis_output(
     source: &str,
     theme: &Theme,
     terminal_width: Option<usize>,
+    hyperlinks_enabled: bool,
     timings: &mut RenderTimings,
 ) -> String {
     if analysis.is_plain_passthrough() {
@@ -556,7 +624,7 @@ fn render_analysis_output(
             terminal_width,
         );
         let render_started_at = Instant::now();
-        let output = RenderPlan::compile(&layout, *theme).encode(*theme);
+        let output = RenderPlan::compile(&layout, *theme).encode(*theme, hyperlinks_enabled);
         timings.record_render_styled_spans(render_started_at);
         output
     }
@@ -608,7 +676,7 @@ pub fn debug_terminal_json(source_path: Option<&Path>, source: &str) -> Result<S
     let capabilities = TerminalCapabilities::for_debug_layers();
     let theme = capabilities.theme();
     let plan = render_plan_with_theme(source_path, source, &theme)?;
-    let output = plan.encode(theme);
+    let output = plan.encode(theme, /*hyperlinks_enabled*/ false);
     to_pretty_json(&terminal::TerminalRenderSnapshot {
         capabilities: capabilities.snapshot(),
         render_plan: plan.snapshot(theme),
@@ -621,7 +689,7 @@ pub fn debug_named_language_terminal_json(language_name: &str, source: &str) -> 
     let capabilities = TerminalCapabilities::for_debug_layers();
     let theme = capabilities.theme();
     let plan = render_plan_named_language_with_theme(language_name, source, &theme)?;
-    let output = plan.encode(theme);
+    let output = plan.encode(theme, /*hyperlinks_enabled*/ false);
     to_pretty_json(&terminal::TerminalRenderSnapshot {
         capabilities: capabilities.snapshot(),
         render_plan: plan.snapshot(theme),
@@ -1440,6 +1508,7 @@ fn overlay_semantic_captures(
                     StyledSpan {
                         range: span.range,
                         style,
+                        hyperlink: None,
                     }
                 })
         })
@@ -1464,15 +1533,19 @@ fn collect_styled_spans<'a>(
                 }
 
                 let text = &source[start..end];
+                let active_captures = active_highlights
+                    .iter()
+                    .map(|highlight| global_highlight_name(highlight.0))
+                    .collect::<Vec<_>>();
                 let style = theme
-                    .merged_token_style_for(
-                        active_highlights
-                            .iter()
-                            .map(|highlight| global_highlight_name(highlight.0)),
-                        text,
-                    )
+                    .merged_token_style_for(active_captures.iter().copied(), text)
                     .or_else(|| theme.default_style());
-                push_span(&mut spans, start..end, style);
+                let hyperlink = active_captures
+                    .iter()
+                    .any(|capture| *capture == "text.uri")
+                    .then(|| crate::terminal::terminal_hyperlink_destination(text))
+                    .flatten();
+                push_span(&mut spans, start..end, style, hyperlink);
             }
             HighlightEvent::HighlightStart(highlight) => active_highlights.push(highlight),
             HighlightEvent::HighlightEnd => {
@@ -1485,6 +1558,7 @@ fn collect_styled_spans<'a>(
         spans.push(StyledSpan {
             range: 0..source.len(),
             style: theme.default_style(),
+            hyperlink: None,
         });
     }
 
@@ -2722,6 +2796,7 @@ pub(crate) struct NestedRegion {
 pub(crate) struct StyledSpan {
     pub(crate) range: Range<usize>,
     pub(crate) style: Option<TokenStyle>,
+    pub(crate) hyperlink: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -3042,6 +3117,7 @@ fn overlay_github_actions_expression_styles(
                 .map(|style| StyledSpan {
                     range: span.range,
                     style: Some(style),
+                    hyperlink: None,
                 })
         })
         .collect();
@@ -3163,7 +3239,12 @@ fn normalize_ranges(mut ranges: Vec<Range<usize>>) -> Vec<Range<usize>> {
     ranges
 }
 
-fn push_span(spans: &mut Vec<StyledSpan>, range: Range<usize>, style: Option<TokenStyle>) {
+fn push_span(
+    spans: &mut Vec<StyledSpan>,
+    range: Range<usize>,
+    style: Option<TokenStyle>,
+    hyperlink: Option<String>,
+) {
     if range.start >= range.end {
         return;
     }
@@ -3171,12 +3252,17 @@ fn push_span(spans: &mut Vec<StyledSpan>, range: Range<usize>, style: Option<Tok
     if let Some(last) = spans.last_mut()
         && last.range.end == range.start
         && last.style == style
+        && last.hyperlink == hyperlink
     {
         last.range.end = range.end;
         return;
     }
 
-    spans.push(StyledSpan { range, style });
+    spans.push(StyledSpan {
+        range,
+        style,
+        hyperlink,
+    });
 }
 
 fn build_virtual_source(
@@ -3911,7 +3997,7 @@ pub(crate) fn map_virtual_spans_to_source(
             let mapped_range = source_map.get(index).cloned().unwrap_or(0..0);
             if mapped_range.start == mapped_range.end {
                 if let Some(range) = active_range.take() {
-                    push_span(&mut mapped, range, span.style);
+                    push_span(&mut mapped, range, span.style, span.hyperlink.clone());
                 }
                 continue;
             }
@@ -3923,14 +4009,14 @@ pub(crate) fn map_virtual_spans_to_source(
                 Some(current) => {
                     let finished = current.clone();
                     *current = mapped_range;
-                    push_span(&mut mapped, finished, span.style);
+                    push_span(&mut mapped, finished, span.style, span.hyperlink.clone());
                 }
                 None => active_range = Some(mapped_range),
             }
         }
 
         if let Some(range) = active_range {
-            push_span(&mut mapped, range, span.style);
+            push_span(&mut mapped, range, span.style, span.hyperlink.clone());
         }
     }
 
@@ -4109,6 +4195,7 @@ fn apply_overlay_spans(
                     &mut result,
                     cursor..overlay.range.start.min(parent_end),
                     parent.style,
+                    parent.hyperlink.clone(),
                 );
                 cursor = overlay.range.start.min(parent_end);
             }
@@ -4120,6 +4207,10 @@ fn apply_overlay_spans(
                     &mut result,
                     start..end,
                     resolve_overlay_style(parent.style, overlay.style, merge_parent_styles),
+                    resolve_overlay_hyperlink(
+                        parent.hyperlink.as_deref(),
+                        overlay.hyperlink.as_deref(),
+                    ),
                 );
                 cursor = end;
             }
@@ -4133,11 +4224,20 @@ fn apply_overlay_spans(
         }
 
         if cursor < parent_end {
-            push_span(&mut result, cursor..parent_end, parent.style);
+            push_span(
+                &mut result,
+                cursor..parent_end,
+                parent.style,
+                parent.hyperlink.clone(),
+            );
         }
     }
 
     result
+}
+
+fn resolve_overlay_hyperlink(parent: Option<&str>, overlay: Option<&str>) -> Option<String> {
+    overlay.or(parent).map(str::to_owned)
 }
 
 fn resolve_overlay_style(
@@ -4196,7 +4296,8 @@ fn render_styled_spans(
         ),
     );
     let layout = LayoutDocument::from_visual(source, spans, regions, *theme, None);
-    let rendered = RenderPlan::compile(&layout, *theme).encode(*theme);
+    let rendered =
+        RenderPlan::compile(&layout, *theme).encode(*theme, /*hyperlinks_enabled*/ false);
     progress_log(
         "render",
         format!("done lines={} output_bytes={}", total_lines, rendered.len()),
@@ -4204,12 +4305,12 @@ fn render_styled_spans(
     rendered
 }
 
-pub(crate) fn style_covering_span_from(
-    spans: &[StyledSpan],
+pub(crate) fn span_covering_range_from<'a>(
+    spans: &'a [StyledSpan],
     cursor: &mut usize,
     start: usize,
     end: usize,
-) -> Option<TokenStyle> {
+) -> Option<&'a StyledSpan> {
     while *cursor < spans.len() && spans[*cursor].range.end <= start {
         *cursor += 1;
     }
@@ -4217,7 +4318,6 @@ pub(crate) fn style_covering_span_from(
     spans
         .get(*cursor)
         .filter(|span| span.range.start <= start && span.range.end >= end)
-        .and_then(|span| span.style)
 }
 #[cfg(test)]
 mod tests {
@@ -4231,8 +4331,10 @@ mod tests {
         analyze_with_theme, collect_top_level_injection_regions, debug_analysis_json,
         debug_layout_json, debug_render_ops_json, debug_semantics, debug_terminal_json,
         debug_visual_json, detect_document_kind, detect_language, highlight_named_language,
-        overlay_nested_region, overlay_style_spans, plain_document_kind, render_plan_with_theme,
-        render_with_theme, semantic_capture_spans,
+        overlay_nested_region, overlay_style_spans, plain_document_kind,
+        render_named_language_with_timing_and_terminal_options, render_plan_with_theme,
+        render_with_theme, render_with_timing_and_terminal_options, semantic_capture_spans,
+        strip_terminal_hyperlinks,
     };
     use crate::{
         DisplayColumn, DocumentKind,
@@ -11081,9 +11183,15 @@ priority: 7
         theme: &Theme,
         terminal_width: usize,
     ) -> String {
-        super::render_with_theme_and_timing(Some(path), source, theme, Some(terminal_width))
-            .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()))
-            .output
+        super::render_with_theme_and_timing(
+            Some(path),
+            source,
+            theme,
+            Some(terminal_width),
+            /*hyperlinks_enabled*/ false,
+        )
+        .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()))
+        .output
     }
 
     fn nested_regions(regions: &[NestedRegionSnapshot]) -> Vec<&NestedRegionSnapshot> {
@@ -11100,6 +11208,41 @@ priority: 7
             .into_iter()
             .map(|region| region.resolved_document_kind.runtime_name)
             .collect()
+    }
+
+    #[test]
+    fn markdown_uri_spans_can_render_as_terminal_hyperlinks() {
+        let source = "See <https://example.com/autolink>.\n";
+        let rendered = render_named_language_with_timing_and_terminal_options(
+            "markdown", source, /*terminal_width*/ None, /*hyperlinks_enabled*/ true,
+        )
+        .expect("markdown render should succeed")
+        .output;
+
+        assert!(rendered.contains("\x1b]8;;https://example.com/autolink\x07"));
+        assert!(rendered.contains("\x1b]8;;\x07"));
+        assert_eq!(strip_ansi(&strip_terminal_hyperlinks(&rendered)), source);
+    }
+
+    #[test]
+    fn terminal_hyperlinks_are_omitted_when_disabled_or_passthrough() {
+        let markdown = "See <https://example.com/autolink>.\n";
+        let rendered = render_named_language_with_timing_and_terminal_options(
+            "markdown", markdown, /*terminal_width*/ None, /*hyperlinks_enabled*/ false,
+        )
+        .expect("markdown render should succeed")
+        .output;
+        assert!(!rendered.contains("\x1b]8;;"));
+
+        let plain = render_with_timing_and_terminal_options(
+            Some(Path::new("README.unknown")),
+            markdown,
+            /*terminal_width*/ None,
+            /*hyperlinks_enabled*/ true,
+        )
+        .expect("plain render should succeed")
+        .output;
+        assert_eq!(plain, markdown);
     }
 
     fn find_nested_region<'a>(
@@ -11204,7 +11347,10 @@ priority: 7
             match op {
                 RenderOpSnapshot::Text { text: chunk } => text.push_str(chunk),
                 RenderOpSnapshot::Newline => text.push('\n'),
-                RenderOpSnapshot::SetStyle { .. } | RenderOpSnapshot::ResetStyle => {}
+                RenderOpSnapshot::StartHyperlink { .. }
+                | RenderOpSnapshot::EndHyperlink
+                | RenderOpSnapshot::SetStyle { .. }
+                | RenderOpSnapshot::ResetStyle => {}
             }
         }
         text
@@ -11297,15 +11443,18 @@ priority: 7
         let parent_spans = vec![StyledSpan {
             range: 0..10,
             style: parent_style,
+            hyperlink: None,
         }];
         let overlay_spans = vec![
             StyledSpan {
                 range: 2..4,
                 style: overlay_style,
+                hyperlink: None,
             },
             StyledSpan {
                 range: 6..8,
                 style: overlay_style,
+                hyperlink: None,
             },
         ];
 
@@ -11317,22 +11466,27 @@ priority: 7
                 StyledSpan {
                     range: 0..2,
                     style: parent_style,
+                    hyperlink: None,
                 },
                 StyledSpan {
                     range: 2..4,
                     style: overlay_style,
+                    hyperlink: None,
                 },
                 StyledSpan {
                     range: 4..6,
                     style: parent_style,
+                    hyperlink: None,
                 },
                 StyledSpan {
                     range: 6..8,
                     style: overlay_style,
+                    hyperlink: None,
                 },
                 StyledSpan {
                     range: 8..10,
                     style: parent_style,
+                    hyperlink: None,
                 },
             ]
         );
@@ -11346,6 +11500,7 @@ priority: 7
         let parent_spans = vec![StyledSpan {
             range: 0..10,
             style: parent_style,
+            hyperlink: None,
         }];
         let region = NestedRegion {
             visual_level: 0,
@@ -11357,6 +11512,7 @@ priority: 7
             overlays: vec![StyledSpan {
                 range: 2..4,
                 style: child_style,
+                hyperlink: None,
             }],
             merge_parent_styles: true,
         };
@@ -11369,14 +11525,17 @@ priority: 7
                 StyledSpan {
                     range: 0..2,
                     style: parent_style,
+                    hyperlink: None,
                 },
                 StyledSpan {
                     range: 2..4,
                     style: child_style,
+                    hyperlink: None,
                 },
                 StyledSpan {
                     range: 4..10,
                     style: parent_style,
+                    hyperlink: None,
                 },
             ]
         );

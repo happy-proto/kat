@@ -63,6 +63,7 @@
    - 负责终端能力探测、默认颜色查询和最终终端编码 / 输出。
    - 当前 terminal backend 已开始收口到 `termwiz`：默认前景 / 背景颜色通过 `ProbeCapabilities::dynamic_color` 统一查询，避免 render backend 和 OSC probing 分别占用两套 TTY I/O 栈。
    - CLI 输出层仍以“terminal 层编码出完整 ANSI 文本”为边界；长输出优先交给外部分页器，而不是继续向内建 TUI 演进。
+   - OSC 8 超链接按“分析 / 视觉层保留 URI 语义，`render_ops` 生成终端无关 link state，terminal 编码层最终输出控制序列”的方式接入；纯文本透传和 debug 输出不注入超链接。
    - 图片文件输入是独立的 terminal image 短路路径：`kat image.png` 这类用法不进入语法高亮链路，也不进入 pager，而是按 iTerm2 inline image、Kitty graphics 或 Sixel 这类终端图片协议直接输出。图片默认按当前终端宽度和约 80% 终端高度等比缩放；显式尺寸、透明背景合成和 EXIF orientation 处理都由 CLI 图片参数传入 terminal image 层处理。stdout 不是 TTY 或终端图片协议不可用时，图片路径会退化为可读的图片信息输出；`--debug-image` 提供图片检测、目标尺寸和协议选择的稳定 JSON 出口。
 
 ### 视觉与终端约定
@@ -75,6 +76,7 @@
 - 从 `layout` 开始，终端显示文本默认进入 display-space 语义：像 tab 这类会影响显示列、但不应继续交给 terminal 自行解释的控制字符，要先按仓库级 `display_geometry` 规则展开成稳定的显示文本，再进入 `render_ops` / `terminal`。最终 terminal 输出优先保证显示几何一致性，而不是逐字节保留原始控制字符。
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。
 - 终端默认颜色查询不再由 `theme` 直接触发，而是通过 `terminal` 层能力探测统一接入；当前实现通过 `termwiz` 的 dynamic color probe 同时查询 OSC 10 / OSC 11，再在仓库内统一派生 nested region tint。
+- OSC 8 hyperlink 只来自高亮链路里已经确认的 URI 语义；URL 安全过滤集中在 terminal 层，默认只接受 `http://` / `https://` 目标，不对纯文本透传做全局 URL regex 改写。
 - `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-layout`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、display-space layout、render IR 和 terminal 编码层。
 - 测试策略默认以 `analysis` / `visual` / `layout` / `render_ops` 作为主契约层：语言识别、嵌套 runtime 复用、block 几何、wrapped bbox 和 render state 都应优先断言 IR；terminal / ANSI 只保留编码、reset churn 和能力探测这类终端边界回归。
 
