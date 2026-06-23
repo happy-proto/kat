@@ -377,12 +377,17 @@ fn push_span(spans: &mut Vec<StyledSpan>, range: Range<usize>, style: Option<Tok
     if let Some(last) = spans.last_mut()
         && last.range.end == range.start
         && last.style == style
+        && last.hyperlink.is_none()
     {
         last.range.end = range.end;
         return;
     }
 
-    spans.push(StyledSpan { range, style });
+    spans.push(StyledSpan {
+        range,
+        style,
+        hyperlink: None,
+    });
 }
 
 #[cfg(test)]

@@ -63,6 +63,8 @@ kat path/to/image.png
 kat --debug-timing --paging=never path/to/file >/dev/null
 ```
 
+在支持 OSC 8 的终端里，Markdown URL 这类有明确 URI 语义的片段默认会输出可点击超链接。可用 `--hyperlinks=auto|always|never` 或 `KAT_HYPERLINKS=auto|always|never` 覆盖；检测不到语言而走纯文本透传时不会额外注入超链接。
+
 查看当前构建的版本与构建元信息：
 
 ```bash

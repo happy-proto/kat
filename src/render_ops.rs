@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::{
     layout::LayoutDocument,
-    terminal::escape_control_sequences,
+    terminal::{OSC8_CLOSE, escape_control_sequences, osc8_open},
     theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
 };
 
@@ -27,12 +27,25 @@ impl RenderPlan {
         Self { ops: builder.ops }
     }
 
-    pub(crate) fn encode(&self, theme: Theme) -> String {
+    pub(crate) fn encode(&self, theme: Theme, hyperlinks_enabled: bool) -> String {
         let mut rendered = String::new();
         let mut active_style = None;
+        let mut active_hyperlink = false;
 
         for op in &self.ops {
             match op {
+                RenderOp::StartHyperlink { destination } => {
+                    if hyperlinks_enabled {
+                        rendered.push_str(&osc8_open(destination));
+                        active_hyperlink = true;
+                    }
+                }
+                RenderOp::EndHyperlink => {
+                    if hyperlinks_enabled && active_hyperlink {
+                        rendered.push_str(OSC8_CLOSE);
+                        active_hyperlink = false;
+                    }
+                }
                 RenderOp::SetStyle { style } => {
                     let transition = style.render_transition_from(active_style, theme.color_mode());
                     if !transition.is_empty() {
@@ -48,6 +61,9 @@ impl RenderPlan {
                 RenderOp::Text { text } => rendered.push_str(text),
                 RenderOp::Newline => rendered.push('\n'),
             }
+        }
+        if hyperlinks_enabled && active_hyperlink {
+            rendered.push_str(OSC8_CLOSE);
         }
 
         rendered
@@ -67,6 +83,8 @@ impl RenderPlan {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum RenderOp {
+    StartHyperlink { destination: String },
+    EndHyperlink,
     SetStyle { style: TokenStyle },
     ResetStyle,
     Text { text: String },
@@ -76,6 +94,10 @@ enum RenderOp {
 impl RenderOp {
     fn snapshot(&self, color_mode: ColorMode) -> RenderOpSnapshot {
         match self {
+            Self::StartHyperlink { destination } => RenderOpSnapshot::StartHyperlink {
+                destination: destination.clone(),
+            },
+            Self::EndHyperlink => RenderOpSnapshot::EndHyperlink,
             Self::SetStyle { style } => RenderOpSnapshot::SetStyle {
                 style: style.snapshot(color_mode),
             },
@@ -97,6 +119,8 @@ pub(crate) struct RenderPlanSnapshot {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub(crate) enum RenderOpSnapshot {
+    StartHyperlink { destination: String },
+    EndHyperlink,
     SetStyle { style: TokenStyleSnapshot },
     ResetStyle,
     Text { text: String },
@@ -106,6 +130,7 @@ pub(crate) enum RenderOpSnapshot {
 struct RenderPlanBuilder {
     theme: Theme,
     active_style: Option<TokenStyle>,
+    active_hyperlink: Option<String>,
     ops: Vec<RenderOp>,
 }
 
@@ -114,11 +139,13 @@ impl RenderPlanBuilder {
         Self {
             theme,
             active_style: None,
+            active_hyperlink: None,
             ops: Vec::new(),
         }
     }
 
-    fn push_text(&mut self, text: &str, style: Option<TokenStyle>) {
+    fn push_text(&mut self, text: &str, style: Option<TokenStyle>, hyperlink: Option<&str>) {
+        self.set_hyperlink(hyperlink);
         let style = style.filter(|style| !style.renders_as_plain_text(self.theme.color_mode()));
         match style {
             Some(style) => {
@@ -146,6 +173,25 @@ impl RenderPlanBuilder {
     fn push_newline(&mut self) {
         self.ops.push(RenderOp::Newline);
     }
+
+    fn set_hyperlink(&mut self, hyperlink: Option<&str>) {
+        if self.active_hyperlink.as_deref() == hyperlink {
+            return;
+        }
+        self.reset_hyperlink();
+        if let Some(destination) = hyperlink {
+            self.ops.push(RenderOp::StartHyperlink {
+                destination: destination.to_owned(),
+            });
+            self.active_hyperlink = Some(destination.to_owned());
+        }
+    }
+
+    fn reset_hyperlink(&mut self) {
+        if self.active_hyperlink.take().is_some() {
+            self.ops.push(RenderOp::EndHyperlink);
+        }
+    }
 }
 
 fn compile_row(builder: &mut RenderPlanBuilder, row: &crate::layout::LayoutRow) {
@@ -160,7 +206,7 @@ fn compile_row(builder: &mut RenderPlanBuilder, row: &crate::layout::LayoutRow) 
         {
             let cell = &row.cells[cell_index];
             let style = merged_style(cell.style, background_style_at(row, cell.column));
-            builder.push_text(&cell.text, style);
+            builder.push_text(&cell.text, style, cell.hyperlink.as_deref());
             column += cell.width.max(1);
             cell_index += 1;
             continue;
@@ -171,9 +217,10 @@ fn compile_row(builder: &mut RenderPlanBuilder, row: &crate::layout::LayoutRow) 
             .unwrap_or(row.display_width)
             .min(next_background_boundary(row, column).unwrap_or(row.display_width))
             .max(column + 1);
-        builder.push_text(&" ".repeat(run_end - column), style);
+        builder.push_text(&" ".repeat(run_end - column), style, None);
         column = run_end;
     }
+    builder.reset_hyperlink();
 }
 
 fn merged_style(
