@@ -226,6 +226,127 @@ fn kat_builtin_pager_supports_page_home_and_end_navigation() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn kat_builtin_pager_pages_by_display_rows() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-display-rows",
+        "DISPLAY-ROW-01 alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau\nDISPLAY-ROW-02 after wrapped first line\n",
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        24,
+        6,
+        &[],
+    )?;
+
+    let rendered = session.wait_for_screen(24, 6, |rendered| {
+        rendered.screen_text().contains("DISPLAY-ROW-01 alpha")
+    })?;
+    rendered.assert_screen_contains("DISPLAY-ROW-01 alpha");
+    assert!(
+        !rendered.screen_text().contains("DISPLAY-ROW-02"),
+        "expected wrapped first logical line to fill the first page:\n{}",
+        rendered.screen_text()
+    );
+
+    session.write_input(b"\x1b[6~")?;
+    let rendered = session.wait_for_screen(24, 6, |rendered| {
+        rendered.screen_text().contains("DISPLAY-ROW-02")
+    })?;
+    rendered.assert_screen_contains("DISPLAY-ROW-02 after");
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_builtin_pager_preserves_display_row_anchor_on_resize() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-resize-anchor",
+        "ANCHOR-LINE-01 before\nANCHOR-LINE-02 before\nANCHOR-LINE-03 alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau\nANCHOR-LINE-04 after\n",
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        28,
+        8,
+        &[],
+    )?;
+    session.wait_for_screen(28, 8, |rendered| {
+        rendered.screen_text().contains("ANCHOR-LINE-01")
+    })?;
+
+    session.write_input(b"j")?;
+    session.write_input(b"j")?;
+    let rendered = session.wait_for_screen(28, 8, |rendered| {
+        rendered
+            .screen
+            .first()
+            .is_some_and(|line| line.contains("ANCHOR-LINE-03"))
+    })?;
+    rendered.assert_screen_contains("ANCHOR-LINE-03 alpha");
+
+    session.resize(56, 8)?;
+    let rendered = session.wait_for_screen(56, 8, |rendered| {
+        rendered
+            .screen
+            .first()
+            .is_some_and(|line| line.contains("ANCHOR-LINE-03"))
+    })?;
+    rendered.assert_screen_contains("ANCHOR-LINE-03 alpha beta");
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_builtin_pager_supports_plain_text_search() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-search",
+        &(1..=30)
+            .map(|line| {
+                if line == 22 {
+                    "SEARCH-HIT visible target\n".to_owned()
+                } else {
+                    format!("SEARCH-LINE-{line:02}\n")
+                }
+            })
+            .collect::<String>(),
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        COLS,
+        ROWS,
+        &[],
+    )?;
+    session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("SEARCH-LINE-01")
+    })?;
+
+    session.write_input(b"/SEARCH-HIT\r")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("SEARCH-HIT visible target")
+    })?;
+    rendered.assert_screen_contains("SEARCH-HIT visible target");
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
 struct RenderedTerminal {
     terminal: Terminal<'static, 'static>,
     screen: Vec<String>,
