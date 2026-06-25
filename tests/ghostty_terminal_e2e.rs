@@ -37,13 +37,7 @@ fn kat_output_renders_in_ghostty_screen_model() -> Result<(), Box<dyn std::error
         "expected rendered Markdown body in Ghostty screen:\n{}",
         screen.join("\n")
     );
-    assert!(
-        screen
-            .iter()
-            .any(|line| line.trim_end() == "long enough to require terminal"),
-        "expected Ghostty to apply terminal-width wrapping:\n{}",
-        screen.join("\n")
-    );
+    assert_wrapped_body_line(&screen);
     assert!(
         hyperlink_uris(&terminal)?.contains(&"https://www.rust-lang.org/".to_string()),
         "expected OSC 8 hyperlink metadata on Ghostty cells:\n{}",
@@ -51,6 +45,20 @@ fn kat_output_renders_in_ghostty_screen_model() -> Result<(), Box<dyn std::error
     );
 
     Ok(())
+}
+
+fn assert_wrapped_body_line(screen: &[String]) {
+    let wrapped = screen.windows(2).any(|rows| {
+        rows[0].trim_end() == "This line is intentionally long"
+            && rows[1]
+                .trim_end()
+                .starts_with("enough to require terminal wrapp")
+    });
+    assert!(
+        wrapped,
+        "expected Ghostty to apply terminal-width wrapping:\n{}",
+        screen.join("\n")
+    );
 }
 
 fn run_kat_in_pty(
