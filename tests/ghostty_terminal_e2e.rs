@@ -384,8 +384,8 @@ fn kat_builtin_pager_highlights_all_search_matches_and_current_match() -> TestRe
             .count()
             >= 2
     })?;
-    rendered.assert_search_highlight_bg("alpha needle", PaletteIndex(220))?;
     rendered.assert_search_highlight_bg("beta needle", PaletteIndex(160))?;
+    rendered.assert_search_highlight_bg("gamma needle", PaletteIndex(220))?;
 
     session.write_input(b"q")?;
     session.wait_success()?;
