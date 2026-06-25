@@ -4330,8 +4330,7 @@ mod tests {
         analyze_with_theme, collect_top_level_injection_regions, debug_analysis_json,
         debug_layout_json, debug_render_ops_json, debug_semantics, debug_terminal_json,
         debug_visual_json, detect_document_kind, detect_language, highlight_named_language,
-        overlay_nested_region, overlay_style_spans, plain_document_kind,
-        render_named_language_with_timing_and_terminal_options, render_plan_with_theme,
+        overlay_nested_region, overlay_style_spans, plain_document_kind, render_plan_with_theme,
         render_with_theme, semantic_capture_spans,
     };
     use crate::{
@@ -11189,19 +11188,6 @@ priority: 7
             .into_iter()
             .map(|region| region.resolved_document_kind.runtime_name)
             .collect()
-    }
-
-    #[test]
-    fn control_characters_disable_terminal_hyperlinks() {
-        let markdown = "See <https://example.com/\x1bpath>.\n";
-        let rendered = render_named_language_with_timing_and_terminal_options(
-            "markdown", markdown, /*terminal_width*/ None, /*hyperlinks_enabled*/ true,
-        )
-        .expect("markdown render should succeed")
-        .output;
-
-        assert!(!rendered.contains("\x1b]8;;"));
-        assert_eq!(strip_ansi(&rendered), markdown);
     }
 
     fn find_nested_region<'a>(

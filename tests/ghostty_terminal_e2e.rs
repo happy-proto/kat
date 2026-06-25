@@ -1,6 +1,11 @@
 #![cfg(feature = "ghostty-e2e")]
 
-use std::{io::Read, path::Path, thread};
+use std::{
+    fs,
+    io::Read,
+    path::{Path, PathBuf},
+    thread,
+};
 
 use libghostty_vt::{
     RenderState, Terminal, TerminalOptions,
@@ -17,23 +22,12 @@ fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
     let narrow = render_fixture_in_ghostty("markdown/ghostty-e2e.md", COLS, ROWS)?;
     let wide = render_fixture_in_ghostty("markdown/ghostty-e2e.md", 96, ROWS)?;
 
-    assert!(
-        narrow
-            .screen
-            .iter()
-            .any(|line| line.contains("This line is intentionally")),
-        "expected rendered Markdown body in Ghostty screen:\n{}",
-        narrow.screen.join("\n")
-    );
-    assert_wrapped_body_line(&narrow.screen);
-    assert!(
-        wide.screen.iter().any(|line| {
+    narrow.assert_screen_contains("This line is intentionally");
+    narrow.assert_wrapped_body_line();
+    wide.assert_screen_line("wider PTY to keep the body line unwrapped", |line| {
             line.trim_end()
                 == "This line is intentionally long enough to require terminal wrapping at a narrow width."
-        }),
-        "expected wider PTY to keep the body line unwrapped:\n{}",
-        wide.screen.join("\n")
-    );
+    });
 
     Ok(())
 }
@@ -42,11 +36,7 @@ fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
 fn kat_preserves_markdown_hyperlinks_on_ghostty_cells() -> Result<(), Box<dyn std::error::Error>> {
     let rendered = render_fixture_in_ghostty("markdown/ghostty-e2e.md", COLS, ROWS)?;
 
-    assert!(
-        hyperlink_uris(&rendered.terminal)?.contains(&"https://www.rust-lang.org/".to_string()),
-        "expected OSC 8 hyperlink metadata on Ghostty cells:\n{}",
-        rendered.screen.join("\n")
-    );
+    rendered.assert_hyperlink_uri("https://www.rust-lang.org/")?;
 
     Ok(())
 }
@@ -55,19 +45,8 @@ fn kat_preserves_markdown_hyperlinks_on_ghostty_cells() -> Result<(), Box<dyn st
 fn kat_does_not_inject_hyperlinks_for_plain_text() -> Result<(), Box<dyn std::error::Error>> {
     let rendered = render_fixture_in_ghostty("plain/ghostty-url.txt", COLS, ROWS)?;
 
-    assert!(
-        rendered
-            .screen
-            .iter()
-            .any(|line| line.contains("https://www.rust-lang.org/")),
-        "expected plain URL text in Ghostty screen:\n{}",
-        rendered.screen.join("\n")
-    );
-    assert!(
-        hyperlink_uris(&rendered.terminal)?.is_empty(),
-        "expected plain text rendering not to synthesize OSC 8 hyperlinks:\n{}",
-        rendered.screen.join("\n")
-    );
+    rendered.assert_screen_contains("https://www.rust-lang.org/");
+    rendered.assert_no_hyperlinks()?;
 
     Ok(())
 }
@@ -77,19 +56,22 @@ fn kat_omits_markdown_hyperlinks_when_disabled() -> Result<(), Box<dyn std::erro
     let rendered =
         render_fixture_in_ghostty_with_hyperlinks("markdown/ghostty-e2e.md", COLS, ROWS, "never")?;
 
-    assert!(
-        rendered
-            .screen
-            .iter()
-            .any(|line| line.contains("[Rust](https://www.rust-lang.org")),
-        "expected Markdown URL text in Ghostty screen:\n{}",
-        rendered.screen.join("\n")
-    );
-    assert!(
-        hyperlink_uris(&rendered.terminal)?.is_empty(),
-        "expected --hyperlinks=never to omit OSC 8 cell metadata:\n{}",
-        rendered.screen.join("\n")
-    );
+    rendered.assert_screen_contains("[Rust](https://www.rust-lang.org");
+    rendered.assert_no_hyperlinks()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_rejects_control_character_markdown_hyperlinks() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = temp_markdown_fixture(
+        "ghostty-unsafe-url",
+        "See <https://example.com/\x1bpath>.\n",
+    )?;
+    let rendered = render_path_in_ghostty(&fixture, COLS, ROWS, "always")?;
+
+    rendered.assert_screen_contains("https://example.com/");
+    rendered.assert_no_hyperlinks()?;
 
     Ok(())
 }
@@ -97,26 +79,8 @@ fn kat_omits_markdown_hyperlinks_when_disabled() -> Result<(), Box<dyn std::erro
 #[test]
 fn kat_expands_markdown_html_tabs_on_ghostty_cells() -> Result<(), Box<dyn std::error::Error>> {
     let rendered = render_fixture_in_ghostty("markdown/html_block_tabs.md", 120, 18)?;
-    let tabbed_cell_line = rendered
-        .screen
-        .iter()
-        .find(|line| line.contains("<td>值"))
-        .unwrap_or_else(|| {
-            panic!(
-                "expected tabbed HTML cell in Ghostty screen:\n{}",
-                rendered.screen.join("\n")
-            )
-        });
-    let compact_line = tabbed_cell_line
-        .chars()
-        .filter(|ch| !ch.is_whitespace())
-        .collect::<String>();
 
-    assert!(
-        !tabbed_cell_line.contains('\t') && compact_line.contains("<td>值标签</td>"),
-        "expected tabbed HTML cells to render as display spaces:\n{}",
-        rendered.screen.join("\n")
-    );
+    rendered.assert_compact_screen_line_contains("tabbed HTML cell", "<td>值", "<td>值标签</td>");
 
     Ok(())
 }
@@ -125,7 +89,7 @@ fn kat_expands_markdown_html_tabs_on_ghostty_cells() -> Result<(), Box<dyn std::
 fn kat_keeps_wrapped_just_recipe_rows_adjacent() -> Result<(), Box<dyn std::error::Error>> {
     let rendered = render_testdata_in_ghostty("showcase/just/recipe-block.just", 80, 18, "always")?;
 
-    assert_adjacent_screen_lines(&rendered.screen, "@cd mdsre", "uv run mdsre mongo query");
+    rendered.assert_adjacent_screen_lines("@cd mdsre", "uv run mdsre mongo query");
 
     Ok(())
 }
@@ -133,6 +97,131 @@ fn kat_keeps_wrapped_just_recipe_rows_adjacent() -> Result<(), Box<dyn std::erro
 struct RenderedTerminal {
     terminal: Terminal<'static, 'static>,
     screen: Vec<String>,
+}
+
+impl RenderedTerminal {
+    fn screen_text(&self) -> String {
+        self.screen.join("\n")
+    }
+
+    fn assert_screen_contains(&self, needle: &str) {
+        self.assert_screen_line(needle, |line| line.contains(needle));
+    }
+
+    fn assert_screen_line(&self, description: &str, predicate: impl Fn(&str) -> bool) {
+        assert!(
+            self.screen.iter().any(|line| predicate(line)),
+            "expected {description} in Ghostty screen:\n{}",
+            self.screen_text()
+        );
+    }
+
+    fn assert_compact_screen_line_contains(
+        &self,
+        description: &str,
+        line_needle: &str,
+        compact_needle: &str,
+    ) {
+        let line = self
+            .screen
+            .iter()
+            .find(|line| line.contains(line_needle))
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected {description} in Ghostty screen:\n{}",
+                    self.screen_text()
+                )
+            });
+        let compact_line = line
+            .chars()
+            .filter(|ch| !ch.is_whitespace())
+            .collect::<String>();
+
+        assert!(
+            !line.contains('\t') && compact_line.contains(compact_needle),
+            "expected {description} to render as display spaces:\n{}",
+            self.screen_text()
+        );
+    }
+
+    fn assert_wrapped_body_line(&self) {
+        let wrapped = self.screen.windows(2).any(|rows| {
+            rows[0].trim_end() == "This line is intentionally long"
+                && rows[1]
+                    .trim_end()
+                    .starts_with("enough to require terminal wrapp")
+        });
+        assert!(
+            wrapped,
+            "expected Ghostty to apply terminal-width wrapping:\n{}",
+            self.screen_text()
+        );
+    }
+
+    fn assert_adjacent_screen_lines(&self, first: &str, second: &str) {
+        let first_index = self.line_index(first);
+        let second_index = self.line_index(second);
+
+        assert_eq!(
+            second_index,
+            first_index + 1,
+            "expected no blank screen row between {first:?} and {second:?}:\n{}",
+            self.screen_text()
+        );
+    }
+
+    fn line_index(&self, needle: &str) -> usize {
+        self.screen
+            .iter()
+            .position(|line| line.contains(needle))
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected Ghostty screen to contain {needle:?}:\n{}",
+                    self.screen_text()
+                )
+            })
+    }
+
+    fn assert_hyperlink_uri(&self, uri: &str) -> Result<(), Box<dyn std::error::Error>> {
+        assert!(
+            self.hyperlink_uris()?.contains(&uri.to_string()),
+            "expected OSC 8 hyperlink {uri:?} on Ghostty cells:\n{}",
+            self.screen_text()
+        );
+        Ok(())
+    }
+
+    fn assert_no_hyperlinks(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let uris = self.hyperlink_uris()?;
+        assert!(
+            uris.is_empty(),
+            "expected no OSC 8 hyperlink metadata, got {uris:?}:\n{}",
+            self.screen_text()
+        );
+        Ok(())
+    }
+
+    fn hyperlink_uris(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let mut uris = Vec::new();
+        for y in 0..u32::from(self.terminal.rows()?) {
+            for x in 0..self.terminal.cols()? {
+                let grid_ref = self
+                    .terminal
+                    .grid_ref(Point::Active(PointCoordinate { x, y }))?;
+                if !grid_ref.cell()?.has_hyperlink()? {
+                    continue;
+                }
+                let mut buf = vec![0_u8; 512];
+                let len = grid_ref.hyperlink_uri(&mut buf)?;
+                buf.truncate(len);
+                let uri = String::from_utf8(buf)?;
+                if !uris.contains(&uri) {
+                    uris.push(uri);
+                }
+            }
+        }
+        Ok(uris)
+    }
 }
 
 fn render_fixture_in_ghostty(
@@ -161,12 +250,21 @@ fn render_testdata_in_ghostty(
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("testdata")
         .join(relative_path);
+    render_path_in_ghostty(&fixture, cols, rows, hyperlinks)
+}
+
+fn render_path_in_ghostty(
+    path: &Path,
+    cols: u16,
+    rows: u16,
+    hyperlinks: &str,
+) -> Result<RenderedTerminal, Box<dyn std::error::Error>> {
     let hyperlink_arg = format!("--hyperlinks={hyperlinks}");
     let output = run_kat_in_pty(
         &[
             "--paging=never",
             hyperlink_arg.as_str(),
-            fixture.to_str().expect("fixture path should be UTF-8"),
+            path.to_str().expect("fixture path should be UTF-8"),
         ],
         cols,
         rows,
@@ -176,48 +274,6 @@ fn render_testdata_in_ghostty(
     terminal.vt_write(&output);
     let screen = visible_screen_lines(&terminal)?;
     Ok(RenderedTerminal { terminal, screen })
-}
-
-fn assert_wrapped_body_line(screen: &[String]) {
-    let wrapped = screen.windows(2).any(|rows| {
-        rows[0].trim_end() == "This line is intentionally long"
-            && rows[1]
-                .trim_end()
-                .starts_with("enough to require terminal wrapp")
-    });
-    assert!(
-        wrapped,
-        "expected Ghostty to apply terminal-width wrapping:\n{}",
-        screen.join("\n")
-    );
-}
-
-fn assert_adjacent_screen_lines(screen: &[String], first: &str, second: &str) {
-    let first_index = screen
-        .iter()
-        .position(|line| line.contains(first))
-        .unwrap_or_else(|| {
-            panic!(
-                "expected Ghostty screen to contain {first:?}:\n{}",
-                screen.join("\n")
-            )
-        });
-    let second_index = screen
-        .iter()
-        .position(|line| line.contains(second))
-        .unwrap_or_else(|| {
-            panic!(
-                "expected Ghostty screen to contain {second:?}:\n{}",
-                screen.join("\n")
-            )
-        });
-
-    assert_eq!(
-        second_index,
-        first_index + 1,
-        "expected no blank screen row between {first:?} and {second:?}:\n{}",
-        screen.join("\n")
-    );
 }
 
 fn run_kat_in_pty(
@@ -296,22 +352,8 @@ fn visible_screen_lines(
     Ok(lines)
 }
 
-fn hyperlink_uris(terminal: &Terminal<'_, '_>) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let mut uris = Vec::new();
-    for y in 0..u32::from(terminal.rows()?) {
-        for x in 0..terminal.cols()? {
-            let grid_ref = terminal.grid_ref(Point::Active(PointCoordinate { x, y }))?;
-            if !grid_ref.cell()?.has_hyperlink()? {
-                continue;
-            }
-            let mut buf = vec![0_u8; 512];
-            let len = grid_ref.hyperlink_uri(&mut buf)?;
-            buf.truncate(len);
-            let uri = String::from_utf8(buf)?;
-            if !uris.contains(&uri) {
-                uris.push(uri);
-            }
-        }
-    }
-    Ok(uris)
+fn temp_markdown_fixture(name: &str, source: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let path = std::env::temp_dir().join(format!("{name}-{}.md", std::process::id()));
+    fs::write(&path, source)?;
+    Ok(path)
 }
