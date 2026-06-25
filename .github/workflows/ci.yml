@@ -64,15 +64,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          timeout 180 bash <<'EOF'
+          set -euo pipefail
           zig_dir="${RUNNER_TEMP}/zig-${GHOSTTY_ZIG_VERSION}"
           mkdir -p "${zig_dir}"
           curl --fail --location --show-error \
-            --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 2 \
+            --connect-timeout 30 --max-time 90 --retry 2 --retry-delay 2 \
+            --speed-time 30 --speed-limit 1024 \
             "https://ziglang.org/download/${GHOSTTY_ZIG_VERSION}/zig-x86_64-linux-${GHOSTTY_ZIG_VERSION}.tar.xz" \
             --output "${zig_dir}/zig.tar.xz"
           tar -xJf "${zig_dir}/zig.tar.xz" --strip-components=1 -C "${zig_dir}"
           echo "${zig_dir}" >> "${GITHUB_PATH}"
           "${zig_dir}/zig" version
+          EOF
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
@@ -227,15 +231,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          timeout 180 bash <<'EOF'
+          set -euo pipefail
           zig_dir="${RUNNER_TEMP}/zig-${GHOSTTY_ZIG_VERSION}"
           mkdir -p "${zig_dir}"
           curl --fail --location --show-error \
-            --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 2 \
+            --connect-timeout 30 --max-time 90 --retry 2 --retry-delay 2 \
+            --speed-time 30 --speed-limit 1024 \
             "https://ziglang.org/download/${GHOSTTY_ZIG_VERSION}/zig-x86_64-linux-${GHOSTTY_ZIG_VERSION}.tar.xz" \
             --output "${zig_dir}/zig.tar.xz"
           tar -xJf "${zig_dir}/zig.tar.xz" --strip-components=1 -C "${zig_dir}"
           echo "${zig_dir}" >> "${GITHUB_PATH}"
           "${zig_dir}/zig" version
+          EOF
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
