@@ -4332,8 +4332,7 @@ mod tests {
         debug_visual_json, detect_document_kind, detect_language, highlight_named_language,
         overlay_nested_region, overlay_style_spans, plain_document_kind,
         render_named_language_with_timing_and_terminal_options, render_plan_with_theme,
-        render_with_theme, render_with_timing_and_terminal_options, semantic_capture_spans,
-        strip_terminal_hyperlinks,
+        render_with_theme, semantic_capture_spans,
     };
     use crate::{
         DisplayColumn, DocumentKind,
@@ -11176,23 +11175,6 @@ priority: 7
             .snapshot()
     }
 
-    fn render_with_theme_at_width(
-        path: &Path,
-        source: &str,
-        theme: &Theme,
-        terminal_width: usize,
-    ) -> String {
-        super::render_with_theme_and_timing(
-            Some(path),
-            source,
-            theme,
-            Some(terminal_width),
-            /*hyperlinks_enabled*/ false,
-        )
-        .unwrap_or_else(|error| panic!("failed to render {}: {error}", path.display()))
-        .output
-    }
-
     fn nested_regions(regions: &[NestedRegionSnapshot]) -> Vec<&NestedRegionSnapshot> {
         let mut flattened = Vec::new();
         for region in regions {
@@ -11207,41 +11189,6 @@ priority: 7
             .into_iter()
             .map(|region| region.resolved_document_kind.runtime_name)
             .collect()
-    }
-
-    #[test]
-    fn markdown_uri_spans_can_render_as_terminal_hyperlinks() {
-        let source = "See <https://example.com/autolink>.\n";
-        let rendered = render_named_language_with_timing_and_terminal_options(
-            "markdown", source, /*terminal_width*/ None, /*hyperlinks_enabled*/ true,
-        )
-        .expect("markdown render should succeed")
-        .output;
-
-        assert!(rendered.contains("\x1b]8;;https://example.com/autolink\x07"));
-        assert!(rendered.contains("\x1b]8;;\x07"));
-        assert_eq!(strip_ansi(&strip_terminal_hyperlinks(&rendered)), source);
-    }
-
-    #[test]
-    fn terminal_hyperlinks_are_omitted_when_disabled_or_passthrough() {
-        let markdown = "See <https://example.com/autolink>.\n";
-        let rendered = render_named_language_with_timing_and_terminal_options(
-            "markdown", markdown, /*terminal_width*/ None, /*hyperlinks_enabled*/ false,
-        )
-        .expect("markdown render should succeed")
-        .output;
-        assert!(!rendered.contains("\x1b]8;;"));
-
-        let plain = render_with_timing_and_terminal_options(
-            Some(Path::new("README.unknown")),
-            markdown,
-            /*terminal_width*/ None,
-            /*hyperlinks_enabled*/ true,
-        )
-        .expect("plain render should succeed")
-        .output;
-        assert_eq!(plain, markdown);
     }
 
     #[test]
@@ -11394,49 +11341,6 @@ priority: 7
                     rows.iter().map(|row| row.text.as_str()).collect::<Vec<_>>()
                 )
             })
-    }
-
-    fn wrapped_screen_lines(text: &str, width: usize) -> Vec<String> {
-        assert!(width > 0, "expected positive wrap width");
-
-        let plain = strip_ansi(text);
-        let mut rows = Vec::new();
-        let mut current = String::new();
-        let mut current_width = 0usize;
-        let mut just_wrapped_at_boundary = false;
-
-        for grapheme in unicode_segmentation::UnicodeSegmentation::graphemes(plain.as_str(), true) {
-            if grapheme == "\n" {
-                if !current.is_empty() || !just_wrapped_at_boundary {
-                    rows.push(std::mem::take(&mut current));
-                }
-                current_width = 0;
-                just_wrapped_at_boundary = false;
-                continue;
-            }
-
-            let grapheme_width = unicode_width::UnicodeWidthStr::width(grapheme);
-            if current_width > 0 && current_width + grapheme_width > width {
-                rows.push(std::mem::take(&mut current));
-                current_width = 0;
-            }
-
-            current.push_str(grapheme);
-            current_width += grapheme_width;
-            just_wrapped_at_boundary = false;
-
-            if current_width == width {
-                rows.push(std::mem::take(&mut current));
-                current_width = 0;
-                just_wrapped_at_boundary = true;
-            }
-        }
-
-        if !current.is_empty() {
-            rows.push(current);
-        }
-
-        rows
     }
 
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
@@ -11777,25 +11681,6 @@ priority: 7
     }
 
     #[test]
-    fn markdown_html_block_tabs_terminal_output_expands_tabs_before_encoding() {
-        let tint = RgbColor(1, 2, 3);
-        let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let path = fixture_path("markdown/html_block_tabs.md");
-        let source = read_file(&path);
-        let rendered = render_with_theme_at_width(path.as_path(), &source, &theme, 120);
-        let stripped = strip_ansi(&rendered);
-
-        assert!(
-            !rendered.contains('\t'),
-            "expected encoded output to avoid raw tabs so display-space geometry stays stable"
-        );
-        assert!(
-            !stripped.contains('\t'),
-            "expected plain rendered output to avoid raw tabs after ANSI stripping"
-        );
-    }
-
-    #[test]
     fn rust_multiline_raw_string_sql_uses_block_region_tint() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
@@ -12055,30 +11940,6 @@ priority: 7
                 .iter()
                 .any(|region| region["visual_kind"] == Value::String("scope_block".into())),
             "expected visual debug json to preserve scope block regions: {json}"
-        );
-    }
-
-    #[test]
-    fn just_recipe_block_padding_does_not_create_blank_wrapped_rows() {
-        let theme =
-            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
-        let path = PathBuf::from("testdata/showcase/just/recipe-block.just");
-        let source = read_file(&path);
-        let rendered = render_with_theme_at_width(path.as_path(), &source, &theme, 80);
-        let wrapped = wrapped_screen_lines(&rendered, 80);
-        let first_index = wrapped
-            .iter()
-            .position(|line| line.contains("@cd mdsre"))
-            .expect("expected wrapped output to contain first recipe command");
-        let second_index = wrapped
-            .iter()
-            .position(|line| line.contains("uv run mdsre mongo query"))
-            .expect("expected wrapped output to contain second recipe command");
-
-        assert_eq!(
-            second_index,
-            first_index + 1,
-            "expected no blank wrapped rows between recipe command lines: {wrapped:?}"
         );
     }
 

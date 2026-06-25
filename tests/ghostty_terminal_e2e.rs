@@ -72,6 +72,53 @@ fn kat_does_not_inject_hyperlinks_for_plain_text() -> Result<(), Box<dyn std::er
     Ok(())
 }
 
+#[test]
+fn kat_omits_markdown_hyperlinks_when_disabled() -> Result<(), Box<dyn std::error::Error>> {
+    let rendered =
+        render_fixture_in_ghostty_with_hyperlinks("markdown/ghostty-e2e.md", COLS, ROWS, "never")?;
+
+    assert!(
+        rendered
+            .screen
+            .iter()
+            .any(|line| line.contains("https://www.rust-lang.org/")),
+        "expected Markdown URL text in Ghostty screen:\n{}",
+        rendered.screen.join("\n")
+    );
+    assert!(
+        hyperlink_uris(&rendered.terminal)?.is_empty(),
+        "expected --hyperlinks=never to omit OSC 8 cell metadata:\n{}",
+        rendered.screen.join("\n")
+    );
+
+    Ok(())
+}
+
+#[test]
+fn kat_expands_markdown_html_tabs_on_ghostty_cells() -> Result<(), Box<dyn std::error::Error>> {
+    let rendered = render_fixture_in_ghostty("markdown/html_block_tabs.md", 120, 18)?;
+
+    assert!(
+        rendered
+            .screen
+            .iter()
+            .any(|line| line.contains("<td>值      标签</td>")),
+        "expected tabbed HTML cells to render as display spaces:\n{}",
+        rendered.screen.join("\n")
+    );
+
+    Ok(())
+}
+
+#[test]
+fn kat_keeps_wrapped_just_recipe_rows_adjacent() -> Result<(), Box<dyn std::error::Error>> {
+    let rendered = render_testdata_in_ghostty("showcase/just/recipe-block.just", 80, 18, "always")?;
+
+    assert_adjacent_screen_lines(&rendered.screen, "@cd mdsre", "uv run mdsre mongo query");
+
+    Ok(())
+}
+
 struct RenderedTerminal {
     terminal: Terminal<'static, 'static>,
     screen: Vec<String>,
@@ -82,13 +129,32 @@ fn render_fixture_in_ghostty(
     cols: u16,
     rows: u16,
 ) -> Result<RenderedTerminal, Box<dyn std::error::Error>> {
+    render_fixture_in_ghostty_with_hyperlinks(fixture, cols, rows, "always")
+}
+
+fn render_fixture_in_ghostty_with_hyperlinks(
+    fixture: &str,
+    cols: u16,
+    rows: u16,
+    hyperlinks: &str,
+) -> Result<RenderedTerminal, Box<dyn std::error::Error>> {
+    render_testdata_in_ghostty(&format!("fixtures/{fixture}"), cols, rows, hyperlinks)
+}
+
+fn render_testdata_in_ghostty(
+    relative_path: &str,
+    cols: u16,
+    rows: u16,
+    hyperlinks: &str,
+) -> Result<RenderedTerminal, Box<dyn std::error::Error>> {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("testdata/fixtures")
-        .join(fixture);
+        .join("testdata")
+        .join(relative_path);
+    let hyperlink_arg = format!("--hyperlinks={hyperlinks}");
     let output = run_kat_in_pty(
         &[
             "--paging=never",
-            "--hyperlinks=always",
+            hyperlink_arg.as_str(),
             fixture.to_str().expect("fixture path should be UTF-8"),
         ],
         cols,
@@ -115,6 +181,34 @@ fn assert_wrapped_body_line(screen: &[String]) {
     );
 }
 
+fn assert_adjacent_screen_lines(screen: &[String], first: &str, second: &str) {
+    let first_index = screen
+        .iter()
+        .position(|line| line.contains(first))
+        .unwrap_or_else(|| {
+            panic!(
+                "expected Ghostty screen to contain {first:?}:\n{}",
+                screen.join("\n")
+            )
+        });
+    let second_index = screen
+        .iter()
+        .position(|line| line.contains(second))
+        .unwrap_or_else(|| {
+            panic!(
+                "expected Ghostty screen to contain {second:?}:\n{}",
+                screen.join("\n")
+            )
+        });
+
+    assert_eq!(
+        second_index,
+        first_index + 1,
+        "expected no blank screen row between {first:?} and {second:?}:\n{}",
+        screen.join("\n")
+    );
+}
+
 fn run_kat_in_pty(
     args: &[&str],
     cols: u16,
@@ -132,7 +226,7 @@ fn run_kat_in_pty(
     let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_kat"));
     command.args(args);
     command.env("TERM", "xterm-256color");
-    command.env("KAT_HYPERLINKS", "always");
+    command.env_remove("KAT_HYPERLINKS");
     command.env_remove("NO_COLOR");
     let mut child = pair.slave.spawn_command(command)?;
     drop(pair.slave);
