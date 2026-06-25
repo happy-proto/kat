@@ -16,6 +16,8 @@ const LEAVE_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049l";
 const CLEAR_SCREEN: &[u8] = b"\x1b[H\x1b[2J";
 const CLEAR_LINE: &[u8] = b"\x1b[2K";
 const RESET_STYLE: &[u8] = b"\x1b[0m";
+const SEARCH_MATCH_STYLE: &str = "\x1b[30;48;5;220m";
+const SEARCH_CURRENT_STYLE: &str = "\x1b[97;48;5;160m";
 
 pub(crate) fn run(output: &str) -> Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
@@ -98,7 +100,7 @@ impl PagerDocument {
 struct PagerState {
     top_row: usize,
     anchor: RowAnchor,
-    last_search: Option<String>,
+    search: Option<SearchState>,
 }
 
 impl PagerState {
@@ -118,55 +120,62 @@ impl PagerState {
     }
 
     fn search(&mut self, document: &PagerDocument, viewport: &PagerViewport, query: &str) -> bool {
-        if query.is_empty() || document.line_count() == 0 {
+        let matches = SearchMatches::new(document, query);
+        if matches.is_empty() {
             return false;
         }
 
         let start_line = self.anchor.line_index;
-        let matched_line = (start_line..document.line_count())
-            .chain(0..start_line)
-            .find(|line_index| document.plain_lines[*line_index].contains(query));
-
-        if let Some(line_index) = matched_line {
-            self.last_search = Some(query.to_owned());
-            self.top_row = viewport.first_row_for_line(line_index);
-            self.clamp(viewport);
-            true
-        } else {
-            false
-        }
+        let selected = matches
+            .items
+            .iter()
+            .position(|item| item.line_index >= start_line)
+            .unwrap_or(0);
+        self.search = Some(SearchState {
+            query: query.to_owned(),
+            matches,
+            selected,
+        });
+        self.top_row = viewport.first_row_for_line(self.current_search_match().line_index);
+        self.clamp(viewport);
+        true
     }
 
-    fn repeat_search(
-        &mut self,
-        document: &PagerDocument,
-        viewport: &PagerViewport,
-        direction: SearchDirection,
-    ) -> bool {
-        let Some(query) = self.last_search.clone() else {
+    fn repeat_search(&mut self, viewport: &PagerViewport, direction: SearchDirection) -> bool {
+        let Some(search) = self.search.as_mut() else {
             return false;
         };
-        if query.is_empty() || document.line_count() == 0 {
-            return false;
+        match direction {
+            SearchDirection::Forward => search.selected = (search.selected + 1) % search.len(),
+            SearchDirection::Backward => {
+                search.selected = search.selected.checked_sub(1).unwrap_or(search.len() - 1);
+            }
         }
+        self.top_row = viewport.first_row_for_line(self.current_search_match().line_index);
+        self.clamp(viewport);
+        true
+    }
 
-        let current = self.anchor.line_index;
-        let matched_line = match direction {
-            SearchDirection::Forward => ((current + 1)..document.line_count())
-                .chain(0..=current)
-                .find(|line_index| document.plain_lines[*line_index].contains(&query)),
-            SearchDirection::Backward => (0..current)
-                .rev()
-                .chain(((current + 1)..document.line_count()).rev())
-                .find(|line_index| document.plain_lines[*line_index].contains(&query)),
-        };
+    fn search_query(&self) -> Option<&str> {
+        self.search.as_ref().map(|search| search.query.as_str())
+    }
 
-        if let Some(line_index) = matched_line {
-            self.top_row = viewport.first_row_for_line(line_index);
-            self.clamp(viewport);
-            true
+    fn current_search_match(&self) -> SearchMatch {
+        self.search
+            .as_ref()
+            .and_then(SearchState::selected_match)
+            .expect("current search match should exist when search state is present")
+    }
+
+    fn current_search_match_in_row(&self, row: &DisplayRow) -> Option<SearchMatch> {
+        let item = self.search.as_ref()?.selected_match()?;
+        if item.line_index == row.line_index
+            && row.start_plain <= item.start_plain
+            && item.start_plain < row.end_plain
+        {
+            Some(item)
         } else {
-            false
+            None
         }
     }
 
@@ -189,6 +198,61 @@ impl PagerState {
 struct RowAnchor {
     line_index: usize,
     display_column: usize,
+}
+
+struct SearchState {
+    query: String,
+    matches: SearchMatches,
+    selected: usize,
+}
+
+impl SearchState {
+    fn len(&self) -> usize {
+        self.matches.items.len()
+    }
+
+    fn selected_match(&self) -> Option<SearchMatch> {
+        self.matches.items.get(self.selected).copied()
+    }
+}
+
+struct SearchMatches {
+    items: Vec<SearchMatch>,
+}
+
+impl SearchMatches {
+    fn new(document: &PagerDocument, query: &str) -> Self {
+        if query.is_empty() {
+            return Self { items: Vec::new() };
+        }
+
+        let mut items = Vec::new();
+        for (line_index, line) in document.plain_lines.iter().enumerate() {
+            let mut offset = 0;
+            while let Some(relative_start) = line[offset..].find(query) {
+                let start_plain = offset + relative_start;
+                let end_plain = start_plain + query.len();
+                items.push(SearchMatch {
+                    line_index,
+                    start_plain,
+                    end_plain,
+                });
+                offset = end_plain;
+            }
+        }
+        Self { items }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SearchMatch {
+    line_index: usize,
+    start_plain: usize,
+    end_plain: usize,
 }
 
 #[derive(Clone, Copy)]
@@ -267,7 +331,7 @@ fn handle_input(
                 handle_input(&input[1..], document, viewport, state, mode, size)
             }
         }
-        PagerMode::Normal => handle_normal_input(input, document, viewport, state, mode, size),
+        PagerMode::Normal => handle_normal_input(input, viewport, state, mode, size),
         PagerMode::Search {
             query,
             pending_utf8,
@@ -288,7 +352,6 @@ fn handle_input(
 
 fn handle_normal_input(
     input: &[u8],
-    document: &PagerDocument,
     viewport: &PagerViewport,
     state: &mut PagerState,
     mode: &mut PagerMode,
@@ -296,7 +359,7 @@ fn handle_normal_input(
 ) -> PagerInputOutcome {
     if input.len() > 1 && input.first() != Some(&0x1b) {
         for byte in input {
-            let outcome = handle_normal_input(&[*byte], document, viewport, state, mode, size);
+            let outcome = handle_normal_input(&[*byte], viewport, state, mode, size);
             if matches!(outcome, PagerInputOutcome::Quit) {
                 return PagerInputOutcome::Quit;
             }
@@ -320,11 +383,11 @@ fn handle_normal_input(
             PagerInputOutcome::Continue
         }
         PagerAction::SearchNext => {
-            state.repeat_search(document, viewport, SearchDirection::Forward);
+            state.repeat_search(viewport, SearchDirection::Forward);
             PagerInputOutcome::Continue
         }
         PagerAction::SearchPrevious => {
-            state.repeat_search(document, viewport, SearchDirection::Backward);
+            state.repeat_search(viewport, SearchDirection::Backward);
             PagerInputOutcome::Continue
         }
         action => {
@@ -466,7 +529,11 @@ struct DisplayRow {
     line_index: usize,
     start_column: usize,
     end_column: usize,
+    start_plain: usize,
+    end_plain: usize,
     ansi: String,
+    plain: String,
+    plain_to_ansi: Vec<(usize, usize)>,
 }
 
 impl DisplayRow {
@@ -488,14 +555,27 @@ impl DisplayRow {
     fn display_width(&self) -> usize {
         self.end_column.saturating_sub(self.start_column)
     }
+
+    fn ansi_offset_for_plain(&self, plain_offset: usize) -> Option<usize> {
+        if plain_offset == self.plain.len() {
+            return Some(self.ansi.len());
+        }
+        self.plain_to_ansi
+            .iter()
+            .find_map(|(plain, ansi)| (*plain == plain_offset).then_some(*ansi))
+    }
 }
 
 fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayRow>) {
     let mut parser = AnsiLineParser::new(line);
     let mut row = String::new();
+    let mut plain = String::new();
+    let mut plain_to_ansi = Vec::new();
     let mut replay_prefix = String::new();
     let mut column = 0;
     let mut row_start_column = 0;
+    let mut row_start_plain = 0;
+    let mut plain_offset = 0;
     let mut emitted = false;
 
     while let Some(token) = parser.next_token() {
@@ -512,26 +592,43 @@ fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayR
                             line_index,
                             start_column: row_start_column,
                             end_column: row_start_column + column,
+                            start_plain: row_start_plain,
+                            end_plain: plain_offset,
                             ansi: row,
+                            plain,
+                            plain_to_ansi,
                         });
                         row = replay_prefix.clone();
+                        plain = String::new();
+                        plain_to_ansi = Vec::new();
                         row_start_column += column;
+                        row_start_plain = plain_offset;
                         column = 0;
                         emitted = true;
                     }
 
+                    plain_to_ansi.push((plain.len(), row.len()));
                     row.push_str(&rendered);
+                    plain.push_str(grapheme);
                     column += width;
+                    plain_offset += grapheme.len();
 
                     if column >= cols {
                         rows.push(DisplayRow {
                             line_index,
                             start_column: row_start_column,
                             end_column: row_start_column + column,
+                            start_plain: row_start_plain,
+                            end_plain: plain_offset,
                             ansi: row,
+                            plain,
+                            plain_to_ansi,
                         });
                         row = replay_prefix.clone();
+                        plain = String::new();
+                        plain_to_ansi = Vec::new();
                         row_start_column += column;
+                        row_start_plain = plain_offset;
                         column = 0;
                         emitted = true;
                     }
@@ -545,7 +642,11 @@ fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayR
             line_index,
             start_column: row_start_column,
             end_column: row_start_column + column,
+            start_plain: row_start_plain,
+            end_plain: plain_offset,
             ansi: row,
+            plain,
+            plain_to_ansi,
         });
     }
 }
@@ -652,7 +753,7 @@ fn render(
     stdout.write_all(CLEAR_SCREEN)?;
 
     for row in viewport.rows.iter().skip(state.top_row).take(body_rows) {
-        stdout.write_all(row.ansi.as_bytes())?;
+        write_row(&mut stdout, row, state)?;
         stdout.write_all(RESET_STYLE)?;
         if row.display_width() < size.cols {
             stdout.write_all(b"\r\n")?;
@@ -688,6 +789,47 @@ fn render(
     stdout.write_all(status.as_bytes())?;
     stdout.write_all(RESET_STYLE)?;
     stdout.flush()?;
+    Ok(())
+}
+
+fn write_row(mut stdout: impl Write, row: &DisplayRow, state: &PagerState) -> Result<()> {
+    let Some(query) = state.search_query() else {
+        stdout.write_all(row.ansi.as_bytes())?;
+        return Ok(());
+    };
+    if query.is_empty() {
+        stdout.write_all(row.ansi.as_bytes())?;
+        return Ok(());
+    }
+
+    let current_match = state.current_search_match_in_row(row);
+    let mut search_from = 0;
+    let mut ansi_from = 0;
+    while let Some(relative_start) = row.plain[search_from..].find(query) {
+        let plain_start = search_from + relative_start;
+        let plain_end = plain_start + query.len();
+        if let (Some(ansi_start), Some(ansi_end)) = (
+            row.ansi_offset_for_plain(plain_start),
+            row.ansi_offset_for_plain(plain_end),
+        ) {
+            stdout.write_all(&row.ansi.as_bytes()[ansi_from..ansi_start])?;
+            let style = if current_match.is_some_and(|item| {
+                item.start_plain == row.start_plain + plain_start
+                    && item.end_plain == row.start_plain + plain_end
+            }) {
+                SEARCH_CURRENT_STYLE
+            } else {
+                SEARCH_MATCH_STYLE
+            };
+            stdout.write_all(style.as_bytes())?;
+            stdout.write_all(&row.ansi.as_bytes()[ansi_start..ansi_end])?;
+            stdout.write_all(RESET_STYLE)?;
+            ansi_from = ansi_end;
+        }
+        search_from = plain_end;
+    }
+
+    stdout.write_all(&row.ansi.as_bytes()[ansi_from..])?;
     Ok(())
 }
 

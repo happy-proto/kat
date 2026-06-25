@@ -13,6 +13,7 @@ use libghostty_vt::{
     RenderState, Terminal, TerminalOptions,
     render::{CellIterator, RowIterator},
     screen::Screen,
+    style::{PaletteIndex, StyleColor},
     terminal::{Point, PointCoordinate},
 };
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
@@ -340,6 +341,51 @@ fn kat_builtin_pager_supports_plain_text_search() -> TestResult {
         rendered.screen_text().contains("SEARCH-HIT visible target")
     })?;
     rendered.assert_screen_contains("SEARCH-HIT visible target");
+    rendered.assert_search_highlight_bg("SEARCH-HIT", PaletteIndex(160))?;
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_builtin_pager_highlights_all_search_matches_and_current_match() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-search-highlight",
+        "alpha needle one\nbeta needle two\ngamma needle three\n",
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        COLS,
+        ROWS,
+        &[],
+    )?;
+    session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("alpha needle one")
+    })?;
+
+    session.write_input(b"/needle\r")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.raw_output_string().contains("\x1b[97;48;5;160m")
+            && rendered.raw_output_string().contains("\x1b[30;48;5;220m")
+    })?;
+    rendered.assert_search_highlight_bg("alpha needle", PaletteIndex(160))?;
+    rendered.assert_search_highlight_bg("beta needle", PaletteIndex(220))?;
+
+    session.write_input(b"n")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered
+            .raw_output_string()
+            .matches("\x1b[97;48;5;160m")
+            .count()
+            >= 2
+    })?;
+    rendered.assert_search_highlight_bg("alpha needle", PaletteIndex(220))?;
+    rendered.assert_search_highlight_bg("beta needle", PaletteIndex(160))?;
 
     session.write_input(b"q")?;
     session.wait_success()?;
@@ -356,6 +402,10 @@ struct RenderedTerminal {
 impl RenderedTerminal {
     fn screen_text(&self) -> String {
         self.screen.join("\n")
+    }
+
+    fn raw_output_string(&self) -> String {
+        String::from_utf8_lossy(&self.raw_output).into_owned()
     }
 
     fn assert_screen_contains(&self, needle: &str) {
@@ -476,6 +526,35 @@ impl RenderedTerminal {
         assert!(
             uris.is_empty(),
             "expected no OSC 8 hyperlink metadata, got {uris:?}:\n{}",
+            self.screen_text()
+        );
+        Ok(())
+    }
+
+    fn assert_search_highlight_bg(
+        &self,
+        text_before_match: &str,
+        expected_bg: PaletteIndex,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let y = self.line_index(text_before_match) as u32;
+        let line = &self.screen[y as usize];
+        let x = line
+            .find("needle")
+            .or_else(|| line.find("SEARCH-HIT"))
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected highlighted search text in line {line:?}:\n{}",
+                    self.screen_text()
+                )
+            }) as u32;
+        let grid_ref = self
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x, y }))?;
+        let style = grid_ref.style()?;
+        assert_eq!(
+            style.bg_color,
+            StyleColor::Palette(expected_bg),
+            "unexpected search highlight background at {x},{y} in Ghostty screen:\n{}",
             self.screen_text()
         );
         Ok(())
