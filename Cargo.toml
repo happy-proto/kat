@@ -37,7 +37,7 @@ portable-pty = { version = "0.9.0", optional = true }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 shadow-rs = { version = "2.0.0", default-features = false }
-shlex = "2.0.1"
+signal-hook = "0.4.4"
 terminal_size = "0.4.4"
 termwiz = { git = "https://github.com/DCjanus/wezterm.git", branch = "feat/upstream-termwiz-default-color-probe" }
 toml = "1.1.0"
@@ -107,3 +107,6 @@ shadow-rs = { version = "2.0.0", default-features = false, features = ["build"] 
 
 [features]
 ghostty-e2e = ["dep:libghostty-vt", "dep:portable-pty"]
+
+[target."cfg(unix)".dependencies]
+termios = "0.3.3"

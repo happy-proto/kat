@@ -35,7 +35,7 @@ run_case() {
   local run
   for run in $(seq 1 "$iterations"); do
     local timing_line
-    timing_line="$("$bin_path" --paging=never --debug-timing "$absolute_path" 2>&1 >/dev/null)"
+    timing_line="$("$bin_path" --debug-timing "$absolute_path" 2>&1 >/dev/null)"
     echo "run=$run $timing_line"
 
     local total_ms
