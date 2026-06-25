@@ -60,8 +60,10 @@ kat path/to/image.png
 查看当前文件在 `kat` 内部各阶段的耗时：
 
 ```bash
-kat --debug-timing --paging=never path/to/file >/dev/null
+kat --debug-timing path/to/file >/dev/null
 ```
+
+TTY 下的普通渲染输出统一进入内建 alternate-screen viewer，从文件开头开始显示，并支持 `j/k`、方向键、PageUp/PageDown、Home/End 和 `q` 退出；`kat` 不再启动外部 `PAGER`，也不再提供 `--paging` 开关。stdout 不是 TTY 时仍直接输出完整内容，适合 pipe/redirect。
 
 在支持 OSC 8 的终端里，Markdown URL 这类有明确 URI 语义的片段默认会输出可点击超链接。可用 `--hyperlinks=auto|always|never` 或 `KAT_HYPERLINKS=auto|always|never` 覆盖；检测不到语言而走纯文本透传时不会额外注入超链接。
 

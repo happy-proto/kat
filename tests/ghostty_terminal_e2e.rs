@@ -2,20 +2,25 @@
 
 use std::{
     fs,
-    io::Read,
+    io::{Read, Write},
     path::{Path, PathBuf},
+    sync::mpsc::{self, Receiver},
     thread,
+    time::{Duration, Instant},
 };
 
 use libghostty_vt::{
     RenderState, Terminal, TerminalOptions,
     render::{CellIterator, RowIterator},
+    screen::Screen,
     terminal::{Point, PointCoordinate},
 };
-use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
 
 const COLS: u16 = 32;
 const ROWS: u16 = 12;
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
 fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
@@ -94,9 +99,137 @@ fn kat_keeps_wrapped_just_recipe_rows_adjacent() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
+#[test]
+fn kat_builtin_pager_ignores_external_pager_and_uses_alternate_screen() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager",
+        "builtin pager sentinel\n".repeat(20).as_str(),
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        COLS,
+        ROWS,
+        &[("PAGER", "sh -c 'printf EXTERNAL_PAGER_MARKER; exit 42'")],
+    )?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+
+    rendered.assert_active_screen(Screen::Alternate)?;
+    rendered.assert_raw_output_contains("\x1b[?1049h");
+    rendered.assert_raw_output_lacks("EXTERNAL_PAGER_MARKER");
+    rendered.assert_screen_contains("builtin pager sentinel");
+    rendered.assert_screen_contains("q:quit");
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_builtin_pager_reflows_alternate_screen_on_resize() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-reflow",
+        "REFLOW-SENTINEL alpha beta gamma delta epsilon zeta eta theta\n",
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        32,
+        ROWS,
+        &[],
+    )?;
+    let mut rendered = session.wait_for_screen(32, ROWS, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+
+    rendered.assert_screen_contains("REFLOW-SENTINEL alpha beta");
+    assert!(
+        !rendered.screen.iter().any(|line| {
+            line.trim_end() == "REFLOW-SENTINEL alpha beta gamma delta epsilon zeta eta theta"
+        }),
+        "expected narrow Ghostty screen to wrap the sentinel line:\n{}",
+        rendered.screen_text()
+    );
+
+    session.resize(72, ROWS)?;
+    rendered = session.wait_for_screen(72, ROWS, |rendered| {
+        rendered.screen.iter().any(|line| {
+            line.trim_end() == "REFLOW-SENTINEL alpha beta gamma delta epsilon zeta eta theta"
+        })
+    })?;
+    rendered.assert_screen_line("resized alternate-screen reflow", |line| {
+        line.trim_end() == "REFLOW-SENTINEL alpha beta gamma delta epsilon zeta eta theta"
+    });
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_builtin_pager_supports_page_home_and_end_navigation() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-navigation",
+        &(1..=40)
+            .map(|line| format!("NAV-LINE-{line:02}\n"))
+            .collect::<String>(),
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        COLS,
+        ROWS,
+        &[],
+    )?;
+
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("NAV-LINE-01")
+    })?;
+    rendered.assert_active_screen(Screen::Alternate)?;
+    rendered.assert_screen_contains("NAV-LINE-01");
+
+    session.write_input(b"\x1b[6~")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("NAV-LINE-12")
+    })?;
+    rendered.assert_screen_contains("NAV-LINE-12");
+
+    session.write_input(b"g")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("NAV-LINE-01")
+    })?;
+    rendered.assert_screen_contains("NAV-LINE-01");
+
+    session.write_input(b"G")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered.screen_text().contains("NAV-LINE-40")
+    })?;
+    rendered.assert_screen_contains("NAV-LINE-40");
+
+    session.write_input(b"q")?;
+    let output = session.wait_success()?;
+    assert!(
+        String::from_utf8_lossy(&output).contains("\x1b[?1049l"),
+        "expected pager to leave alternate screen"
+    );
+
+    Ok(())
+}
+
 struct RenderedTerminal {
     terminal: Terminal<'static, 'static>,
     screen: Vec<String>,
+    raw_output: Vec<u8>,
 }
 
 impl RenderedTerminal {
@@ -114,6 +247,32 @@ impl RenderedTerminal {
             "expected {description} in Ghostty screen:\n{}",
             self.screen_text()
         );
+    }
+
+    fn assert_raw_output_lacks(&self, needle: &str) {
+        let output = String::from_utf8_lossy(&self.raw_output);
+        assert!(
+            !output.contains(needle),
+            "expected PTY output to omit {needle:?}, got:\n{output}"
+        );
+    }
+
+    fn assert_raw_output_contains(&self, needle: &str) {
+        let output = String::from_utf8_lossy(&self.raw_output);
+        assert!(
+            output.contains(needle),
+            "expected PTY output to contain {needle:?}, got:\n{output}"
+        );
+    }
+
+    fn assert_active_screen(&self, screen: Screen) -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(
+            self.terminal.active_screen()?,
+            screen,
+            "unexpected active Ghostty screen:\n{}",
+            self.screen_text()
+        );
+        Ok(())
     }
 
     fn assert_compact_screen_line_contains(
@@ -260,59 +419,21 @@ fn render_path_in_ghostty(
     hyperlinks: &str,
 ) -> Result<RenderedTerminal, Box<dyn std::error::Error>> {
     let hyperlink_arg = format!("--hyperlinks={hyperlinks}");
-    let output = run_kat_in_pty(
+    let mut session = KatPtySession::spawn(
         &[
-            "--paging=never",
             hyperlink_arg.as_str(),
             path.to_str().expect("fixture path should be UTF-8"),
         ],
         cols,
         rows,
+        &[],
     )?;
-
-    let mut terminal = ghostty_terminal(cols, rows);
-    terminal.vt_write(&output);
-    let screen = visible_screen_lines(&terminal)?;
-    Ok(RenderedTerminal { terminal, screen })
-}
-
-fn run_kat_in_pty(
-    args: &[&str],
-    cols: u16,
-    rows: u16,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let pty_system = native_pty_system();
-    let pair = pty_system.openpty(PtySize {
-        rows,
-        cols,
-        pixel_width: 0,
-        pixel_height: 0,
+    let rendered = session.wait_for_screen(cols, rows, |rendered| {
+        rendered.screen_text().contains("q:quit")
     })?;
-    let mut reader = pair.master.try_clone_reader()?;
-
-    let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_kat"));
-    command.args(args);
-    command.env("TERM", "xterm-256color");
-    command.env_remove("KAT_HYPERLINKS");
-    command.env_remove("NO_COLOR");
-    let mut child = pair.slave.spawn_command(command)?;
-    drop(pair.slave);
-
-    let reader_thread = thread::spawn(move || {
-        let mut output = Vec::new();
-        reader.read_to_end(&mut output).map(|_| output)
-    });
-    let status = child.wait()?;
-    let output = reader_thread
-        .join()
-        .map_err(|_| "PTY reader thread panicked")??;
-
-    assert!(
-        status.success(),
-        "kat exited with {status:?}; output:\n{}",
-        String::from_utf8_lossy(&output)
-    );
-    Ok(output)
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(rendered)
 }
 
 fn ghostty_terminal(cols: u16, rows: u16) -> Terminal<'static, 'static> {
@@ -322,6 +443,151 @@ fn ghostty_terminal(cols: u16, rows: u16) -> Terminal<'static, 'static> {
         max_scrollback: 100,
     })
     .expect("Ghostty terminal should initialize")
+}
+
+struct KatPtySession {
+    master: Box<dyn MasterPty>,
+    writer: Box<dyn Write + Send>,
+    child: Box<dyn Child + Send + Sync>,
+    chunks: Receiver<Vec<u8>>,
+    reader_thread: Option<thread::JoinHandle<std::io::Result<()>>>,
+    output: Vec<u8>,
+}
+
+impl KatPtySession {
+    fn spawn(
+        args: &[&str],
+        cols: u16,
+        rows: u16,
+        envs: &[(&str, &str)],
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let pty_system = native_pty_system();
+        let pair = pty_system.openpty(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
+        let mut reader = pair.master.try_clone_reader()?;
+        let writer = pair.master.take_writer()?;
+
+        let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_kat"));
+        command.args(args);
+        command.env("TERM", "xterm-256color");
+        command.env_remove("KAT_HYPERLINKS");
+        command.env_remove("NO_COLOR");
+        for (key, value) in envs {
+            command.env(key, value);
+        }
+        let child = pair.slave.spawn_command(command)?;
+        drop(pair.slave);
+
+        let (tx, chunks) = mpsc::channel();
+        let reader_thread = thread::spawn(move || {
+            let mut buf = [0_u8; 4096];
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => return Ok(()),
+                    Ok(len) => {
+                        if tx.send(buf[..len].to_vec()).is_err() {
+                            return Ok(());
+                        }
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+        });
+
+        Ok(Self {
+            master: pair.master,
+            writer,
+            child,
+            chunks,
+            reader_thread: Some(reader_thread),
+            output: Vec::new(),
+        })
+    }
+
+    fn wait_for_screen(
+        &mut self,
+        cols: u16,
+        rows: u16,
+        predicate: impl Fn(&RenderedTerminal) -> bool,
+    ) -> Result<RenderedTerminal, Box<dyn std::error::Error>> {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut terminal = ghostty_terminal(cols, rows);
+        terminal.vt_write(&self.output);
+
+        loop {
+            while let Ok(chunk) = self.chunks.try_recv() {
+                terminal.vt_write(&chunk);
+                self.output.extend(chunk);
+            }
+
+            let screen = visible_screen_lines(&terminal)?;
+            let rendered = RenderedTerminal {
+                terminal,
+                screen,
+                raw_output: self.output.clone(),
+            };
+            if predicate(&rendered) {
+                return Ok(rendered);
+            }
+            terminal = rendered.terminal;
+
+            if Instant::now() >= deadline {
+                panic!(
+                    "timed out waiting for Ghostty screen; PTY output:\n{}",
+                    String::from_utf8_lossy(&self.output)
+                );
+            }
+
+            match self.chunks.recv_timeout(Duration::from_millis(25)) {
+                Ok(chunk) => {
+                    terminal.vt_write(&chunk);
+                    self.output.extend(chunk);
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => {}
+            }
+        }
+    }
+
+    fn resize(&mut self, cols: u16, rows: u16) -> Result<(), Box<dyn std::error::Error>> {
+        self.master.resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
+        Ok(())
+    }
+
+    fn write_input(&mut self, bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+        self.writer.write_all(bytes)?;
+        self.writer.flush()?;
+        Ok(())
+    }
+
+    fn wait_success(mut self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let status = self.child.wait()?;
+        drop(self.writer);
+        while let Ok(chunk) = self.chunks.recv_timeout(Duration::from_millis(25)) {
+            self.output.extend(chunk);
+        }
+        if let Some(reader_thread) = self.reader_thread.take() {
+            reader_thread
+                .join()
+                .map_err(|_| "PTY reader thread panicked")??;
+        }
+
+        assert!(
+            status.success(),
+            "kat exited with {status:?}; output:\n{}",
+            String::from_utf8_lossy(&self.output)
+        );
+        Ok(self.output)
+    }
 }
 
 fn visible_screen_lines(
@@ -354,6 +620,12 @@ fn visible_screen_lines(
 
 fn temp_markdown_fixture(name: &str, source: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let path = std::env::temp_dir().join(format!("{name}-{}.md", std::process::id()));
+    fs::write(&path, source)?;
+    Ok(path)
+}
+
+fn temp_plain_fixture(name: &str, source: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let path = std::env::temp_dir().join(format!("{name}-{}.txt", std::process::id()));
     fs::write(&path, source)?;
     Ok(path)
 }

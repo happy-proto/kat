@@ -5,7 +5,7 @@ use std::{
     fs,
     io::{self, IsTerminal, Read, Write},
     path::{Path, PathBuf},
-    process::{Command, ExitCode, Stdio},
+    process::ExitCode,
     time::{Duration, Instant},
 };
 
@@ -17,9 +17,8 @@ use miette::{Report, miette};
 use shadow_rs::shadow;
 use terminal_size::{Height, Width, terminal_size};
 
+mod pager;
 mod terminal_image;
-
-const DEFAULT_TERMINAL_ROWS: usize = 24;
 
 shadow!(build);
 
@@ -242,7 +241,6 @@ enum HyperlinkMode {
 #[derive(Debug, Eq, PartialEq)]
 struct CliOptions {
     mode: OutputMode,
-    paging: PagingMode,
     debug_timing: bool,
     image_width: Option<usize>,
     image_height: Option<usize>,
@@ -310,13 +308,6 @@ struct BuiltOutput {
 
 fn format_duration(duration: Duration) -> String {
     format!("{:.3}ms", duration.as_secs_f64() * 1_000.0)
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
-enum PagingMode {
-    Auto,
-    Always,
-    Never,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -437,8 +428,6 @@ struct CliArgs {
     language: Option<String>,
     #[arg(long, value_enum)]
     hyperlinks: Option<HyperlinkMode>,
-    #[arg(long, value_enum, default_value_t = PagingMode::Auto)]
-    paging: PagingMode,
     #[arg(
         value_name = "PATH|-",
         add = ArgValueCompleter::new(complete_input_paths)
@@ -493,7 +482,6 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
             "help",
             "version",
             "language",
-            "paging",
             "image_width",
             "image_height",
             "image_fit",
@@ -661,14 +649,13 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
     if cli.install_completion.is_some() {
         if cli.language.is_some()
             || cli.debug_timing
-            || cli.paging != PagingMode::Auto
             || cli.image_width.is_some()
             || cli.image_height.is_some()
             || cli.image_fit != ImageFitArg::Contain
             || cli.image_background != ImageBackgroundArg::Terminal
         {
             bail!(
-                "--install-completion cannot be combined with --language, --debug-timing, --paging, or image display options"
+                "--install-completion cannot be combined with --language, --debug-timing, or image display options"
             );
         }
         if !cli.paths.is_empty() {
@@ -713,7 +700,6 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
 
     Ok(CliOptions {
         mode,
-        paging: cli.paging,
         debug_timing: cli.debug_timing,
         image_width: cli.image_width,
         image_height: cli.image_height,
@@ -1071,81 +1057,6 @@ fn version_output() -> String {
     output
 }
 
-#[derive(Debug, Eq, PartialEq)]
-struct PagerCommand {
-    program: OsString,
-    args: Vec<OsString>,
-}
-
-fn should_page_output(output: &str, paging: PagingMode, stdout_is_terminal: bool) -> bool {
-    should_page_output_with_rows(output, paging, stdout_is_terminal, terminal_rows())
-}
-
-fn should_page_output_with_rows(
-    output: &str,
-    paging: PagingMode,
-    stdout_is_terminal: bool,
-    terminal_rows: Option<usize>,
-) -> bool {
-    if !stdout_is_terminal {
-        return false;
-    }
-
-    match paging {
-        PagingMode::Never => false,
-        PagingMode::Always => true,
-        PagingMode::Auto => {
-            count_output_lines(output) > terminal_rows.unwrap_or(DEFAULT_TERMINAL_ROWS)
-        }
-    }
-}
-
-fn resolve_pager_command(pager: Option<&OsStr>) -> Result<Option<PagerCommand>> {
-    let Some(pager) = pager else {
-        return Ok(Some(PagerCommand {
-            program: OsString::from("less"),
-            args: vec![
-                OsString::from("-R"),
-                OsString::from("-F"),
-                OsString::from("-X"),
-            ],
-        }));
-    };
-
-    let Some(pager) = pager.to_str() else {
-        bail!("PAGER contains invalid UTF-8");
-    };
-    let Some(parts) = shlex::split(pager) else {
-        bail!("failed to parse PAGER command");
-    };
-    if parts.is_empty() {
-        return Ok(None);
-    }
-
-    let mut parts = parts.into_iter();
-    let program = OsString::from(parts.next().expect("pager command should not be empty"));
-    Ok(Some(PagerCommand {
-        program,
-        args: parts.map(OsString::from).collect(),
-    }))
-}
-
-fn page_output_via_command(output: &str, pager: &PagerCommand) -> Result<()> {
-    let mut child = Command::new(&pager.program)
-        .args(&pager.args)
-        .stdin(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("failed to start pager {:?}", pager.program))?;
-    let mut stdin = child.stdin.take().context("failed to open pager stdin")?;
-    stdin.write_all(output.as_bytes())?;
-    drop(stdin);
-    let status = child.wait().context("failed to wait for pager")?;
-    if !status.success() {
-        bail!("pager exited with status {status}");
-    }
-    Ok(())
-}
-
 fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
     if matches!(options.mode, OutputMode::Version) {
         return Ok(BuiltOutput {
@@ -1258,22 +1169,13 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
 }
 
 fn write_output(output: &str, options: &CliOptions, contains_terminal_image: bool) -> Result<()> {
-    let should_page = matches!(options.mode, OutputMode::Render)
+    if matches!(options.mode, OutputMode::Render)
         && !contains_terminal_image
-        && should_page_output(output, options.paging, io::stdout().is_terminal());
-    if !should_page {
-        return write_output_direct(output);
-    }
-
-    let pager = resolve_pager_command(env::var_os("PAGER").as_deref())?;
-    let Some(pager) = pager else {
-        return write_output_direct(output);
-    };
-
-    match page_output_via_command(output, &pager) {
-        Ok(()) => Ok(()),
-        Err(error) if matches!(options.paging, PagingMode::Always) => Err(error),
-        Err(_) => write_output_direct(output),
+        && io::stdout().is_terminal()
+    {
+        pager::run(output)
+    } else {
+        write_output_direct(output)
     }
 }
 
@@ -1315,14 +1217,6 @@ fn terminal_columns() -> Option<usize> {
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
         .filter(|columns| *columns > 0)
-}
-
-fn count_output_lines(output: &str) -> usize {
-    if output.is_empty() {
-        return 0;
-    }
-
-    output.bytes().filter(|byte| *byte == b'\n').count() + usize::from(!output.ends_with('\n'))
 }
 
 #[cfg(test)]
@@ -1369,7 +1263,6 @@ fn read_stdin() -> io::Result<String> {
 #[cfg(test)]
 mod tests {
     use std::{
-        ffi::OsStr,
         ffi::OsString,
         fs,
         path::{Path, PathBuf},
@@ -1381,11 +1274,10 @@ mod tests {
 
     use super::{
         CliOptions, CompletionShell, DebugTimingStats, HyperlinkMode, ImageBackgroundArg,
-        ImageFitArg, OutputMode, PagerCommand, PagingMode, cli_command, completion_command_for,
+        ImageFitArg, OutputMode, cli_command, completion_command_for,
         completion_install_path_from_env, completion_registration_script, format_cli_error,
-        install_completion_script, page_output_via_command, parse_cli_args, read_source_from_path,
-        render_output, resolve_hyperlink_mode, resolve_pager_command, should_page_output,
-        version_output,
+        install_completion_script, parse_cli_args, read_source_from_path, render_output,
+        resolve_hyperlink_mode, version_output,
     };
 
     #[test]
@@ -1458,7 +1350,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::DebugSemantics,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1485,7 +1376,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::DebugSemantics,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1511,7 +1401,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::DebugAnalysis,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1539,7 +1428,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::DebugVisual,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1563,7 +1451,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::DebugLayout,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1589,7 +1476,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::DebugRenderOps,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1615,7 +1501,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::DebugTerminal,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1625,34 +1510,6 @@ mod tests {
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
-            }
-        );
-    }
-
-    #[test]
-    fn parses_paging_flag_and_language() {
-        let options = parse_cli_args([
-            OsString::from("--paging=never"),
-            OsString::from("--language"),
-            OsString::from("rust"),
-            OsString::from("src/main.rs"),
-        ])
-        .expect("failed to parse cli args");
-
-        assert_eq!(
-            options,
-            CliOptions {
-                mode: OutputMode::Render,
-                paging: PagingMode::Never,
-                debug_timing: false,
-                image_width: None,
-                image_height: None,
-                image_fit: ImageFitArg::Contain,
-                image_background: ImageBackgroundArg::Terminal,
-                hyperlinks: HyperlinkMode::Auto,
-                language: Some("rust".to_owned()),
-                install_completion: None,
-                paths: vec![PathBuf::from("src/main.rs")],
             }
         );
     }
@@ -1696,7 +1553,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::Render,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: Some(80),
                 image_height: Some(30),
@@ -1719,7 +1575,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::Version,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1745,7 +1600,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::Render,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -1802,7 +1656,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::Render,
-                paging: PagingMode::Auto,
                 debug_timing: true,
                 image_width: None,
                 image_height: None,
@@ -1836,7 +1689,6 @@ mod tests {
             options,
             CliOptions {
                 mode: OutputMode::Render,
-                paging: PagingMode::Auto,
                 debug_timing: false,
                 image_width: None,
                 image_height: None,
@@ -2008,17 +1860,6 @@ mod tests {
                 "expected debug timing output to contain {fragment}: {output}"
             );
         }
-    }
-
-    #[test]
-    fn rejects_unknown_paging_mode() {
-        let error = parse_cli_args([OsString::from("--paging=maybe")])
-            .expect_err("unknown paging mode should fail");
-
-        assert!(
-            format!("{error:#}").contains("invalid value"),
-            "unexpected error: {error:#}"
-        );
     }
 
     #[test]
@@ -2290,7 +2131,6 @@ mod tests {
                 value != "--help"
                     && value != "--version"
                     && value != "--language"
-                    && value != "--paging"
                     && value != "--debug-ast"
                     && value != "--debug-semantics"
                     && value != "--debug-shell-semantics"
@@ -2418,77 +2258,5 @@ mod tests {
             format!("{error:#}").contains("unknown language"),
             "unexpected error: {error:#}"
         );
-    }
-
-    #[test]
-    fn auto_paging_requires_terminal_and_long_output() {
-        assert!(
-            should_page_output(&"line\n".repeat(40), PagingMode::Auto, true),
-            "long tty output should use pager in auto mode"
-        );
-        assert!(
-            !should_page_output(&"line\n".repeat(2), PagingMode::Auto, true),
-            "short tty output should not use pager in auto mode"
-        );
-        assert!(
-            !should_page_output(&"line\n".repeat(40), PagingMode::Auto, false),
-            "non-tty output should not use pager in auto mode"
-        );
-    }
-
-    #[test]
-    fn resolves_default_and_env_pager_commands() {
-        assert_eq!(
-            resolve_pager_command(None).expect("default pager should resolve"),
-            Some(PagerCommand {
-                program: OsString::from("less"),
-                args: vec![
-                    OsString::from("-R"),
-                    OsString::from("-F"),
-                    OsString::from("-X"),
-                ],
-            })
-        );
-        assert_eq!(
-            resolve_pager_command(Some(OsStr::new("less -R --quit-if-one-screen")))
-                .expect("env pager should resolve"),
-            Some(PagerCommand {
-                program: OsString::from("less"),
-                args: vec![OsString::from("-R"), OsString::from("--quit-if-one-screen")],
-            })
-        );
-    }
-
-    #[test]
-    fn page_output_command_receives_rendered_text() {
-        let dir = unique_temp_dir("kat-pager-output");
-        fs::create_dir_all(&dir)
-            .unwrap_or_else(|error| panic!("failed to create temp dir {}: {error}", dir.display()));
-        let output_path = dir.join("pager-output.txt");
-        let pager = PagerCommand {
-            program: OsString::from("sh"),
-            args: vec![
-                OsString::from("-c"),
-                OsString::from(format!(
-                    "cat > {}",
-                    shell_single_quote(output_path.as_path())
-                )),
-            ],
-        };
-
-        page_output_via_command("hello from pager\n", &pager)
-            .expect("pager command should receive output");
-
-        let saved = fs::read_to_string(&output_path)
-            .unwrap_or_else(|error| panic!("failed to read {}: {error}", output_path.display()));
-        assert_eq!(saved, "hello from pager\n");
-
-        fs::remove_dir_all(&dir)
-            .unwrap_or_else(|error| panic!("failed to clean temp dir {}: {error}", dir.display()));
-    }
-
-    fn shell_single_quote(path: &Path) -> String {
-        let path = path.display().to_string();
-        format!("'{}'", path.replace('\'', "'\"'\"'"))
     }
 }
