@@ -21,6 +21,6 @@
 - 优先使用真实代码风格的样例，而不是只堆 token。
 - 当一个语言、主题规则或 injection 场景难以通过微型样例判断效果时，再补更完整的 `showcase`。
 - 对终端兼容性、wrapped layout 或 ANSI 编码问题，优先先固定最小 `fixture`，再通过 `--debug-layout` / `--debug-render-ops` / `--debug-terminal` 或 PTY 录制补回归。
-- 需要验证真实终端边界时，优先使用 `ghostty-e2e` feature 下的 PTY + `libghostty-vt` 测试：测试先在固定尺寸 PTY 里运行真实 `kat` 二进制，再把输出字节交给 Ghostty 的无头终端模型断言 screen/cell 结果。该测试依赖 `libghostty-vt-sys` 的 Ghostty native build，当前需要匹配 Ghostty 要求的 Zig 工具链；默认 `just test` 不启用它。
+- 需要验证真实终端边界时，优先使用 `ghostty-e2e` feature 下的 PTY + `libghostty-vt` 测试：测试先在固定尺寸 PTY 里运行真实 `kat` 二进制，再把输出字节交给 Ghostty 的无头终端模型断言 screen/cell 结果。该测试依赖 `libghostty-vt-sys` 的 Ghostty native build，需要匹配 Ghostty 要求的 Zig 工具链；默认 `just test` 不启用它，CI 通过独立 `ghostty-e2e` job 显式运行。
 - 手工运行 Ghostty 端到端测试使用 `just ghostty-e2e`。
 - 一旦仓库存在 `justfile`，就使用 `just test` 作为标准测试入口；需要手工查看效果时，使用 `just showcase`。

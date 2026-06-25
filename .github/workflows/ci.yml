@@ -16,6 +16,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  GHOSTTY_ZIG_VERSION: 0.15.2
 
 jobs:
   fmt:
@@ -58,6 +59,19 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+
+      - name: Set up Zig for Ghostty bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          zig_dir="${RUNNER_TEMP}/zig-${GHOSTTY_ZIG_VERSION}"
+          mkdir -p "${zig_dir}"
+          curl --fail --location --show-error --silent \
+            "https://ziglang.org/download/${GHOSTTY_ZIG_VERSION}/zig-x86_64-linux-${GHOSTTY_ZIG_VERSION}.tar.xz" \
+            --output "${zig_dir}/zig.tar.xz"
+          tar -xJf "${zig_dir}/zig.tar.xz" --strip-components=1 -C "${zig_dir}"
+          echo "${zig_dir}" >> "${GITHUB_PATH}"
+          "${zig_dir}/zig" version
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
@@ -188,6 +202,78 @@ jobs:
           path: ${{ runner.temp }}/kat-test-observability
           if-no-files-found: warn
 
+  ghostty-e2e:
+    name: ghostty-e2e (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Restore Cargo registry cache
+        id: cargo-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Zig for Ghostty bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          zig_dir="${RUNNER_TEMP}/zig-${GHOSTTY_ZIG_VERSION}"
+          mkdir -p "${zig_dir}"
+          curl --fail --location --show-error --silent \
+            "https://ziglang.org/download/${GHOSTTY_ZIG_VERSION}/zig-x86_64-linux-${GHOSTTY_ZIG_VERSION}.tar.xz" \
+            --output "${zig_dir}/zig.tar.xz"
+          tar -xJf "${zig_dir}/zig.tar.xz" --strip-components=1 -C "${zig_dir}"
+          echo "${zig_dir}" >> "${GITHUB_PATH}"
+          "${zig_dir}/zig" version
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Enable sccache integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "SCCACHE_GHA_ENABLED=true"
+            echo "RUSTC_WRAPPER=sccache"
+            echo "CC=sccache cc"
+            echo "CXX=sccache c++"
+          } >> "${GITHUB_ENV}"
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Run Ghostty terminal e2e
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${SCCACHE_PATH}" --zero-stats
+          cargo nextest run \
+            --workspace \
+            --features ghostty-e2e \
+            --test ghostty_terminal_e2e \
+            --config-file .config/nextest.toml
+
+      - name: Save Cargo registry cache
+        if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
   build:
     name: >-
       build (${{ matrix.runner }} / ${{ matrix.target }})
@@ -196,6 +282,7 @@ jobs:
       - fmt
       - clippy
       - test
+      - ghostty-e2e
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
