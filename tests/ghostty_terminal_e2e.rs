@@ -546,7 +546,7 @@ impl RenderedTerminal {
                     "expected highlighted search text in line {line:?}:\n{}",
                     self.screen_text()
                 )
-            }) as u32;
+            }) as u16;
         let grid_ref = self
             .terminal
             .grid_ref(Point::Active(PointCoordinate { x, y }))?;
