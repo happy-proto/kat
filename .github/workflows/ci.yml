@@ -66,7 +66,8 @@ jobs:
           set -euo pipefail
           zig_dir="${RUNNER_TEMP}/zig-${GHOSTTY_ZIG_VERSION}"
           mkdir -p "${zig_dir}"
-          curl --fail --location --show-error --silent \
+          curl --fail --location --show-error \
+            --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 2 \
             "https://ziglang.org/download/${GHOSTTY_ZIG_VERSION}/zig-x86_64-linux-${GHOSTTY_ZIG_VERSION}.tar.xz" \
             --output "${zig_dir}/zig.tar.xz"
           tar -xJf "${zig_dir}/zig.tar.xz" --strip-components=1 -C "${zig_dir}"
@@ -228,7 +229,8 @@ jobs:
           set -euo pipefail
           zig_dir="${RUNNER_TEMP}/zig-${GHOSTTY_ZIG_VERSION}"
           mkdir -p "${zig_dir}"
-          curl --fail --location --show-error --silent \
+          curl --fail --location --show-error \
+            --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 2 \
             "https://ziglang.org/download/${GHOSTTY_ZIG_VERSION}/zig-x86_64-linux-${GHOSTTY_ZIG_VERSION}.tar.xz" \
             --output "${zig_dir}/zig.tar.xz"
           tar -xJf "${zig_dir}/zig.tar.xz" --strip-components=1 -C "${zig_dir}"
