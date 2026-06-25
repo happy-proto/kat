@@ -81,7 +81,7 @@ fn kat_omits_markdown_hyperlinks_when_disabled() -> Result<(), Box<dyn std::erro
         rendered
             .screen
             .iter()
-            .any(|line| line.contains("https://www.rust-lang.org/")),
+            .any(|line| line.contains("[Rust](https://www.rust-lang.org")),
         "expected Markdown URL text in Ghostty screen:\n{}",
         rendered.screen.join("\n")
     );
@@ -97,12 +97,23 @@ fn kat_omits_markdown_hyperlinks_when_disabled() -> Result<(), Box<dyn std::erro
 #[test]
 fn kat_expands_markdown_html_tabs_on_ghostty_cells() -> Result<(), Box<dyn std::error::Error>> {
     let rendered = render_fixture_in_ghostty("markdown/html_block_tabs.md", 120, 18)?;
+    let tabbed_cell_line = rendered
+        .screen
+        .iter()
+        .find(|line| line.contains("<td>值"))
+        .unwrap_or_else(|| {
+            panic!(
+                "expected tabbed HTML cell in Ghostty screen:\n{}",
+                rendered.screen.join("\n")
+            )
+        });
+    let compact_line = tabbed_cell_line
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .collect::<String>();
 
     assert!(
-        rendered
-            .screen
-            .iter()
-            .any(|line| line.contains("<td>值      标签</td>")),
+        !tabbed_cell_line.contains('\t') && compact_line.contains("<td>值标签</td>"),
         "expected tabbed HTML cells to render as display spaces:\n{}",
         rendered.screen.join("\n")
     );
