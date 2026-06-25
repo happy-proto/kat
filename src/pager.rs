@@ -294,6 +294,19 @@ fn handle_normal_input(
     mode: &mut PagerMode,
     size: PagerSize,
 ) -> PagerInputOutcome {
+    if input.len() > 1 && input.first() != Some(&0x1b) {
+        for byte in input {
+            let outcome = handle_normal_input(&[*byte], document, viewport, state, mode, size);
+            if matches!(outcome, PagerInputOutcome::Quit) {
+                return PagerInputOutcome::Quit;
+            }
+            if !matches!(mode, PagerMode::Normal) {
+                return PagerInputOutcome::Continue;
+            }
+        }
+        return PagerInputOutcome::Continue;
+    }
+
     let Some(action) = PagerAction::parse(input) else {
         return PagerInputOutcome::Continue;
     };
@@ -471,6 +484,10 @@ impl DisplayRow {
                 || self.start_column == self.end_column
                 || anchor.display_column == self.start_column)
     }
+
+    fn display_width(&self) -> usize {
+        self.end_column.saturating_sub(self.start_column)
+    }
 }
 
 fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayRow>) {
@@ -637,7 +654,9 @@ fn render(
     for row in viewport.rows.iter().skip(state.top_row).take(body_rows) {
         stdout.write_all(row.ansi.as_bytes())?;
         stdout.write_all(RESET_STYLE)?;
-        stdout.write_all(b"\r\n")?;
+        if row.display_width() < size.cols {
+            stdout.write_all(b"\r\n")?;
+        }
     }
 
     write!(stdout, "\x1b[{};1H", size.rows)?;
