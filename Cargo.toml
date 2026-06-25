@@ -31,7 +31,9 @@ clap = { version = "4.6.0", features = ["derive"] }
 clap_complete = { version = "4.6.5", features = ["unstable-dynamic"] }
 icy_sixel = "0.5.0"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp", "ico", "qoi", "pnm", "ff", "hdr", "dds"] }
+libghostty-vt = { version = "0.2.0", default-features = false, optional = true }
 miette = { version = "7.6.0", features = ["fancy"] }
+portable-pty = { version = "0.9.0", optional = true }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 shadow-rs = { version = "2.0.0", default-features = false }
@@ -102,3 +104,6 @@ unicode-width = "0.2.2"
 
 [build-dependencies]
 shadow-rs = { version = "2.0.0", default-features = false, features = ["build"] }
+
+[features]
+ghostty-e2e = ["dep:libghostty-vt", "dep:portable-pty"]
