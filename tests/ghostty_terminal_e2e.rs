@@ -13,38 +13,92 @@ const COLS: u16 = 32;
 const ROWS: u16 = 12;
 
 #[test]
-fn kat_output_renders_in_ghostty_screen_model() -> Result<(), Box<dyn std::error::Error>> {
-    let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/markdown/ghostty-e2e.md");
+fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
+    let narrow = render_fixture_in_ghostty("markdown/ghostty-e2e.md", COLS, ROWS)?;
+    let wide = render_fixture_in_ghostty("markdown/ghostty-e2e.md", 96, ROWS)?;
+
+    assert!(
+        narrow
+            .screen
+            .iter()
+            .any(|line| line.contains("This line is intentionally")),
+        "expected rendered Markdown body in Ghostty screen:\n{}",
+        narrow.screen.join("\n")
+    );
+    assert_wrapped_body_line(&narrow.screen);
+    assert!(
+        wide.screen.iter().any(|line| {
+            line.trim_end()
+                == "This line is intentionally long enough to require terminal wrapping at a narrow width."
+        }),
+        "expected wider PTY to keep the body line unwrapped:\n{}",
+        wide.screen.join("\n")
+    );
+
+    Ok(())
+}
+
+#[test]
+fn kat_preserves_markdown_hyperlinks_on_ghostty_cells() -> Result<(), Box<dyn std::error::Error>> {
+    let rendered = render_fixture_in_ghostty("markdown/ghostty-e2e.md", COLS, ROWS)?;
+
+    assert!(
+        hyperlink_uris(&rendered.terminal)?.contains(&"https://www.rust-lang.org/".to_string()),
+        "expected OSC 8 hyperlink metadata on Ghostty cells:\n{}",
+        rendered.screen.join("\n")
+    );
+
+    Ok(())
+}
+
+#[test]
+fn kat_does_not_inject_hyperlinks_for_plain_text() -> Result<(), Box<dyn std::error::Error>> {
+    let rendered = render_fixture_in_ghostty("plain/ghostty-url.txt", COLS, ROWS)?;
+
+    assert!(
+        rendered
+            .screen
+            .iter()
+            .any(|line| line.contains("https://www.rust-lang.org/")),
+        "expected plain URL text in Ghostty screen:\n{}",
+        rendered.screen.join("\n")
+    );
+    assert!(
+        hyperlink_uris(&rendered.terminal)?.is_empty(),
+        "expected plain text rendering not to synthesize OSC 8 hyperlinks:\n{}",
+        rendered.screen.join("\n")
+    );
+
+    Ok(())
+}
+
+struct RenderedTerminal {
+    terminal: Terminal<'static, 'static>,
+    screen: Vec<String>,
+}
+
+fn render_fixture_in_ghostty(
+    fixture: &str,
+    cols: u16,
+    rows: u16,
+) -> Result<RenderedTerminal, Box<dyn std::error::Error>> {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures")
+        .join(fixture);
     let output = run_kat_in_pty(
         &[
             "--paging=never",
             "--hyperlinks=always",
             fixture.to_str().expect("fixture path should be UTF-8"),
         ],
-        COLS,
-        ROWS,
+        cols,
+        rows,
     )?;
 
-    let mut terminal = ghostty_terminal(COLS, ROWS);
+    let mut terminal = ghostty_terminal(cols, rows);
     terminal.vt_write(&output);
-
     let screen = visible_screen_lines(&terminal)?;
-    assert!(
-        screen
-            .iter()
-            .any(|line| line.contains("This line is intentionally")),
-        "expected rendered Markdown body in Ghostty screen:\n{}",
-        screen.join("\n")
-    );
-    assert_wrapped_body_line(&screen);
-    assert!(
-        hyperlink_uris(&terminal)?.contains(&"https://www.rust-lang.org/".to_string()),
-        "expected OSC 8 hyperlink metadata on Ghostty cells:\n{}",
-        screen.join("\n")
-    );
-
-    Ok(())
+    Ok(RenderedTerminal { terminal, screen })
 }
 
 fn assert_wrapped_body_line(screen: &[String]) {
