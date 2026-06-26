@@ -1122,7 +1122,7 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
             push_header(&mut output, &path.display().to_string(), index > 0);
         }
         if matches!(options.mode, OutputMode::DebugImage) {
-            if !is_image_bytes(&bytes) {
+            if !is_image_path(path.as_path(), &bytes) {
                 bail!("{} is not a supported image file", path.display());
             }
             output.push_str(&terminal_image::debug_image_json(
@@ -1136,7 +1136,7 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
             }
             continue;
         }
-        if should_render_path_as_image(options, &bytes) {
+        if should_render_path_as_image(options, path.as_path(), &bytes) {
             let image_output = terminal_image::render_inline_image(
                 path.as_path(),
                 bytes,
@@ -1233,14 +1233,14 @@ fn read_bytes_from_path(path: &PathBuf) -> Result<Vec<u8>> {
     fs::read(path).map_err(|error| ReadSourceError::io(path.clone(), error).into())
 }
 
-fn should_render_path_as_image(options: &CliOptions, bytes: &[u8]) -> bool {
+fn should_render_path_as_image(options: &CliOptions, path: &Path, bytes: &[u8]) -> bool {
     matches!(options.mode, OutputMode::Render)
         && options.language.is_none()
-        && is_image_bytes(bytes)
+        && is_image_path(path, bytes)
 }
 
-fn is_image_bytes(bytes: &[u8]) -> bool {
-    terminal_image::sniff_image_format(bytes).is_some()
+fn is_image_path(path: &Path, bytes: &[u8]) -> bool {
+    terminal_image::detect_image_format(path, bytes).is_some()
 }
 
 fn image_render_options(options: &CliOptions) -> terminal_image::ImageRenderOptions {
