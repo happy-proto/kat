@@ -65,6 +65,9 @@ jobs:
         with:
           version: ${{ env.GHOSTTY_ZIG_VERSION }}
 
+      - name: Set up native image dependencies
+        uses: ./.github/actions/setup-native-image-deps
+
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
 
@@ -130,6 +133,9 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up native image dependencies
+        uses: ./.github/actions/setup-native-image-deps
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
@@ -218,6 +224,9 @@ jobs:
         uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.GHOSTTY_ZIG_VERSION }}
+
+      - name: Set up native image dependencies
+        uses: ./.github/actions/setup-native-image-deps
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
@@ -323,6 +332,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Set up native image dependencies
+        uses: ./.github/actions/setup-native-image-deps
+        with:
+          target: ${{ matrix.target }}
 
       - name: Set up sccache
         if: matrix.use_sccache
