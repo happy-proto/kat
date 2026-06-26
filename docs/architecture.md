@@ -62,7 +62,7 @@
 5. `terminal`
    - 负责终端能力探测、默认颜色查询和最终终端编码 / 输出。
    - 当前 terminal backend 已开始收口到 `termwiz`：默认前景 / 背景颜色通过 `ProbeCapabilities::dynamic_color` 统一查询，避免 render backend 和 OSC probing 分别占用两套 TTY I/O 栈。
-   - CLI 输出层仍以“terminal 层编码出完整 ANSI 文本”为边界；TTY 下的普通渲染输出统一进入内建 alternate-screen viewer，不再依赖外部 `PAGER`，也不再保留 `--paging` 开关。viewer 从文件开头开始显示，接管基础滚动键和 resize 重绘；stdout 不是 TTY 时仍直接输出完整 ANSI 文本，方便 pipe / redirect。
+   - CLI 输出层仍以“terminal 层编码出完整 ANSI 文本”为边界；TTY 下的普通渲染输出统一进入内建 alternate-screen viewer，不再依赖外部 `PAGER`，也不再保留 `--paging` 开关。viewer 从文件开头开始显示，按当前终端宽度把 ANSI 输出展开成 display rows 后滚动，resize 时用顶部源行与 display column 锚点恢复可见位置，并支持基础滚动键与普通文本搜索；stdout 不是 TTY 时仍直接输出完整 ANSI 文本，方便 pipe / redirect。
    - OSC 8 超链接按“分析 / 视觉层保留 URI 语义，`render_ops` 生成终端无关 link state，terminal 编码层最终输出控制序列”的方式接入；纯文本透传和 debug 输出不注入超链接。
    - 图片文件输入是独立的 terminal image 短路路径：`kat image.png` 这类用法不进入语法高亮链路，也不进入 pager，而是按 iTerm2 inline image、Kitty graphics 或 Sixel 这类终端图片协议直接输出。图片默认按当前终端宽度和约 80% 终端高度等比缩放；显式尺寸、透明背景合成和 EXIF orientation 处理都由 CLI 图片参数传入 terminal image 层处理。stdout 不是 TTY 或终端图片协议不可用时，图片路径会退化为可读的图片信息输出；`--debug-image` 提供图片检测、目标尺寸和协议选择的稳定 JSON 出口。
 
