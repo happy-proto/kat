@@ -13,7 +13,7 @@ use libghostty_vt::{
     RenderState, Terminal, TerminalOptions,
     render::{CellIterator, RowIterator},
     screen::Screen,
-    style::{PaletteIndex, StyleColor},
+    style::Underline,
     terminal::{Point, PointCoordinate},
 };
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
@@ -341,7 +341,7 @@ fn kat_builtin_pager_supports_plain_text_search() -> TestResult {
         rendered.screen_text().contains("SEARCH-HIT visible target")
     })?;
     rendered.assert_screen_contains("SEARCH-HIT visible target");
-    rendered.assert_search_highlight_bg("SEARCH-HIT", PaletteIndex(160))?;
+    rendered.assert_search_highlight_style("SEARCH-HIT", Underline::Single)?;
 
     session.write_input(b"q")?;
     session.wait_success()?;
@@ -370,22 +370,18 @@ fn kat_builtin_pager_highlights_all_search_matches_and_current_match() -> TestRe
 
     session.write_input(b"/needle\r")?;
     let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
-        rendered.raw_output_string().contains("\x1b[97;48;5;160m")
-            && rendered.raw_output_string().contains("\x1b[30;48;5;220m")
+        rendered.raw_output_string().contains("\x1b[7;4m")
+            && rendered.raw_output_string().contains("\x1b[7m")
     })?;
-    rendered.assert_search_highlight_bg("alpha needle", PaletteIndex(160))?;
-    rendered.assert_search_highlight_bg("beta needle", PaletteIndex(220))?;
+    rendered.assert_search_highlight_style("alpha needle", Underline::Single)?;
+    rendered.assert_search_highlight_style("beta needle", Underline::None)?;
 
     session.write_input(b"n")?;
     let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
-        rendered
-            .raw_output_string()
-            .matches("\x1b[97;48;5;160m")
-            .count()
-            >= 2
+        rendered.raw_output_string().matches("\x1b[7;4m").count() >= 2
     })?;
-    rendered.assert_search_highlight_bg("beta needle", PaletteIndex(160))?;
-    rendered.assert_search_highlight_bg("gamma needle", PaletteIndex(220))?;
+    rendered.assert_search_highlight_style("beta needle", Underline::Single)?;
+    rendered.assert_search_highlight_style("gamma needle", Underline::None)?;
 
     session.write_input(b"q")?;
     session.wait_success()?;
@@ -531,10 +527,10 @@ impl RenderedTerminal {
         Ok(())
     }
 
-    fn assert_search_highlight_bg(
+    fn assert_search_highlight_style(
         &self,
         text_before_match: &str,
-        expected_bg: PaletteIndex,
+        expected_underline: Underline,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let y = self.line_index(text_before_match) as u32;
         let line = &self.screen[y as usize];
@@ -551,10 +547,15 @@ impl RenderedTerminal {
             .terminal
             .grid_ref(Point::Active(PointCoordinate { x, y }))?;
         let style = grid_ref.style()?;
+        assert!(
+            style.inverse,
+            "expected inverse search highlight at {x},{y} in Ghostty screen:\n{}",
+            self.screen_text()
+        );
         assert_eq!(
-            style.bg_color,
-            StyleColor::Palette(expected_bg),
-            "unexpected search highlight background at {x},{y} in Ghostty screen:\n{}",
+            style.underline,
+            expected_underline,
+            "unexpected search highlight underline at {x},{y} in Ghostty screen:\n{}",
             self.screen_text()
         );
         Ok(())

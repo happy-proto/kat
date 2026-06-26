@@ -16,8 +16,10 @@ const LEAVE_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049l";
 const CLEAR_SCREEN: &[u8] = b"\x1b[H\x1b[2J";
 const CLEAR_LINE: &[u8] = b"\x1b[2K";
 const RESET_STYLE: &[u8] = b"\x1b[0m";
-const SEARCH_MATCH_STYLE: &str = "\x1b[30;48;5;220m";
-const SEARCH_CURRENT_STYLE: &str = "\x1b[97;48;5;160m";
+const SEARCH_MATCH_STYLE: &str = "\x1b[7m";
+const SEARCH_MATCH_RESET: &str = "\x1b[27m";
+const SEARCH_CURRENT_STYLE: &str = "\x1b[7;4m";
+const SEARCH_CURRENT_RESET: &str = "\x1b[24;27m";
 
 pub(crate) fn run(output: &str) -> Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
@@ -813,17 +815,18 @@ fn write_row(mut stdout: impl Write, row: &DisplayRow, state: &PagerState) -> Re
             row.ansi_offset_for_plain(plain_end),
         ) {
             stdout.write_all(&row.ansi.as_bytes()[ansi_from..ansi_start])?;
-            let style = if current_match.is_some_and(|item| {
+            let is_current = current_match.is_some_and(|item| {
                 item.start_plain == row.start_plain + plain_start
                     && item.end_plain == row.start_plain + plain_end
-            }) {
-                SEARCH_CURRENT_STYLE
+            });
+            let (style, reset) = if is_current {
+                (SEARCH_CURRENT_STYLE, SEARCH_CURRENT_RESET)
             } else {
-                SEARCH_MATCH_STYLE
+                (SEARCH_MATCH_STYLE, SEARCH_MATCH_RESET)
             };
             stdout.write_all(style.as_bytes())?;
             stdout.write_all(&row.ansi.as_bytes()[ansi_start..ansi_end])?;
-            stdout.write_all(RESET_STYLE)?;
+            stdout.write_all(reset.as_bytes())?;
             ansi_from = ansi_end;
         }
         search_from = plain_end;
