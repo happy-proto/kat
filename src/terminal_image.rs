@@ -26,6 +26,7 @@ const MAX_SVG_RASTER_PIXELS: u64 = 64 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ImageFormat {
+    Avif,
     Bmp,
     Dds,
     Farbfeld,
@@ -44,6 +45,7 @@ pub(crate) enum ImageFormat {
 impl ImageFormat {
     fn as_str(self) -> &'static str {
         match self {
+            Self::Avif => "avif",
             Self::Bmp => "bmp",
             Self::Dds => "dds",
             Self::Farbfeld => "farbfeld",
@@ -112,6 +114,10 @@ pub(crate) fn sniff_image_format(bytes: &[u8]) -> Option<ImageFormat> {
         return Some(ImageFormat::Svg);
     }
 
+    if is_avif_file_header(bytes) {
+        return Some(ImageFormat::Avif);
+    }
+
     if is_bmp_file_header(bytes) {
         return Some(ImageFormat::Bmp);
     }
@@ -171,6 +177,9 @@ pub(crate) fn detect_image_format(path: &Path, bytes: &[u8]) -> Option<ImageForm
     if has_svg_extension(path) {
         return Some(ImageFormat::Svg);
     }
+    if has_avif_extension(path) {
+        return Some(ImageFormat::Avif);
+    }
 
     sniff_image_format(bytes)
 }
@@ -179,6 +188,13 @@ fn has_svg_extension(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
         .map(|extension| matches!(extension.to_ascii_lowercase().as_str(), "svg" | "svgz"))
+        .unwrap_or(false)
+}
+
+fn has_avif_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| extension.eq_ignore_ascii_case("avif"))
         .unwrap_or(false)
 }
 
@@ -199,6 +215,12 @@ fn is_svg_document(bytes: &[u8]) -> bool {
             .as_bytes()
             .get(4)
             .is_some_and(|byte| byte.is_ascii_whitespace() || matches!(byte, b'>' | b'/'))
+}
+
+fn is_avif_file_header(bytes: &[u8]) -> bool {
+    bytes.len() >= 12
+        && &bytes[4..8] == b"ftyp"
+        && (&bytes[8..12] == b"avif" || &bytes[8..12] == b"avis")
 }
 
 fn is_bmp_file_header(bytes: &[u8]) -> bool {
@@ -485,9 +507,7 @@ fn decode_dynamic_image(
             .with_context(|| format!("failed to rasterize {}", path.display()));
     }
 
-    let reader = ImageReader::new(Cursor::new(data))
-        .with_guessed_format()
-        .context("failed to guess image format")?;
+    let reader = ImageReader::with_format(Cursor::new(data), encoded_image_format(format));
     let mut decoder = reader
         .into_decoder()
         .context("failed to create image decoder")?;
@@ -502,6 +522,25 @@ fn decode_dynamic_image(
         original_height: original_height as usize,
         orientation,
     })
+}
+
+fn encoded_image_format(format: ImageFormat) -> EncodedImageFormat {
+    match format {
+        ImageFormat::Avif => EncodedImageFormat::Avif,
+        ImageFormat::Bmp => EncodedImageFormat::Bmp,
+        ImageFormat::Dds => EncodedImageFormat::Dds,
+        ImageFormat::Farbfeld => EncodedImageFormat::Farbfeld,
+        ImageFormat::Gif => EncodedImageFormat::Gif,
+        ImageFormat::Hdr => EncodedImageFormat::Hdr,
+        ImageFormat::Ico => EncodedImageFormat::Ico,
+        ImageFormat::Jpeg => EncodedImageFormat::Jpeg,
+        ImageFormat::Pnm => EncodedImageFormat::Pnm,
+        ImageFormat::Png => EncodedImageFormat::Png,
+        ImageFormat::Qoi => EncodedImageFormat::Qoi,
+        ImageFormat::Tiff => EncodedImageFormat::Tiff,
+        ImageFormat::Webp => EncodedImageFormat::WebP,
+        ImageFormat::Svg => unreachable!("SVG is rasterized before image crate decoding"),
+    }
 }
 
 fn decode_svg_image(data: &[u8]) -> Result<DecodedDynamicImage> {
@@ -604,7 +643,8 @@ fn frame_note(format: ImageFormat) -> Option<&'static str> {
         ),
         ImageFormat::Svg => Some("SVG inputs are rasterized before terminal image encoding"),
         ImageFormat::Tiff => Some("multi-page TIFF inputs are rendered as their first page"),
-        ImageFormat::Bmp
+        ImageFormat::Avif
+        | ImageFormat::Bmp
         | ImageFormat::Dds
         | ImageFormat::Farbfeld
         | ImageFormat::Hdr
@@ -946,6 +986,8 @@ fn encode_sixel_rgba_image(image: &DecodedRgbaImage) -> Result<String> {
 mod tests {
     use std::io::Cursor;
 
+    use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+
     use super::{
         DecodedRgbaImage, ImageBackground, ImageCellSize, ImageFit, ImageFormat,
         ImageRenderOptions, debug_image_json, detect_image_format, encode_dynamic_png,
@@ -995,12 +1037,24 @@ mod tests {
         bytes
     }
 
+    fn one_pixel_avif() -> Vec<u8> {
+        BASE64_STANDARD
+            .decode(
+                "AAAAGGZ0eXBhdmlmAAAAAG1pZjFtaWFmAAAA0m1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAAA8gAAAC0AAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAFZpcHJwAAAAOGlwY28AAAAUaXNwZQAAAAAAAAABAAAAAQAAAAxhdjFDgT8AAAAAABBwaXhpAAAAAAMICAgAAAAWaXBtYQAAAAAAAAABAAEDAYIDAAAANW1kYXQSAAoHP8ACEBDQbTIgZYIvQycT/MAAIAAQAAAAAAAAAAAGJolajLk2UP6KNvA=",
+            )
+            .expect("embedded AVIF should decode")
+    }
+
     fn simple_svg() -> Vec<u8> {
         br#"<svg xmlns="http://www.w3.org/2000/svg" width="2" height="3" viewBox="0 0 2 3"><rect width="2" height="3" fill="red"/></svg>"#.to_vec()
     }
 
     #[test]
     fn sniffs_common_image_formats() {
+        assert_eq!(
+            sniff_image_format(&one_pixel_avif()),
+            Some(ImageFormat::Avif)
+        );
         assert_eq!(sniff_image_format(&one_pixel_bmp()), Some(ImageFormat::Bmp));
         assert_eq!(
             sniff_image_format(b"\x89PNG\r\n\x1a\nrest"),
@@ -1060,6 +1114,18 @@ mod tests {
         assert_eq!(
             detect_image_format("document.xml".as_ref(), b"<root/>"),
             None
+        );
+    }
+
+    #[test]
+    fn detects_avif_by_content_or_extension() {
+        assert_eq!(
+            sniff_image_format(&one_pixel_avif()),
+            Some(ImageFormat::Avif)
+        );
+        assert_eq!(
+            detect_image_format("image.avif".as_ref(), b"not enough for sniffing"),
+            Some(ImageFormat::Avif)
         );
     }
 
@@ -1227,6 +1293,50 @@ mod tests {
         assert!(json.contains(r#""display_width": 2"#));
         assert!(json.contains(r#""display_height": 3"#));
         assert!(json.contains("SVG inputs are rasterized"));
+    }
+
+    #[test]
+    fn debug_image_json_reports_avif_metadata() {
+        let json = debug_image_json(
+            "image.avif".as_ref(),
+            &one_pixel_avif(),
+            false,
+            ImageRenderOptions {
+                width_cells: None,
+                height_cells: None,
+                fit: ImageFit::Contain,
+                background: ImageBackground::Terminal,
+                terminal_columns: None,
+                terminal_rows: None,
+            },
+        )
+        .expect("debug AVIF metadata should render");
+
+        assert!(json.contains(r#""format": "avif""#));
+        assert!(json.contains(r#""display_width": 1"#));
+        assert!(json.contains(r#""display_height": 1"#));
+    }
+
+    #[test]
+    fn non_tty_avif_render_returns_info_fallback() {
+        let output = render_inline_image(
+            "image.avif".as_ref(),
+            one_pixel_avif(),
+            false,
+            ImageRenderOptions {
+                width_cells: None,
+                height_cells: None,
+                fit: ImageFit::Contain,
+                background: ImageBackground::Terminal,
+                terminal_columns: None,
+                terminal_rows: None,
+            },
+        )
+        .expect("non-tty AVIF fallback should render");
+
+        assert!(!output.contains_terminal_image);
+        assert!(output.output.contains("image.avif: AVIF 1x1"));
+        assert!(output.output.contains("stdout is not a TTY"));
     }
 
     #[test]
