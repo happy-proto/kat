@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload clippy observability artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: kat-clippy-observability-ubuntu-latest
           path: ${{ runner.temp }}/kat-clippy-observability
@@ -194,7 +194,7 @@ jobs:
 
       - name: Upload test observability artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: kat-test-observability-ubuntu-latest
           path: ${{ runner.temp }}/kat-test-observability
@@ -511,7 +511,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: kat-release-package-${{ matrix.target }}
           path: ${{ env.PACKAGE_PATH }}
@@ -519,7 +519,7 @@ jobs:
 
       - name: Upload build observability artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: kat-build-observability-${{ matrix.target }}
           path: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
