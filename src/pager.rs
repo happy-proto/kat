@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+#[cfg(unix)]
 use signal_hook::{consts::signal::SIGWINCH, flag};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
@@ -28,7 +29,7 @@ pub(crate) fn run(output: &str) -> Result<()> {
 
     let _terminal = TerminalSession::enter()?;
     let resize_requested = Arc::new(AtomicBool::new(true));
-    flag::register(SIGWINCH, resize_requested.clone()).context("failed to register SIGWINCH")?;
+    register_resize_signal(resize_requested.clone())?;
 
     let document = PagerDocument::new(output);
     let mut state = PagerState::default();
@@ -64,6 +65,17 @@ pub(crate) fn run(output: &str) -> Result<()> {
         }
         render(&document, &viewport, &state, &mode, size)?;
     }
+}
+
+#[cfg(unix)]
+fn register_resize_signal(resize_requested: Arc<AtomicBool>) -> Result<()> {
+    flag::register(SIGWINCH, resize_requested).context("failed to register SIGWINCH")?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn register_resize_signal(_: Arc<AtomicBool>) -> Result<()> {
+    Ok(())
 }
 
 fn write_direct(output: &str) -> Result<()> {
