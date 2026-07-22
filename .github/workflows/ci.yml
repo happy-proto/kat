@@ -541,7 +541,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download latest release packages
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           pattern: kat-release-package-*
           path: ${{ runner.temp }}/latest-release-assets
