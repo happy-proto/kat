@@ -48,7 +48,7 @@ jobs:
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/cache
@@ -91,7 +91,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry/cache
@@ -124,7 +124,7 @@ jobs:
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/cache
@@ -176,7 +176,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry/cache
@@ -210,7 +210,7 @@ jobs:
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/cache
@@ -260,7 +260,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry/cache
@@ -321,7 +321,7 @@ jobs:
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/cache
@@ -457,7 +457,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry/cache
