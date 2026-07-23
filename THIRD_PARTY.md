@@ -564,7 +564,7 @@ Upstream projects:
   Source: [JoranHonig/tree-sitter-solidity](https://github.com/JoranHonig/tree-sitter-solidity)
   Revision: `048fe686cb1fde267243739b8bdbec8fc3a55272`
   License: MIT
-  Notes: repository-local adapted highlights query. The Solidity parser is provided by the Rust crate [tree-sitter-solidity](https://crates.io/crates/tree-sitter-solidity).
+  Notes: repository-local adapted highlights query, including syntax compatibility fixes for the current Tree-sitter query parser. The Solidity parser is provided by the Rust crate [tree-sitter-solidity](https://crates.io/crates/tree-sitter-solidity).
 
 - `grammars/strace/*`
   Source: [sigmaSd/tree-sitter-strace](https://github.com/sigmaSd/tree-sitter-strace)
