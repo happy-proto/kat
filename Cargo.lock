@@ -156,6 +156,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "base64"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b25655df2c3cdd83c5e5b293b88acd880332b2ddadd7c30ac43144fdc0033da9"
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -966,7 +972,7 @@ version = "0.1.0"
 dependencies = [
  "anstyle",
  "anyhow",
- "base64",
+ "base64 0.23.0",
  "clap",
  "clap_complete",
  "icy_sixel",
@@ -3748,7 +3754,7 @@ version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d46cf96c5f498d36b7a9693bc6a7075c0bb9303189d61b2249b0dc3d309c07de"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "data-url",
  "flate2",
  "fontdb",
@@ -4011,7 +4017,7 @@ name = "wezterm-escape-parser"
 version = "0.1.0"
 source = "git+https://github.com/DCjanus/wezterm.git?branch=feat%2Fupstream-termwiz-default-color-probe#90b1d62ca9489a07b9cfd7fa4d94f44372288a65"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bitflags 2.11.1",
  "hex",
  "log",
