@@ -2393,8 +2393,8 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-ada"
-version = "0.1.0"
-source = "git+https://github.com/briot/tree-sitter-ada#6b58259a08b1a22ba0247a7ce30be384db618da6"
+version = "0.9.1"
+source = "git+https://github.com/briot/tree-sitter-ada#dd5fa4cdb3aba91abc687aa68fb1431396fce6a6"
 dependencies = [
  "cc",
  "tree-sitter-language",
