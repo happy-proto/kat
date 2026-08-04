@@ -72,7 +72,7 @@ jobs:
         uses: ./.github/actions/setup-native-image-deps
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Enable sccache integration
         shell: bash
@@ -141,7 +141,7 @@ jobs:
         uses: ./.github/actions/setup-native-image-deps
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Enable sccache integration
         shell: bash
@@ -232,7 +232,7 @@ jobs:
         uses: ./.github/actions/setup-native-image-deps
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Enable sccache integration
         shell: bash
@@ -343,7 +343,7 @@ jobs:
 
       - name: Set up sccache
         if: matrix.use_sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Enable sccache integration
         if: matrix.use_sccache
