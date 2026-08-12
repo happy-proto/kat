@@ -775,7 +775,7 @@ Upstream projects:
 - `grammars/scala/queries/highlights.scm`
 - `grammars/scala/queries/locals.scm`
   Source: [tree-sitter/tree-sitter-scala](https://github.com/tree-sitter/tree-sitter-scala)
-  Revision: `22af0ac923c90cef50a31085b27049d50c94c70f`
+  Revision: `b931fcc338390925eb893d70ad070033f5856ccf`
   License: MIT
   Notes: repository-local copies of the upstream Scala query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-scala](https://crates.io/crates/tree-sitter-scala).
 
