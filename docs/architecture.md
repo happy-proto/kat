@@ -28,6 +28,7 @@
 - `kat` 主仓库当前默认只消费预生成 parser crate，不再把 vendored grammar 的 parser 生成作为常规构建路径。
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 或外部 parser bundle crate 提供的预生成 parser。
 - 如果未来确实重新引入需要在主仓库内生成 parser 的 vendored grammar，应优先把它当作例外处理，而不是恢复“大量语言都在 `kat` 内本地生成 parser”的旧模式。
+- Linux 预编译发布产物不应要求目标系统额外安装图片 codec 动态库；当前 release build 会静态链接 dav1d，并在打包前校验 ELF 不再声明 `libdav1d.so` 运行时依赖。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
 
 ### 运行时模型
