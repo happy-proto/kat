@@ -120,12 +120,15 @@ struct PagerState {
 impl PagerState {
     fn apply(&mut self, action: PagerAction, viewport: &PagerViewport, rows: usize) {
         let page = rows.saturating_sub(1).max(1);
+        let half_page = page.div_ceil(2);
         match action {
             PagerAction::Quit => {}
             PagerAction::LineDown => self.top_row = self.top_row.saturating_add(1),
             PagerAction::LineUp => self.top_row = self.top_row.saturating_sub(1),
             PagerAction::PageDown => self.top_row = self.top_row.saturating_add(page),
             PagerAction::PageUp => self.top_row = self.top_row.saturating_sub(page),
+            PagerAction::HalfPageDown => self.top_row = self.top_row.saturating_add(half_page),
+            PagerAction::HalfPageUp => self.top_row = self.top_row.saturating_sub(half_page),
             PagerAction::Home => self.top_row = 0,
             PagerAction::End => self.top_row = viewport.row_count().saturating_sub(page),
             PagerAction::SearchStart | PagerAction::SearchNext | PagerAction::SearchPrevious => {}
@@ -276,6 +279,8 @@ enum PagerAction {
     LineUp,
     PageDown,
     PageUp,
+    HalfPageDown,
+    HalfPageUp,
     Home,
     End,
     SearchStart,
@@ -291,6 +296,8 @@ impl PagerAction {
             [b'k'] => Some(Self::LineUp),
             [b' '] => Some(Self::PageDown),
             [b'b'] => Some(Self::PageUp),
+            [0x04] => Some(Self::HalfPageDown),
+            [0x15] => Some(Self::HalfPageUp),
             [b'g'] => Some(Self::Home),
             [b'G'] => Some(Self::End),
             [b'/'] => Some(Self::SearchStart),
@@ -790,7 +797,7 @@ fn render(
     };
     let mut status = match mode {
         PagerMode::Normal => format!(
-            "kat {}/{}  q:quit  /:search  n/N:next  j/k:row  PgUp/PgDn:page",
+            "kat {}/{}  q:quit  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
             end_line,
             document.line_count()
         ),
@@ -912,5 +919,29 @@ struct RawTerminalMode;
 impl RawTerminalMode {
     fn enable() -> Result<Self> {
         Ok(Self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ctrl_d_and_ctrl_u_move_by_half_a_viewport() {
+        let document = PagerDocument::new(
+            &(1..=20)
+                .map(|line| format!("line {line}\n"))
+                .collect::<String>(),
+        );
+        let viewport = PagerViewport::build(&document, 80);
+        let size = PagerSize { cols: 80, rows: 12 };
+        let mut state = PagerState::default();
+        let mut mode = PagerMode::Normal;
+
+        handle_input(b"\x04", &document, &viewport, &mut state, &mut mode, size);
+        assert_eq!(state.top_row, 6);
+
+        handle_input(b"\x15", &document, &viewport, &mut state, &mut mode, size);
+        assert_eq!(state.top_row, 0);
     }
 }
