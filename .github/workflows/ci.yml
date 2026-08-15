@@ -381,6 +381,7 @@ jobs:
             export RUSTFLAGS="-Clinker=${GITHUB_WORKSPACE}/.github/scripts/rust-link-wrapper.sh"
           fi
           if [[ "${TARGET}" == *-linux-* ]]; then
+            export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=always
             export SYSTEM_DEPS_DAV1D_LINK=static
           fi
 
@@ -565,6 +566,7 @@ jobs:
       - name: Build Linux release binary
         shell: bash
         env:
+          SYSTEM_DEPS_DAV1D_BUILD_INTERNAL: always
           SYSTEM_DEPS_DAV1D_LINK: static
         run: |
           set -euo pipefail

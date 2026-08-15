@@ -16,7 +16,12 @@ runs:
       run: |
         set -euo pipefail
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends libdav1d-dev pkg-config
+        sudo apt-get install -y --no-install-recommends \
+          libdav1d-dev \
+          meson \
+          nasm \
+          ninja-build \
+          pkg-config
 
     - name: Install dav1d on macOS
       if: runner.os == 'macOS'
