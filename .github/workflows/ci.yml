@@ -380,6 +380,9 @@ jobs:
           if [[ "${USE_LINK_WRAPPER}" == "true" ]]; then
             export RUSTFLAGS="-Clinker=${GITHUB_WORKSPACE}/.github/scripts/rust-link-wrapper.sh"
           fi
+          if [[ "${TARGET}" == *-linux-* ]]; then
+            export SYSTEM_DEPS_DAV1D_LINK=static
+          fi
 
           cargo build --timings --release --locked --target "${TARGET}"
           build_end=$(date +%s)
@@ -415,6 +418,18 @@ jobs:
             echo "LONGEST_LINK_OUTPUT=${longest_link_output}"
             echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
           } >> "${GITHUB_ENV}"
+
+      - name: Verify Linux release runtime dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if readelf -d "${ARTIFACT_PATH}" | grep -Fq "Shared library: [libdav1d.so"; then
+            echo "::error::Linux release binary must not dynamically link libdav1d"
+            readelf -d "${ARTIFACT_PATH}" | grep -F "Shared library: [libdav1d.so"
+            exit 1
+          fi
 
       - name: Package latest release asset (Unix)
         if: runner.os != 'Windows'
@@ -527,6 +542,62 @@ jobs:
           name: kat-build-observability-${{ matrix.target }}
           path: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
           if-no-files-found: warn
+
+  verify-linux-release-portability:
+    name: verify Linux release portability
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Set up native image dependencies
+        uses: ./.github/actions/setup-native-image-deps
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Build Linux release binary
+        shell: bash
+        env:
+          SYSTEM_DEPS_DAV1D_LINK: static
+        run: |
+          set -euo pipefail
+          cargo build --release --locked --target x86_64-unknown-linux-gnu
+
+      - name: Verify ELF dependencies and clean-system startup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          artifact_path="${GITHUB_WORKSPACE}/target/x86_64-unknown-linux-gnu/release/kat"
+          if readelf -d "${artifact_path}" | grep -Fq "Shared library: [libdav1d.so"; then
+            echo "::error::Linux release binary still dynamically links libdav1d"
+            exit 1
+          fi
+
+          {
+            echo "ELF runtime dependencies:"
+            readelf -d "${artifact_path}" | grep NEEDED
+            echo
+            echo "Clean Ubuntu 24.04 startup:"
+            docker run --rm \
+              --volume "${artifact_path}:/tmp/kat:ro" \
+              ubuntu:24.04 \
+              /tmp/kat --version
+          } | tee "${RUNNER_TEMP}/linux-release-portability.txt"
+
+      - name: Upload portability evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-release-portability
+          path: ${{ runner.temp }}/linux-release-portability.txt
+          if-no-files-found: error
 
   release-latest:
     name: release latest
