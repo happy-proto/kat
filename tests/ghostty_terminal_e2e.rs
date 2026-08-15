@@ -228,6 +228,55 @@ fn kat_builtin_pager_supports_page_home_and_end_navigation() -> TestResult {
 }
 
 #[test]
+fn kat_builtin_pager_supports_less_style_half_page_navigation() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-half-page-navigation",
+        &(1..=40)
+            .map(|line| format!("HALF-PAGE-LINE-{line:02}\n"))
+            .collect::<String>(),
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        COLS,
+        ROWS,
+        &[],
+    )?;
+
+    session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered
+            .screen
+            .first()
+            .is_some_and(|line| line.trim_end() == "HALF-PAGE-LINE-01")
+    })?;
+
+    session.write_input(b"\x04")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered
+            .screen
+            .first()
+            .is_some_and(|line| line.trim_end() == "HALF-PAGE-LINE-07")
+    })?;
+    assert_eq!(rendered.screen[0].trim_end(), "HALF-PAGE-LINE-07");
+
+    session.write_input(b"\x15")?;
+    let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
+        rendered
+            .screen
+            .first()
+            .is_some_and(|line| line.trim_end() == "HALF-PAGE-LINE-01")
+    })?;
+    assert_eq!(rendered.screen[0].trim_end(), "HALF-PAGE-LINE-01");
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
 fn kat_builtin_pager_pages_by_display_rows() -> TestResult {
     let fixture = temp_plain_fixture(
         "ghostty-builtin-pager-display-rows",
