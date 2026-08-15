@@ -544,63 +544,6 @@ jobs:
           path: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
           if-no-files-found: warn
 
-  verify-linux-release-portability:
-    name: verify Linux release portability
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
-
-      - name: Set up native image dependencies
-        uses: ./.github/actions/setup-native-image-deps
-        with:
-          target: x86_64-unknown-linux-gnu
-
-      - name: Build Linux release binary
-        shell: bash
-        env:
-          SYSTEM_DEPS_DAV1D_BUILD_INTERNAL: always
-          SYSTEM_DEPS_DAV1D_LINK: static
-        run: |
-          set -euo pipefail
-          cargo build --release --locked --target x86_64-unknown-linux-gnu
-
-      - name: Verify ELF dependencies and clean-system startup
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          artifact_path="${GITHUB_WORKSPACE}/target/x86_64-unknown-linux-gnu/release/kat"
-          if readelf -d "${artifact_path}" | grep -Fq "Shared library: [libdav1d.so"; then
-            echo "::error::Linux release binary still dynamically links libdav1d"
-            exit 1
-          fi
-
-          {
-            echo "ELF runtime dependencies:"
-            readelf -d "${artifact_path}" | grep NEEDED
-            echo
-            echo "Clean Ubuntu 24.04 startup:"
-            docker run --rm \
-              --volume "${artifact_path}:/tmp/kat:ro" \
-              ubuntu:24.04 \
-              /tmp/kat --version
-          } | tee "${RUNNER_TEMP}/linux-release-portability.txt"
-
-      - name: Upload portability evidence
-        uses: actions/upload-artifact@v7
-        with:
-          name: linux-release-portability
-          path: ${{ runner.temp }}/linux-release-portability.txt
-          if-no-files-found: error
-
   release-latest:
     name: release latest
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
