@@ -2410,9 +2410,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-cfml"
-version = "0.26.32"
+version = "0.26.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc72d7accb8aaa297fa8d45a0f3dc8a41367d6083a79decee0ae3c341bfebf04"
+checksum = "d0b4e8a137cc097f9becdc67adba8e557c20632bb46bf2e9204f8fb209933474"
 dependencies = [
  "cc",
  "tree-sitter-language",
