@@ -13,13 +13,17 @@ use libghostty_vt::{
     RenderState, Terminal, TerminalOptions,
     render::{CellIterator, RowIterator},
     screen::Screen,
-    style::Underline,
+    style::{StyleColor, Underline},
     terminal::{Point, PointCoordinate},
 };
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
 
 const COLS: u16 = 32;
 const ROWS: u16 = 12;
+const FOREGROUND_QUERY: &[u8] = b"\x1b]10;?\x1b\\";
+const FOREGROUND_RESPONSE: &[u8] = b"\x1b]10;rgb:f8f8/f8f8/f2f2\x1b\\";
+const BACKGROUND_QUERY: &[u8] = b"\x1b]11;?\x1b\\";
+const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -34,6 +38,31 @@ fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
             line.trim_end()
                 == "This line is intentionally long enough to require terminal wrapping at a narrow width."
     });
+
+    Ok(())
+}
+
+#[test]
+fn kat_keeps_narrow_markdown_frontmatter_rows_adjacent() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/markdown/frontmatter-narrow.md");
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        48,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(48, ROWS, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    rendered.assert_rgb_background_at("---", 10)?;
+    rendered.assert_adjacent_screen_lines("---", "name: narrow-frontmatter");
 
     Ok(())
 }
@@ -610,6 +639,24 @@ impl RenderedTerminal {
         Ok(())
     }
 
+    fn assert_rgb_background_at(
+        &self,
+        line_needle: &str,
+        x: u16,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let y = self.line_index(line_needle) as u32;
+        let grid_ref = self
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x, y }))?;
+        let style = grid_ref.style()?;
+        assert!(
+            matches!(style.bg_color, StyleColor::Rgb(_)),
+            "expected an RGB background at {x},{y} in Ghostty screen:\n{}",
+            self.screen_text()
+        );
+        Ok(())
+    }
+
     fn hyperlink_uris(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let mut uris = Vec::new();
         for y in 0..u32::from(self.terminal.rows()?) {
@@ -702,6 +749,8 @@ struct KatPtySession {
     chunks: Receiver<Vec<u8>>,
     reader_thread: Option<thread::JoinHandle<std::io::Result<()>>>,
     output: Vec<u8>,
+    foreground_query_answered: bool,
+    background_query_answered: bool,
 }
 
 impl KatPtySession {
@@ -724,6 +773,7 @@ impl KatPtySession {
         let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_kat"));
         command.args(args);
         command.env("TERM", "xterm-256color");
+        command.env_remove("COLORTERM");
         command.env_remove("KAT_HYPERLINKS");
         command.env_remove("NO_COLOR");
         for (key, value) in envs {
@@ -755,6 +805,8 @@ impl KatPtySession {
             chunks,
             reader_thread: Some(reader_thread),
             output: Vec::new(),
+            foreground_query_answered: false,
+            background_query_answered: false,
         })
     }
 
@@ -773,6 +825,7 @@ impl KatPtySession {
                 terminal.vt_write(&chunk);
                 self.output.extend(chunk);
             }
+            self.answer_dynamic_color_queries()?;
 
             let screen = visible_screen_lines(&terminal)?;
             let rendered = RenderedTerminal {
@@ -813,6 +866,20 @@ impl KatPtySession {
         Ok(())
     }
 
+    fn answer_dynamic_color_queries(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        if !self.foreground_query_answered && contains_bytes(&self.output, FOREGROUND_QUERY) {
+            self.writer.write_all(FOREGROUND_RESPONSE)?;
+            self.writer.flush()?;
+            self.foreground_query_answered = true;
+        }
+        if !self.background_query_answered && contains_bytes(&self.output, BACKGROUND_QUERY) {
+            self.writer.write_all(BACKGROUND_RESPONSE)?;
+            self.writer.flush()?;
+            self.background_query_answered = true;
+        }
+        Ok(())
+    }
+
     fn write_input(&mut self, bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
         self.writer.write_all(bytes)?;
         self.writer.flush()?;
@@ -838,6 +905,12 @@ impl KatPtySession {
         );
         Ok(self.output)
     }
+}
+
+fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack
+        .windows(needle.len())
+        .any(|window| window == needle)
 }
 
 fn visible_screen_lines(

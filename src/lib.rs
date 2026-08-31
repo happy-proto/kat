@@ -11794,6 +11794,50 @@ priority: 7
     }
 
     #[test]
+    fn markdown_frontmatter_background_padding_stays_within_wrapped_rows() {
+        let path = fixture_path("markdown/frontmatter-narrow.md");
+        let source = read_file(&path);
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 48);
+
+        assert!(
+            layout.rows.iter().all(|row| row.display_width <= 48),
+            "expected frontmatter background padding to stay within the 48-column viewport, got rows {:?}",
+            layout
+                .rows
+                .iter()
+                .map(|row| (&row.text, row.display_width))
+                .collect::<Vec<_>>()
+        );
+
+        let viewport_rows = layout
+            .rows
+            .iter()
+            .filter(|row| {
+                row.text == "---"
+                    || row.text.starts_with("name:")
+                    || row.text.starts_with("description:")
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(viewport_rows.len(), 4);
+        assert!(
+            viewport_rows.iter().all(|row| {
+                row.display_width == 48
+                    && row
+                        .background_runs
+                        .iter()
+                        .any(|run| run.start_column == 0 && run.end_column == 48)
+            }),
+            "expected each frontmatter viewport row to retain a full-width background, got {:?}",
+            viewport_rows
+                .iter()
+                .map(|row| (&row.text, row.display_width, &row.background_runs))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn debug_layout_json_preserves_python_docstring_blank_line_background_runs() {
         let path = fixture_path("python/docstrings.py");
         let source = read_file(&path);

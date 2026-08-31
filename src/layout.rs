@@ -25,7 +25,14 @@ impl LayoutDocument {
     ) -> Self {
         let mut rows = build_rows(source, spans, terminal_width);
         let line_rows = rows_by_line_start(&rows);
-        paint_backgrounds(source, regions, theme, &line_rows, &mut rows);
+        paint_backgrounds(
+            source,
+            regions,
+            theme,
+            terminal_width,
+            &line_rows,
+            &mut rows,
+        );
 
         Self {
             color_mode: theme.color_mode(),
@@ -260,6 +267,7 @@ fn paint_backgrounds(
     source: &str,
     regions: &[VisualRegion],
     theme: Theme,
+    terminal_width: Option<usize>,
     line_rows: &HashMap<usize, Vec<RowRef>>,
     rows: &mut [LayoutRow],
 ) {
@@ -286,7 +294,7 @@ fn paint_backgrounds(
             }
             crate::host_injections::InjectionVisualKind::RectBlock => {
                 for segment in &region.segments {
-                    for slice in segment_rect_slices(source, segment, line_rows) {
+                    for slice in segment_rect_slices(source, segment, terminal_width, line_rows) {
                         pending_runs[slice.row_index].push(LayoutBackgroundRun {
                             start_column: slice.start_column,
                             end_column: slice.end_column,
@@ -432,6 +440,7 @@ fn segment_content_slices(
 fn segment_rect_slices(
     source: &str,
     segment: &crate::RegionSegment,
+    terminal_width: Option<usize>,
     line_rows: &HashMap<usize, Vec<RowRef>>,
 ) -> Vec<BackgroundSlice> {
     let Some(rows) = line_rows.get(&segment.line_start) else {
@@ -451,7 +460,9 @@ fn segment_rect_slices(
 
     rows.iter()
         .filter_map(|row| {
-            let row_right = if row.end_column == line_text_right {
+            let row_right = if let Some(width) = terminal_width {
+                right_column.min(row.start_column.saturating_add(width))
+            } else if row.end_column == line_text_right {
                 right_column
             } else {
                 right_column.min(row.end_column)
