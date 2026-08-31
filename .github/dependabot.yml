@@ -7,6 +7,13 @@ updates:
       interval: daily
       time: "09:00"
       timezone: Asia/Shanghai
+    groups:
+      patch-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - patch
     assignees:
       - DCjanus
     open-pull-requests-limit: 5
@@ -14,9 +21,18 @@ updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: daily
+      interval: weekly
+      day: monday
       time: "09:30"
       timezone: Asia/Shanghai
+    groups:
+      non-major-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     assignees:
       - DCjanus
     open-pull-requests-limit: 5
