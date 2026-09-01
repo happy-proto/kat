@@ -13,13 +13,17 @@ use libghostty_vt::{
     RenderState, Terminal, TerminalOptions,
     render::{CellIterator, RowIterator},
     screen::Screen,
-    style::Underline,
+    style::{StyleColor, Underline},
     terminal::{Point, PointCoordinate},
 };
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
 
 const COLS: u16 = 32;
 const ROWS: u16 = 12;
+const FOREGROUND_QUERY: &[u8] = b"\x1b]10;?\x1b\\";
+const FOREGROUND_RESPONSE: &[u8] = b"\x1b]10;rgb:f8f8/f8f8/f2f2\x1b\\";
+const BACKGROUND_QUERY: &[u8] = b"\x1b]11;?\x1b\\";
+const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -34,6 +38,138 @@ fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
             line.trim_end()
                 == "This line is intentionally long enough to require terminal wrapping at a narrow width."
     });
+
+    Ok(())
+}
+
+#[test]
+fn kat_keeps_narrow_markdown_frontmatter_rows_adjacent() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/markdown/frontmatter-narrow.md");
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        48,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(48, ROWS, |rendered| {
+        rendered.has_rect_block_background("---", 47, 5)
+    })?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    rendered.assert_rect_block_background("---", 47, 5)?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_relayouts_markdown_frontmatter_when_terminal_grows() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/markdown/frontmatter-narrow.md");
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        48,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    session.wait_for_screen(48, ROWS, |rendered| {
+        rendered.has_rect_block_background("---", 47, 5)
+    })?;
+
+    session.resize(80, ROWS)?;
+    let rendered = session.wait_for_screen(80, ROWS, |rendered| {
+        rendered.has_rect_block_background("---", 69, 4)
+    })?;
+    rendered.assert_rect_block_background("---", 69, 4)?;
+
+    session.resize(48, ROWS)?;
+    let rendered = session.wait_for_screen(48, ROWS, |rendered| {
+        rendered.has_rect_block_background("---", 47, 5)
+    })?;
+    rendered.assert_rect_block_background("---", 47, 5)?;
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_relayouts_markdown_frontmatter_when_terminal_shrinks() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/markdown/frontmatter-narrow.md");
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        80,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    session.wait_for_screen(80, ROWS, |rendered| {
+        rendered.has_rect_block_background("---", 69, 4)
+    })?;
+
+    session.resize(32, ROWS)?;
+    let rendered = session.wait_for_screen(32, ROWS, |rendered| {
+        rendered.has_rect_block_background("---", 32, 6)
+    })?;
+    rendered.assert_rect_block_background("---", 32, 6)?;
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_relayouts_realistic_frontmatter_between_half_and_full_width() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/markdown/frontmatter-realistic-resize.md");
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        115,
+        65,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let initial_half = session.wait_for_screen(115, 65, |rendered| {
+        rendered.has_rect_block_background("---", 114, 5)
+    })?;
+
+    session.resize(232, 65)?;
+    let resized_full = session.wait_for_screen(232, 65, |rendered| {
+        rendered.has_rect_block_background("---", 132, 4)
+    })?;
+    resized_full.assert_rect_block_background("---", 132, 4)?;
+    let direct_full = render_path_in_ghostty(&fixture, 232, 65, "never")?;
+    assert_eq!(
+        resized_full.screen, direct_full.screen,
+        "expected resize-to-full layout to equal a direct full-width render"
+    );
+
+    session.resize(115, 65)?;
+    let roundtrip_half = session.wait_for_screen(115, 65, |rendered| {
+        rendered.has_rect_block_background("---", 114, 5)
+    })?;
+    roundtrip_half.assert_rect_block_background("---", 114, 5)?;
+    assert_eq!(
+        roundtrip_half.screen, initial_half.screen,
+        "expected full-width roundtrip to recover the direct half-width layout"
+    );
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
 
     Ok(())
 }
@@ -610,6 +746,81 @@ impl RenderedTerminal {
         Ok(())
     }
 
+    fn assert_rect_block_background(
+        &self,
+        delimiter: &str,
+        expected_width: u16,
+        expected_rows: usize,
+    ) -> TestResult {
+        let delimiter_rows = self
+            .screen
+            .iter()
+            .enumerate()
+            .filter_map(|(index, line)| line.contains(delimiter).then_some(index))
+            .collect::<Vec<_>>();
+        assert!(
+            delimiter_rows.len() >= 2,
+            "expected two {delimiter:?} rows around the block:\n{}",
+            self.screen_text()
+        );
+        let first = delimiter_rows[0];
+        let last = delimiter_rows[1];
+        assert_eq!(
+            last - first + 1,
+            expected_rows,
+            "unexpected wrapped row count for block:\n{}",
+            self.screen_text()
+        );
+
+        for row in first..=last {
+            assert_eq!(
+                self.rgb_background_width(row),
+                Some(expected_width),
+                "expected block row {row} to share a {expected_width}-column background:\n{}",
+                self.screen_text()
+            );
+        }
+        Ok(())
+    }
+
+    fn has_rect_block_background(
+        &self,
+        delimiter: &str,
+        expected_width: u16,
+        expected_rows: usize,
+    ) -> bool {
+        let delimiter_rows = self
+            .screen
+            .iter()
+            .enumerate()
+            .filter_map(|(index, line)| line.contains(delimiter).then_some(index))
+            .take(2)
+            .collect::<Vec<_>>();
+        let [first, last] = delimiter_rows.as_slice() else {
+            return false;
+        };
+        last - first + 1 == expected_rows
+            && (*first..=*last).all(|row| self.rgb_background_width(row) == Some(expected_width))
+    }
+
+    fn rgb_background_width(&self, row: usize) -> Option<u16> {
+        let cols = self.terminal.cols().ok()?;
+        let mut width = 0;
+        for x in 0..cols {
+            let style = self
+                .terminal
+                .grid_ref(Point::Active(PointCoordinate { x, y: row as u32 }))
+                .ok()?
+                .style()
+                .ok()?;
+            if !matches!(style.bg_color, StyleColor::Rgb(_)) {
+                break;
+            }
+            width = x + 1;
+        }
+        Some(width)
+    }
+
     fn hyperlink_uris(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let mut uris = Vec::new();
         for y in 0..u32::from(self.terminal.rows()?) {
@@ -702,6 +913,8 @@ struct KatPtySession {
     chunks: Receiver<Vec<u8>>,
     reader_thread: Option<thread::JoinHandle<std::io::Result<()>>>,
     output: Vec<u8>,
+    foreground_query_answered: bool,
+    background_query_answered: bool,
 }
 
 impl KatPtySession {
@@ -724,6 +937,7 @@ impl KatPtySession {
         let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_kat"));
         command.args(args);
         command.env("TERM", "xterm-256color");
+        command.env_remove("COLORTERM");
         command.env_remove("KAT_HYPERLINKS");
         command.env_remove("NO_COLOR");
         for (key, value) in envs {
@@ -755,6 +969,8 @@ impl KatPtySession {
             chunks,
             reader_thread: Some(reader_thread),
             output: Vec::new(),
+            foreground_query_answered: false,
+            background_query_answered: false,
         })
     }
 
@@ -773,6 +989,7 @@ impl KatPtySession {
                 terminal.vt_write(&chunk);
                 self.output.extend(chunk);
             }
+            self.answer_dynamic_color_queries()?;
 
             let screen = visible_screen_lines(&terminal)?;
             let rendered = RenderedTerminal {
@@ -813,6 +1030,20 @@ impl KatPtySession {
         Ok(())
     }
 
+    fn answer_dynamic_color_queries(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        if !self.foreground_query_answered && contains_bytes(&self.output, FOREGROUND_QUERY) {
+            self.writer.write_all(FOREGROUND_RESPONSE)?;
+            self.writer.flush()?;
+            self.foreground_query_answered = true;
+        }
+        if !self.background_query_answered && contains_bytes(&self.output, BACKGROUND_QUERY) {
+            self.writer.write_all(BACKGROUND_RESPONSE)?;
+            self.writer.flush()?;
+            self.background_query_answered = true;
+        }
+        Ok(())
+    }
+
     fn write_input(&mut self, bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
         self.writer.write_all(bytes)?;
         self.writer.flush()?;
@@ -838,6 +1069,12 @@ impl KatPtySession {
         );
         Ok(self.output)
     }
+}
+
+fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack
+        .windows(needle.len())
+        .any(|window| window == needle)
 }
 
 fn visible_screen_lines(

@@ -54,8 +54,10 @@
 2. `visual`
    - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、`rect_block` / `scope_block` / `tight_block` / `transparent` 这些区域结果。
    - 对块级嵌套区域，会按共享缩进和注入 range 推导对应的视觉原语：真正的矩形内容块继续走 `rect_block`，而像 `Justfile recipe` 这类缩进作用域则走独立的 `scope_block`。当前 terminal fallback 仍可暂时复用成熟的矩形 body 几何，但 IR 上不再把两者混成同一种区域。
+   - visual 层只声明哪些源码片段共同属于一个 block、block 的视觉类型和锚点；最终宽高不是源码行宽或 viewport 宽度的属性，不能在这一层提前固化。
 3. `layout`
    - 负责把 visual 层的源码级视觉语义展开成 display-space 布局：wrapped screen rows、cell 列宽、块级 bbox，以及 `scope_block` / `rect_block` 在终端显示空间里的覆盖范围。
+   - 块级布局顺序固定为“先按当前 viewport 宽度生成 wrapped screen rows，再基于这些视觉行计算 block bbox，最后把背景投影到 bbox 内的每一行”；不能先按未换行源码行计算 padding，再让 terminal 或 viewer 对结果二次折行。
    - 这一层只依赖仓库自己的 `display_geometry` 语义和终端宽度，不直接碰 ANSI，也不直接绑定第三方 terminal API。
 4. `render_ops`
    - 负责把视觉模型编译成终端无关的渲染状态流，而不是直接拼 ANSI 字符串。
@@ -63,7 +65,7 @@
 5. `terminal`
    - 负责终端能力探测、默认颜色查询和最终终端编码 / 输出。
    - 当前 terminal backend 已开始收口到 `termwiz`：默认前景 / 背景颜色通过 `ProbeCapabilities::dynamic_color` 统一查询，避免 render backend 和 OSC probing 分别占用两套 TTY I/O 栈。
-   - CLI 输出层仍以“terminal 层编码出完整 ANSI 文本”为边界；TTY 下的普通渲染输出统一进入内建 alternate-screen viewer，不再依赖外部 `PAGER`，也不再保留 `--paging` 开关。viewer 从文件开头开始显示，按当前终端宽度把 ANSI 输出展开成 display rows 后滚动，resize 时用顶部源行与 display column 锚点恢复可见位置，并按 `less` 语义提供 `Space`/`b` 与 PageUp/PageDown 整页滚动、`Ctrl+D`/`Ctrl+U` 半页滚动以及普通文本搜索；stdout 不是 TTY 时仍直接输出完整 ANSI 文本，方便 pipe / redirect。
+   - TTY 下的普通渲染输出统一进入内建 alternate-screen viewer，不再依赖外部 `PAGER`，也不再保留 `--paging` 开关。viewer 持有源码和宽度无关的 visual model；终端 resize 后会从这份模型重新执行 `layout -> render_ops -> terminal`，而不是对旧宽度生成的 ANSI 文本做二次折行。每个重新布局后的 display row 都携带稳定的 source id、源行起点和 display column，viewer 用它恢复顶部可见位置并重建搜索匹配。viewer 从文件开头开始显示，并按 `less` 语义提供 `Space`/`b` 与 PageUp/PageDown 整页滚动、`Ctrl+D`/`Ctrl+U` 半页滚动以及普通文本搜索；stdout 不是 TTY 时仍直接输出完整 ANSI 文本，方便 pipe / redirect。
    - OSC 8 超链接按“分析 / 视觉层保留 URI 语义，`render_ops` 生成终端无关 link state，terminal 编码层最终输出控制序列”的方式接入；纯文本透传和 debug 输出不注入超链接。
    - 图片文件输入是独立的 terminal image 短路路径：`kat image.png` 这类用法不进入语法高亮链路，也不进入 pager，而是按 iTerm2 inline image、Kitty graphics 或 Sixel 这类终端图片协议直接输出。SVG 会先通过现成 SVG renderer 栅格化成 bitmap，再复用同一条 terminal image 输出链路。图片默认按当前终端宽度和约 80% 终端高度等比缩放；显式尺寸、透明背景合成和 EXIF orientation 处理都由 CLI 图片参数传入 terminal image 层处理。stdout 不是 TTY 或终端图片协议不可用时，图片路径会退化为可读的图片信息输出；`--debug-image` 提供图片检测、目标尺寸和协议选择的稳定 JSON 出口。
 
@@ -72,7 +74,12 @@
 - 注入区域的视觉策略默认由 runtime 统一推导；块级区域和行内片段走不同的默认视觉模型。
 - 与终端显示列宽相关的逻辑统一收口到 `display_geometry` 模块；显示宽度、前缀列位置、ANSI 剥离以及后续 tab stop 策略都必须通过这层抽象处理，不允许在 visual / render / test 里直接用 `len()`、字节差值或 `chars().count()` 近似显示宽度。
 - `display_geometry` 内部显式区分 `ByteOffset` 与 `DisplayColumn`：前者只代表源码 UTF-8 偏移，后者只代表终端显示列。新的几何逻辑应优先沿用这两个类型，而不是继续把裸 `usize` 当作双重语义容器。
-- `visual` / `layout` / `render_ops` 仍然保留源码 byte offset 作为文本切片边界，但几何决策必须在 `layout` 层完成：像 `RectBlock` 这类矩形区域要在 wrapped screen rows 上展开，像 `ScopeBlock` 这类缩进作用域则要按每个 screen row 的非空白内容决定左边界，并按共享右边界形成 block。
+- `visual` / `layout` / `render_ops` 仍然保留源码 byte offset 作为文本切片边界，但几何决策必须在 `layout` 层完成。
+- `RectBlock` 是跨语言、跨宿主复用的统一矩形块契约，不是 Markdown YAML frontmatter 特例。Markdown YAML/TOML frontmatter、fenced code、docstring 和其它矩形 nested region 只负责在 visual 层声明 block 成员；它们进入 layout 后使用同一套几何规则。
+- `RectBlock` 先让成员文本按当前 viewport 宽度贪心换行：当前视觉行只有在下一个 grapheme 放不下时才结束。随后以所有成员视觉行中最宽一行的 display width 作为 block 宽度，以成员视觉行从第一行到最后一行的完整跨度作为 block 高度；每条短行的背景只补到这个共享 block 右边界，而不是补到 viewport 右边界。只有最宽行恰好占满 viewport 时，block 才会恰好表现为全宽。
+- 同一个 `RectBlock` 必须形成一个统一 bbox，不能让 wrapped continuation row、短行或 delimiter 各自计算不同的背景右边界。Markdown frontmatter 的开始 / 结束 delimiter 属于同一个 frontmatter block；fenced code 的 fence 是否属于背景则由 visual block 成员关系决定，但 bbox 计算规则不变。
+- `ScopeBlock` 与 `RectBlock` 共享“先换行、再从成员视觉行推导几何”的顺序，但允许每个 screen row 根据非空白内容保留不同左边界，再使用成员行推导出的共享右边界；不能为了复用矩形背景而抹掉这项语义差异。
+- terminal resize 会使 wrapped rows 和所有 block bbox 同时失效；viewer 必须从宽度无关的 visual model 重新执行 layout。宽→窄→宽后的文本换行、block 宽高和背景范围必须与直接以最终宽度打开时一致。
 - `display_geometry` 当前内建统一的 Unicode 宽度规则，并把 tab stop 作为仓库级策略集中定义；如果未来要支持不同 terminal profile 或 East Asian 宽度策略，也应继续在这层扩展，而不是把特殊逻辑散落回各个语言 / 渲染分支里。
 - 从 `layout` 开始，终端显示文本默认进入 display-space 语义：像 tab 这类会影响显示列、但不应继续交给 terminal 自行解释的控制字符，要先按仓库级 `display_geometry` 规则展开成稳定的显示文本，再进入 `render_ops` / `terminal`。最终 terminal 输出优先保证显示几何一致性，而不是逐字节保留原始控制字符。
 - 主题系统按 capture 语义落色，不依赖“当前来自哪一层语言”这种渲染期上下文。

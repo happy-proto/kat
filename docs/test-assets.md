@@ -16,6 +16,7 @@
 - 当测试目标是“是否复用了正确的 nested runtime / profile”，优先在 analysis snapshot 上断言递归子区域的 `document kind`，不要再通过颜色片段间接猜测。
 - 当问题只在某个渲染层稳定复现时，优先补能锁定该层语义的最小 `fixture`，再决定是否需要额外的 ANSI / PTY 回放样例。
 - 涉及 block 对齐、右侧补齐、显示列宽或 ANSI 剥离的回归时，优先补带宽字符的最小 `fixture`（至少覆盖 CJK，必要时再补 emoji / tab），并让断言复用共享的 `display_geometry` 语义以及 `ByteOffset` / `DisplayColumn` 约定，而不是在测试里重新手写一套宽度规则。
+- `RectBlock` 的稳定几何契约应断言“先按 viewport 贪心换行，再以成员视觉行的最大 display width 和完整行跨度形成统一 bbox”。回归测试至少要覆盖：短行背景补到 block 右边界但不无条件铺满 viewport、wrapped continuation row 与其它成员行共享同一右边界，以及 resize 往返后 bbox 与直接使用最终宽度布局一致。语言专属 fixture 可以触发该行为，但断言不应把契约写成 YAML/frontmatter 特例。
 - 需要长期观察性能回归时，把基线输入纳入 `testdata/perf/` 管理，并通过 `just perf` 复用同一套入口。
 - 当某个嵌套场景已经进入效果打磨阶段时，再补至少一个可人工检查的 `showcase` 文件。
 - 优先使用真实代码风格的样例，而不是只堆 token。

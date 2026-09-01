@@ -35,9 +35,7 @@ use crate::armor_formats::{
     render_armor_format,
 };
 use crate::debug_progress::log as progress_log;
-use crate::display_geometry::{
-    ByteOffset, DisplayColumn, display_column_for_byte_offset, display_width_from_column,
-};
+use crate::display_geometry::{ByteOffset, DisplayColumn, display_column_for_byte_offset};
 use crate::document_kind::{
     DocumentKind, DocumentProfile, fish_document_kind, git_config_document_kind,
     template_document_kind, toml_document_kind, yaml_document_kind,
@@ -252,6 +250,154 @@ pub struct RenderOutput {
     pub timings: RenderTimings,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+/// Stable source position represented by one rendered terminal row.
+pub struct RenderedRowAnchor {
+    /// Byte offset where the original source line starts.
+    pub source_line_start: usize,
+    /// Display column where this row starts after source-aware wrapping.
+    pub wrapped_from_column: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+/// Terminal output and source positions produced for one viewport width.
+pub struct RenderedDocument {
+    /// ANSI-encoded terminal output.
+    pub output: String,
+    /// Source position for each rendered row in `output`.
+    pub row_anchors: Vec<RenderedRowAnchor>,
+    /// Measurements collected while preparing and rendering the document.
+    pub timings: RenderTimings,
+}
+
+#[derive(Clone, Debug)]
+/// Source-backed render state that can be laid out repeatedly at new widths.
+pub struct PreparedRender {
+    source: String,
+    visual: Option<VisualDocument>,
+    theme: Theme,
+    hyperlinks_enabled: bool,
+    timings: RenderTimings,
+}
+
+impl PreparedRender {
+    /// Detects the document kind and prepares width-independent visual data.
+    pub fn detect(
+        source_path: Option<&Path>,
+        source: &str,
+        hyperlinks_enabled: bool,
+    ) -> Result<Self> {
+        let theme = detected_theme();
+        let mut timings = RenderTimings::default();
+        let analysis = AnalysisDocument::detect(source_path, source, theme, Some(&mut timings))?;
+        Ok(Self::from_analysis(
+            source,
+            analysis,
+            theme,
+            hyperlinks_enabled,
+            timings,
+        ))
+    }
+
+    /// Prepares width-independent visual data using an explicit language.
+    pub fn named_language(
+        language_name: &str,
+        source: &str,
+        hyperlinks_enabled: bool,
+    ) -> Result<Self> {
+        let theme = detected_theme();
+        let mut timings = RenderTimings::default();
+        let analysis =
+            AnalysisDocument::named_language(language_name, source, theme, Some(&mut timings))?;
+        Ok(Self::from_analysis(
+            source,
+            analysis,
+            theme,
+            hyperlinks_enabled,
+            timings,
+        ))
+    }
+
+    fn from_analysis(
+        source: &str,
+        analysis: AnalysisDocument,
+        theme: Theme,
+        hyperlinks_enabled: bool,
+        timings: RenderTimings,
+    ) -> Self {
+        let visual =
+            (!analysis.is_plain_passthrough()).then(|| VisualDocument::from_analysis(&analysis));
+        Self {
+            source: source.to_owned(),
+            visual,
+            theme,
+            hyperlinks_enabled,
+            timings,
+        }
+    }
+
+    /// Lays out and encodes the prepared document for `terminal_width`.
+    pub fn render(&self, terminal_width: Option<usize>) -> RenderedDocument {
+        let mut timings = self.timings.clone();
+        let Some(visual) = self.visual.as_ref() else {
+            return RenderedDocument {
+                output: self.source.clone(),
+                row_anchors: plain_row_anchors(&self.source),
+                timings,
+            };
+        };
+
+        let layout = LayoutDocument::from_visual(
+            &self.source,
+            visual.spans(),
+            visual.regions(),
+            self.theme,
+            terminal_width,
+        );
+        let mut row_anchors = layout
+            .rows()
+            .iter()
+            .map(|row| RenderedRowAnchor {
+                source_line_start: row.source_line_start,
+                wrapped_from_column: row.wrapped_from_column,
+            })
+            .collect::<Vec<_>>();
+        let render_started_at = Instant::now();
+        let output =
+            RenderPlan::compile(&layout, self.theme).encode(self.theme, self.hyperlinks_enabled);
+        timings.record_render_styled_spans(render_started_at);
+        row_anchors.truncate(rendered_line_count(&output));
+
+        RenderedDocument {
+            output,
+            row_anchors,
+            timings,
+        }
+    }
+}
+
+fn plain_row_anchors(source: &str) -> Vec<RenderedRowAnchor> {
+    let mut anchors = Vec::new();
+    let mut line_start = 0usize;
+    for line in source.split_inclusive('\n') {
+        anchors.push(RenderedRowAnchor {
+            source_line_start: line_start,
+            wrapped_from_column: 0,
+        });
+        line_start += line.len();
+    }
+    if source.is_empty() {
+        anchors.push(RenderedRowAnchor::default());
+    }
+    anchors.truncate(rendered_line_count(source));
+    anchors
+}
+
+fn rendered_line_count(output: &str) -> usize {
+    let line_count = output.split('\n').count();
+    line_count.saturating_sub(usize::from(output.ends_with('\n')))
+}
+
 pub fn render_with_timing(source_path: Option<&Path>, source: &str) -> Result<RenderOutput> {
     render_with_timing_and_terminal_width(source_path, source, None)
 }
@@ -282,14 +428,12 @@ pub fn render_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let theme = detected_theme();
-    render_with_theme_and_timing(
-        source_path,
-        source,
-        &theme,
-        terminal_width,
-        hyperlinks_enabled,
-    )
+    let rendered =
+        PreparedRender::detect(source_path, source, hyperlinks_enabled)?.render(terminal_width);
+    Ok(RenderOutput {
+        output: rendered.output,
+        timings: rendered.timings,
+    })
 }
 
 pub fn render_named_language_with_timing_and_terminal_width(
@@ -311,14 +455,12 @@ pub fn render_named_language_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let theme = detected_theme();
-    render_named_language_with_theme_and_timing(
-        language_name,
-        source,
-        &theme,
-        terminal_width,
-        hyperlinks_enabled,
-    )
+    let rendered = PreparedRender::named_language(language_name, source, hyperlinks_enabled)?
+        .render(terminal_width);
+    Ok(RenderOutput {
+        output: rendered.output,
+        timings: rendered.timings,
+    })
 }
 
 pub fn strip_terminal_hyperlinks(text: &str) -> String {
@@ -568,29 +710,6 @@ fn render_with_theme_and_timing(
 ) -> Result<RenderOutput> {
     let mut timings = RenderTimings::default();
     let analysis = AnalysisDocument::detect(source_path, source, *theme, Some(&mut timings))?;
-
-    let output = render_analysis_output(
-        &analysis,
-        source,
-        theme,
-        terminal_width,
-        hyperlinks_enabled,
-        &mut timings,
-    );
-
-    Ok(RenderOutput { output, timings })
-}
-
-fn render_named_language_with_theme_and_timing(
-    language_name: &str,
-    source: &str,
-    theme: &Theme,
-    terminal_width: Option<usize>,
-    hyperlinks_enabled: bool,
-) -> Result<RenderOutput> {
-    let mut timings = RenderTimings::default();
-    let analysis =
-        AnalysisDocument::named_language(language_name, source, *theme, Some(&mut timings))?;
 
     let output = render_analysis_output(
         &analysis,
@@ -1338,7 +1457,6 @@ pub(crate) struct RegionSegment {
     pub(crate) left: usize,
     pub(crate) text_end: usize,
     pub(crate) left_column_override: Option<DisplayColumn>,
-    pub(crate) right_padding: DisplayColumn,
 }
 
 pub(crate) fn highlight_named_language_render_data(
@@ -3437,50 +3555,21 @@ pub(crate) fn build_region_segments(
             build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
         }
         InjectionVisualKind::RectBlock | InjectionVisualKind::ScopeBlock => {
-            build_block_region_segments(source, ranges, visual_anchor)
+            build_block_region_segments(source, ranges, visual_anchor, visual_kind)
         }
     };
 
     line_bounds.sort_by_key(|line| (line.line_start, line.left, line.text_end));
     line_bounds.dedup();
 
-    if !visual_kind.uses_rectangular_padding() {
-        return line_bounds;
-    }
-
-    let region_right = line_bounds
-        .iter()
-        .map(|line| {
-            let line_text = &source[line.line_start..line.text_end];
-            let left_in_line = ByteOffset::new(line.left.saturating_sub(line.line_start));
-            let left_column = display_column_for_byte_offset(line_text, left_in_line);
-            let content_width =
-                display_width_from_column(left_column, &source[line.left..line.text_end]);
-            left_column + content_width
-        })
-        .max()
-        .unwrap_or(DisplayColumn::new(0));
-
     line_bounds
-        .into_iter()
-        .map(|line| {
-            let line_text = &source[line.line_start..line.text_end];
-            let left_in_line = ByteOffset::new(line.left.saturating_sub(line.line_start));
-            let left_column = display_column_for_byte_offset(line_text, left_in_line);
-            let content_width =
-                display_width_from_column(left_column, &source[line.left..line.text_end]);
-            RegionSegment {
-                right_padding: region_right - (left_column + content_width),
-                ..line
-            }
-        })
-        .collect()
 }
 
 fn build_block_region_segments(
     source: &str,
     ranges: &[Range<usize>],
     visual_anchor: InjectionVisualAnchor,
+    visual_kind: InjectionVisualKind,
 ) -> Vec<RegionSegment> {
     let covered_lines = classify_covered_lines(source, ranges);
     let Some(block_lines) = content_block_lines(&covered_lines) else {
@@ -3491,12 +3580,6 @@ fn build_block_region_segments(
             visual_anchor,
         );
     };
-    let block_left_offset = block_lines
-        .iter()
-        .filter(|line| line.role == CoveredLineRole::Content)
-        .map(|line| content_start_offset(source, *line))
-        .min()
-        .unwrap_or(0);
     let block_left_column = block_lines
         .iter()
         .filter(|line| line.role == CoveredLineRole::Content)
@@ -3514,11 +3597,13 @@ fn build_block_region_segments(
         .map(|line| {
             let (left, left_column_override) = match visual_anchor {
                 InjectionVisualAnchor::Content => {
-                    let desired_left = line.line_start + block_left_offset;
-                    if desired_left <= line.line_end {
-                        (desired_left, None)
-                    } else {
-                        (line.line_end, Some(block_left_column))
+                    let content_left = line.line_start + content_start_offset(source, *line);
+                    match visual_kind {
+                        InjectionVisualKind::RectBlock => (content_left, Some(block_left_column)),
+                        InjectionVisualKind::ScopeBlock => (content_left, None),
+                        InjectionVisualKind::Transparent | InjectionVisualKind::TightBlock => {
+                            unreachable!("non-block visual kind in block segment builder")
+                        }
                     }
                 }
                 InjectionVisualAnchor::LineStart => (line.line_start, None),
@@ -3529,7 +3614,6 @@ fn build_block_region_segments(
                 left,
                 text_end: line.line_end,
                 left_column_override,
-                right_padding: DisplayColumn::new(0),
             }
         })
         .collect()
@@ -3600,7 +3684,6 @@ fn build_region_segment_for_line(
         left,
         text_end: line.line_end,
         left_column_override: None,
-        right_padding: DisplayColumn::new(0),
     }
 }
 
@@ -4049,7 +4132,6 @@ pub(crate) fn map_virtual_regions_to_source(
                 left: mapped_left,
                 text_end: mapped_text_end,
                 left_column_override: segment.left_column_override,
-                right_padding: segment.right_padding,
             });
         }
         mapped.push(VisualRegion {
@@ -4132,7 +4214,6 @@ fn map_virtual_region_segments_to_source(
             left: mapped_left,
             text_end: mapped_text_end,
             left_column_override: segment.left_column_override,
-            right_padding: segment.right_padding,
         });
     }
 
@@ -4334,9 +4415,9 @@ mod tests {
         render_with_theme, semantic_capture_spans,
     };
     use crate::{
-        DisplayColumn, DocumentKind,
+        DocumentKind,
         analysis::{AnalysisSnapshot, NestedRegionSnapshot, RegionSegmentSnapshot},
-        display_geometry::{display_width, display_width_from_column, strip_ansi},
+        display_geometry::{display_width, strip_ansi},
         document_kind::{DocumentProfile, yaml_document_kind},
         language_runtime::runtime,
         layout::{LayoutRowSnapshot, LayoutSnapshot},
@@ -7726,27 +7807,7 @@ mod tests {
         let source = read_file(&path);
         let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
         let region = find_nested_region(&analysis, "python", "def render_message():", &source);
-        let segments = [
-            segment_for_line(region, &source, "import os"),
-            segment_for_line(region, &source, "def render_message():"),
-            segment_for_line(region, &source, "print(\"hello ${NOMAD_ALLOC_ID}\")"),
-            segment_for_line(region, &source, "%{ if meta.env == \"prod\" }"),
-            segment_for_line(region, &source, "return os.environ.get(\"MODE\", \"prod\")"),
-            segment_for_line(region, &source, "%{ else }"),
-            segment_for_line(region, &source, "return \"dev\""),
-            segment_for_line(region, &source, "%{ endif }"),
-        ];
-        let widths: Vec<_> = segments
-            .iter()
-            .map(|segment| segment_rendered_right_edge(&source, segment))
-            .collect();
-        let expected_width = widths[0];
-
         assert_eq!(region.visual_kind, "rect_block");
-        assert!(
-            widths.iter().all(|width| *width == expected_width),
-            "expected Nomad template projection lines to share a rectangular right edge, got widths {widths:?}"
-        );
 
         let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
         let import_row = layout_row_containing(&layout.rows, "import os");
@@ -7756,29 +7817,21 @@ mod tests {
             .find(|row| row.source_line_start == line_start_for_line_number(&source, 7))
             .expect("expected layout to retain the blank line inside the Nomad template body");
         let endif_row = layout_row_containing(&layout.rows, "%{ endif }");
+        let expected_bounds = first_background_bounds(import_row)
+            .expect("expected projected Python block to have a background");
 
         assert_eq!(
-            import_row
-                .background_runs
-                .first()
-                .map(|run| (run.start_column, run.end_column)),
-            Some((0, expected_width)),
-            "expected first projected Python line to receive a full-width block tint"
+            expected_bounds.0, 0,
+            "expected projected Python block to start at the source left edge"
         );
         assert_eq!(
-            blank_row
-                .background_runs
-                .first()
-                .map(|run| (run.start_column, run.end_column)),
-            Some((0, expected_width)),
+            first_background_bounds(blank_row),
+            Some(expected_bounds),
             "expected blank lines inside the projected template body to keep the same block tint"
         );
         assert_eq!(
-            endif_row
-                .background_runs
-                .first()
-                .map(|run| (run.start_column, run.end_column)),
-            Some((0, expected_width)),
+            first_background_bounds(endif_row),
+            Some(expected_bounds),
             "expected HCL template directive lines inside the projection to keep the same block tint"
         );
     }
@@ -8861,19 +8914,13 @@ mod tests {
             "same nested runtimes as top-level Markdown.",
             &source,
         );
-        let prose_segment = segment_for_line(
-            markdown_region,
-            &source,
-            "same nested runtimes as top-level Markdown.",
-        );
-
         assert!(
             markdown_region.visual_level == 1,
             "outer rustdoc markdown prose should still receive the outer nested level"
         );
-        assert!(
-            segment_trailing_padding(prose_segment) == 0,
-            "outer rustdoc prose should not be padded into a rectangular block"
+        assert_ne!(
+            markdown_region.visual_kind, "rect_block",
+            "outer rustdoc prose should not become a rectangular block"
         );
     }
 
@@ -8886,8 +8933,6 @@ mod tests {
         let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
         let markdown_region = find_nested_region(&analysis, "markdown", "class Nested:", &source);
         let python_region = find_nested_region(&analysis, "python", "class Nested:", &source);
-        let class_segment = segment_for_line(python_region, &source, "class Nested:");
-
         assert!(
             python_region.visual_level == 2,
             "inner fenced block line should use its own stronger block level"
@@ -8896,9 +8941,20 @@ mod tests {
             region_covers_line(markdown_region, &source, "class Nested:"),
             "the same line should still preserve the weaker outer rustdoc container coverage"
         );
+        assert_eq!(python_region.visual_kind, "rect_block");
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let rows = [
+            layout_row_containing(&layout.rows, "class Nested:"),
+            layout_row_containing(&layout.rows, "def render(self)"),
+            layout_row_containing(&layout.rows, "return 42"),
+        ];
+        let expected_bounds = background_bounds_at_level(rows[0], 2);
         assert!(
-            segment_trailing_padding(class_segment) > 0,
-            "inner fenced block should still contribute a visible block-width pad"
+            expected_bounds.is_some()
+                && rows
+                    .iter()
+                    .all(|row| background_bounds_at_level(row, 2) == expected_bounds),
+            "inner fenced rows should share their own level-2 layout-time block bbox"
         );
     }
 
@@ -9131,32 +9187,56 @@ mod tests {
             "Theme preview helpers.",
             &source,
         );
-        let first_segment = segment_for_line(docstring_region, &source, "Theme preview helpers.");
-        let prose_segment = segment_for_line(
-            docstring_region,
-            &source,
-            "This module exercises several common docstring styles.",
-        );
-        let role_segment = segment_for_line(
-            docstring_region,
-            &source,
-            "The public entrypoint is :class:`ThemePreview`.",
-        );
-
         assert_eq!(
             docstring_region.visual_kind, "rect_block",
             "expected python docstring runtime to render as a rectangular block"
         );
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let rows = [
+            layout_row_containing(&layout.rows, "Theme preview helpers."),
+            layout_row_containing(
+                &layout.rows,
+                "This module exercises several common docstring styles.",
+            ),
+            layout_row_containing(
+                &layout.rows,
+                "The public entrypoint is :class:`ThemePreview`.",
+            ),
+        ];
+        let expected_bounds = first_background_bounds(rows[0]);
+        assert!(expected_bounds.is_some());
         assert!(
-            segment_trailing_padding(first_segment) > 0,
-            "expected narrower summary line to keep visible block padding"
+            rows.iter()
+                .all(|row| first_background_bounds(row) == expected_bounds),
+            "expected python docstring rows to share one layout-time block bbox"
         );
+    }
+
+    #[test]
+    fn python_docstring_wraps_blank_and_content_rows_into_one_exact_bbox() {
+        let source = "def demo():\n    \"\"\"短说明。\n\n    这里是一段足够长的中文内容用于验证文档字符串换行后的统一背景边界\n    \"\"\"\n";
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let layout = super::layout_with_theme(Some(Path::new("demo.py")), source, &theme, Some(49))
+            .expect("expected Python docstring layout")
+            .snapshot();
+        let block_start = layout
+            .rows
+            .iter()
+            .position(|row| row.text.contains("短说明"))
+            .expect("expected opening docstring row");
+        let block_end = layout
+            .rows
+            .iter()
+            .rposition(|row| row.text.trim() == "\"\"\"")
+            .expect("expected closing docstring row");
+        let rows = &layout.rows[block_start..=block_end];
+
+        assert!(rows.len() > 4, "expected the long docstring row to wrap");
         assert!(
-            segment_rendered_right_edge(&source, first_segment)
-                == segment_rendered_right_edge(&source, prose_segment)
-                && segment_rendered_right_edge(&source, role_segment)
-                    == segment_rendered_right_edge(&source, prose_segment),
-            "expected python docstring lines to share one rectangular block right edge"
+            rows.iter()
+                .all(|row| background_bounds_at_level(row, 1) == Some((0, 48))),
+            "expected docstring content, blank, and continuation rows to share the exact non-viewport-wide bbox: {rows:?}"
         );
     }
 
@@ -10802,8 +10882,6 @@ entry = "cargo clippy --workspace --locked --all-targets --all-features -- -D wa
 "#;
         let analysis = analysis_snapshot_for_path(Path::new("prek.toml"), source, &theme);
         let region = find_nested_region(&analysis, "bash", "cargo clippy --workspace", source);
-        let segment = segment_for_line(region, source, "cargo clippy --workspace");
-
         assert_eq!(
             region.visual_kind, "transparent",
             "expected single-line prek hook entries to stay inline instead of becoming block regions"
@@ -10811,11 +10889,6 @@ entry = "cargo clippy --workspace --locked --all-targets --all-features -- -D wa
         assert!(
             region_covers_line(region, source, "cargo clippy --workspace"),
             "expected injected shell region to cover the entry line"
-        );
-        assert_eq!(
-            segment_trailing_padding(segment),
-            0,
-            "expected inline prek hook entries to avoid rectangular trailing padding"
         );
     }
 
@@ -10960,7 +11033,6 @@ priority: 7
         let analysis = analysis_snapshot_for_path(Path::new("Justfile"), source, &theme);
         let region = find_nested_region(&analysis, "bash", "cargo install --path .", source);
         let first_segment = segment_for_line(region, source, "cargo install --path .");
-        let second_segment = segment_for_line(region, source, "cargo fmt --check");
 
         assert_eq!(
             region.visual_kind, "scope_block",
@@ -10971,19 +11043,13 @@ priority: 7
             4,
             "expected scope block fallback geometry to align with the shared recipe indent"
         );
+        let layout = layout_snapshot_for_path(Path::new("Justfile"), source, &theme, 80);
+        let first_row = layout_row_containing(&layout.rows, "cargo install --path .");
+        let second_row = layout_row_containing(&layout.rows, "cargo fmt --check");
         assert_eq!(
-            segment_rendered_right_edge(source, first_segment),
-            segment_rendered_right_edge(source, second_segment),
-            "expected scope block fallback geometry to keep a shared rendered right edge"
-        );
-        assert!(
-            segment_trailing_padding(second_segment) > 0,
-            "expected shorter recipe lines to keep rectangular fallback padding for now"
-        );
-        assert_eq!(
-            segment_trailing_padding(first_segment),
-            0,
-            "expected the widest recipe line to define the fallback block width"
+            first_background_bounds(first_row),
+            first_background_bounds(second_row),
+            "expected scope block rows to share their layout-time right edge"
         );
     }
 
@@ -11042,25 +11108,61 @@ priority: 7
             first_region
                 .layout_segments
                 .iter()
-                .any(|segment| segment.line_start == line_start_for_line_number(&source, 4))
-                && first_region
-                    .layout_segments
-                    .iter()
-                    .find(|segment| segment.line_start == line_start_for_line_number(&source, 4))
-                    .is_some_and(|segment| segment_trailing_padding(segment) > 0),
+                .any(|segment| segment.line_start == line_start_for_line_number(&source, 4)),
             "empty line inside first fenced block should still be part of the block region"
         );
         assert!(
             second_region
                 .layout_segments
                 .iter()
-                .any(|segment| segment.line_start == line_start_for_line_number(&source, 14))
-                && second_region
-                    .layout_segments
-                    .iter()
-                    .find(|segment| segment.line_start == line_start_for_line_number(&source, 14))
-                    .is_some_and(|segment| segment_trailing_padding(segment) > 0),
+                .any(|segment| segment.line_start == line_start_for_line_number(&source, 14)),
             "empty line inside second fenced block should still be part of the block region"
+        );
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        for line_number in [4, 14] {
+            let row = layout
+                .rows
+                .iter()
+                .find(|row| {
+                    row.source_line_start == line_start_for_line_number(&source, line_number)
+                })
+                .unwrap_or_else(|| panic!("expected layout row for blank line {line_number}"));
+            assert!(
+                first_background_bounds(row).is_some(),
+                "expected blank fenced-code line {line_number} to keep block background"
+            );
+        }
+    }
+
+    #[test]
+    fn markdown_fenced_code_wraps_into_one_exact_block_bbox() {
+        let source = "# Demo\n\n```bash\necho short\n\necho 这里是一段足够长的中文内容用于验证围栏代码换行后的统一背景边界\n```\n";
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let layout = super::layout_with_theme(Some(Path::new("demo.md")), source, &theme, Some(48))
+            .expect("expected fenced Markdown layout")
+            .snapshot();
+        let fence_rows = layout
+            .rows
+            .iter()
+            .enumerate()
+            .filter_map(|(index, row)| row.text.starts_with("```").then_some(index))
+            .collect::<Vec<_>>();
+        assert_eq!(fence_rows.len(), 2);
+        let block_rows = &layout.rows[fence_rows[0] + 1..fence_rows[1]];
+
+        assert!(block_rows.len() > 3, "expected the CJK code line to wrap");
+        assert!(
+            block_rows
+                .iter()
+                .all(|row| background_bounds_at_level(row, 1) == Some((0, 47))),
+            "expected content, blank, and continuation rows to share the exact non-viewport-wide bbox: {block_rows:?}"
+        );
+        assert!(
+            fence_rows
+                .iter()
+                .all(|index| { background_bounds_at_level(&layout.rows[*index], 1).is_none() }),
+            "expected fence rows to stay outside the fenced-code Block"
         );
     }
 
@@ -11085,44 +11187,40 @@ priority: 7
             "second run body line should receive nested block coverage"
         );
 
-        let first_segment = segment_for_line(region, source, "echo hi");
-        let second_segment = segment_for_line(region, source, "printf '%s\\n' \"$GITHUB_REF\"");
-
-        assert!(
-            segment_trailing_padding(first_segment) > 0,
-            "shorter run body line should keep a visible block-width pad"
-        );
-        assert!(
-            segment_trailing_padding(second_segment) == 0,
-            "widest run body line should not receive trailing block padding"
+        let layout =
+            layout_snapshot_for_path(Path::new(".github/workflows/demo.yml"), source, &theme, 120);
+        assert_eq!(
+            first_background_bounds(layout_row_containing(&layout.rows, "echo hi")),
+            first_background_bounds(layout_row_containing(&layout.rows, "printf '%s\\n'")),
+            "expected run body rows to share one layout-time block bbox"
         );
     }
 
     #[test]
     fn github_actions_run_block_keeps_consistent_rendered_right_edge_with_cjk_content() {
-        let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo \"短描述\"\n          echo \"这里放一段更长的中文描述，用来验证共享的 block 几何在 GitHub Actions run 中也会补齐右边界\"\n";
+        let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo \"短描述\"\n          echo \"这里放一段更长的中文描述用来验证共享几何也会补齐右边界\"\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let analysis =
-            analysis_snapshot_for_path(Path::new(".github/workflows/demo-cjk.yml"), source, &theme);
-        let region = find_nested_region(&analysis, "bash", "echo \"短描述\"", source);
-        let segments = [
-            segment_for_line(region, source, "echo \"短描述\""),
-            segment_for_line(
-                region,
-                source,
-                "echo \"这里放一段更长的中文描述，用来验证共享的 block 几何在 GitHub Actions run 中也会补齐右边界\"",
-            ),
+        let layout = layout_snapshot_for_path(
+            Path::new(".github/workflows/demo-cjk.yml"),
+            source,
+            &theme,
+            49,
+        );
+        let member_line_starts = [
+            line_start_containing(source, "echo \"短描述\""),
+            line_start_containing(source, "这里放一段更长的中文描述"),
         ];
-        let widths: Vec<_> = segments
+        let rows = layout
+            .rows
             .iter()
-            .map(|segment| segment_rendered_right_edge(source, segment))
-            .collect();
-        let expected_width = widths[0];
-
+            .filter(|row| member_line_starts.contains(&row.source_line_start))
+            .collect::<Vec<_>>();
+        assert!(rows.len() > 2, "expected the CJK run body to wrap");
         assert!(
-            widths.iter().all(|width| *width == expected_width),
-            "expected GitHub Actions run block lines to share a consistent rendered right edge, got widths {widths:?}"
+            rows.iter()
+                .all(|row| background_bounds_at_level(row, 1) == Some((0, 48))),
+            "expected every GitHub Actions run content and continuation row to share the exact non-viewport-wide bbox: {rows:?}"
         );
     }
 
@@ -11271,21 +11369,6 @@ priority: 7
             .unwrap_or_else(|| display_width(&source[segment.line_start..segment.left]).as_usize())
     }
 
-    fn segment_trailing_padding(segment: &RegionSegmentSnapshot) -> usize {
-        segment.right_padding
-    }
-
-    fn segment_rendered_right_edge(source: &str, segment: &RegionSegmentSnapshot) -> usize {
-        let left_column = segment_left_column(source, segment);
-        left_column
-            + display_width_from_column(
-                DisplayColumn::new(left_column),
-                &source[segment.left..segment.text_end],
-            )
-            .as_usize()
-            + segment_trailing_padding(segment)
-    }
-
     fn render_plan_text(snapshot: &RenderPlanSnapshot) -> String {
         let mut text = String::new();
         for op in &snapshot.ops {
@@ -11327,6 +11410,22 @@ priority: 7
                     rows.iter().map(|row| row.text.as_str()).collect::<Vec<_>>()
                 )
             })
+    }
+
+    fn first_background_bounds(row: &LayoutRowSnapshot) -> Option<(usize, usize)> {
+        row.background_runs
+            .first()
+            .map(|run| (run.start_column, run.end_column))
+    }
+
+    fn background_bounds_at_level(
+        row: &LayoutRowSnapshot,
+        visual_level: usize,
+    ) -> Option<(usize, usize)> {
+        row.background_runs
+            .iter()
+            .find(|run| run.visual_level == visual_level)
+            .map(|run| (run.start_column, run.end_column))
     }
 
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
@@ -11498,15 +11597,22 @@ priority: 7
             "/**\n * this is a much longer JSDoc line\n * short\n */\nconst answer = 42;\n";
         let analysis = analysis_snapshot_for_path(Path::new("demo.ts"), source, &theme);
         let region = find_nested_region(&analysis, "jsdoc", "short", source);
-        let short_segment = segment_for_line(region, source, "short");
-
         assert!(
             region_covers_line(region, source, "short"),
             "expected shorter JSDoc prose line to keep its nested coverage"
         );
-        assert!(
-            segment_trailing_padding(short_segment) == 0,
-            "expected JSDoc prose to avoid rectangular trailing padding"
+        assert_ne!(
+            region.visual_kind, "rect_block",
+            "expected JSDoc prose to avoid rectangular block layout"
+        );
+        let layout = layout_snapshot_for_path(Path::new("demo.ts"), source, &theme, 20);
+        let long_row = layout_row_containing(&layout.rows, "this is a much");
+        let short_row = layout_row_containing(&layout.rows, "* short");
+        assert_eq!(background_bounds_at_level(long_row, 1), Some((0, 20)));
+        assert_eq!(
+            background_bounds_at_level(short_row, 1),
+            Some((0, 8)),
+            "expected TightBlock background to stop at the short row's own content edge"
         );
     }
 
@@ -11587,30 +11693,29 @@ priority: 7
     fn markdown_html_block_table_keeps_consistent_rendered_right_edge_with_cjk_content() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let path = fixture_path("markdown/html_block_table.md");
-        let source = read_file(&path);
-        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
-        let region = find_nested_region(&analysis, "html", "<table>", &source);
-        let segments = [
-            segment_for_line(region, &source, "<table>"),
-            segment_for_line(region, &source, "<td>短描述。</td>"),
-            segment_for_line(
-                region,
-                &source,
-                "<td>这里放一段更长的中文描述，用来拉长这一行，观察 HTML block 的右侧补齐是否会只停在当前文本行的末尾。</td>",
-            ),
-            segment_for_line(region, &source, "<td>中等长度描述。</td>"),
-            segment_for_line(region, &source, "</table>"),
-        ];
-        let widths: Vec<_> = segments
+        let path = Path::new("demo.md");
+        let source = "<div>\n<div>这里是一段足够长的中文内容用于验证HTML块换行后的所有视觉行共享同一个精确背景边界</div>\n</div>\n";
+        let layout = layout_snapshot_for_path(path, source, &theme, 80);
+        let table_start = layout
+            .rows
             .iter()
-            .map(|segment| segment_rendered_right_edge(&source, segment))
-            .collect();
-        let expected_width = widths[0];
-
+            .position(|row| row.text == "<div>")
+            .expect("expected opening HTML row");
+        let table_end = layout
+            .rows
+            .iter()
+            .position(|row| row.text == "</div>")
+            .expect("expected closing HTML row");
+        let rows = &layout.rows[table_start..=table_end];
+        let expected_bounds = Some((0, 79));
         assert!(
-            widths.iter().all(|width| *width == expected_width),
-            "expected HTML block lines to share a consistent rendered right edge, got widths {widths:?}"
+            rows.len() > 3,
+            "expected the long CJK table row to produce a continuation row"
+        );
+        assert!(
+            rows.iter()
+                .all(|row| first_background_bounds(row) == expected_bounds),
+            "expected every HTML content and continuation row to share the exact non-viewport-wide bbox: {rows:?}"
         );
     }
 
@@ -11620,27 +11725,19 @@ priority: 7
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let path = fixture_path("markdown/html_block_tabs.md");
         let source = read_file(&path);
-        let analysis = analysis_snapshot_for_path(path.as_path(), &source, &theme);
-        let region = find_nested_region(&analysis, "html", "<table>", &source);
-        let segments = [
-            segment_for_line(region, &source, "<table>"),
-            segment_for_line(region, &source, "<td>值\t标签</td>"),
-            segment_for_line(
-                region,
-                &source,
-                "<td>这里放一段更长的中文内容\t用于验证带 tab 的 HTML block 右边界也会补齐</td>",
-            ),
-            segment_for_line(region, &source, "</table>"),
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let rows = [
+            layout_row_containing(&layout.rows, "<table>"),
+            layout_row_containing(&layout.rows, "<td>值"),
+            layout_row_containing(&layout.rows, "这里放一段更长的中文内容"),
+            layout_row_containing(&layout.rows, "</table>"),
         ];
-        let widths: Vec<_> = segments
-            .iter()
-            .map(|segment| segment_rendered_right_edge(&source, segment))
-            .collect();
-        let expected_width = widths[0];
-
+        let expected_bounds = first_background_bounds(rows[0]);
+        assert!(expected_bounds.is_some());
         assert!(
-            widths.iter().all(|width| *width == expected_width),
-            "expected tabbed HTML block lines to share a consistent rendered right edge, got widths {widths:?}"
+            rows.iter()
+                .all(|row| first_background_bounds(row) == expected_bounds),
+            "expected tabbed HTML block rows to share one layout-time block bbox"
         );
     }
 
@@ -11794,6 +11891,46 @@ priority: 7
     }
 
     #[test]
+    fn markdown_frontmatter_block_bbox_follows_wrapped_rows() {
+        let path = fixture_path("markdown/frontmatter-narrow.md");
+        let source = read_file(&path);
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 48);
+
+        assert!(
+            layout.rows.iter().all(|row| row.display_width <= 48),
+            "expected frontmatter background padding to stay within the 48-column viewport, got rows {:?}",
+            layout
+                .rows
+                .iter()
+                .map(|row| (&row.text, row.display_width))
+                .collect::<Vec<_>>()
+        );
+
+        let delimiter_rows = layout
+            .rows
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.text == "---")
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        assert_eq!(delimiter_rows.len(), 2);
+        let block_rows = &layout.rows[delimiter_rows[0]..=delimiter_rows[1]];
+        assert_eq!(block_rows.len(), 5);
+        assert!(
+            block_rows.iter().all(|row| {
+                row.display_width == 47 && first_background_bounds(row) == Some((0, 47))
+            }),
+            "expected every wrapped frontmatter row to share the 47-column block bbox, got {:?}",
+            block_rows
+                .iter()
+                .map(|row| (&row.text, row.display_width, &row.background_runs))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn debug_layout_json_preserves_python_docstring_blank_line_background_runs() {
         let path = fixture_path("python/docstrings.py");
         let source = read_file(&path);
@@ -11908,6 +12045,27 @@ priority: 7
                 .unwrap_or(usize::MAX),
             0,
             "expected wrapped CJK continuation rows to be measured in display cells"
+        );
+    }
+
+    #[test]
+    fn just_scope_block_preserves_each_source_rows_content_indent() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let source = "demo:\n    echo outer\n        echo nested\n";
+        let layout =
+            super::layout_with_theme(Some(Path::new("Justfile")), source, &theme, Some(80))
+                .expect("expected layout to render for nested recipe indentation")
+                .snapshot();
+
+        assert_eq!(
+            first_background_bounds(layout_row_containing(&layout.rows, "echo outer")),
+            Some((4, 19)),
+        );
+        assert_eq!(
+            first_background_bounds(layout_row_containing(&layout.rows, "echo nested")),
+            Some((8, 19)),
+            "expected ScopeBlock to preserve the nested source row's deeper left edge"
         );
     }
 

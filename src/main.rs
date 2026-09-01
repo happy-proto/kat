@@ -125,11 +125,7 @@ fn try_main() -> Result<()> {
     let total_started_at = Instant::now();
     let mut built_output = build_output(&options)?;
     let write_started_at = Instant::now();
-    write_output(
-        &built_output.output,
-        &options,
-        built_output.contains_terminal_image,
-    )?;
+    write_output(&built_output, &options)?;
 
     if let Some(timings) = built_output.timings.as_mut() {
         timings.write_output += write_started_at.elapsed();
@@ -304,6 +300,39 @@ struct BuiltOutput {
     output: String,
     timings: Option<DebugTimingStats>,
     contains_terminal_image: bool,
+    viewer_document: Option<ViewerDocument>,
+}
+
+#[derive(Debug)]
+struct ViewerDocument {
+    segments: Vec<ViewerSegment>,
+}
+
+impl ViewerDocument {
+    fn render(&self, terminal_width: usize) -> pager::PagerSource {
+        let mut builder = pager::PagerSourceBuilder::default();
+        for (source_id, segment) in self.segments.iter().enumerate() {
+            match segment {
+                ViewerSegment::Plain(output) => builder.append_plain(source_id, output),
+                ViewerSegment::Prepared(prepared) => {
+                    let rendered = prepared.render(Some(terminal_width));
+                    builder.append(source_id, &rendered.output, &rendered.row_anchors);
+                }
+            }
+        }
+        builder.finish()
+    }
+}
+
+#[derive(Debug)]
+enum ViewerSegment {
+    Plain(String),
+    Prepared(kat::PreparedRender),
+}
+
+struct RenderedSource {
+    output: String,
+    viewer_segment: Option<ViewerSegment>,
 }
 
 fn format_duration(duration: Duration) -> String {
@@ -952,24 +981,17 @@ fn render_output_with_timing(
     source_path: Option<&std::path::Path>,
     source: &str,
     timings: Option<&mut DebugTimingStats>,
-) -> Result<String> {
+) -> Result<RenderedSource> {
     if matches!(options.mode, OutputMode::Render) {
         let terminal_width = io::stdout().is_terminal().then(terminal_columns).flatten();
         let hyperlinks_enabled = render_hyperlinks_enabled(options);
-        let render_output = match options.language.as_deref() {
-            Some(language_name) => kat::render_named_language_with_timing_and_terminal_options(
-                language_name,
-                source,
-                terminal_width,
-                hyperlinks_enabled,
-            )?,
-            None => kat::render_with_timing_and_terminal_options(
-                source_path,
-                source,
-                terminal_width,
-                hyperlinks_enabled,
-            )?,
+        let prepared = match options.language.as_deref() {
+            Some(language_name) => {
+                kat::PreparedRender::named_language(language_name, source, hyperlinks_enabled)?
+            }
+            None => kat::PreparedRender::detect(source_path, source, hyperlinks_enabled)?,
         };
+        let render_output = prepared.render(terminal_width);
         if let Some(timings) = timings {
             timings.render_pipeline.detect_document_kind +=
                 render_output.timings.detect_document_kind;
@@ -981,15 +1003,21 @@ fn render_output_with_timing(
             timings.render_pipeline.render_styled_spans +=
                 render_output.timings.render_styled_spans;
         }
-        return Ok(render_output.output);
+        return Ok(RenderedSource {
+            output: render_output.output,
+            viewer_segment: Some(ViewerSegment::Prepared(prepared)),
+        });
     }
 
-    render_output(
-        options.mode,
-        options.language.as_deref(),
-        source_path,
-        source,
-    )
+    Ok(RenderedSource {
+        output: render_output(
+            options.mode,
+            options.language.as_deref(),
+            source_path,
+            source,
+        )?,
+        viewer_segment: None,
+    })
 }
 
 fn render_hyperlinks_enabled(options: &CliOptions) -> bool {
@@ -1063,6 +1091,7 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
             output: version_output(),
             timings: options.debug_timing.then_some(DebugTimingStats::default()),
             contains_terminal_image: false,
+            viewer_document: None,
         });
     }
 
@@ -1077,18 +1106,22 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
             timings.files += 1;
             timings.input_bytes += stdin.len();
         }
-        let output = render_output_with_timing(options, None, &stdin, timings.as_mut())?;
+        let rendered = render_output_with_timing(options, None, &stdin, timings.as_mut())?;
         if let Some(timings) = timings.as_mut() {
-            timings.output_bytes = output.len();
+            timings.output_bytes = rendered.output.len();
         }
         return Ok(BuiltOutput {
-            output,
+            output: rendered.output,
             timings,
             contains_terminal_image: false,
+            viewer_document: rendered.viewer_segment.map(|segment| ViewerDocument {
+                segments: vec![segment],
+            }),
         });
     }
 
     let mut output = String::new();
+    let mut viewer_segments = Vec::new();
     let multiple_paths = options.paths.len() > 1;
     let mut contains_terminal_image = false;
 
@@ -1100,14 +1133,14 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
                 timings.input_bytes += stdin.len();
             }
             if multiple_paths {
-                push_header(&mut output, "-", index > 0);
+                let mut header = String::new();
+                push_header(&mut header, "-", index > 0);
+                output.push_str(&header);
+                viewer_segments.push(ViewerSegment::Plain(header));
             }
-            output.push_str(&render_output_with_timing(
-                options,
-                None,
-                &stdin,
-                timings.as_mut(),
-            )?);
+            let rendered = render_output_with_timing(options, None, &stdin, timings.as_mut())?;
+            output.push_str(&rendered.output);
+            viewer_segments.extend(rendered.viewer_segment);
             continue;
         }
 
@@ -1119,7 +1152,10 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
             timings.read_source += read_started_at.elapsed();
         }
         if multiple_paths {
-            push_header(&mut output, &path.display().to_string(), index > 0);
+            let mut header = String::new();
+            push_header(&mut header, &path.display().to_string(), index > 0);
+            output.push_str(&header);
+            viewer_segments.push(ViewerSegment::Plain(header));
         }
         if matches!(options.mode, OutputMode::DebugImage) {
             if !is_image_path(path.as_path(), &bytes) {
@@ -1149,12 +1185,10 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         }
 
         let source = String::from_utf8_lossy(&bytes).into_owned();
-        output.push_str(&render_output_with_timing(
-            options,
-            Some(path.as_path()),
-            &source,
-            timings.as_mut(),
-        )?);
+        let rendered =
+            render_output_with_timing(options, Some(path.as_path()), &source, timings.as_mut())?;
+        output.push_str(&rendered.output);
+        viewer_segments.extend(rendered.viewer_segment);
     }
 
     if let Some(timings) = timings.as_mut() {
@@ -1165,17 +1199,23 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         output,
         timings,
         contains_terminal_image,
+        viewer_document: (!contains_terminal_image && !viewer_segments.is_empty()).then_some(
+            ViewerDocument {
+                segments: viewer_segments,
+            },
+        ),
     })
 }
 
-fn write_output(output: &str, options: &CliOptions, contains_terminal_image: bool) -> Result<()> {
+fn write_output(built_output: &BuiltOutput, options: &CliOptions) -> Result<()> {
     if matches!(options.mode, OutputMode::Render)
-        && !contains_terminal_image
+        && !built_output.contains_terminal_image
         && io::stdout().is_terminal()
+        && let Some(viewer_document) = built_output.viewer_document.as_ref()
     {
-        pager::run(output)
+        pager::run(|terminal_width| Ok(viewer_document.render(terminal_width)))
     } else {
-        write_output_direct(output)
+        write_output_direct(&built_output.output)
     }
 }
 
