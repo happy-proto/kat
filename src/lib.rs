@@ -3555,7 +3555,7 @@ pub(crate) fn build_region_segments(
             build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
         }
         InjectionVisualKind::RectBlock | InjectionVisualKind::ScopeBlock => {
-            build_block_region_segments(source, ranges, visual_anchor)
+            build_block_region_segments(source, ranges, visual_anchor, visual_kind)
         }
     };
 
@@ -3569,6 +3569,7 @@ fn build_block_region_segments(
     source: &str,
     ranges: &[Range<usize>],
     visual_anchor: InjectionVisualAnchor,
+    visual_kind: InjectionVisualKind,
 ) -> Vec<RegionSegment> {
     let covered_lines = classify_covered_lines(source, ranges);
     let Some(block_lines) = content_block_lines(&covered_lines) else {
@@ -3579,12 +3580,6 @@ fn build_block_region_segments(
             visual_anchor,
         );
     };
-    let block_left_offset = block_lines
-        .iter()
-        .filter(|line| line.role == CoveredLineRole::Content)
-        .map(|line| content_start_offset(source, *line))
-        .min()
-        .unwrap_or(0);
     let block_left_column = block_lines
         .iter()
         .filter(|line| line.role == CoveredLineRole::Content)
@@ -3602,11 +3597,13 @@ fn build_block_region_segments(
         .map(|line| {
             let (left, left_column_override) = match visual_anchor {
                 InjectionVisualAnchor::Content => {
-                    let desired_left = line.line_start + block_left_offset;
-                    if desired_left <= line.line_end {
-                        (desired_left, None)
-                    } else {
-                        (line.line_end, Some(block_left_column))
+                    let content_left = line.line_start + content_start_offset(source, *line);
+                    match visual_kind {
+                        InjectionVisualKind::RectBlock => (content_left, Some(block_left_column)),
+                        InjectionVisualKind::ScopeBlock => (content_left, None),
+                        InjectionVisualKind::Transparent | InjectionVisualKind::TightBlock => {
+                            unreachable!("non-block visual kind in block segment builder")
+                        }
                     }
                 }
                 InjectionVisualAnchor::LineStart => (line.line_start, None),
@@ -8946,9 +8943,18 @@ mod tests {
         );
         assert_eq!(python_region.visual_kind, "rect_block");
         let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
+        let rows = [
+            layout_row_containing(&layout.rows, "class Nested:"),
+            layout_row_containing(&layout.rows, "def render(self)"),
+            layout_row_containing(&layout.rows, "return 42"),
+        ];
+        let expected_bounds = background_bounds_at_level(rows[0], 2);
         assert!(
-            first_background_bounds(layout_row_containing(&layout.rows, "class Nested:")).is_some(),
-            "inner fenced block should receive its layout-time block background"
+            expected_bounds.is_some()
+                && rows
+                    .iter()
+                    .all(|row| background_bounds_at_level(row, 2) == expected_bounds),
+            "inner fenced rows should share their own level-2 layout-time block bbox"
         );
     }
 
@@ -9203,6 +9209,34 @@ mod tests {
             rows.iter()
                 .all(|row| first_background_bounds(row) == expected_bounds),
             "expected python docstring rows to share one layout-time block bbox"
+        );
+    }
+
+    #[test]
+    fn python_docstring_wraps_blank_and_content_rows_into_one_exact_bbox() {
+        let source = "def demo():\n    \"\"\"短说明。\n\n    这里是一段足够长的中文内容用于验证文档字符串换行后的统一背景边界\n    \"\"\"\n";
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let layout = super::layout_with_theme(Some(Path::new("demo.py")), source, &theme, Some(49))
+            .expect("expected Python docstring layout")
+            .snapshot();
+        let block_start = layout
+            .rows
+            .iter()
+            .position(|row| row.text.contains("短说明"))
+            .expect("expected opening docstring row");
+        let block_end = layout
+            .rows
+            .iter()
+            .rposition(|row| row.text.trim() == "\"\"\"")
+            .expect("expected closing docstring row");
+        let rows = &layout.rows[block_start..=block_end];
+
+        assert!(rows.len() > 4, "expected the long docstring row to wrap");
+        assert!(
+            rows.iter()
+                .all(|row| background_bounds_at_level(row, 1) == Some((0, 48))),
+            "expected docstring content, blank, and continuation rows to share the exact non-viewport-wide bbox: {rows:?}"
         );
     }
 
@@ -11101,6 +11135,38 @@ priority: 7
     }
 
     #[test]
+    fn markdown_fenced_code_wraps_into_one_exact_block_bbox() {
+        let source = "# Demo\n\n```bash\necho short\n\necho 这里是一段足够长的中文内容用于验证围栏代码换行后的统一背景边界\n```\n";
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let layout = super::layout_with_theme(Some(Path::new("demo.md")), source, &theme, Some(48))
+            .expect("expected fenced Markdown layout")
+            .snapshot();
+        let fence_rows = layout
+            .rows
+            .iter()
+            .enumerate()
+            .filter_map(|(index, row)| row.text.starts_with("```").then_some(index))
+            .collect::<Vec<_>>();
+        assert_eq!(fence_rows.len(), 2);
+        let block_rows = &layout.rows[fence_rows[0] + 1..fence_rows[1]];
+
+        assert!(block_rows.len() > 3, "expected the CJK code line to wrap");
+        assert!(
+            block_rows
+                .iter()
+                .all(|row| background_bounds_at_level(row, 1) == Some((0, 47))),
+            "expected content, blank, and continuation rows to share the exact non-viewport-wide bbox: {block_rows:?}"
+        );
+        assert!(
+            fence_rows
+                .iter()
+                .all(|index| { background_bounds_at_level(&layout.rows[*index], 1).is_none() }),
+            "expected fence rows to stay outside the fenced-code Block"
+        );
+    }
+
+    #[test]
     fn github_actions_run_block_uses_block_region_tint_without_tinting_run_header() {
         let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo hi\n          printf '%s\\n' \"$GITHUB_REF\"\n";
         let tint = RgbColor(1, 2, 3);
@@ -11132,21 +11198,29 @@ priority: 7
 
     #[test]
     fn github_actions_run_block_keeps_consistent_rendered_right_edge_with_cjk_content() {
-        let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo \"短描述\"\n          echo \"这里放一段更长的中文描述，用来验证共享的 block 几何在 GitHub Actions run 中也会补齐右边界\"\n";
+        let source = "jobs:\n  build:\n    steps:\n      - run: |\n          echo \"短描述\"\n          echo \"这里放一段更长的中文描述用来验证共享几何也会补齐右边界\"\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
         let layout = layout_snapshot_for_path(
             Path::new(".github/workflows/demo-cjk.yml"),
             source,
             &theme,
-            120,
+            49,
         );
-        let short = layout_row_containing(&layout.rows, "echo \"短描述\"");
-        let long = layout_row_containing(&layout.rows, "这里放一段更长的中文描述");
-        assert_eq!(
-            first_background_bounds(short),
-            first_background_bounds(long),
-            "expected GitHub Actions run rows to share one layout-time block bbox"
+        let member_line_starts = [
+            line_start_containing(source, "echo \"短描述\""),
+            line_start_containing(source, "这里放一段更长的中文描述"),
+        ];
+        let rows = layout
+            .rows
+            .iter()
+            .filter(|row| member_line_starts.contains(&row.source_line_start))
+            .collect::<Vec<_>>();
+        assert!(rows.len() > 2, "expected the CJK run body to wrap");
+        assert!(
+            rows.iter()
+                .all(|row| background_bounds_at_level(row, 1) == Some((0, 48))),
+            "expected every GitHub Actions run content and continuation row to share the exact non-viewport-wide bbox: {rows:?}"
         );
     }
 
@@ -11344,6 +11418,16 @@ priority: 7
             .map(|run| (run.start_column, run.end_column))
     }
 
+    fn background_bounds_at_level(
+        row: &LayoutRowSnapshot,
+        visual_level: usize,
+    ) -> Option<(usize, usize)> {
+        row.background_runs
+            .iter()
+            .find(|run| run.visual_level == visual_level)
+            .map(|run| (run.start_column, run.end_column))
+    }
+
     fn count_occurrences(haystack: &str, needle: &str) -> usize {
         haystack.match_indices(needle).count()
     }
@@ -11521,6 +11605,15 @@ priority: 7
             region.visual_kind, "rect_block",
             "expected JSDoc prose to avoid rectangular block layout"
         );
+        let layout = layout_snapshot_for_path(Path::new("demo.ts"), source, &theme, 20);
+        let long_row = layout_row_containing(&layout.rows, "this is a much");
+        let short_row = layout_row_containing(&layout.rows, "* short");
+        assert_eq!(background_bounds_at_level(long_row, 1), Some((0, 20)));
+        assert_eq!(
+            background_bounds_at_level(short_row, 1),
+            Some((0, 8)),
+            "expected TightBlock background to stop at the short row's own content edge"
+        );
     }
 
     #[test]
@@ -11600,22 +11693,29 @@ priority: 7
     fn markdown_html_block_table_keeps_consistent_rendered_right_edge_with_cjk_content() {
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
-        let path = fixture_path("markdown/html_block_table.md");
-        let source = read_file(&path);
-        let layout = layout_snapshot_for_path(path.as_path(), &source, &theme, 120);
-        let rows = [
-            layout_row_containing(&layout.rows, "<table>"),
-            layout_row_containing(&layout.rows, "<td>短描述。</td>"),
-            layout_row_containing(&layout.rows, "这里放一段更长的中文描述"),
-            layout_row_containing(&layout.rows, "<td>中等长度描述。</td>"),
-            layout_row_containing(&layout.rows, "</table>"),
-        ];
-        let expected_bounds = first_background_bounds(rows[0]);
-        assert!(expected_bounds.is_some());
+        let path = Path::new("demo.md");
+        let source = "<div>\n<div>这里是一段足够长的中文内容用于验证HTML块换行后的所有视觉行共享同一个精确背景边界</div>\n</div>\n";
+        let layout = layout_snapshot_for_path(path, source, &theme, 80);
+        let table_start = layout
+            .rows
+            .iter()
+            .position(|row| row.text == "<div>")
+            .expect("expected opening HTML row");
+        let table_end = layout
+            .rows
+            .iter()
+            .position(|row| row.text == "</div>")
+            .expect("expected closing HTML row");
+        let rows = &layout.rows[table_start..=table_end];
+        let expected_bounds = Some((0, 79));
+        assert!(
+            rows.len() > 3,
+            "expected the long CJK table row to produce a continuation row"
+        );
         assert!(
             rows.iter()
                 .all(|row| first_background_bounds(row) == expected_bounds),
-            "expected HTML block rows to share one layout-time block bbox"
+            "expected every HTML content and continuation row to share the exact non-viewport-wide bbox: {rows:?}"
         );
     }
 
@@ -11945,6 +12045,27 @@ priority: 7
                 .unwrap_or(usize::MAX),
             0,
             "expected wrapped CJK continuation rows to be measured in display cells"
+        );
+    }
+
+    #[test]
+    fn just_scope_block_preserves_each_source_rows_content_indent() {
+        let theme =
+            Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
+        let source = "demo:\n    echo outer\n        echo nested\n";
+        let layout =
+            super::layout_with_theme(Some(Path::new("Justfile")), source, &theme, Some(80))
+                .expect("expected layout to render for nested recipe indentation")
+                .snapshot();
+
+        assert_eq!(
+            first_background_bounds(layout_row_containing(&layout.rows, "echo outer")),
+            Some((4, 19)),
+        );
+        assert_eq!(
+            first_background_bounds(layout_row_containing(&layout.rows, "echo nested")),
+            Some((8, 19)),
+            "expected ScopeBlock to preserve the nested source row's deeper left edge"
         );
     }
 
