@@ -25,14 +25,7 @@ impl LayoutDocument {
     ) -> Self {
         let mut rows = build_rows(source, spans, terminal_width);
         let line_rows = rows_by_line_start(&rows);
-        paint_backgrounds(
-            source,
-            regions,
-            theme,
-            terminal_width,
-            &line_rows,
-            &mut rows,
-        );
+        paint_backgrounds(source, regions, theme, &line_rows, &mut rows);
 
         Self {
             color_mode: theme.color_mode(),
@@ -267,7 +260,6 @@ fn paint_backgrounds(
     source: &str,
     regions: &[VisualRegion],
     theme: Theme,
-    terminal_width: Option<usize>,
     line_rows: &HashMap<usize, Vec<RowRef>>,
     rows: &mut [LayoutRow],
 ) {
@@ -293,15 +285,13 @@ fn paint_backgrounds(
                 }
             }
             crate::host_injections::InjectionVisualKind::RectBlock => {
-                for segment in &region.segments {
-                    for slice in segment_rect_slices(source, segment, terminal_width, line_rows) {
-                        pending_runs[slice.row_index].push(LayoutBackgroundRun {
-                            start_column: slice.start_column,
-                            end_column: slice.end_column,
-                            visual_level: region.visual_level,
-                            style,
-                        });
-                    }
+                for slice in rect_block_slices(source, &region.segments, line_rows) {
+                    pending_runs[slice.row_index].push(LayoutBackgroundRun {
+                        start_column: slice.start_column,
+                        end_column: slice.end_column,
+                        visual_level: region.visual_level,
+                        style,
+                    });
                 }
             }
             crate::host_injections::InjectionVisualKind::ScopeBlock => {
@@ -437,37 +427,59 @@ fn segment_content_slices(
         .collect()
 }
 
-fn segment_rect_slices(
+fn rect_block_slices(
     source: &str,
-    segment: &crate::RegionSegment,
-    terminal_width: Option<usize>,
+    segments: &[crate::RegionSegment],
     line_rows: &HashMap<usize, Vec<RowRef>>,
 ) -> Vec<BackgroundSlice> {
-    let Some(rows) = line_rows.get(&segment.line_start) else {
-        return Vec::new();
-    };
+    let mut member_rows = Vec::new();
+    let mut block_left = usize::MAX;
+    let mut block_right = 0usize;
 
-    let left_column = segment
-        .left_column_override
-        .map(|column| column.as_usize())
-        .unwrap_or_else(|| display_column(source, segment.line_start, segment.left));
-    let right_column = display_column(source, segment.line_start, segment.text_end)
-        + segment.right_padding.as_usize();
-    if right_column <= left_column {
+    for segment in segments {
+        let Some(rows) = line_rows.get(&segment.line_start) else {
+            continue;
+        };
+        let left_column = segment
+            .left_column_override
+            .map(|column| column.as_usize())
+            .unwrap_or_else(|| display_column(source, segment.line_start, segment.left));
+        let content_end = trim_trailing_whitespace(source, segment.left, segment.text_end);
+        let right_column = display_column(source, segment.line_start, content_end);
+
+        if right_column <= left_column {
+            if let Some(row) = rows.first()
+                && !member_rows.contains(&row.row_index)
+            {
+                member_rows.push(row.row_index);
+            }
+            continue;
+        }
+
+        for row in rows {
+            let start = left_column.max(row.start_column);
+            let end = right_column.min(row.end_column);
+            if start >= end {
+                continue;
+            }
+            if !member_rows.contains(&row.row_index) {
+                member_rows.push(row.row_index);
+            }
+            block_left = block_left.min(start - row.start_column);
+            block_right = block_right.max(end - row.start_column);
+        }
+    }
+
+    if block_left == usize::MAX || block_left >= block_right {
         return Vec::new();
     }
-    let line_text_right = rows.iter().map(|row| row.end_column).max().unwrap_or(0);
 
-    rows.iter()
-        .filter_map(|row| {
-            let row_right = if let Some(width) = terminal_width {
-                right_column.min(row.start_column.saturating_add(width))
-            } else if row.end_column == line_text_right {
-                right_column
-            } else {
-                right_column.min(row.end_column)
-            };
-            intersect_rect_slice(*row, left_column, row_right)
+    member_rows
+        .into_iter()
+        .map(|row_index| BackgroundSlice {
+            row_index,
+            start_column: block_left,
+            end_column: block_right,
         })
         .collect()
 }
@@ -479,20 +491,6 @@ fn intersect_slice(
 ) -> Option<BackgroundSlice> {
     let start = segment_left.max(row.start_column);
     let end = segment_right.min(row.end_column);
-    (start < end).then_some(BackgroundSlice {
-        row_index: row.row_index,
-        start_column: start - row.start_column,
-        end_column: end - row.start_column,
-    })
-}
-
-fn intersect_rect_slice(
-    row: RowRef,
-    segment_left: usize,
-    segment_right: usize,
-) -> Option<BackgroundSlice> {
-    let start = segment_left.max(row.start_column);
-    let end = segment_right.max(row.start_column);
     (start < end).then_some(BackgroundSlice {
         row_index: row.row_index,
         start_column: start - row.start_column,

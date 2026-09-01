@@ -1135,10 +1135,6 @@ impl InjectionVisualKind {
     pub(crate) fn is_block(self) -> bool {
         !matches!(self, Self::Transparent)
     }
-
-    pub(crate) fn uses_rectangular_padding(self) -> bool {
-        matches!(self, Self::RectBlock | Self::ScopeBlock)
-    }
 }
 
 impl InjectionVisualAnchor {

@@ -205,7 +205,6 @@ pub(crate) struct RegionSegmentSnapshot {
     pub left: usize,
     pub text_end: usize,
     pub left_column_override: Option<usize>,
-    pub right_padding: usize,
 }
 
 impl From<crate::RegionSegment> for RegionSegmentSnapshot {
@@ -215,7 +214,6 @@ impl From<crate::RegionSegment> for RegionSegmentSnapshot {
             left: segment.left,
             text_end: segment.text_end,
             left_column_override: segment.left_column_override.map(|column| column.as_usize()),
-            right_padding: segment.right_padding.as_usize(),
         }
     }
 }

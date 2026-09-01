@@ -68,7 +68,6 @@ impl VisualDocument {
                             line_start: segment.line_start,
                             left: segment.left,
                             text_end: segment.text_end,
-                            right_padding: segment.right_padding.as_usize(),
                         })
                         .collect(),
                 })
@@ -103,5 +102,4 @@ pub(crate) struct VisualRegionSegmentSnapshot {
     pub line_start: usize,
     pub left: usize,
     pub text_end: usize,
-    pub right_padding: usize,
 }

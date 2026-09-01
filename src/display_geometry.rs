@@ -34,6 +34,7 @@ impl DisplayProfile {
         self.advance_column(DisplayColumn(0), text)
     }
 
+    #[cfg(test)]
     pub(crate) fn display_width_from_column(
         self,
         start_column: DisplayColumn,
@@ -102,6 +103,7 @@ pub(crate) fn display_width(text: &str) -> DisplayColumn {
     DisplayProfile::default().display_width(text)
 }
 
+#[cfg(test)]
 pub(crate) fn display_width_from_column(start_column: DisplayColumn, text: &str) -> DisplayColumn {
     DisplayProfile::default().display_width_from_column(start_column, text)
 }
