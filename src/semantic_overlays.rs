@@ -1751,7 +1751,6 @@ fn option_value_capture(
 fn field_children<'tree>(node: Node<'tree>, field_name: &str) -> Vec<Node<'tree>> {
     let mut children = Vec::new();
     for index in 0..node.child_count() {
-        let index = index as u32;
         if node.field_name_for_child(index) == Some(field_name)
             && let Some(child) = node.child(index)
         {
