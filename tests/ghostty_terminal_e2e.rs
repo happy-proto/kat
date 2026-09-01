@@ -68,6 +68,74 @@ fn kat_keeps_narrow_markdown_frontmatter_rows_adjacent() -> TestResult {
 }
 
 #[test]
+fn kat_relayouts_markdown_frontmatter_when_terminal_grows() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/markdown/frontmatter-narrow.md");
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        48,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    session.wait_for_screen(48, ROWS, |rendered| {
+        rendered.has_rgb_background_at("---", 40)
+    })?;
+
+    session.resize(80, ROWS)?;
+    let rendered = session.wait_for_screen(80, ROWS, |rendered| {
+        rendered.has_rgb_background_at("---", 60)
+    })?;
+    rendered.assert_rgb_background_at("---", 60)?;
+
+    session.resize(48, ROWS)?;
+    let rendered = session.wait_for_screen(48, ROWS, |rendered| {
+        rendered.has_adjacent_screen_lines("---", "name: narrow-frontmatter")
+            && rendered.has_rgb_background_at("---", 40)
+    })?;
+    rendered.assert_adjacent_screen_lines("---", "name: narrow-frontmatter");
+    rendered.assert_rgb_background_at("---", 40)?;
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
+fn kat_relayouts_markdown_frontmatter_when_terminal_shrinks() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/markdown/frontmatter-narrow.md");
+    let mut session = KatPtySession::spawn(
+        &[
+            "--hyperlinks=never",
+            fixture.to_str().expect("fixture path should be UTF-8"),
+        ],
+        80,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    session.wait_for_screen(80, ROWS, |rendered| {
+        rendered.has_rgb_background_at("---", 60)
+    })?;
+
+    session.resize(32, ROWS)?;
+    let rendered = session.wait_for_screen(32, ROWS, |rendered| {
+        rendered.has_adjacent_screen_lines("---", "name: narrow-frontmatter")
+            && rendered.has_rgb_background_at("---", 20)
+    })?;
+    rendered.assert_adjacent_screen_lines("---", "name: narrow-frontmatter");
+    rendered.assert_rgb_background_at("---", 20)?;
+
+    session.write_input(b"q")?;
+    session.wait_success()?;
+
+    Ok(())
+}
+
+#[test]
 fn kat_preserves_markdown_hyperlinks_on_ghostty_cells() -> Result<(), Box<dyn std::error::Error>> {
     let rendered = render_fixture_in_ghostty("markdown/ghostty-e2e.md", COLS, ROWS)?;
 
@@ -574,6 +642,15 @@ impl RenderedTerminal {
         );
     }
 
+    fn has_adjacent_screen_lines(&self, first: &str, second: &str) -> bool {
+        let Some(first_index) = self.screen.iter().position(|line| line.contains(first)) else {
+            return false;
+        };
+        self.screen
+            .get(first_index + 1)
+            .is_some_and(|line| line.contains(second))
+    }
+
     fn line_index(&self, needle: &str) -> usize {
         self.screen
             .iter()
@@ -655,6 +732,20 @@ impl RenderedTerminal {
             self.screen_text()
         );
         Ok(())
+    }
+
+    fn has_rgb_background_at(&self, line_needle: &str, x: u16) -> bool {
+        let Some(y) = self
+            .screen
+            .iter()
+            .position(|line| line.contains(line_needle))
+        else {
+            return false;
+        };
+        self.terminal
+            .grid_ref(Point::Active(PointCoordinate { x, y: y as u32 }))
+            .and_then(|grid_ref| grid_ref.style())
+            .is_ok_and(|style| matches!(style.bg_color, StyleColor::Rgb(_)))
     }
 
     fn hyperlink_uris(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {

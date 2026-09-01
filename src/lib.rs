@@ -252,6 +252,154 @@ pub struct RenderOutput {
     pub timings: RenderTimings,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+/// Stable source position represented by one rendered terminal row.
+pub struct RenderedRowAnchor {
+    /// Byte offset where the original source line starts.
+    pub source_line_start: usize,
+    /// Display column where this row starts after source-aware wrapping.
+    pub wrapped_from_column: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+/// Terminal output and source positions produced for one viewport width.
+pub struct RenderedDocument {
+    /// ANSI-encoded terminal output.
+    pub output: String,
+    /// Source position for each rendered row in `output`.
+    pub row_anchors: Vec<RenderedRowAnchor>,
+    /// Measurements collected while preparing and rendering the document.
+    pub timings: RenderTimings,
+}
+
+#[derive(Clone, Debug)]
+/// Source-backed render state that can be laid out repeatedly at new widths.
+pub struct PreparedRender {
+    source: String,
+    visual: Option<VisualDocument>,
+    theme: Theme,
+    hyperlinks_enabled: bool,
+    timings: RenderTimings,
+}
+
+impl PreparedRender {
+    /// Detects the document kind and prepares width-independent visual data.
+    pub fn detect(
+        source_path: Option<&Path>,
+        source: &str,
+        hyperlinks_enabled: bool,
+    ) -> Result<Self> {
+        let theme = detected_theme();
+        let mut timings = RenderTimings::default();
+        let analysis = AnalysisDocument::detect(source_path, source, theme, Some(&mut timings))?;
+        Ok(Self::from_analysis(
+            source,
+            analysis,
+            theme,
+            hyperlinks_enabled,
+            timings,
+        ))
+    }
+
+    /// Prepares width-independent visual data using an explicit language.
+    pub fn named_language(
+        language_name: &str,
+        source: &str,
+        hyperlinks_enabled: bool,
+    ) -> Result<Self> {
+        let theme = detected_theme();
+        let mut timings = RenderTimings::default();
+        let analysis =
+            AnalysisDocument::named_language(language_name, source, theme, Some(&mut timings))?;
+        Ok(Self::from_analysis(
+            source,
+            analysis,
+            theme,
+            hyperlinks_enabled,
+            timings,
+        ))
+    }
+
+    fn from_analysis(
+        source: &str,
+        analysis: AnalysisDocument,
+        theme: Theme,
+        hyperlinks_enabled: bool,
+        timings: RenderTimings,
+    ) -> Self {
+        let visual =
+            (!analysis.is_plain_passthrough()).then(|| VisualDocument::from_analysis(&analysis));
+        Self {
+            source: source.to_owned(),
+            visual,
+            theme,
+            hyperlinks_enabled,
+            timings,
+        }
+    }
+
+    /// Lays out and encodes the prepared document for `terminal_width`.
+    pub fn render(&self, terminal_width: Option<usize>) -> RenderedDocument {
+        let mut timings = self.timings.clone();
+        let Some(visual) = self.visual.as_ref() else {
+            return RenderedDocument {
+                output: self.source.clone(),
+                row_anchors: plain_row_anchors(&self.source),
+                timings,
+            };
+        };
+
+        let layout = LayoutDocument::from_visual(
+            &self.source,
+            visual.spans(),
+            visual.regions(),
+            self.theme,
+            terminal_width,
+        );
+        let mut row_anchors = layout
+            .rows()
+            .iter()
+            .map(|row| RenderedRowAnchor {
+                source_line_start: row.source_line_start,
+                wrapped_from_column: row.wrapped_from_column,
+            })
+            .collect::<Vec<_>>();
+        let render_started_at = Instant::now();
+        let output =
+            RenderPlan::compile(&layout, self.theme).encode(self.theme, self.hyperlinks_enabled);
+        timings.record_render_styled_spans(render_started_at);
+        row_anchors.truncate(rendered_line_count(&output));
+
+        RenderedDocument {
+            output,
+            row_anchors,
+            timings,
+        }
+    }
+}
+
+fn plain_row_anchors(source: &str) -> Vec<RenderedRowAnchor> {
+    let mut anchors = Vec::new();
+    let mut line_start = 0usize;
+    for line in source.split_inclusive('\n') {
+        anchors.push(RenderedRowAnchor {
+            source_line_start: line_start,
+            wrapped_from_column: 0,
+        });
+        line_start += line.len();
+    }
+    if source.is_empty() {
+        anchors.push(RenderedRowAnchor::default());
+    }
+    anchors.truncate(rendered_line_count(source));
+    anchors
+}
+
+fn rendered_line_count(output: &str) -> usize {
+    let line_count = output.split('\n').count();
+    line_count.saturating_sub(usize::from(output.ends_with('\n')))
+}
+
 pub fn render_with_timing(source_path: Option<&Path>, source: &str) -> Result<RenderOutput> {
     render_with_timing_and_terminal_width(source_path, source, None)
 }
@@ -282,14 +430,12 @@ pub fn render_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let theme = detected_theme();
-    render_with_theme_and_timing(
-        source_path,
-        source,
-        &theme,
-        terminal_width,
-        hyperlinks_enabled,
-    )
+    let rendered =
+        PreparedRender::detect(source_path, source, hyperlinks_enabled)?.render(terminal_width);
+    Ok(RenderOutput {
+        output: rendered.output,
+        timings: rendered.timings,
+    })
 }
 
 pub fn render_named_language_with_timing_and_terminal_width(
@@ -311,14 +457,12 @@ pub fn render_named_language_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let theme = detected_theme();
-    render_named_language_with_theme_and_timing(
-        language_name,
-        source,
-        &theme,
-        terminal_width,
-        hyperlinks_enabled,
-    )
+    let rendered = PreparedRender::named_language(language_name, source, hyperlinks_enabled)?
+        .render(terminal_width);
+    Ok(RenderOutput {
+        output: rendered.output,
+        timings: rendered.timings,
+    })
 }
 
 pub fn strip_terminal_hyperlinks(text: &str) -> String {
@@ -568,29 +712,6 @@ fn render_with_theme_and_timing(
 ) -> Result<RenderOutput> {
     let mut timings = RenderTimings::default();
     let analysis = AnalysisDocument::detect(source_path, source, *theme, Some(&mut timings))?;
-
-    let output = render_analysis_output(
-        &analysis,
-        source,
-        theme,
-        terminal_width,
-        hyperlinks_enabled,
-        &mut timings,
-    );
-
-    Ok(RenderOutput { output, timings })
-}
-
-fn render_named_language_with_theme_and_timing(
-    language_name: &str,
-    source: &str,
-    theme: &Theme,
-    terminal_width: Option<usize>,
-    hyperlinks_enabled: bool,
-) -> Result<RenderOutput> {
-    let mut timings = RenderTimings::default();
-    let analysis =
-        AnalysisDocument::named_language(language_name, source, *theme, Some(&mut timings))?;
 
     let output = render_analysis_output(
         &analysis,

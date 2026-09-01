@@ -22,25 +22,32 @@ const SEARCH_MATCH_RESET: &str = "\x1b[27m";
 const SEARCH_CURRENT_STYLE: &str = "\x1b[7;4m";
 const SEARCH_CURRENT_RESET: &str = "\x1b[24;27m";
 
-pub(crate) fn run(output: &str) -> Result<()> {
+pub(crate) fn run(mut render_source: impl FnMut(usize) -> Result<PagerSource>) -> Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        return write_direct(output);
+        let source = render_source(terminal_size().cols)?;
+        return write_direct(&source.output());
     }
 
     let _terminal = TerminalSession::enter()?;
-    let resize_requested = Arc::new(AtomicBool::new(true));
+    let resize_requested = Arc::new(AtomicBool::new(false));
     register_resize_signal(resize_requested.clone())?;
 
-    let document = PagerDocument::new(output);
+    let mut size = terminal_size();
+    let mut document = PagerDocument::from_source(render_source(size.cols)?);
     let mut state = PagerState::default();
     let mut mode = PagerMode::Normal;
     let mut stdin = io::stdin().lock();
+    let viewport = PagerViewport::build(&document, size.cols);
+    state.restore_anchor(&viewport);
+    render(&document, &viewport, &state, &mode, size)?;
 
     loop {
         if resize_requested.swap(false, Ordering::Relaxed) {
-            let size = terminal_size();
+            size = terminal_size();
+            document = PagerDocument::from_source(render_source(size.cols)?);
             let viewport = PagerViewport::build(&document, size.cols);
             state.restore_anchor(&viewport);
+            state.rebuild_search(&document);
             render(&document, &viewport, &state, &mode, size)?;
         }
 
@@ -50,7 +57,7 @@ pub(crate) fn run(output: &str) -> Result<()> {
             continue;
         }
 
-        let size = terminal_size();
+        size = terminal_size();
         let viewport = PagerViewport::build(&document, size.cols);
         let outcome = handle_input(
             &buf[..len],
@@ -64,6 +71,108 @@ pub(crate) fn run(output: &str) -> Result<()> {
             return Ok(());
         }
         render(&document, &viewport, &state, &mode, size)?;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
+pub(crate) struct PagerRowAnchor {
+    pub(crate) source_id: usize,
+    pub(crate) source_line_start: usize,
+    pub(crate) wrapped_from_column: usize,
+}
+
+#[derive(Debug)]
+struct PagerSourceLine {
+    ansi: String,
+    anchor: PagerRowAnchor,
+}
+
+#[derive(Debug)]
+pub(crate) struct PagerSource {
+    lines: Vec<PagerSourceLine>,
+}
+
+impl PagerSource {
+    fn output(&self) -> String {
+        self.lines
+            .iter()
+            .map(|line| line.ansi.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct PagerSourceBuilder {
+    lines: Vec<PagerSourceLine>,
+    open_line: Option<PagerSourceLine>,
+}
+
+impl PagerSourceBuilder {
+    pub(crate) fn append(
+        &mut self,
+        source_id: usize,
+        output: &str,
+        anchors: &[kat::RenderedRowAnchor],
+    ) {
+        if output.is_empty() {
+            self.open_line.get_or_insert_with(|| PagerSourceLine {
+                ansi: String::new(),
+                anchor: PagerRowAnchor {
+                    source_id,
+                    ..PagerRowAnchor::default()
+                },
+            });
+            return;
+        }
+
+        for (line_index, part) in output.split_inclusive('\n').enumerate() {
+            let has_newline = part.ends_with('\n');
+            let content = part.strip_suffix('\n').unwrap_or(part);
+            let anchor = anchors.get(line_index).copied().unwrap_or_default();
+            let line = self.open_line.get_or_insert_with(|| PagerSourceLine {
+                ansi: String::new(),
+                anchor: PagerRowAnchor {
+                    source_id,
+                    source_line_start: anchor.source_line_start,
+                    wrapped_from_column: anchor.wrapped_from_column,
+                },
+            });
+            line.ansi.push_str(content);
+            if has_newline {
+                self.lines
+                    .push(self.open_line.take().expect("open pager source line"));
+            }
+        }
+    }
+
+    pub(crate) fn append_plain(&mut self, source_id: usize, output: &str) {
+        let mut line_start = 0usize;
+        let anchors = output
+            .split_inclusive('\n')
+            .map(|line| {
+                let anchor = kat::RenderedRowAnchor {
+                    source_line_start: line_start,
+                    wrapped_from_column: 0,
+                };
+                line_start += line.len();
+                anchor
+            })
+            .collect::<Vec<_>>();
+        self.append(source_id, output, &anchors);
+    }
+
+    pub(crate) fn finish(mut self) -> PagerSource {
+        if let Some(line) = self.open_line.take() {
+            self.lines.push(line);
+        }
+        if self.lines.is_empty() {
+            self.lines.push(PagerSourceLine {
+                ansi: String::new(),
+                anchor: PagerRowAnchor::default(),
+            });
+        }
+        PagerSource { lines: self.lines }
     }
 }
 
@@ -90,9 +199,11 @@ fn write_direct(output: &str) -> Result<()> {
 struct PagerDocument {
     lines: Vec<String>,
     plain_lines: Vec<String>,
+    anchors: Vec<PagerRowAnchor>,
 }
 
 impl PagerDocument {
+    #[cfg(test)]
     fn new(output: &str) -> Self {
         let mut lines = output
             .split('\n')
@@ -102,11 +213,42 @@ impl PagerDocument {
             lines.pop();
         }
         let plain_lines = lines.iter().map(|line| strip_ansi(line)).collect();
-        Self { lines, plain_lines }
+        let anchors = (0..lines.len())
+            .map(|source_line_start| PagerRowAnchor {
+                source_line_start,
+                ..PagerRowAnchor::default()
+            })
+            .collect();
+        Self {
+            lines,
+            plain_lines,
+            anchors,
+        }
+    }
+
+    fn from_source(source: PagerSource) -> Self {
+        let (lines, anchors): (Vec<_>, Vec<_>) = source
+            .lines
+            .into_iter()
+            .map(|line| (line.ansi, line.anchor))
+            .unzip();
+        let plain_lines = lines.iter().map(|line| strip_ansi(line)).collect();
+        Self {
+            lines,
+            plain_lines,
+            anchors,
+        }
     }
 
     fn line_count(&self) -> usize {
         self.lines.len()
+    }
+
+    fn line_index_for_anchor(&self, anchor: RowAnchor) -> Option<usize> {
+        self.anchors.iter().position(|candidate| {
+            candidate.source_id == anchor.source_id
+                && candidate.source_line_start == anchor.source_line_start
+        })
     }
 }
 
@@ -142,7 +284,9 @@ impl PagerState {
             return false;
         }
 
-        let start_line = self.anchor.line_index;
+        let start_line = document
+            .line_index_for_anchor(self.anchor)
+            .unwrap_or_default();
         let selected = matches
             .items
             .iter()
@@ -201,6 +345,30 @@ impl PagerState {
         self.clamp(viewport);
     }
 
+    fn rebuild_search(&mut self, document: &PagerDocument) {
+        let Some(query) = self.search_query().map(str::to_owned) else {
+            return;
+        };
+        let matches = SearchMatches::new(document, &query);
+        if matches.is_empty() {
+            self.search = None;
+            return;
+        }
+        let start_line = document
+            .line_index_for_anchor(self.anchor)
+            .unwrap_or_default();
+        let selected = matches
+            .items
+            .iter()
+            .position(|item| item.line_index >= start_line)
+            .unwrap_or_default();
+        self.search = Some(SearchState {
+            query,
+            matches,
+            selected,
+        });
+    }
+
     fn clamp(&mut self, viewport: &PagerViewport) {
         self.top_row = self.top_row.min(viewport.row_count().saturating_sub(1));
         self.anchor = viewport
@@ -213,8 +381,19 @@ impl PagerState {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct RowAnchor {
-    line_index: usize,
+    source_id: usize,
+    source_line_start: usize,
     display_column: usize,
+}
+
+impl RowAnchor {
+    fn source_line(self) -> PagerRowAnchor {
+        PagerRowAnchor {
+            source_id: self.source_id,
+            source_line_start: self.source_line_start,
+            wrapped_from_column: 0,
+        }
+    }
 }
 
 struct SearchState {
@@ -517,7 +696,13 @@ impl PagerViewport {
     fn build(document: &PagerDocument, cols: usize) -> Self {
         let mut rows = Vec::new();
         for (line_index, line) in document.lines.iter().enumerate() {
-            wrap_line(line_index, line, cols.max(1), &mut rows);
+            wrap_line(
+                line_index,
+                line,
+                document.anchors[line_index],
+                cols.max(1),
+                &mut rows,
+            );
         }
         Self { rows }
     }
@@ -533,7 +718,7 @@ impl PagerViewport {
             .or_else(|| {
                 self.rows
                     .iter()
-                    .position(|row| row.line_index >= anchor.line_index)
+                    .position(|row| row.source_anchor() >= anchor.source_line())
             })
             .unwrap_or_else(|| self.rows.len().saturating_sub(1))
     }
@@ -548,6 +733,9 @@ impl PagerViewport {
 
 struct DisplayRow {
     line_index: usize,
+    source_id: usize,
+    source_line_start: usize,
+    source_column_start: usize,
     start_column: usize,
     end_column: usize,
     start_plain: usize,
@@ -560,17 +748,29 @@ struct DisplayRow {
 impl DisplayRow {
     fn anchor(&self) -> RowAnchor {
         RowAnchor {
-            line_index: self.line_index,
-            display_column: self.start_column,
+            source_id: self.source_id,
+            source_line_start: self.source_line_start,
+            display_column: self.source_column_start + self.start_column,
         }
     }
 
     fn contains_anchor(&self, anchor: RowAnchor) -> bool {
-        self.line_index == anchor.line_index
-            && self.start_column <= anchor.display_column
-            && (anchor.display_column < self.end_column
-                || self.start_column == self.end_column
-                || anchor.display_column == self.start_column)
+        let start_column = self.source_column_start + self.start_column;
+        let end_column = self.source_column_start + self.end_column;
+        self.source_id == anchor.source_id
+            && self.source_line_start == anchor.source_line_start
+            && start_column <= anchor.display_column
+            && (anchor.display_column < end_column
+                || start_column == end_column
+                || anchor.display_column == start_column)
+    }
+
+    fn source_anchor(&self) -> PagerRowAnchor {
+        PagerRowAnchor {
+            source_id: self.source_id,
+            source_line_start: self.source_line_start,
+            wrapped_from_column: self.source_column_start,
+        }
     }
 
     fn display_width(&self) -> usize {
@@ -587,7 +787,13 @@ impl DisplayRow {
     }
 }
 
-fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayRow>) {
+fn wrap_line(
+    line_index: usize,
+    line: &str,
+    source_anchor: PagerRowAnchor,
+    cols: usize,
+    rows: &mut Vec<DisplayRow>,
+) {
     let mut parser = AnsiLineParser::new(line);
     let mut row = String::new();
     let mut plain = String::new();
@@ -611,6 +817,9 @@ fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayR
                     if column > 0 && column + width > cols {
                         rows.push(DisplayRow {
                             line_index,
+                            source_id: source_anchor.source_id,
+                            source_line_start: source_anchor.source_line_start,
+                            source_column_start: source_anchor.wrapped_from_column,
                             start_column: row_start_column,
                             end_column: row_start_column + column,
                             start_plain: row_start_plain,
@@ -637,6 +846,9 @@ fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayR
                     if column >= cols {
                         rows.push(DisplayRow {
                             line_index,
+                            source_id: source_anchor.source_id,
+                            source_line_start: source_anchor.source_line_start,
+                            source_column_start: source_anchor.wrapped_from_column,
                             start_column: row_start_column,
                             end_column: row_start_column + column,
                             start_plain: row_start_plain,
@@ -661,6 +873,9 @@ fn wrap_line(line_index: usize, line: &str, cols: usize, rows: &mut Vec<DisplayR
     if column > 0 || !emitted || !row.is_empty() {
         rows.push(DisplayRow {
             line_index,
+            source_id: source_anchor.source_id,
+            source_line_start: source_anchor.source_line_start,
+            source_column_start: source_anchor.wrapped_from_column,
             start_column: row_start_column,
             end_column: row_start_column + column,
             start_plain: row_start_plain,
@@ -925,6 +1140,48 @@ impl RawTerminalMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn source_anchor_survives_source_aware_relayout() {
+        let narrow = PagerSource {
+            lines: vec![
+                PagerSourceLine {
+                    ansi: "first half".to_owned(),
+                    anchor: PagerRowAnchor {
+                        source_id: 7,
+                        source_line_start: 42,
+                        wrapped_from_column: 0,
+                    },
+                },
+                PagerSourceLine {
+                    ansi: "second half".to_owned(),
+                    anchor: PagerRowAnchor {
+                        source_id: 7,
+                        source_line_start: 42,
+                        wrapped_from_column: 10,
+                    },
+                },
+            ],
+        };
+        let narrow_document = PagerDocument::from_source(narrow);
+        let narrow_viewport = PagerViewport::build(&narrow_document, 80);
+        let anchor = narrow_viewport.rows[1].anchor();
+
+        let wide = PagerSource {
+            lines: vec![PagerSourceLine {
+                ansi: "first half second half".to_owned(),
+                anchor: PagerRowAnchor {
+                    source_id: 7,
+                    source_line_start: 42,
+                    wrapped_from_column: 0,
+                },
+            }],
+        };
+        let wide_document = PagerDocument::from_source(wide);
+        let wide_viewport = PagerViewport::build(&wide_document, 80);
+
+        assert_eq!(wide_viewport.row_for_anchor(anchor), 0);
+    }
 
     #[test]
     fn ctrl_d_and_ctrl_u_move_by_half_a_viewport() {
