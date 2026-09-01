@@ -95,6 +95,17 @@ echo 'source <(COMPLETE=zsh kat)' >> ~/.zshrc
 echo 'COMPLETE=fish kat | source' >> ~/.config/fish/completions/kat.fish
 ```
 
+## 开发
+
+仓库通过 [mise](https://mise.jdx.dev/) 管理 Ghostty bindings 所需的 Zig 版本；Rust 仍使用 stable toolchain。首次进入仓库后运行：
+
+```bash
+mise install
+prek install
+```
+
+普通测试使用 `just test`；包含真实 PTY 与 Ghostty 无头终端模型的端到端测试使用 `just ghostty-e2e`。
+
 ## 文档入口
 
 - 当前支持现状：[`docs/language-coverage.md`](docs/language-coverage.md)

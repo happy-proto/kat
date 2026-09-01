@@ -19,7 +19,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  GHOSTTY_ZIG_VERSION: 0.15.2
 
 jobs:
   fmt:
@@ -63,10 +62,8 @@ jobs:
         with:
           components: clippy
 
-      - name: Set up Zig for Ghostty bindings
-        uses: mlugg/setup-zig@v2
-        with:
-          version: ${{ env.GHOSTTY_ZIG_VERSION }}
+      - name: Set up mise toolchain
+        uses: jdx/mise-action@v4
 
       - name: Set up native image dependencies
         uses: ./.github/actions/setup-native-image-deps
@@ -223,10 +220,8 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Set up Zig for Ghostty bindings
-        uses: mlugg/setup-zig@v2
-        with:
-          version: ${{ env.GHOSTTY_ZIG_VERSION }}
+      - name: Set up mise toolchain
+        uses: jdx/mise-action@v4
 
       - name: Set up native image dependencies
         uses: ./.github/actions/setup-native-image-deps

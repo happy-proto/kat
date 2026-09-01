@@ -155,7 +155,7 @@ fn collect_query_injection_candidates(
             .and_then(|property| property.value.as_deref())
             .map(InjectionVisualAnchor::from_query_value);
 
-        for capture in query_match.captures {
+        for capture in query_match.captures() {
             let capture_name = capture_names[capture.index as usize];
             match capture_name {
                 "injection.language" if injection_language.is_none() => {
@@ -513,7 +513,7 @@ fn collect_dockerfile_injection_candidates(
         let mut matched_shell = None;
         let mut content_ranges = Vec::new();
 
-        for capture in query_match.captures {
+        for capture in query_match.captures() {
             let capture_name = capture_names[capture.index as usize];
             match capture_name {
                 "shell.language" if matched_shell.is_none() => {

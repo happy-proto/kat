@@ -1511,6 +1511,7 @@ fn highlight_named_language_render_data_with_depth(
             &language_runtime.flat_configuration,
             source.as_bytes(),
             None,
+            None,
             |_| None,
         )
         .context("failed to highlight source")?;
@@ -12153,7 +12154,7 @@ priority: 7
             let query_match = matches
                 .get()
                 .expect("query match should exist immediately after advance");
-            for capture in query_match.captures {
+            for capture in query_match.captures() {
                 captures.push((
                     capture_names[capture.index as usize].to_owned(),
                     source[capture.node.byte_range()].to_owned(),
