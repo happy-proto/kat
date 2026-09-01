@@ -6,7 +6,7 @@ test:
     cargo nextest run --workspace --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass $extra_args
 
 ghostty-e2e:
-    cargo nextest run --workspace --features ghostty-e2e --test ghostty_terminal_e2e --config-file .config/nextest.toml
+    mise exec -- cargo nextest run --workspace --features ghostty-e2e --test ghostty_terminal_e2e --config-file .config/nextest.toml
 
 perf iterations="3":
     @cargo build --release --quiet
