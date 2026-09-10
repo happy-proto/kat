@@ -418,6 +418,8 @@ jobs:
       - name: Verify Unix release runtime dependencies
         if: runner.os != 'Windows'
         shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
 
