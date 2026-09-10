@@ -17,6 +17,7 @@ runs:
         set -euo pipefail
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
+          libdav1d-dev \
           meson \
           nasm \
           ninja-build \
