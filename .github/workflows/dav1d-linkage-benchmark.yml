@@ -1,0 +1,151 @@
+name: dav1d linkage benchmark
+
+on:
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  benchmark:
+    name: benchmark (${{ matrix.runner }} / ${{ matrix.target }} / ${{ matrix.linkage }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest]
+        target: [x86_64-unknown-linux-gnu]
+        linkage: [dynamic, static]
+        include:
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            linkage: dynamic
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            linkage: static
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            linkage: dynamic
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            linkage: static
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            linkage: dynamic
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            linkage: static
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            linkage: dynamic
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            linkage: static
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Set up static native image dependencies
+        if: matrix.linkage == 'static'
+        uses: ./.github/actions/setup-native-image-deps
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Set up dynamic native image dependencies on Linux
+        if: matrix.linkage == 'dynamic' && runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libdav1d-dev pkg-config
+
+      - name: Set up dynamic native image dependencies on macOS
+        if: matrix.linkage == 'dynamic' && runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install dav1d pkg-config
+
+      - name: Set up dynamic native image dependencies on Windows
+        if: matrix.linkage == 'dynamic' && runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          choco install pkgconfiglite -y --no-progress
+          if ($env:TARGET -eq "aarch64-pc-windows-msvc") {
+            $triplet = "arm64-windows"
+          } else {
+            $triplet = "x64-windows"
+          }
+          vcpkg install "dav1d:$triplet"
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkgRoot) {
+            $vcpkgRoot = "C:\vcpkg"
+          }
+          "PKG_CONFIG_PATH=$vcpkgRoot\installed\$triplet\lib\pkgconfig" >> $env:GITHUB_ENV
+
+      - name: Fetch Rust dependencies outside the timer
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo fetch --locked --target "${TARGET}"
+
+      - name: Build without compiler cache
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          LINKAGE: ${{ matrix.linkage }}
+        run: |
+          set -euo pipefail
+          if [[ "${LINKAGE}" == "static" ]]; then
+            export SYSTEM_DEPS_DAV1D_LINK=static
+            if [[ "${TARGET}" == *-linux-* || "${TARGET}" == *-apple-darwin ]]; then
+              export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=always
+            fi
+          fi
+
+          start=$(date +%s)
+          cargo build --release --locked --target "${TARGET}"
+          end=$(date +%s)
+
+          binary_ext=""
+          if [[ "${TARGET}" == *-windows-* ]]; then
+            binary_ext=".exe"
+          fi
+          binary="target/${TARGET}/release/kat${binary_ext}"
+          size=$(stat -f%z "${binary}" 2>/dev/null || stat -c%s "${binary}")
+
+          {
+            echo "BUILD_SECONDS=$((end - start))"
+            echo "BINARY_SIZE=${size}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Record result
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          LINKAGE: ${{ matrix.linkage }}
+        run: |
+          set -euo pipefail
+          printf '{"target":"%s","linkage":"%s","build_seconds":%s,"binary_size":%s}\n' \
+            "${TARGET}" "${LINKAGE}" "${BUILD_SECONDS}" "${BINARY_SIZE}" > result.json
+          {
+            echo '| Target | Linkage | Cold build | Binary size |'
+            echo '| --- | --- | ---: | ---: |'
+            echo "| ${TARGET} | ${LINKAGE} | ${BUILD_SECONDS}s | ${BINARY_SIZE} bytes |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload result
+        uses: actions/upload-artifact@v6
+        with:
+          name: dav1d-benchmark-${{ matrix.target }}-${{ matrix.linkage }}
+          path: result.json
+          if-no-files-found: error

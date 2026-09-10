@@ -375,9 +375,9 @@ jobs:
           if [[ "${USE_LINK_WRAPPER}" == "true" ]]; then
             export RUSTFLAGS="-Clinker=${GITHUB_WORKSPACE}/.github/scripts/rust-link-wrapper.sh"
           fi
-          if [[ "${TARGET}" == *-linux-* ]]; then
+          export SYSTEM_DEPS_DAV1D_LINK=static
+          if [[ "${TARGET}" == *-linux-* || "${TARGET}" == *-apple-darwin ]]; then
             export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=always
-            export SYSTEM_DEPS_DAV1D_LINK=static
           fi
 
           cargo build --timings --release --locked --target "${TARGET}"
@@ -415,17 +415,43 @@ jobs:
             echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
           } >> "${GITHUB_ENV}"
 
-      - name: Verify Linux release runtime dependencies
-        if: runner.os == 'Linux'
+      - name: Verify Unix release runtime dependencies
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euo pipefail
 
-          if readelf -d "${ARTIFACT_PATH}" | grep -Fq "Shared library: [libdav1d.so"; then
-            echo "::error::Linux release binary must not dynamically link libdav1d"
-            readelf -d "${ARTIFACT_PATH}" | grep -F "Shared library: [libdav1d.so"
+          if [[ "${TARGET}" == *-linux-* ]]; then
+            dependencies=$(readelf -d "${ARTIFACT_PATH}")
+          else
+            dependencies=$(otool -L "${ARTIFACT_PATH}")
+          fi
+
+          if grep -Fqi "dav1d" <<< "${dependencies}"; then
+            echo "::error::Release binary must not dynamically link dav1d"
+            grep -Fi "dav1d" <<< "${dependencies}"
             exit 1
           fi
+
+      - name: Verify Windows release runtime dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $visualStudio = & $vswhere -latest -products * -property installationPath
+          $dumpbin = Get-ChildItem "$visualStudio\VC\Tools\MSVC\*\bin\Host*\*\dumpbin.exe" |
+            Select-Object -First 1
+          if (-not $dumpbin) {
+            throw "dumpbin.exe was not found"
+          }
+
+          $dependencies = & $($dumpbin.FullName) /DEPENDENTS $env:ARTIFACT_PATH
+          if ($dependencies | Select-String -Quiet -Pattern 'dav1d\.dll') {
+            $dependencies | Select-String -Pattern 'dav1d\.dll'
+            throw "Release binary must not dynamically link dav1d.dll"
+          }
 
       - name: Package latest release asset (Unix)
         if: runner.os != 'Windows'

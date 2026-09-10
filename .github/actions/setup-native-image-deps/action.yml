@@ -10,27 +10,26 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install dav1d on Linux
+    - name: Install dav1d build dependencies on Linux
       if: runner.os == 'Linux'
       shell: bash
       run: |
         set -euo pipefail
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
-          libdav1d-dev \
           meson \
           nasm \
           ninja-build \
           pkg-config
 
-    - name: Install dav1d on macOS
+    - name: Install dav1d build dependencies on macOS
       if: runner.os == 'macOS'
       shell: bash
       run: |
         set -euo pipefail
-        brew install dav1d pkg-config
+        brew install meson nasm ninja pkg-config
 
-    - name: Install dav1d on Windows
+    - name: Install static dav1d on Windows
       if: runner.os == 'Windows'
       shell: pwsh
       env:
@@ -39,9 +38,9 @@ runs:
         choco install pkgconfiglite -y --no-progress
 
         if ($env:TARGET -eq "aarch64-pc-windows-msvc") {
-          $triplet = "arm64-windows"
+          $triplet = "arm64-windows-static"
         } else {
-          $triplet = "x64-windows"
+          $triplet = "x64-windows-static"
         }
 
         vcpkg install "dav1d:$triplet"
