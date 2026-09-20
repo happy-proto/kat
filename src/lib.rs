@@ -5629,9 +5629,39 @@ mod tests {
             expected_fragments: &["section", "{{", "title", "{%", "endif"],
         },
         FixtureCase {
+            relative_path: "jinja/page.html.j2",
+            expect_highlight: true,
+            expected_fragments: &["main", "section", "script", "export", "style", "color"],
+        },
+        FixtureCase {
             relative_path: "jinja/feed.xml.j2",
             expect_highlight: true,
             expected_fragments: &["feed", "title", "{{", "title", "}}"],
+        },
+        FixtureCase {
+            relative_path: "jinja/config.yaml.j2",
+            expect_highlight: true,
+            expected_fragments: &["sources", "endpoint", "sinks", "healthcheck", "false"],
+        },
+        FixtureCase {
+            relative_path: "jinja/query.sql.j2",
+            expect_highlight: true,
+            expected_fragments: &["SELECT", "column", "FROM", "WHERE", "TRUE"],
+        },
+        FixtureCase {
+            relative_path: "jinja/theme.css.j2",
+            expect_highlight: true,
+            expected_fragments: &["preview", "variant", "color", "background", "#282a36"],
+        },
+        FixtureCase {
+            relative_path: "jinja/app.js.j2",
+            expect_highlight: true,
+            expected_fragments: &["const", "theme_json", "export", "previewName", "name"],
+        },
+        FixtureCase {
+            relative_path: "jinja/app.coffee.j2",
+            expect_highlight: true,
+            expected_fragments: &["theme_json", "class", "Preview", "render", "theme.name"],
         },
         FixtureCase {
             relative_path: "twig/page.html.twig",
@@ -5809,6 +5839,7 @@ mod tests {
         "graphql",
         "hcl",
         "html",
+        "jinja",
         "json",
         "markdown",
         "latex",
@@ -7617,6 +7648,148 @@ mod tests {
             !nested_runtime_names(&sql_analysis).contains(&"html"),
             "expected sql.erb content to avoid falling back to html runtime"
         );
+    }
+
+    #[test]
+    fn jinja_yaml_projection_preserves_mapping_structure_across_expressions() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("jinja/config.yaml.j2");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(&path, &source, &theme);
+        let yaml_region = find_nested_region(&analysis, "yaml", "sources:", &source);
+        let property_style = theme
+            .token_style_for("property.yaml", "key")
+            .map(|style| style.snapshot(ColorMode::TrueColor));
+
+        for key in ["scrape_interval_secs", "sinks", "healthcheck", "enabled"] {
+            let offset = source
+                .find(key)
+                .unwrap_or_else(|| panic!("expected source to contain key {key:?}"));
+            assert!(
+                yaml_region.overlays.iter().any(|span| {
+                    span.start <= offset && offset < span.end && span.style == property_style
+                }),
+                "expected YAML key {key:?} after Jinja expressions to retain property styling"
+            );
+        }
+    }
+
+    #[test]
+    fn jinja_template_projection_preserves_each_registered_host_runtime() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let cases = [
+            ("jinja/page.html.j2", "html", "section", "tag"),
+            ("jinja/feed.xml.j2", "xml", "feed", "tag"),
+            ("jinja/query.sql.j2", "sql", "FROM", "keyword"),
+            ("jinja/theme.css.j2", "css", "color", "property"),
+            ("jinja/app.js.j2", "javascript", "export", "keyword.import"),
+            (
+                "jinja/app.coffee.j2",
+                "coffeescript",
+                "class",
+                "keyword.control",
+            ),
+        ];
+
+        for (relative_path, runtime_name, needle, capture) in cases {
+            let path = fixture_path(relative_path);
+            let source = read_file(&path);
+            let analysis = analysis_snapshot_for_path(&path, &source, &theme);
+            let region = find_nested_region(&analysis, runtime_name, needle, &source);
+            let offset = source
+                .find(needle)
+                .unwrap_or_else(|| panic!("expected source to contain {needle:?}"));
+            let expected_style = theme
+                .token_style_for(capture, needle)
+                .map(|style| style.snapshot(ColorMode::TrueColor));
+
+            assert!(
+                region.overlays.iter().any(|span| {
+                    span.start <= offset && offset < span.end && span.style == expected_style
+                }),
+                "expected {runtime_name} token {needle:?} after a Jinja expression to retain {capture:?} styling"
+            );
+        }
+    }
+
+    #[test]
+    fn jinja_html_projection_preserves_script_and_style_injections() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let path = fixture_path("jinja/page.html.j2");
+        let source = read_file(&path);
+        let analysis = analysis_snapshot_for_path(&path, &source, &theme);
+
+        for (runtime_name, needle, capture) in [
+            ("javascript", "export", "keyword.import"),
+            ("css", "color", "property"),
+        ] {
+            let region = find_nested_region(&analysis, runtime_name, needle, &source);
+            let offset = source
+                .find(needle)
+                .unwrap_or_else(|| panic!("expected source to contain {needle:?}"));
+            let expected_style = theme
+                .token_style_for(capture, needle)
+                .map(|style| style.snapshot(ColorMode::TrueColor));
+
+            assert!(
+                region.overlays.iter().any(|span| {
+                    span.start <= offset && offset < span.end && span.style == expected_style
+                }),
+                "expected nested {runtime_name} token {needle:?} to retain {capture:?} styling"
+            );
+        }
+    }
+
+    #[test]
+    fn template_projection_preserves_html_across_supported_template_engines() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let cases = [
+            (
+                "templates/page.html.j2",
+                "<main>{{ title }}<section>after</section></main>\n",
+            ),
+            (
+                "templates/page.html.twig",
+                "<main>{{ title }}<section>after</section></main>\n",
+            ),
+            (
+                "templates/page.html.erb",
+                "<main><%= title %><section>after</section></main>\n",
+            ),
+            (
+                "templates/page.html.eex",
+                "<main><%= @title %><section>after</section></main>\n",
+            ),
+            (
+                "templates/page.jsp",
+                "<main><%= title %><section>after</section></main>\n",
+            ),
+            (
+                "templates/page.asp",
+                "<main><%= title %><section>after</section></main>\n",
+            ),
+            (
+                "templates/page.adp",
+                "<main><%= $title %><section>after</section></main>\n",
+            ),
+        ];
+        let tag_style = theme
+            .token_style_for("tag", "section")
+            .map(|style| style.snapshot(ColorMode::TrueColor));
+
+        for (path, source) in cases {
+            let analysis = analysis_snapshot_for_path(Path::new(path), source, &theme);
+            let region = find_nested_region(&analysis, "html", "section", source);
+            let offset = source
+                .find("section")
+                .expect("expected source to contain section tag");
+            assert!(
+                region.overlays.iter().any(|span| {
+                    span.start <= offset && offset < span.end && span.style == tag_style
+                }),
+                "expected HTML tag after template output to retain styling for {path}"
+            );
+        }
     }
 
     #[test]

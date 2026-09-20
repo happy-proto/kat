@@ -416,7 +416,10 @@ fn collect_template_injection_candidates(
         candidates.push(InjectionCandidate {
             document_kind: plain_document_kind(host_runtime),
             ranges: normalize_ranges(content_ranges),
-            projection: InjectionProjection::RawRanges,
+            projection: InjectionProjection::TemplateSegments(template_projection_segments(
+                root,
+                template_host_placeholder(host_runtime),
+            )),
             is_combined: true,
             strip_shared_indent: true,
             merge_parent_styles: false,
@@ -448,6 +451,45 @@ fn collect_template_injection_candidates(
     }
 
     candidates
+}
+
+fn template_projection_segments(
+    root: Node,
+    output_placeholder: &str,
+) -> Vec<InjectionProjectionSegment> {
+    let mut segments = Vec::new();
+    append_template_projection_segments(root, output_placeholder, &mut segments);
+    segments
+}
+
+fn append_template_projection_segments(
+    node: Node,
+    output_placeholder: &str,
+    segments: &mut Vec<InjectionProjectionSegment>,
+) {
+    match node.kind() {
+        "content" | "raw_body" => {
+            segments.push(InjectionProjectionSegment::Source(node.byte_range()));
+        }
+        "render_expression" | "output" | "output_directive" => segments.push(
+            InjectionProjectionSegment::Synthetic(output_placeholder.to_owned()),
+        ),
+        "control" | "directive" | "comment" => {}
+        _ => {
+            for child in named_children(node) {
+                append_template_projection_segments(child, output_placeholder, segments);
+            }
+        }
+    }
+}
+
+fn template_host_placeholder(runtime_name: &str) -> &'static str {
+    match runtime_name {
+        "html" | "xml" | "yaml" | "sql" | "css" | "coffeescript" | "javascript" => {
+            "kat_template_value"
+        }
+        _ => unreachable!("unsupported template host runtime: {runtime_name}"),
+    }
 }
 
 fn walk_template_injection_nodes(

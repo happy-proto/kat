@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="{{ locale }}">
+  <head>
+    <title>{{ page_title }}</title>
+    <style>
+      :root {
+        --accent: {{ accent_color }};
+      }
+
+      .theme-{{ theme_slug }} {
+        color: var(--accent);
+        background: #282a36;
+      }
+    </style>
+  </head>
+  <body class="theme-{{ theme_slug }}">
+    {% if previews %}
+      <main data-count="{{ previews | length }}">
+        {% for preview in previews %}
+          <article id="preview-{{ preview.id }}">
+            <h2>{{ preview.name }}</h2>
+          </article>
+        {% endfor %}
+      </main>
+    {% endif %}
+    <script>
+      const initialTheme = {{ theme_json }};
+      export const previewCount = {{ previews | length }};
+    </script>
+  </body>
+</html>
