@@ -246,6 +246,7 @@ fn collect_host_injection_candidates(
             document_kind.runtime_name(),
             document_kind.profile(),
             tree.root_node(),
+            source,
         )),
         ("toml", DocumentProfile::PrekConfig) => candidates.extend(
             collect_prek_toml_injection_candidates(tree.root_node(), source),
@@ -405,6 +406,7 @@ fn collect_template_injection_candidates(
     runtime_name: &str,
     profile: DocumentProfile,
     root: Node,
+    source: &str,
 ) -> Vec<InjectionCandidate> {
     let mut candidates = Vec::new();
     let mut content_ranges = Vec::new();
@@ -413,10 +415,20 @@ fn collect_template_injection_candidates(
 
     let host_runtime = template_host_runtime(profile);
     if supports_runtime(host_runtime) && !content_ranges.is_empty() {
+        let projection = if profile == DocumentProfile::TemplateYaml {
+            InjectionProjection::TemplateSegments(template_yaml_projection_segments(root, source))
+        } else {
+            InjectionProjection::RawRanges
+        };
+        let ranges = if profile == DocumentProfile::TemplateYaml {
+            vec![root.byte_range()]
+        } else {
+            normalize_ranges(content_ranges)
+        };
         candidates.push(InjectionCandidate {
             document_kind: plain_document_kind(host_runtime),
-            ranges: normalize_ranges(content_ranges),
-            projection: InjectionProjection::RawRanges,
+            ranges,
+            projection,
             is_combined: true,
             strip_shared_indent: true,
             merge_parent_styles: false,
@@ -448,6 +460,31 @@ fn collect_template_injection_candidates(
     }
 
     candidates
+}
+
+fn template_yaml_projection_segments(root: Node, source: &str) -> Vec<InjectionProjectionSegment> {
+    let mut segments = Vec::new();
+
+    for child in named_children(root) {
+        match child.kind() {
+            "content" | "raw_body" => {
+                segments.push(InjectionProjectionSegment::Source(child.byte_range()));
+            }
+            "render_expression" => segments.push(InjectionProjectionSegment::Synthetic(
+                "kat_template_value".to_owned(),
+            )),
+            "control" | "comment"
+                if !template_directive_is_standalone_line(source, child.byte_range()) =>
+            {
+                segments.push(InjectionProjectionSegment::Synthetic(
+                    "kat_template_value".to_owned(),
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    segments
 }
 
 fn walk_template_injection_nodes(
@@ -667,7 +704,7 @@ fn append_hcl_template_projection_segments(
         | "template_for_start"
         | "template_for_end" => {
             covered_ranges.push(node.byte_range());
-            if !hcl_template_directive_is_standalone_line(source, node.byte_range()) {
+            if !template_directive_is_standalone_line(source, node.byte_range()) {
                 projection_segments.push(InjectionProjectionSegment::Synthetic(
                     inline_placeholder.to_owned(),
                 ));
@@ -722,7 +759,7 @@ fn hcl_template_node(node: Node) -> Option<Node> {
     }
 }
 
-fn hcl_template_directive_is_standalone_line(source: &str, range: Range<usize>) -> bool {
+fn template_directive_is_standalone_line(source: &str, range: Range<usize>) -> bool {
     let line_start = source[..range.start]
         .rfind('\n')
         .map(|index| index + 1)

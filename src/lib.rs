@@ -7620,6 +7620,41 @@ mod tests {
     }
 
     #[test]
+    fn jinja_yaml_projection_preserves_mapping_structure_across_expressions() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let source = concat!(
+            "sources:\n",
+            "  metrics:\n",
+            "    endpoints:\n",
+            "      - http://{{ tailscale_ip }}:{{ metrics_port }}/metrics\n",
+            "    scrape_interval_secs: 15\n",
+            "sinks:\n",
+            "  output:\n",
+            "    endpoint: http://{{ tailscale_ip }}:{{ output_port }}/write\n",
+            "    healthcheck:\n",
+            "      enabled: false\n",
+        );
+        let analysis =
+            analysis_snapshot_for_path(Path::new("templates/vector.yaml.j2"), source, &theme);
+        let yaml_region = find_nested_region(&analysis, "yaml", "sources:", source);
+        let property_style = theme
+            .token_style_for("property.yaml", "key")
+            .map(|style| style.snapshot(ColorMode::TrueColor));
+
+        for key in ["scrape_interval_secs", "sinks", "healthcheck", "enabled"] {
+            let offset = source
+                .find(key)
+                .unwrap_or_else(|| panic!("expected source to contain key {key:?}"));
+            assert!(
+                yaml_region.overlays.iter().any(|span| {
+                    span.start <= offset && offset < span.end && span.style == property_style
+                }),
+                "expected YAML key {key:?} after Jinja expressions to retain property styling"
+            );
+        }
+    }
+
+    #[test]
     fn embedded_template_html_family_reuses_html_host_and_runtime_specific_code() {
         let theme = Theme::for_mode(ColorMode::TrueColor);
 
