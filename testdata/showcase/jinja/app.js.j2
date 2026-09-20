@@ -1,0 +1,9 @@
+const initialTheme = {{ theme_json }};
+const endpoint = "https://{{ api_host }}/v1/themes";
+
+export async function loadPreview(id) {
+  const response = await fetch(`${endpoint}/${id}`);
+  return response.json();
+}
+
+export const defaultTheme = initialTheme.name;

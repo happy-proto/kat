@@ -1,0 +1,27 @@
+data_dir: /var/lib/vector
+
+sources:
+  metrics:
+    type: prometheus_scrape
+    endpoints:
+      - http://{{ metrics_host }}:{{ metrics_port }}/metrics
+    scrape_interval_secs: 15
+
+transforms:
+  add_labels:
+    type: remap
+    inputs:
+      - metrics
+    source: |
+      .tags.site = "{{ site_name }}"
+      .tags.instance = "{{ instance_name }}"
+
+sinks:
+  metrics:
+    type: prometheus_remote_write
+    inputs:
+      - add_labels
+    endpoint: http://{{ storage_host }}:{{ storage_port }}/api/v1/write
+    compression: snappy
+    healthcheck:
+      enabled: false

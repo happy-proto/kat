@@ -1,0 +1,12 @@
+WITH selected_themes AS (
+  SELECT id, name, slug
+  FROM themes
+  WHERE organization_id = {{ organization_id }}
+    AND enabled = TRUE
+)
+SELECT name, slug
+FROM selected_themes
+{% if prefix %}
+WHERE slug LIKE {{ prefix }} || '%'
+{% endif %}
+ORDER BY name;

@@ -1,0 +1,9 @@
+sources:
+  metrics:
+    endpoint: http://{{ host }}:{{ port }}/metrics
+    scrape_interval_secs: 15
+sinks:
+  output:
+    endpoint: http://{{ host }}:{{ output_port }}/write
+    healthcheck:
+      enabled: false

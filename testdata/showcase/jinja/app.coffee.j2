@@ -1,0 +1,11 @@
+theme = {{ theme_json }}
+endpoint = "https://{{ api_host }}/v1/themes"
+
+class ThemePreview
+  constructor: (@name = theme.name) ->
+
+  load: (id) ->
+    response = await fetch "#{endpoint}/#{id}"
+    response.json()
+
+export default ThemePreview

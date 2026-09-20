@@ -1,0 +1,16 @@
+:root {
+  --accent: {{ accent_color }};
+  --background: {{ background_color }};
+}
+
+.preview-{{ theme_slug }} {
+  color: var(--accent);
+  background: var(--background);
+  border: 1px solid {{ border_color }};
+}
+
+{% if compact %}
+.preview-{{ theme_slug }} .details {
+  display: none;
+}
+{% endif %}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ feed_title }}</title>
+  <id>{{ feed_id }}</id>
+  {% for entry in entries %}
+    <entry data-theme="{{ entry.theme }}">
+      <title>{{ entry.title }}</title>
+      <link href="{{ entry.url }}" />
+      <updated>{{ entry.updated_at }}</updated>
+    </entry>
+  {% endfor %}
+</feed>
