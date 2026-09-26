@@ -99,6 +99,7 @@ impl Default for DisplayProfile {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn display_width(text: &str) -> DisplayColumn {
     DisplayProfile::default().display_width(text)
 }
@@ -112,6 +113,7 @@ pub(crate) fn display_column_for_byte_offset(text: &str, byte_offset: ByteOffset
     DisplayProfile::default().column_for_byte_offset(text, byte_offset)
 }
 
+#[cfg(test)]
 pub(crate) fn display_text_spans(text: &str, line_start: usize) -> Vec<DisplayTextSpan> {
     DisplayProfile::default().text_spans(text, line_start)
 }

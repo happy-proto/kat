@@ -327,7 +327,7 @@ impl ViewerDocument {
 #[derive(Debug)]
 enum ViewerSegment {
     Plain(String),
-    Prepared(kat::PreparedRender),
+    Prepared(kat::PreparedDocument),
 }
 
 struct RenderedSource {
@@ -986,10 +986,16 @@ fn render_output_with_timing(
         let terminal_width = io::stdout().is_terminal().then(terminal_columns).flatten();
         let hyperlinks_enabled = render_hyperlinks_enabled(options);
         let prepared = match options.language.as_deref() {
-            Some(language_name) => {
-                kat::PreparedRender::named_language(language_name, source, hyperlinks_enabled)?
-            }
-            None => kat::PreparedRender::detect(source_path, source, hyperlinks_enabled)?,
+            Some(language_name) => kat::PreparedDocument::named_language(
+                language_name,
+                source,
+                kat::RenderOptions::terminal(hyperlinks_enabled),
+            )?,
+            None => kat::PreparedDocument::detect(
+                source_path,
+                source,
+                kat::RenderOptions::terminal(hyperlinks_enabled),
+            )?,
         };
         let render_output = prepared.render(terminal_width);
         if let Some(timings) = timings {

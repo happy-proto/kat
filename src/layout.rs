@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::{
     StyledSpan, VisualRegion,
-    display_geometry::{display_text_spans, display_width},
+    display_geometry::{DEFAULT_TAB_WIDTH, DisplayProfile},
     span_covering_range_from,
     theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
 };
@@ -23,9 +23,28 @@ impl LayoutDocument {
         theme: Theme,
         terminal_width: Option<usize>,
     ) -> Self {
-        let mut rows = build_rows(source, spans, terminal_width);
+        Self::from_visual_with_tab_width(
+            source,
+            spans,
+            regions,
+            theme,
+            terminal_width,
+            DEFAULT_TAB_WIDTH,
+        )
+    }
+
+    pub(crate) fn from_visual_with_tab_width(
+        source: &str,
+        spans: &[StyledSpan],
+        regions: &[VisualRegion],
+        theme: Theme,
+        terminal_width: Option<usize>,
+        tab_width: usize,
+    ) -> Self {
+        let profile = DisplayProfile::new(tab_width);
+        let mut rows = build_rows(source, spans, terminal_width, profile);
         let line_rows = rows_by_line_start(&rows);
-        paint_backgrounds(source, regions, theme, &line_rows, &mut rows);
+        paint_backgrounds(source, regions, theme, &line_rows, &mut rows, profile);
 
         Self {
             color_mode: theme.color_mode(),
@@ -179,7 +198,12 @@ struct GraphemeSpan {
     rendered_text: String,
 }
 
-fn build_rows(source: &str, spans: &[StyledSpan], terminal_width: Option<usize>) -> Vec<LayoutRow> {
+fn build_rows(
+    source: &str,
+    spans: &[StyledSpan],
+    terminal_width: Option<usize>,
+    profile: DisplayProfile,
+) -> Vec<LayoutRow> {
     let mut rows = Vec::new();
     let mut span_cursor = 0usize;
     let wrap_width = terminal_width.filter(|width| *width > 0);
@@ -191,7 +215,7 @@ fn build_rows(source: &str, spans: &[StyledSpan], terminal_width: Option<usize>)
             .map(|offset| line_start + offset)
             .unwrap_or(source.len());
         let line_text = &source[line_start..line_end];
-        let graphemes = grapheme_spans(line_text, line_start);
+        let graphemes = grapheme_spans(line_text, line_start, profile);
 
         if graphemes.is_empty() {
             rows.push(LayoutRow {
@@ -262,6 +286,7 @@ fn paint_backgrounds(
     theme: Theme,
     line_rows: &HashMap<usize, Vec<RowRef>>,
     rows: &mut [LayoutRow],
+    profile: DisplayProfile,
 ) {
     let mut pending_runs = vec![Vec::<LayoutBackgroundRun>::new(); rows.len()];
 
@@ -274,7 +299,7 @@ fn paint_backgrounds(
             crate::host_injections::InjectionVisualKind::Transparent => {}
             crate::host_injections::InjectionVisualKind::TightBlock => {
                 for segment in &region.segments {
-                    for slice in segment_content_slices(source, segment, line_rows) {
+                    for slice in segment_content_slices(source, segment, line_rows, profile) {
                         pending_runs[slice.row_index].push(LayoutBackgroundRun {
                             start_column: slice.start_column,
                             end_column: slice.end_column,
@@ -285,38 +310,10 @@ fn paint_backgrounds(
                 }
             }
             crate::host_injections::InjectionVisualKind::RectBlock => {
-                for slice in rect_block_slices(source, &region.segments, line_rows) {
+                for slice in rect_block_slices(source, &region.segments, line_rows, profile) {
                     pending_runs[slice.row_index].push(LayoutBackgroundRun {
                         start_column: slice.start_column,
                         end_column: slice.end_column,
-                        visual_level: region.visual_level,
-                        style,
-                    });
-                }
-            }
-            crate::host_injections::InjectionVisualKind::ScopeBlock => {
-                let mut slices = Vec::new();
-                let mut right_edge = 0usize;
-
-                for segment in &region.segments {
-                    for slice in segment_content_slices(source, segment, line_rows) {
-                        right_edge = right_edge.max(slice.end_column);
-                        slices.push(slice);
-                    }
-                }
-
-                let mut row_lefts = HashMap::<usize, usize>::new();
-                for slice in slices {
-                    row_lefts
-                        .entry(slice.row_index)
-                        .and_modify(|left| *left = (*left).min(slice.start_column))
-                        .or_insert(slice.start_column);
-                }
-
-                for (row_index, left_edge) in row_lefts {
-                    pending_runs[row_index].push(LayoutBackgroundRun {
-                        start_column: left_edge,
-                        end_column: right_edge,
                         visual_level: region.visual_level,
                         style,
                     });
@@ -407,6 +404,7 @@ fn segment_content_slices(
     source: &str,
     segment: &crate::RegionSegment,
     line_rows: &HashMap<usize, Vec<RowRef>>,
+    profile: DisplayProfile,
 ) -> Vec<BackgroundSlice> {
     let Some(rows) = line_rows.get(&segment.line_start) else {
         return Vec::new();
@@ -415,9 +413,9 @@ fn segment_content_slices(
     let left_column = segment
         .left_column_override
         .map(|column| column.as_usize())
-        .unwrap_or_else(|| display_column(source, segment.line_start, segment.left));
+        .unwrap_or_else(|| display_column(source, segment.line_start, segment.left, profile));
     let content_end = trim_trailing_whitespace(source, segment.left, segment.text_end);
-    let right_column = display_column(source, segment.line_start, content_end);
+    let right_column = display_column(source, segment.line_start, content_end, profile);
     if right_column <= left_column {
         return Vec::new();
     }
@@ -431,6 +429,7 @@ fn rect_block_slices(
     source: &str,
     segments: &[crate::RegionSegment],
     line_rows: &HashMap<usize, Vec<RowRef>>,
+    profile: DisplayProfile,
 ) -> Vec<BackgroundSlice> {
     let mut member_rows = Vec::new();
     let mut block_left = usize::MAX;
@@ -443,9 +442,9 @@ fn rect_block_slices(
         let left_column = segment
             .left_column_override
             .map(|column| column.as_usize())
-            .unwrap_or_else(|| display_column(source, segment.line_start, segment.left));
+            .unwrap_or_else(|| display_column(source, segment.line_start, segment.left, profile));
         let content_end = trim_trailing_whitespace(source, segment.left, segment.text_end);
-        let right_column = display_column(source, segment.line_start, content_end);
+        let right_column = display_column(source, segment.line_start, content_end, profile);
 
         if right_column <= left_column {
             if let Some(row) = rows.first()
@@ -498,8 +497,15 @@ fn intersect_slice(
     })
 }
 
-fn display_column(source: &str, line_start: usize, byte_offset: usize) -> usize {
-    display_width(&source[line_start..byte_offset]).as_usize()
+fn display_column(
+    source: &str,
+    line_start: usize,
+    byte_offset: usize,
+    profile: DisplayProfile,
+) -> usize {
+    profile
+        .display_width(&source[line_start..byte_offset])
+        .as_usize()
 }
 
 fn trim_trailing_whitespace(source: &str, start: usize, end: usize) -> usize {
@@ -518,8 +524,13 @@ fn trim_trailing_whitespace(source: &str, start: usize, end: usize) -> usize {
     trimmed
 }
 
-fn grapheme_spans(line_text: &str, line_start: usize) -> Vec<GraphemeSpan> {
-    display_text_spans(line_text, line_start)
+fn grapheme_spans(
+    line_text: &str,
+    line_start: usize,
+    profile: DisplayProfile,
+) -> Vec<GraphemeSpan> {
+    profile
+        .text_spans(line_text, line_start)
         .into_iter()
         .map(|span| GraphemeSpan {
             byte_start: span.byte_start,

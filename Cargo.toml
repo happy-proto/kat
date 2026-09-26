@@ -22,19 +22,20 @@ pkg-fmt = "tgz"
 [[bin]]
 name = "kat"
 path = "src/main.rs"
+required-features = ["terminal-images"]
 
 [dependencies]
 anstyle = "1.0.14"
 anyhow = "1.0.102"
-base64 = "0.23.0"
+base64 = { version = "0.23.0", optional = true }
 clap = { version = "4.6.0", features = ["derive"] }
 clap_complete = { version = "4.6.5", features = ["unstable-dynamic"] }
-icy_sixel = "0.7.0"
-image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp", "ico", "qoi", "pnm", "ff", "hdr", "dds", "avif-native"] }
+icy_sixel = { version = "0.7.0", optional = true }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp", "ico", "qoi", "pnm", "ff", "hdr", "dds", "avif-native"], optional = true }
 libghostty-vt = { version = "0.2.0", default-features = false, optional = true }
 miette = { version = "7.6.0", features = ["fancy"] }
 portable-pty = { version = "0.9.0", optional = true }
-resvg = "0.48.1"
+resvg = { version = "0.48.1", optional = true }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 shadow-rs = { version = "2.0.0", default-features = false }
@@ -107,7 +108,9 @@ unicode-width = "0.2.2"
 shadow-rs = { version = "2.0.0", default-features = false, features = ["build"] }
 
 [features]
+default = ["terminal-images"]
 ghostty-e2e = ["dep:libghostty-vt", "dep:portable-pty"]
+terminal-images = ["dep:base64", "dep:icy_sixel", "dep:image", "dep:resvg"]
 
 [target."cfg(unix)".dependencies]
 termios = "0.3.3"

@@ -12,11 +12,14 @@ mod layout;
 mod python_docstrings;
 mod render_ops;
 mod semantic_overlays;
+mod source_highlight;
 mod sql_dialect;
 mod terminal;
 mod terminal_background;
 mod theme;
 mod visual;
+
+pub use source_highlight::{HighlightBackgroundRun, HighlightSpan, HighlightStyle};
 
 use std::{
     ops::Range,
@@ -272,7 +275,7 @@ pub struct RenderedDocument {
 
 #[derive(Clone, Debug)]
 /// Source-backed render state that can be laid out repeatedly at new widths.
-pub struct PreparedRender {
+pub struct PreparedDocument {
     source: String,
     visual: Option<VisualDocument>,
     theme: Theme,
@@ -280,21 +283,50 @@ pub struct PreparedRender {
     timings: RenderTimings,
 }
 
-impl PreparedRender {
+/// Terminal presentation chosen by the caller before preparing a document.
+#[derive(Clone, Copy, Debug)]
+pub struct RenderOptions {
+    theme: Theme,
+    hyperlinks_enabled: bool,
+}
+
+impl RenderOptions {
+    /// Probe the terminal palette for the kat CLI's rendering behavior.
+    pub fn terminal(hyperlinks_enabled: bool) -> Self {
+        Self {
+            theme: detected_theme(),
+            hyperlinks_enabled,
+        }
+    }
+
+    /// Use explicit colors in an embedding viewer, without terminal queries.
+    pub fn with_colors(foreground: (u8, u8, u8), background: (u8, u8, u8)) -> Self {
+        use anstyle::RgbColor;
+        let to_rgb = |(r, g, b)| RgbColor(r, g, b);
+        let tint =
+            terminal_background::derive_nested_region_tint(to_rgb(foreground), to_rgb(background));
+        Self {
+            theme: Theme::new(ColorMode::TrueColor, Some(tint)),
+            hyperlinks_enabled: false,
+        }
+    }
+}
+
+impl PreparedDocument {
     /// Detects the document kind and prepares width-independent visual data.
     pub fn detect(
         source_path: Option<&Path>,
         source: &str,
-        hyperlinks_enabled: bool,
+        options: RenderOptions,
     ) -> Result<Self> {
-        let theme = detected_theme();
+        let theme = options.theme;
         let mut timings = RenderTimings::default();
         let analysis = AnalysisDocument::detect(source_path, source, theme, Some(&mut timings))?;
         Ok(Self::from_analysis(
             source,
             analysis,
             theme,
-            hyperlinks_enabled,
+            options.hyperlinks_enabled,
             timings,
         ))
     }
@@ -303,9 +335,9 @@ impl PreparedRender {
     pub fn named_language(
         language_name: &str,
         source: &str,
-        hyperlinks_enabled: bool,
+        options: RenderOptions,
     ) -> Result<Self> {
-        let theme = detected_theme();
+        let theme = options.theme;
         let mut timings = RenderTimings::default();
         let analysis =
             AnalysisDocument::named_language(language_name, source, theme, Some(&mut timings))?;
@@ -313,7 +345,7 @@ impl PreparedRender {
             source,
             analysis,
             theme,
-            hyperlinks_enabled,
+            options.hyperlinks_enabled,
             timings,
         ))
     }
@@ -334,6 +366,57 @@ impl PreparedRender {
             hyperlinks_enabled,
             timings,
         }
+    }
+
+    /// Syntax styles in original UTF-8 byte offsets.
+    pub fn spans(&self) -> Vec<HighlightSpan> {
+        self.visual
+            .as_ref()
+            .map(|visual| {
+                visual
+                    .spans()
+                    .iter()
+                    .filter_map(|span| {
+                        span.style.map(|style| HighlightSpan {
+                            range: span.range.clone(),
+                            style: style.into(),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Nested-region backgrounds in columns of each unwrapped source line.
+    pub fn background_lines(&self, tab_width: usize) -> Vec<Vec<HighlightBackgroundRun>> {
+        let Some(visual) = self.visual.as_ref() else {
+            return Vec::new();
+        };
+        let layout = LayoutDocument::from_visual_with_tab_width(
+            &self.source,
+            visual.spans(),
+            visual.regions(),
+            self.theme,
+            None,
+            tab_width.max(1),
+        );
+        layout
+            .rows()
+            .iter()
+            .map(|row| {
+                row.background_runs
+                    .iter()
+                    .filter_map(|run| {
+                        let color = run.style.background_rgb()?;
+                        Some(HighlightBackgroundRun {
+                            start_column: run.start_column,
+                            end_column: run.end_column,
+                            background: (color.0, color.1, color.2),
+                        })
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     /// Lays out and encodes the prepared document for `terminal_width`.
@@ -428,8 +511,12 @@ pub fn render_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let rendered =
-        PreparedRender::detect(source_path, source, hyperlinks_enabled)?.render(terminal_width);
+    let rendered = PreparedDocument::detect(
+        source_path,
+        source,
+        RenderOptions::terminal(hyperlinks_enabled),
+    )?
+    .render(terminal_width);
     Ok(RenderOutput {
         output: rendered.output,
         timings: rendered.timings,
@@ -455,8 +542,12 @@ pub fn render_named_language_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let rendered = PreparedRender::named_language(language_name, source, hyperlinks_enabled)?
-        .render(terminal_width);
+    let rendered = PreparedDocument::named_language(
+        language_name,
+        source,
+        RenderOptions::terminal(hyperlinks_enabled),
+    )?
+    .render(terminal_width);
     Ok(RenderOutput {
         output: rendered.output,
         timings: rendered.timings,
@@ -3555,8 +3646,8 @@ pub(crate) fn build_region_segments(
         InjectionVisualKind::Transparent | InjectionVisualKind::TightBlock => {
             build_region_segment_bounds(source, ranges, shared_indent, visual_anchor)
         }
-        InjectionVisualKind::RectBlock | InjectionVisualKind::ScopeBlock => {
-            build_block_region_segments(source, ranges, visual_anchor, visual_kind)
+        InjectionVisualKind::RectBlock => {
+            build_block_region_segments(source, ranges, visual_anchor)
         }
     };
 
@@ -3570,7 +3661,6 @@ fn build_block_region_segments(
     source: &str,
     ranges: &[Range<usize>],
     visual_anchor: InjectionVisualAnchor,
-    visual_kind: InjectionVisualKind,
 ) -> Vec<RegionSegment> {
     let covered_lines = classify_covered_lines(source, ranges);
     let Some(block_lines) = content_block_lines(&covered_lines) else {
@@ -3597,16 +3687,10 @@ fn build_block_region_segments(
         .filter(|line| line.role != CoveredLineRole::Wrapper)
         .map(|line| {
             let (left, left_column_override) = match visual_anchor {
-                InjectionVisualAnchor::Content => {
-                    let content_left = line.line_start + content_start_offset(source, *line);
-                    match visual_kind {
-                        InjectionVisualKind::RectBlock => (content_left, Some(block_left_column)),
-                        InjectionVisualKind::ScopeBlock => (content_left, None),
-                        InjectionVisualKind::Transparent | InjectionVisualKind::TightBlock => {
-                            unreachable!("non-block visual kind in block segment builder")
-                        }
-                    }
-                }
+                InjectionVisualAnchor::Content => (
+                    line.line_start + content_start_offset(source, *line),
+                    Some(block_left_column),
+                ),
                 InjectionVisualAnchor::LineStart => (line.line_start, None),
             };
 
@@ -11200,7 +11284,7 @@ priority: 7
     }
 
     #[test]
-    fn just_recipe_body_uses_scope_block_visual_kind() {
+    fn just_recipe_body_uses_rectangular_visual_kind() {
         let source = "install:\n    cargo install --path .\n    cargo fmt --check\n";
         let tint = RgbColor(1, 2, 3);
         let theme = Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(tint));
@@ -11209,13 +11293,13 @@ priority: 7
         let first_segment = segment_for_line(region, source, "cargo install --path .");
 
         assert_eq!(
-            region.visual_kind, "scope_block",
-            "expected Justfile recipe bodies to use scope block visuals"
+            region.visual_kind, "rect_block",
+            "expected Justfile recipe bodies to use rectangular visuals"
         );
         assert_eq!(
             segment_left_column(source, first_segment),
             4,
-            "expected scope block fallback geometry to align with the shared recipe indent"
+            "expected recipe background to align with the shared recipe indent"
         );
         let layout = layout_snapshot_for_path(Path::new("Justfile"), source, &theme, 80);
         let first_row = layout_row_containing(&layout.rows, "cargo install --path .");
@@ -11223,7 +11307,7 @@ priority: 7
         assert_eq!(
             first_background_bounds(first_row),
             first_background_bounds(second_row),
-            "expected scope block rows to share their layout-time right edge"
+            "expected recipe rows to share one rectangle"
         );
     }
 
@@ -12129,7 +12213,7 @@ priority: 7
     }
 
     #[test]
-    fn just_scope_block_layout_keeps_wrapped_row_left_edges_without_fake_blank_rows() {
+    fn just_recipe_rectangle_keeps_wrapped_rows_without_fake_blank_rows() {
         let theme =
             Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
         let path = PathBuf::from("testdata/showcase/just/recipe-block.just");
@@ -12145,8 +12229,8 @@ priority: 7
                 .first()
                 .map(|run| run.start_column)
                 .unwrap_or_default(),
-            4,
-            "expected the first recipe row to preserve its shared recipe indent"
+            0,
+            "expected the recipe rectangle to include wrapped continuation rows"
         );
         assert_eq!(
             second
@@ -12154,8 +12238,8 @@ priority: 7
                 .first()
                 .map(|run| run.start_column)
                 .unwrap_or_default(),
-            4,
-            "expected the first wrapped row of the second recipe command to keep the recipe indent"
+            0,
+            "expected all recipe rows to share the same left edge"
         );
         assert_eq!(
             continuation
@@ -12164,7 +12248,7 @@ priority: 7
                 .map(|run| run.start_column)
                 .unwrap_or(usize::MAX),
             0,
-            "expected wrapped recipe rows to start tinting from the visible screen column"
+            "expected wrapped recipe rows to share the rectangle's left edge"
         );
 
         let first_index = layout
@@ -12191,7 +12275,7 @@ priority: 7
     }
 
     #[test]
-    fn just_scope_block_layout_tracks_cjk_wrapped_width_in_display_cells() {
+    fn just_recipe_rectangle_tracks_cjk_wrapped_width_in_display_cells() {
         let theme =
             Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
         let source = "demo:\n    printf '短描述短描述短描述短描述短描述'\n";
@@ -12208,8 +12292,8 @@ priority: 7
                 .first()
                 .map(|run| run.start_column)
                 .unwrap_or_default(),
-            4,
-            "expected the first CJK recipe row to preserve the recipe indent"
+            0,
+            "expected the CJK recipe rectangle to include wrapped rows"
         );
         assert_eq!(
             continuation
@@ -12223,7 +12307,7 @@ priority: 7
     }
 
     #[test]
-    fn just_scope_block_preserves_each_source_rows_content_indent() {
+    fn just_recipe_nested_indentation_uses_one_rectangular_background() {
         let theme =
             Theme::for_mode_with_nested_region_tint(ColorMode::TrueColor, Some(RgbColor(1, 2, 3)));
         let source = "demo:\n    echo outer\n        echo nested\n";
@@ -12238,13 +12322,13 @@ priority: 7
         );
         assert_eq!(
             first_background_bounds(layout_row_containing(&layout.rows, "echo nested")),
-            Some((8, 19)),
-            "expected ScopeBlock to preserve the nested source row's deeper left edge"
+            Some((4, 19)),
+            "expected every recipe row to share one rectangular left edge"
         );
     }
 
     #[test]
-    fn debug_visual_json_preserves_scope_block_kind_for_just_recipe() {
+    fn debug_visual_json_reports_rectangular_kind_for_just_recipe() {
         let source = "install:\n    cargo install --path .\n";
         let json = debug_visual_json(Some(Path::new("Justfile")), source)
             .expect("visual debug json for Justfile should render");
@@ -12256,8 +12340,8 @@ priority: 7
         assert!(
             regions
                 .iter()
-                .any(|region| region["visual_kind"] == Value::String("scope_block".into())),
-            "expected visual debug json to preserve scope block regions: {json}"
+                .any(|region| region["visual_kind"] == Value::String("rect_block".into())),
+            "expected visual debug json to preserve rectangular regions: {json}"
         );
     }
 

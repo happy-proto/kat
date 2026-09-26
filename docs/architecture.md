@@ -29,11 +29,13 @@
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 或外部 parser bundle crate 提供的预生成 parser。
 - 如果未来确实重新引入需要在主仓库内生成 parser 的 vendored grammar，应优先把它当作例外处理，而不是恢复“大量语言都在 `kat` 内本地生成 parser”的旧模式。
 - 预编译发布产物不应要求目标系统额外安装 dav1d 动态库；当前 release build 会在 Linux、macOS 和 Windows 上静态链接 dav1d，并在打包前检查平台原生二进制依赖表。
+- 终端图片依赖由默认启用的 `terminal-images` feature 管理；只消费 `kat` 高亮库接口的项目可关闭默认 feature，避免编译图片解码、SVG 和 Sixel 栈。`kat` 二进制要求该 feature，以保持 CLI 图片行为完整。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
 
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
+- Rust 库与 CLI 共用公开的 `PreparedDocument`：调用方提供 `RenderOptions` 后，可通过 `spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 样式，通过 `background_lines` 获取 kat 布局层计算的嵌套背景，或通过 `render` 获取完整终端输出。CLI 使用终端探测选项；嵌入式查看器提供自身前景、背景色，不触发终端查询。调用方负责将源范围与自身的差异颜色和折行合成。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
 - 对少数“结构化文本存在稳定高价值语义、但不适合直接伪装成现成 markup/runtime”的场景，允许在 nested language 层引入 host-owned pseudo-runtime：它不要求自己有独立 Tree-sitter grammar，而是沿 `document kind + source map + visual region` 这条链直接产出稳定语义和渲染 IR。当前 `python_docstring` 已按这条路线承接 `plain` / `reST` / `Google` / `NumPy` docstring profile；PEM 与 OpenPGP ASCII armor 也用同一路线处理文本封装边界、header、base64 body 与 checksum。
@@ -53,11 +55,11 @@
    - 这一层内部仍保留 detect / highlight / semantic / injections 的细分，不会因为外层抽象而把 parser 与高亮逻辑重新揉平。
    - nested region 的 snapshot 需要保留递归子区域以及各自解析到的 `document kind` / runtime 身份，方便宿主感知注入、方言分发和 runtime 复用直接在 IR 上断言，而不是退回最终 ANSI。
 2. `visual`
-   - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、`rect_block` / `scope_block` / `tight_block` / `transparent` 这些区域结果。
-   - 对块级嵌套区域，会按共享缩进和注入 range 推导对应的视觉原语：真正的矩形内容块继续走 `rect_block`，而像 `Justfile recipe` 这类缩进作用域则走独立的 `scope_block`。当前 terminal fallback 仍可暂时复用成熟的矩形 body 几何，但 IR 上不再把两者混成同一种区域。
+   - 负责把 analysis 层产物整理成稳定的视觉模型：styled spans、visual regions、`rect_block` / `tight_block` / `transparent` 这些区域结果。
+   - Justfile recipe、Markdown fenced code 和其它块级嵌套区域都通过共享的 `rect_block` 原语声明成员；所有成员行由 layout 层共同确定一个矩形边界。
    - visual 层只声明哪些源码片段共同属于一个 block、block 的视觉类型和锚点；最终宽高不是源码行宽或 viewport 宽度的属性，不能在这一层提前固化。
 3. `layout`
-   - 负责把 visual 层的源码级视觉语义展开成 display-space 布局：wrapped screen rows、cell 列宽、块级 bbox，以及 `scope_block` / `rect_block` 在终端显示空间里的覆盖范围。
+   - 负责把 visual 层的源码级视觉语义展开成 display-space 布局：wrapped screen rows、cell 列宽、块级 bbox，以及 `rect_block` 在终端显示空间里的覆盖范围。
    - 块级布局顺序固定为“先按当前 viewport 宽度生成 wrapped screen rows，再基于这些视觉行计算 block bbox，最后把背景投影到 bbox 内的每一行”；不能先按未换行源码行计算 padding，再让 terminal 或 viewer 对结果二次折行。
    - 这一层只依赖仓库自己的 `display_geometry` 语义和终端宽度，不直接碰 ANSI，也不直接绑定第三方 terminal API。
 4. `render_ops`
@@ -79,7 +81,7 @@
 - `RectBlock` 是跨语言、跨宿主复用的统一矩形块契约，不是 Markdown YAML frontmatter 特例。Markdown YAML/TOML frontmatter、fenced code、docstring 和其它矩形 nested region 只负责在 visual 层声明 block 成员；它们进入 layout 后使用同一套几何规则。
 - `RectBlock` 先让成员文本按当前 viewport 宽度贪心换行：当前视觉行只有在下一个 grapheme 放不下时才结束。随后以所有成员视觉行中最宽一行的 display width 作为 block 宽度，以成员视觉行从第一行到最后一行的完整跨度作为 block 高度；每条短行的背景只补到这个共享 block 右边界，而不是补到 viewport 右边界。只有最宽行恰好占满 viewport 时，block 才会恰好表现为全宽。
 - 同一个 `RectBlock` 必须形成一个统一 bbox，不能让 wrapped continuation row、短行或 delimiter 各自计算不同的背景右边界。Markdown frontmatter 的开始 / 结束 delimiter 属于同一个 frontmatter block；fenced code 的 fence 是否属于背景则由 visual block 成员关系决定，但 bbox 计算规则不变。
-- `ScopeBlock` 与 `RectBlock` 共享“先换行、再从成员视觉行推导几何”的顺序，但允许每个 screen row 根据非空白内容保留不同左边界，再使用成员行推导出的共享右边界；不能为了复用矩形背景而抹掉这项语义差异。
+- Justfile recipe 内部即使包含更深的 shell 缩进，背景仍使用成员行共同的最左、最右显示列，避免每行左边界形成阶梯。
 - terminal resize 会使 wrapped rows 和所有 block bbox 同时失效；viewer 必须从宽度无关的 visual model 重新执行 layout。宽→窄→宽后的文本换行、block 宽高和背景范围必须与直接以最终宽度打开时一致。
 - `display_geometry` 当前内建统一的 Unicode 宽度规则，并把 tab stop 作为仓库级策略集中定义；如果未来要支持不同 terminal profile 或 East Asian 宽度策略，也应继续在这层扩展，而不是把特殊逻辑散落回各个语言 / 渲染分支里。
 - 从 `layout` 开始，终端显示文本默认进入 display-space 语义：像 tab 这类会影响显示列、但不应继续交给 terminal 自行解释的控制字符，要先按仓库级 `display_geometry` 规则展开成稳定的显示文本，再进入 `render_ops` / `terminal`。最终 terminal 输出优先保证显示几何一致性，而不是逐字节保留原始控制字符。
