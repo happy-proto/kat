@@ -19,10 +19,7 @@ mod terminal_background;
 mod theme;
 mod visual;
 
-pub use source_highlight::{
-    HighlightBackgroundRun, HighlightDocument, HighlightSpan, HighlightStyle,
-    highlight_source_spans,
-};
+pub use source_highlight::{HighlightBackgroundRun, HighlightSpan, HighlightStyle};
 
 use std::{
     ops::Range,
@@ -278,7 +275,7 @@ pub struct RenderedDocument {
 
 #[derive(Clone, Debug)]
 /// Source-backed render state that can be laid out repeatedly at new widths.
-pub struct PreparedRender {
+pub struct PreparedDocument {
     source: String,
     visual: Option<VisualDocument>,
     theme: Theme,
@@ -286,21 +283,50 @@ pub struct PreparedRender {
     timings: RenderTimings,
 }
 
-impl PreparedRender {
+/// Terminal presentation chosen by the caller before preparing a document.
+#[derive(Clone, Copy, Debug)]
+pub struct RenderOptions {
+    theme: Theme,
+    hyperlinks_enabled: bool,
+}
+
+impl RenderOptions {
+    /// Probe the terminal palette for the kat CLI's rendering behavior.
+    pub fn terminal(hyperlinks_enabled: bool) -> Self {
+        Self {
+            theme: detected_theme(),
+            hyperlinks_enabled,
+        }
+    }
+
+    /// Use explicit colors in an embedding viewer, without terminal queries.
+    pub fn with_colors(foreground: (u8, u8, u8), background: (u8, u8, u8)) -> Self {
+        use anstyle::RgbColor;
+        let to_rgb = |(r, g, b)| RgbColor(r, g, b);
+        let tint =
+            terminal_background::derive_nested_region_tint(to_rgb(foreground), to_rgb(background));
+        Self {
+            theme: Theme::new(ColorMode::TrueColor, Some(tint)),
+            hyperlinks_enabled: false,
+        }
+    }
+}
+
+impl PreparedDocument {
     /// Detects the document kind and prepares width-independent visual data.
     pub fn detect(
         source_path: Option<&Path>,
         source: &str,
-        hyperlinks_enabled: bool,
+        options: RenderOptions,
     ) -> Result<Self> {
-        let theme = detected_theme();
+        let theme = options.theme;
         let mut timings = RenderTimings::default();
         let analysis = AnalysisDocument::detect(source_path, source, theme, Some(&mut timings))?;
         Ok(Self::from_analysis(
             source,
             analysis,
             theme,
-            hyperlinks_enabled,
+            options.hyperlinks_enabled,
             timings,
         ))
     }
@@ -309,9 +335,9 @@ impl PreparedRender {
     pub fn named_language(
         language_name: &str,
         source: &str,
-        hyperlinks_enabled: bool,
+        options: RenderOptions,
     ) -> Result<Self> {
-        let theme = detected_theme();
+        let theme = options.theme;
         let mut timings = RenderTimings::default();
         let analysis =
             AnalysisDocument::named_language(language_name, source, theme, Some(&mut timings))?;
@@ -319,7 +345,7 @@ impl PreparedRender {
             source,
             analysis,
             theme,
-            hyperlinks_enabled,
+            options.hyperlinks_enabled,
             timings,
         ))
     }
@@ -340,6 +366,57 @@ impl PreparedRender {
             hyperlinks_enabled,
             timings,
         }
+    }
+
+    /// Syntax styles in original UTF-8 byte offsets.
+    pub fn spans(&self) -> Vec<HighlightSpan> {
+        self.visual
+            .as_ref()
+            .map(|visual| {
+                visual
+                    .spans()
+                    .iter()
+                    .filter_map(|span| {
+                        span.style.map(|style| HighlightSpan {
+                            range: span.range.clone(),
+                            style: style.into(),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Nested-region backgrounds in columns of each unwrapped source line.
+    pub fn background_lines(&self, tab_width: usize) -> Vec<Vec<HighlightBackgroundRun>> {
+        let Some(visual) = self.visual.as_ref() else {
+            return Vec::new();
+        };
+        let layout = LayoutDocument::from_visual_with_tab_width(
+            &self.source,
+            visual.spans(),
+            visual.regions(),
+            self.theme,
+            None,
+            tab_width.max(1),
+        );
+        layout
+            .rows()
+            .iter()
+            .map(|row| {
+                row.background_runs
+                    .iter()
+                    .filter_map(|run| {
+                        let color = run.style.background_rgb()?;
+                        Some(HighlightBackgroundRun {
+                            start_column: run.start_column,
+                            end_column: run.end_column,
+                            background: (color.0, color.1, color.2),
+                        })
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     /// Lays out and encodes the prepared document for `terminal_width`.
@@ -434,8 +511,12 @@ pub fn render_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let rendered =
-        PreparedRender::detect(source_path, source, hyperlinks_enabled)?.render(terminal_width);
+    let rendered = PreparedDocument::detect(
+        source_path,
+        source,
+        RenderOptions::terminal(hyperlinks_enabled),
+    )?
+    .render(terminal_width);
     Ok(RenderOutput {
         output: rendered.output,
         timings: rendered.timings,
@@ -461,8 +542,12 @@ pub fn render_named_language_with_timing_and_terminal_options(
     terminal_width: Option<usize>,
     hyperlinks_enabled: bool,
 ) -> Result<RenderOutput> {
-    let rendered = PreparedRender::named_language(language_name, source, hyperlinks_enabled)?
-        .render(terminal_width);
+    let rendered = PreparedDocument::named_language(
+        language_name,
+        source,
+        RenderOptions::terminal(hyperlinks_enabled),
+    )?
+    .render(terminal_width);
     Ok(RenderOutput {
         output: rendered.output,
         timings: rendered.timings,

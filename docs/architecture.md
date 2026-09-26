@@ -35,7 +35,7 @@
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
-- Rust 库调用方可通过 `highlight_source_spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 前景色与文字修饰；若需要嵌套区域背景，则使用 `HighlightDocument` 保留解析结果，并通过 `background_lines` 按显示 tab 宽度及调用方的前景、背景色取得每行的显示列背景区间。背景形状仍由 kat 的 visual / layout 层统一决定，调用方负责与自身的差异颜色及折行合成；库接口不探测终端。
+- Rust 库与 CLI 共用公开的 `PreparedDocument`：调用方提供 `RenderOptions` 后，可通过 `spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 样式，通过 `background_lines` 获取 kat 布局层计算的嵌套背景，或通过 `render` 获取完整终端输出。CLI 使用终端探测选项；嵌入式查看器提供自身前景、背景色，不触发终端查询。调用方负责将源范围与自身的差异颜色和折行合成。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
 - 对少数“结构化文本存在稳定高价值语义、但不适合直接伪装成现成 markup/runtime”的场景，允许在 nested language 层引入 host-owned pseudo-runtime：它不要求自己有独立 Tree-sitter grammar，而是沿 `document kind + source map + visual region` 这条链直接产出稳定语义和渲染 IR。当前 `python_docstring` 已按这条路线承接 `plain` / `reST` / `Google` / `NumPy` docstring profile；PEM 与 OpenPGP ASCII armor 也用同一路线处理文本封装边界、header、base64 body 与 checksum。

@@ -1,6 +1,15 @@
 use std::path::Path;
 
-use kat::{HighlightDocument, HighlightStyle, highlight_source_spans};
+use kat::{HighlightStyle, PreparedDocument, RenderOptions};
+
+fn document(path: &str, source: &str) -> PreparedDocument {
+    PreparedDocument::detect(
+        Some(Path::new(path)),
+        source,
+        RenderOptions::with_colors((248, 248, 242), (40, 42, 54)),
+    )
+    .unwrap()
+}
 
 #[test]
 fn library_exposes_backgrounds_for_every_nested_region_kind() {
@@ -9,12 +18,12 @@ fn library_exposes_backgrounds_for_every_nested_region_kind() {
         ("README.md", "```rust\nfn main() {}\n```\n", "fn main"),
     ];
     for (path, source, body) in cases {
-        let document = HighlightDocument::new(Some(Path::new(path)), source).unwrap();
+        let document = document(path, source);
         let line = source[..source.find(body).unwrap()]
             .bytes()
             .filter(|b| *b == b'\n')
             .count();
-        let backgrounds = document.background_lines(4, (248, 248, 242), (40, 42, 54));
+        let backgrounds = document.background_lines(4);
         assert!(
             backgrounds[line]
                 .iter()
@@ -30,8 +39,8 @@ fn library_exposes_backgrounds_for_every_nested_region_kind() {
 
 fn style_at(source: &str, needle: &str, offset: usize, path: &str) -> HighlightStyle {
     let position = source.find(needle).expect("needle in source") + offset;
-    highlight_source_spans(Some(Path::new(path)), source)
-        .expect("highlight source")
+    document(path, source)
+        .spans()
         .into_iter()
         .find(|span| span.range.start <= position && position < span.range.end)
         .expect("styled needle")
@@ -41,7 +50,7 @@ fn style_at(source: &str, needle: &str, offset: usize, path: &str) -> HighlightS
 #[test]
 fn source_spans_use_original_utf8_offsets_and_dracula_colors() {
     let source = "fn main() { let café = \"hello\"; }\n";
-    let spans = highlight_source_spans(Some(Path::new("main.rs")), source).unwrap();
+    let spans = document("main.rs", source).spans();
 
     assert!(!spans.is_empty());
     for span in &spans {
@@ -66,9 +75,5 @@ fn nested_markdown_rust_uses_the_same_syntax_style() {
 
 #[test]
 fn unknown_file_has_no_syntax_spans() {
-    assert!(
-        highlight_source_spans(Some(Path::new("mystery.unknown")), "hello\n")
-            .unwrap()
-            .is_empty()
-    );
+    assert!(document("mystery.unknown", "hello\n").spans().is_empty());
 }
