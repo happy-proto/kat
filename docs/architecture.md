@@ -29,11 +29,13 @@
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 或外部 parser bundle crate 提供的预生成 parser。
 - 如果未来确实重新引入需要在主仓库内生成 parser 的 vendored grammar，应优先把它当作例外处理，而不是恢复“大量语言都在 `kat` 内本地生成 parser”的旧模式。
 - 预编译发布产物不应要求目标系统额外安装 dav1d 动态库；当前 release build 会在 Linux、macOS 和 Windows 上静态链接 dav1d，并在打包前检查平台原生二进制依赖表。
+- 终端图片依赖由默认启用的 `terminal-images` feature 管理；只消费 `kat` 高亮库接口的项目可关闭默认 feature，避免编译图片解码、SVG 和 Sixel 栈。`kat` 二进制要求该 feature，以保持 CLI 图片行为完整。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
 
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
+- Rust 库调用方可通过 `highlight_source_spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 前景色与文字修饰；这一入口完成文档检测、语义修饰和嵌套语言合并，但不探测终端，也不执行换行和块背景布局。调用方负责把范围映射到自己的行、差异背景和渲染模型。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
 - 对少数“结构化文本存在稳定高价值语义、但不适合直接伪装成现成 markup/runtime”的场景，允许在 nested language 层引入 host-owned pseudo-runtime：它不要求自己有独立 Tree-sitter grammar，而是沿 `document kind + source map + visual region` 这条链直接产出稳定语义和渲染 IR。当前 `python_docstring` 已按这条路线承接 `plain` / `reST` / `Google` / `NumPy` docstring profile；PEM 与 OpenPGP ASCII armor 也用同一路线处理文本封装边界、header、base64 body 与 checksum。
