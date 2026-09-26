@@ -51,6 +51,7 @@
 - 默认不要新增按日期组织的阶段性开发过程文档；如果只是过程记录而非当前有效约定，默认不保留；
 - 如果仓库工作流发生变化，要同步更新 README、`prek.toml` 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`；
 - 创建 PR 时，默认使用中文标题和中文描述；除非用户当次明确要求使用其它语言。
+- Git commit message 使用英文 Conventional Commits；若 squash 合并默认继承中文 PR 标题，合并时将最终提交标题改成英文。
 - CI、发布、缓存与 `cargo binstall` 相关的具体行为，以仓库里的 workflow、配置文件和 `Cargo.toml` 为准；不要在文档里重复维护易漂移的细节。
 - `Cargo.toml` 里的 git dependency 默认不要写 `version`；如果使用 `cargo add` 自动补上了 `version`，应在确认锁文件与解析结果无误后去掉它，只保留真实需要的 git 源信息。
 - 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用仓库级构建缓存，而不是继续把复杂度压回到单次构建路径里。
