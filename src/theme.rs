@@ -172,6 +172,26 @@ pub(crate) struct TokenStyle {
 }
 
 impl TokenStyle {
+    pub(crate) fn foreground_rgb(self) -> RgbColor {
+        self.color.to_rgb_color()
+    }
+
+    pub(crate) fn is_bold(self) -> bool {
+        self.bold
+    }
+
+    pub(crate) fn is_italic(self) -> bool {
+        self.italic
+    }
+
+    pub(crate) fn is_underlined(self) -> bool {
+        self.underline
+    }
+
+    pub(crate) fn is_strikethrough(self) -> bool {
+        self.strikethrough
+    }
+
     const fn new(color: DraculaColor) -> Self {
         Self {
             color,

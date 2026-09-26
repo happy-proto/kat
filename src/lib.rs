@@ -12,11 +12,14 @@ mod layout;
 mod python_docstrings;
 mod render_ops;
 mod semantic_overlays;
+mod source_highlight;
 mod sql_dialect;
 mod terminal;
 mod terminal_background;
 mod theme;
 mod visual;
+
+pub use source_highlight::{HighlightSpan, HighlightStyle, highlight_source_spans};
 
 use std::{
     ops::Range,
