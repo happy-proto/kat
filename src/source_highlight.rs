@@ -4,7 +4,10 @@ use anyhow::Result;
 
 use crate::{
     analysis::AnalysisDocument,
+    layout::LayoutDocument,
+    terminal_background::derive_nested_region_tint,
     theme::{ColorMode, Theme, TokenStyle},
+    visual::VisualDocument,
 };
 
 /// A Dracula syntax style, independent of terminal capabilities and layout.
@@ -38,6 +41,88 @@ impl From<TokenStyle> for HighlightStyle {
 pub struct HighlightSpan {
     pub range: Range<usize>,
     pub style: HighlightStyle,
+}
+
+/// A painted background interval in display columns of an unwrapped source line.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HighlightBackgroundRun {
+    pub start_column: usize,
+    pub end_column: usize,
+    pub background: (u8, u8, u8),
+}
+
+/// Parsed syntax and nested visual regions retained for layout at the viewer's tab width.
+#[derive(Clone, Debug)]
+pub struct HighlightDocument {
+    source: String,
+    spans: Vec<HighlightSpan>,
+    visual: VisualDocument,
+}
+
+impl HighlightDocument {
+    pub fn new(source_path: Option<&Path>, source: &str) -> Result<Self> {
+        let theme = Theme::new(ColorMode::TrueColor, None);
+        let analysis = AnalysisDocument::detect(source_path, source, theme, None)?;
+        let spans = analysis
+            .spans()
+            .iter()
+            .filter_map(|span| {
+                span.style.map(|style| HighlightSpan {
+                    range: span.range.clone(),
+                    style: style.into(),
+                })
+            })
+            .collect();
+        Ok(Self {
+            source: source.to_owned(),
+            spans,
+            visual: VisualDocument::from_analysis(&analysis),
+        })
+    }
+
+    pub fn spans(&self) -> &[HighlightSpan] {
+        &self.spans
+    }
+
+    /// Compute every nested background with kat's visual-region geometry.
+    /// The tint is derived from the viewer's terminal colors without probing the terminal.
+    pub fn background_lines(
+        &self,
+        tab_width: usize,
+        foreground: (u8, u8, u8),
+        background: (u8, u8, u8),
+    ) -> Vec<Vec<HighlightBackgroundRun>> {
+        use anstyle::RgbColor;
+
+        let to_rgb = |(r, g, b)| RgbColor(r, g, b);
+        let tint = derive_nested_region_tint(to_rgb(foreground), to_rgb(background));
+        let theme = Theme::new(ColorMode::TrueColor, Some(tint));
+        let layout = LayoutDocument::from_visual_with_tab_width(
+            &self.source,
+            self.visual.spans(),
+            self.visual.regions(),
+            theme,
+            None,
+            tab_width.max(1),
+        );
+        layout
+            .rows()
+            .iter()
+            .map(|row| {
+                row.background_runs
+                    .iter()
+                    .filter_map(|run| {
+                        let color = run.style.background_rgb()?;
+                        Some(HighlightBackgroundRun {
+                            start_column: run.start_column,
+                            end_column: run.end_column,
+                            background: (color.0, color.1, color.2),
+                        })
+                    })
+                    .collect()
+            })
+            .collect()
+    }
 }
 
 /// Analyze a whole source document without probing a terminal or wrapping text.

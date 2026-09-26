@@ -19,7 +19,10 @@ mod terminal_background;
 mod theme;
 mod visual;
 
-pub use source_highlight::{HighlightSpan, HighlightStyle, highlight_source_spans};
+pub use source_highlight::{
+    HighlightBackgroundRun, HighlightDocument, HighlightSpan, HighlightStyle,
+    highlight_source_spans,
+};
 
 use std::{
     ops::Range,

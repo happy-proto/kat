@@ -1,6 +1,32 @@
 use std::path::Path;
 
-use kat::{HighlightStyle, highlight_source_spans};
+use kat::{HighlightDocument, HighlightStyle, highlight_source_spans};
+
+#[test]
+fn library_exposes_backgrounds_for_every_nested_region_kind() {
+    let cases = [
+        ("justfile", "build:\n    echo hello\n", "echo"),
+        ("README.md", "```rust\nfn main() {}\n```\n", "fn main"),
+    ];
+    for (path, source, body) in cases {
+        let document = HighlightDocument::new(Some(Path::new(path)), source).unwrap();
+        let line = source[..source.find(body).unwrap()]
+            .bytes()
+            .filter(|b| *b == b'\n')
+            .count();
+        let backgrounds = document.background_lines(4, (248, 248, 242), (40, 42, 54));
+        assert!(
+            backgrounds[line]
+                .iter()
+                .any(|run| run.end_column > run.start_column),
+            "{path}"
+        );
+        assert!(
+            backgrounds[0].is_empty(),
+            "header should remain unshaded: {path}"
+        );
+    }
+}
 
 fn style_at(source: &str, needle: &str, offset: usize, path: &str) -> HighlightStyle {
     let position = source.find(needle).expect("needle in source") + offset;

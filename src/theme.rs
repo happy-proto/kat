@@ -176,6 +176,10 @@ impl TokenStyle {
         self.color.to_rgb_color()
     }
 
+    pub(crate) fn background_rgb(self) -> Option<RgbColor> {
+        self.background
+    }
+
     pub(crate) fn is_bold(self) -> bool {
         self.bold
     }

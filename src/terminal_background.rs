@@ -143,7 +143,7 @@ pub(crate) fn detect_nested_region_tint(color_mode: ColorMode) -> Option<RgbColo
     Some(tint)
 }
 
-fn derive_nested_region_tint(foreground: RgbColor, background: RgbColor) -> RgbColor {
+pub(crate) fn derive_nested_region_tint(foreground: RgbColor, background: RgbColor) -> RgbColor {
     let contrast_lift = mix_rgb(background, foreground, 0.08);
     let palette_lift = mix_rgb(contrast_lift, RgbColor(68, 71, 90), 0.55);
     mix_rgb(contrast_lift, palette_lift, 0.5)
