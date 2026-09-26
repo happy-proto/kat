@@ -37,6 +37,17 @@ fn library_exposes_backgrounds_for_every_nested_region_kind() {
     }
 }
 
+#[test]
+fn just_recipe_nested_lines_share_a_rectangular_background() {
+    let source = "demo:\n    echo outer\n        echo nested\n";
+    let backgrounds = document("justfile", source).background_lines(4);
+    assert_eq!(
+        backgrounds[1][0].start_column,
+        backgrounds[2][0].start_column
+    );
+    assert_eq!(backgrounds[1][0].end_column, backgrounds[2][0].end_column);
+}
+
 fn style_at(source: &str, needle: &str, offset: usize, path: &str) -> HighlightStyle {
     let position = source.find(needle).expect("needle in source") + offset;
     document(path, source)

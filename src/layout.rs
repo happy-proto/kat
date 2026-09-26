@@ -319,34 +319,6 @@ fn paint_backgrounds(
                     });
                 }
             }
-            crate::host_injections::InjectionVisualKind::ScopeBlock => {
-                let mut slices = Vec::new();
-                let mut right_edge = 0usize;
-
-                for segment in &region.segments {
-                    for slice in segment_content_slices(source, segment, line_rows, profile) {
-                        right_edge = right_edge.max(slice.end_column);
-                        slices.push(slice);
-                    }
-                }
-
-                let mut row_lefts = HashMap::<usize, usize>::new();
-                for slice in slices {
-                    row_lefts
-                        .entry(slice.row_index)
-                        .and_modify(|left| *left = (*left).min(slice.start_column))
-                        .or_insert(slice.start_column);
-                }
-
-                for (row_index, left_edge) in row_lefts {
-                    pending_runs[row_index].push(LayoutBackgroundRun {
-                        start_column: left_edge,
-                        end_column: right_edge,
-                        visual_level: region.visual_level,
-                        style,
-                    });
-                }
-            }
         }
     }
 
