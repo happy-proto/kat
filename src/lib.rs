@@ -9,6 +9,7 @@ mod host_injections;
 mod language_aliases;
 mod language_runtime;
 mod layout;
+mod proto_annotations;
 mod python_docstrings;
 mod render_ops;
 mod semantic_overlays;
@@ -81,6 +82,7 @@ enum SupportedLanguage {
     Bibtex,
     Cabal,
     C,
+    Cel,
     Cfml,
     Csharp,
     Clojure,
@@ -612,6 +614,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "rust" => SupportedLanguage::Rust,
         "python" => SupportedLanguage::Python,
         "c" => SupportedLanguage::C,
+        "cel" => SupportedLanguage::Cel,
         "cpp" => SupportedLanguage::Cpp,
         "java" => SupportedLanguage::Java,
         "kotlin" => SupportedLanguage::Kotlin,
@@ -1152,6 +1155,10 @@ pub fn highlight_proto(source: &str) -> Result<String> {
     highlight_named_language("proto", source, &detected_theme())
 }
 
+pub fn highlight_cel(source: &str) -> Result<String> {
+    highlight_named_language("cel", source, &detected_theme())
+}
+
 pub fn highlight_textproto(source: &str) -> Result<String> {
     highlight_named_language("textproto", source, &detected_theme())
 }
@@ -1444,6 +1451,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "gowork" => DocumentKind::plain("gowork"),
         "gosum" => DocumentKind::plain("gosum"),
         "proto" => DocumentKind::plain("proto"),
+        "cel" => DocumentKind::plain("cel"),
         "sql" => DocumentKind::plain("sql"),
         "sql_postgres" => DocumentKind::plain("sql_postgres"),
         "sql_mysql" => DocumentKind::plain("sql_mysql"),
@@ -2197,6 +2205,11 @@ pub(crate) fn detect_document_kind(
     let proto = grammar("proto");
     if matches_path(proto, source_path) {
         return Some(DocumentKind::plain("proto"));
+    }
+
+    let cel = grammar("cel");
+    if matches_path(cel, source_path) {
+        return Some(DocumentKind::plain("cel"));
     }
 
     let textproto = grammar("textproto");
@@ -3806,6 +3819,13 @@ fn append_injection_content(
         InjectionDecode::GoString => {
             decode_go_string_content(source, range, virtual_source, source_map)
         }
+        InjectionDecode::ProtoString => decode_backslash_escaped_range(
+            source,
+            range,
+            DecodeFlavor::Proto,
+            virtual_source,
+            source_map,
+        ),
     }
 }
 
@@ -3953,6 +3973,7 @@ enum DecodeFlavor {
     Python,
     Rust,
     Go,
+    Proto,
 }
 
 fn decode_backslash_escaped_range(
@@ -4004,7 +4025,11 @@ fn decode_backslash_escaped_range(
             't' => Some(("\t".to_owned(), 1)),
             'b' => Some(("\u{0008}".to_owned(), 1)),
             'f' => Some(("\u{000C}".to_owned(), 1)),
-            'v' if matches!(flavor, DecodeFlavor::JavaScript | DecodeFlavor::Go) => {
+            'v' if matches!(
+                flavor,
+                DecodeFlavor::JavaScript | DecodeFlavor::Go | DecodeFlavor::Proto
+            ) =>
+            {
                 Some(("\u{000B}".to_owned(), 1))
             }
             '0' => Some(("\0".to_owned(), 1)),
@@ -4540,6 +4565,7 @@ mod tests {
         "graphql",
         "sql",
         "proto",
+        "cel",
         "textproto",
         "latex",
         "textile",
@@ -4734,6 +4760,11 @@ mod tests {
                 "&defaults",
                 "*defaults",
             ],
+        },
+        FixtureCase {
+            relative_path: "cel/policy.cel",
+            expect_highlight: true,
+            expected_fragments: &["request", "admin", "exists", "public"],
         },
         FixtureCase {
             relative_path: "proto/schema.proto",
@@ -5837,6 +5868,92 @@ mod tests {
     }
 
     #[test]
+    fn proto_annotations_highlight_options_http_templates_and_cel() {
+        let path = fixture_path("proto/annotations.proto");
+        let source = read_file(&path);
+        let json = debug_analysis_json(Some(path.as_path()), &source)
+            .expect("proto annotations should be analyzed");
+        let analysis: Value = serde_json::from_str(&json).expect("analysis JSON should parse");
+        let color_at = |needle: &str| {
+            let offset = source.find(needle).expect("fixture fragment should exist");
+            analysis["spans"]
+                .as_array()
+                .expect("analysis should have spans")
+                .iter()
+                .find(|span| {
+                    span["start"]
+                        .as_u64()
+                        .is_some_and(|start| start <= offset as u64)
+                        && span["end"].as_u64().is_some_and(|end| end > offset as u64)
+                })
+                .and_then(|span| span["style"]["color_name"].as_str())
+                .unwrap_or("none")
+                .to_owned()
+        };
+
+        for option in ["buf.validate.field", "validate.rules", "google.api.http"] {
+            assert_ne!(
+                color_at(option),
+                "foreground",
+                "option {option} should be styled"
+            );
+        }
+        for key in ["min_len", "additional_bindings", "expression:"] {
+            assert_ne!(
+                color_at(key),
+                "foreground",
+                "option key {key} should be styled"
+            );
+        }
+        assert_ne!(color_at("parent=publishers/*"), "yellow");
+        assert_eq!(color_at("**"), "pink");
+        assert_ne!(color_at("create\""), "yellow");
+        assert_ne!(color_at("has(this.title)"), "yellow");
+        assert_eq!(color_at("parent != ''"), "cyan");
+        assert_ne!(color_at("matches(\\\""), "yellow");
+        assert_eq!(color_at("body: \"*\""), "cyan");
+        assert_eq!(color_at("\"*\""), "yellow");
+        let cel_regions = analysis["nested_regions"]
+            .as_array()
+            .expect("expected nested regions")
+            .iter()
+            .filter(|region| region["resolved_document_kind"]["runtime_name"] == "cel")
+            .count();
+        assert_eq!(
+            cel_regions, 2,
+            "field and message CEL should both be injected"
+        );
+    }
+
+    #[test]
+    fn cel_file_detects_and_highlights_standalone_expression() {
+        let path = fixture_path("cel/policy.cel");
+        let source = read_file(&path);
+        assert_eq!(
+            detect_language(Some(path.as_path()), &source),
+            Some(SupportedLanguage::Cel)
+        );
+        let json = debug_analysis_json(Some(path.as_path()), &source)
+            .expect("standalone CEL should be analyzed");
+        let analysis: Value = serde_json::from_str(&json).expect("analysis JSON should parse");
+        assert_eq!(analysis["detected_document_kind"]["runtime_name"], "cel");
+        let exists = source
+            .find("exists")
+            .expect("fixture should contain exists");
+        assert!(
+            analysis["spans"]
+                .as_array()
+                .is_some_and(|spans| spans.iter().any(|span| {
+                    span["start"]
+                        .as_u64()
+                        .is_some_and(|start| start <= exists as u64)
+                        && span["end"].as_u64().is_some_and(|end| end > exists as u64)
+                        && span["style"]["color_name"] == "green"
+                }))
+        );
+    }
+
+    #[test]
     fn fixture_suite_matches_shell_and_config_rendering_behavior() {
         run_fixture_suite(FIXTURE_SHELL_AND_CONFIG_FAMILIES);
     }
@@ -5918,6 +6035,7 @@ mod tests {
     }
 
     const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
+        "cel",
         "csv",
         "css",
         "graphql",

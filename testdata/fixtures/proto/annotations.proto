@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package library.v1;
+
+import "google/api/annotations.proto";
+import "buf/validate/validate.proto";
+import "validate/validate.proto";
+
+message CreateBookRequest {
+  string parent = 1 [(buf.validate.field).string.min_len = 1];
+  string title = 2 [(validate.rules).string.min_len = 1];
+  string code = 3 [(buf.validate.field).cel = {
+    id: "starts_upper"
+    message: "code must start with an uppercase letter"
+    expression: "this.matches(\"^[A-Z].*$\")"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "title_requires_parent"
+    message: "parent is required when title is set"
+    expression: "!has(this.title) || this.parent != ''"
+  };
+}
+
+service Books {
+  rpc CreateBook(CreateBookRequest) returns (CreateBookRequest) {
+    option (google.api.http) = {
+      post: "/v1/{parent=publishers/*}/books"
+      body: "*"
+      additional_bindings: {
+        post: "/v1/books/{parent=**}:create"
+        body: "*"
+      }
+    };
+  }
+}

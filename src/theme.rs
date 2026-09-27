@@ -514,6 +514,8 @@ fn token_style_for(capture: &str, text: &str) -> TokenStyle {
         "constructor"
         | "label.regex"
         | "property.json_key"
+        | "property.cel"
+        | "property.proto"
         | "property.toml"
         | "property.userscript"
         | "property.yaml"

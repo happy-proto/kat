@@ -193,6 +193,7 @@ const JAVASCRIPT_INJECTIONS_QUERY: &str =
 const JAVASCRIPT_LOCALS_QUERY: &str = include_str!("../grammars/javascript/queries/locals.scm");
 const GRAPHQL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/graphql/queries/highlights.scm");
 const PROTO_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/proto/queries/highlights.scm");
+const CEL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cel/queries/highlights.scm");
 const TEXTPROTO_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/textproto/queries/highlights.scm");
 const LATEX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/latex/queries/highlights.scm");
@@ -438,6 +439,7 @@ const CSS_LANGUAGE: LanguageFn = tree_sitter_css::LANGUAGE;
 const JAVASCRIPT_LANGUAGE: LanguageFn = tree_sitter_javascript::LANGUAGE;
 const GRAPHQL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_graphql) };
 const PROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_proto) };
+const CEL_LANGUAGE: LanguageFn = tree_sitter_cel::LANGUAGE;
 const TEXTPROTO_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_textproto) };
 const LATEX_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_latex) };
 const TCL_LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_tcl) };
@@ -1148,6 +1150,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "graphql",
         language_fn: GRAPHQL_LANGUAGE,
         highlights_query: GRAPHQL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "cel",
+        language_fn: CEL_LANGUAGE,
+        highlights_query: CEL_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },

@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package library.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+message Book {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string title = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "name_matches_title"
+    message: "named books must have a title"
+    expression: "!has(this.name) || this.title.size() > 0"
+  };
+}
+
+message CreateBookRequest {
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+  Book book = 2 [(buf.validate.field).required = true];
+}
+
+service Library {
+  rpc CreateBook(CreateBookRequest) returns (Book) {
+    option (google.api.http) = {
+      post: "/v1/{parent=publishers/*}/books"
+      body: "book"
+      additional_bindings: {
+        post: "/v1/books"
+        body: "book"
+      }
+    };
+  }
+}
