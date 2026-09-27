@@ -59,9 +59,32 @@ def c_array(data, width, declaration):
 
 
 def compile_exporter(parser, directory, include_dir):
+    source = parser.read_text()
+    scanner_creates = re.findall(
+        r"\bvoid \*(tree_sitter_\w+_external_scanner_create)\(void\);", source
+    )
+    if len(scanner_creates) > 1:
+        raise ValueError(f"multiple external scanners in {parser}")
+    scanner_stubs = ""
+    if scanner_creates:
+        prefix = scanner_creates[0].removesuffix("_create")
+        scanner_stubs = f"""
+void *{prefix}_create(void) {{ return (void *)0; }}
+void {prefix}_destroy(void *payload) {{ (void)payload; }}
+bool {prefix}_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {{
+  (void)payload; (void)lexer; (void)valid_symbols; return false;
+}}
+unsigned {prefix}_serialize(void *payload, char *buffer) {{
+  (void)payload; (void)buffer; return 0;
+}}
+void {prefix}_deserialize(void *payload, const char *buffer, unsigned length) {{
+  (void)payload; (void)buffer; (void)length;
+}}
+"""
     helper = directory / "export.c"
     helper.write_text(
         f'#define TREE_SITTER_HIDE_SYMBOLS\n#include "{parser.as_posix()}"\n'
+        + scanner_stubs
         + (ROOT / "scripts/compact_parser_export.c").read_text()
     )
     executable = directory / ("export.exe" if os.name == "nt" else "export")
