@@ -95,7 +95,11 @@ def compile_exporter(parser, directory, include_dir):
             "-o",
             str(executable),
         ]
-    run(command, cwd=directory, stdout=subprocess.DEVNULL)
+    run(
+        command,
+        cwd=directory,
+        stdout=None if os.name == "nt" else subprocess.DEVNULL,
+    )
     return executable
 
 
