@@ -29,6 +29,7 @@
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 或外部 parser bundle crate 提供的预生成 parser。
 - 如果未来确实重新引入需要在主仓库内生成 parser 的 vendored grammar，应优先把它当作例外处理，而不是恢复“大量语言都在 `kat` 内本地生成 parser”的旧模式。
 - 预编译发布产物不应要求目标系统额外安装 dav1d 动态库；当前 release build 会在 Linux、macOS 和 Windows 上静态链接 dav1d，并在打包前检查平台原生二进制依赖表。
+- CI 发布构建在独立 Cargo home 中把所有 Tree-sitter parser 的大状态表转换为原生紧凑表结构，再以 Zstd level 19 分语言压缩并静态链接解码器。每种语言首次使用时只解压自己的表；并发初始化只执行一次。构建期改写的是依赖包生成的 C 数据，仓库不保存生成的 parser。普通本地构建不启用该 feature；`just compact-release` 可复现发布路径。体积与性能实验见 [binary-size-experiment.md](binary-size-experiment.md)。
 - 终端图片依赖由默认启用的 `terminal-images` feature 管理；只消费 `kat` 高亮库接口的项目可关闭默认 feature，避免编译图片解码、SVG 和 Sixel 栈。`kat` 二进制要求该 feature，以保持 CLI 图片行为完整。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
 

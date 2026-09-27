@@ -336,6 +336,27 @@ jobs:
         with:
           target: ${{ matrix.target }}
 
+      - name: Set up uv for parser table packing
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up MSVC for parser table extraction
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.target == 'aarch64-pc-windows-msvc' && 'amd64_arm64' || 'amd64' }}
+
+      - name: Select MSVC linker for Cargo
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          $compiler = (Get-Command cl.exe).Source
+          $linker = Join-Path (Split-Path $compiler) 'link.exe'
+          if (-not (Test-Path $linker)) { throw "MSVC linker was not found at $linker" }
+          $variable = 'CARGO_TARGET_' + $env:TARGET.Replace('-', '_').ToUpperInvariant() + '_LINKER'
+          "$variable=$linker" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Set up sccache
         if: matrix.use_sccache
         uses: mozilla-actions/sccache-action@v0.0.11
@@ -380,7 +401,20 @@ jobs:
             export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=always
           fi
 
-          cargo build --timings --release --locked --target "${TARGET}"
+          export CARGO_HOME="${RUNNER_TEMP}/kat-compact-cargo-home"
+          mkdir -p "${CARGO_HOME}/registry"
+          if [[ -d "${HOME}/.cargo/registry/cache" ]]; then
+            cp -R "${HOME}/.cargo/registry/cache" "${CARGO_HOME}/registry/cache"
+          fi
+          if [[ -d "${HOME}/.cargo/registry/index" ]]; then
+            cp -R "${HOME}/.cargo/registry/index" "${CARGO_HOME}/registry/index"
+          fi
+          cargo fetch --locked --target "${TARGET}"
+          uv run --script scripts/compact_parser_tables.py \
+            --manifest-path Cargo.toml \
+            --cargo-home "${CARGO_HOME}"
+
+          cargo build --timings --release --locked --features compact-parser-tables --target "${TARGET}"
           build_end=$(date +%s)
 
           total_end=$(date +%s)
@@ -415,6 +449,17 @@ jobs:
             echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
           } >> "${GITHUB_ENV}"
 
+      - name: Smoke test compressed release parsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sample in \
+            testdata/showcase/systemverilog/rich.sv \
+            testdata/showcase/bash/rich.sh \
+            testdata/showcase/rust/rich.rs; do
+            "${ARTIFACT_PATH}" --debug-analysis "${sample}" > /dev/null
+          done
+
       - name: Verify Unix release runtime dependencies
         if: runner.os != 'Windows'
         shell: bash
@@ -429,9 +474,9 @@ jobs:
             dependencies=$(otool -L "${ARTIFACT_PATH}")
           fi
 
-          if grep -Fqi "dav1d" <<< "${dependencies}"; then
-            echo "::error::Release binary must not dynamically link dav1d"
-            grep -Fi "dav1d" <<< "${dependencies}"
+          if grep -Eqi "dav1d|zstd" <<< "${dependencies}"; then
+            echo "::error::Release binary must not dynamically link dav1d or Zstd"
+            grep -Ei "dav1d|zstd" <<< "${dependencies}"
             exit 1
           fi
 
@@ -450,9 +495,9 @@ jobs:
           }
 
           $dependencies = & $($dumpbin.FullName) /DEPENDENTS $env:ARTIFACT_PATH
-          if ($dependencies | Select-String -Quiet -Pattern 'dav1d\.dll') {
-            $dependencies | Select-String -Pattern 'dav1d\.dll'
-            throw "Release binary must not dynamically link dav1d.dll"
+          if ($dependencies | Select-String -Quiet -Pattern '(dav1d|zstd)\.dll') {
+            $dependencies | Select-String -Pattern '(dav1d|zstd)\.dll'
+            throw "Release binary must not dynamically link dav1d.dll or zstd.dll"
           }
 
       - name: Package latest release asset (Unix)
