@@ -21,6 +21,7 @@ Included sources:
 - `grammars/bibtex/queries/locals.scm`
 - `grammars/c/queries/highlights.scm`
 - `grammars/cabal/queries/highlights.scm`
+- `grammars/cel/queries/highlights.scm`
 - `grammars/cfml/queries/highlights.scm`
 - `grammars/cfml/queries/injections.scm`
 - `grammars/clojure/queries/highlights.scm`
@@ -221,6 +222,7 @@ Included sources:
 - `grammars/gowork/queries/highlights.scm`
 - `grammars/gosum/queries/highlights.scm`
 - `grammars/graphql/queries/highlights.scm`
+- `grammars/cel/queries/highlights.scm`
 - `grammars/proto/queries/highlights.scm`
 - `grammars/textproto/queries/highlights.scm`
 - `grammars/latex/queries/highlights.scm`
@@ -511,11 +513,17 @@ Upstream projects:
   License: MIT
   Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/graphql/` directory now only keeps kat-side integration assets such as queries.
 
+- `grammars/cel/queries/highlights.scm`
+  Source: repository-local query maintained against [bufbuild/tree-sitter-cel](https://github.com/bufbuild/tree-sitter-cel)
+  Revision: parser dependency at `fd2e8efaa07e71e46dcc1d5c4c85556a742d8c36`
+  License: MIT (local query); Apache-2.0 (upstream parser)
+  Notes: the parser is consumed from the git-backed Rust crate dependency, and no parser source or generated output is copied into this repository.
+
 - `grammars/proto/queries/highlights.scm`
   Source: [mitchellh/tree-sitter-proto](https://github.com/mitchellh/tree-sitter-proto)
   Revision: `42d82fa18f8afe59b5fc0b16c207ee4f84cb185f`
   License: MIT
-  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/proto/` directory now only keeps kat-side integration assets such as queries.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local query adds kat-specific captures for generic protobuf option structure used by AIP-127, Protovalidate, and PGV.
 
 - `grammars/textproto/queries/highlights.scm`
   Source: [PorterAtGoogle/tree-sitter-textproto](https://github.com/PorterAtGoogle/tree-sitter-textproto)

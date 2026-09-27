@@ -1,0 +1,3 @@
+request.auth.claims.role == "librarian" &&
+resource.name.startsWith("publishers/") &&
+resource.tags.exists(tag, tag in ["public", "reviewed"])
