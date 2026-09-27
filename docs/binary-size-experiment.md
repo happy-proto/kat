@@ -35,4 +35,4 @@
 
 ## 后续验证
 
-- 仍需通过 CI 在 Linux、macOS、Windows 上复核构建和静态依赖，并持续观察不同输入规模的端到端耗时。最大样本的逐字节输出对照目前只覆盖 SystemVerilog。
+- CI 的发布构建矩阵在 Linux、macOS、Windows 上复核构建和静态依赖；后续持续观察不同输入规模的端到端耗时。最大样本的逐字节输出对照目前只覆盖 SystemVerilog。
