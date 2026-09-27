@@ -61,7 +61,7 @@ def c_array(data, width, declaration):
 def compile_exporter(parser, directory, include_dir):
     helper = directory / "export.c"
     helper.write_text(
-        f'#include "{parser.as_posix()}"\n'
+        f'#define TREE_SITTER_HIDE_SYMBOLS\n#include "{parser.as_posix()}"\n'
         + (ROOT / "scripts/compact_parser_export.c").read_text()
     )
     executable = directory / ("export.exe" if os.name == "nt" else "export")
