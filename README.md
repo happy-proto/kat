@@ -105,12 +105,14 @@ prek install
 ```
 
 普通测试使用 `just test`；包含真实 PTY 与 Ghostty 无头终端模型的端到端测试使用 `just ghostty-e2e`。
+本地复现 CI 的紧凑 parser 静态发布构建使用 `just compact-release`，需预先安装 `uv` 和 C 编译器。该命令在独立的临时 Cargo home 中提取并压缩全部 parser 表，生成的 `target/release/kat` 会在首次使用某语言时按需解压其表。
 
 ## 文档入口
 
 - 当前支持现状：[`docs/language-coverage.md`](docs/language-coverage.md)
 - 架构说明：[`docs/architecture.md`](docs/architecture.md)
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
+- 发布二进制体积实验：[`docs/binary-size-experiment.md`](docs/binary-size-experiment.md)
 - 仓库维护约定：[`docs/maintenance.md`](docs/maintenance.md)
 - 主仓库 vendored parser 现状：[`docs/vendor-grammar-exceptions.md`](docs/vendor-grammar-exceptions.md)
 - 测试样例约定：[`docs/test-assets.md`](docs/test-assets.md)

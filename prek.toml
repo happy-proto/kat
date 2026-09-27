@@ -17,6 +17,15 @@ hooks = [
 repo = "local"
 
 [[repos.hooks]]
+id = "parser-packer-lint"
+name = "parser packer Ruff"
+language = "system"
+entry = "uvx ruff check scripts/compact_parser_tables.py"
+files = "^scripts/compact_parser_tables\\.py$"
+pass_filenames = false
+priority = 5
+
+[[repos.hooks]]
 id = "fmt-check"
 name = "cargo fmt --check"
 language = "system"

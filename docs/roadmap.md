@@ -11,6 +11,11 @@
 5. 继续优化特殊文件名和无扩展名输入的语言识别策略。
 6. 保持 [README.md](../README.md)、[language-coverage.md](language-coverage.md) 与实际仓库状态同步。
 
+## 发布二进制体积
+
+- CI 静态发布构建已让全部 parser 使用 Tree-sitter 原生紧凑表 + Zstd level 19，按语言延迟解压；不引入训练字典。方案对比、测量依据和边界见 [发布二进制体积实验](binary-size-experiment.md)。
+- 后续持续观察各平台的安装后体积与最大语言的大文件端到端耗时。
+
 ## 语言与 Runtime
 
 ### SQL

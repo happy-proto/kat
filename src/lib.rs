@@ -1,5 +1,7 @@
 mod analysis;
 mod armor_formats;
+#[cfg(feature = "compact-parser-tables")]
+mod compact_parser_tables;
 mod debug_progress;
 mod debug_runtime_log;
 mod display_geometry;
