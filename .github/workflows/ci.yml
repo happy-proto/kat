@@ -449,6 +449,17 @@ jobs:
             echo "LINK_LOG_PATH=${KAT_LINK_LOG}"
           } >> "${GITHUB_ENV}"
 
+      - name: Smoke test compressed release parsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sample in \
+            testdata/showcase/systemverilog/rich.sv \
+            testdata/showcase/bash/rich.sh \
+            testdata/showcase/rust/rich.rs; do
+            "${ARTIFACT_PATH}" --debug-analysis "${sample}" > /dev/null
+          done
+
       - name: Verify Unix release runtime dependencies
         if: runner.os != 'Windows'
         shell: bash
