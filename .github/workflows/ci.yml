@@ -345,6 +345,18 @@ jobs:
         with:
           arch: ${{ matrix.target == 'aarch64-pc-windows-msvc' && 'amd64_arm64' || 'amd64' }}
 
+      - name: Select MSVC linker for Cargo
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          $compiler = (Get-Command cl.exe).Source
+          $linker = Join-Path (Split-Path $compiler) 'link.exe'
+          if (-not (Test-Path $linker)) { throw "MSVC linker was not found at $linker" }
+          $variable = 'CARGO_TARGET_' + $env:TARGET.Replace('-', '_').ToUpperInvariant() + '_LINKER'
+          "$variable=$linker" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Set up sccache
         if: matrix.use_sccache
         uses: mozilla-actions/sccache-action@v0.0.11
