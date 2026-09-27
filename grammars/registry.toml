@@ -1657,6 +1657,29 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "cel"
+library_name = "tree-sitter-cel"
+parser_source = "crate"
+extensions = ["cel"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "function.call",
+  "keyword",
+  "keyword.operator",
+  "number",
+  "operator",
+  "property.cel",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "variable",
+]
+
+[[grammar]]
 name = "proto"
 library_name = "tree-sitter-proto"
 parser_source = "crate"
@@ -1665,13 +1688,18 @@ filenames = []
 shebang_substrings = []
 extra_c_flags = []
 highlight_names = [
+  "attribute",
   "comment",
   "constant.builtin",
+  "function.call",
   "keyword",
   "number",
+  "property.proto",
   "punctuation.bracket",
   "string",
   "type",
+  "variable.parameter",
+  "operator",
 ]
 
 [[grammar]]

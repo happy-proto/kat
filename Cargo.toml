@@ -49,6 +49,7 @@ tree-sitter-bash = "0.25.1"
 tree-sitter-batch = "0.11.1"
 tree-sitter-c = "0.24.2"
 tree-sitter-c-sharp = "0.23.1"
+tree-sitter-cel = { git = "https://github.com/bufbuild/tree-sitter-cel" }
 tree-sitter-cfml = "0.26.20"
 tree-sitter-clojure-orchard = "0.2.5"
 tree-sitter-cmake = "0.7.1"

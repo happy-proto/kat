@@ -1,0 +1,2 @@
+request.auth.claims.role == "admin" &&
+resource.tags.exists(tag, tag == "public")

@@ -319,6 +319,7 @@ fn semantic_capture_spans_for(
             | "sql_mysql"
             | "sql_sqlite"
             | "jsdoc"
+            | "proto"
     );
     let has_profile_overlays = matches!(
         profile,
@@ -364,6 +365,21 @@ fn semantic_capture_spans_for(
 
         if language_name == "jsdoc" {
             collect_jsdoc_node_spans(node, source, &mut spans);
+        }
+
+        if language_name == "proto" && node.kind() == "source_file" {
+            for annotation in crate::proto_annotations::annotation_strings(node, source) {
+                if annotation.kind == crate::proto_annotations::AnnotationStringKind::HttpPath {
+                    spans.extend(
+                        crate::proto_annotations::http_path_captures(source, annotation.content)
+                            .into_iter()
+                            .map(|capture| SemanticCaptureSpan {
+                                range: capture.range,
+                                capture: capture.capture,
+                            }),
+                    );
+                }
+            }
         }
 
         if language_name == "yaml"

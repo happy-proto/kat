@@ -20,6 +20,7 @@ pub(crate) enum InjectionDecode {
     PythonString,
     RustString,
     GoString,
+    ProtoString,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -259,6 +260,10 @@ fn collect_host_injection_candidates(
             tree.root_node(),
             source,
         )),
+        ("proto", _) => candidates.extend(collect_proto_cel_injection_candidates(
+            tree.root_node(),
+            source,
+        )),
         ("javascript" | "typescript" | "tsx", _) => {
             candidates.extend(collect_ecmascript_comment_injection_candidates(
                 document_kind.runtime_name(),
@@ -270,6 +275,29 @@ fn collect_host_injection_candidates(
     }
 
     Ok(candidates)
+}
+
+fn collect_proto_cel_injection_candidates(root: Node<'_>, source: &str) -> Vec<InjectionCandidate> {
+    crate::proto_annotations::annotation_strings(root, source)
+        .into_iter()
+        .filter(|annotation| {
+            annotation.kind == crate::proto_annotations::AnnotationStringKind::Cel
+                && !annotation.content.is_empty()
+        })
+        .map(|annotation| InjectionCandidate {
+            document_kind: plain_document_kind("cel"),
+            ranges: vec![annotation.content],
+            projection: InjectionProjection::RawRanges,
+            is_combined: false,
+            strip_shared_indent: false,
+            merge_parent_styles: false,
+            decode: InjectionDecode::ProtoString,
+            highlight_github_expressions: false,
+            visual_kind: Some(InjectionVisualKind::Transparent),
+            visual_level_bump: Some(0),
+            visual_anchor: Some(InjectionVisualAnchor::Content),
+        })
+        .collect()
 }
 
 fn collect_prek_toml_injection_candidates(root: Node, source: &str) -> Vec<InjectionCandidate> {
