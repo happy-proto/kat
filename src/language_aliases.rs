@@ -51,6 +51,7 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         "scala" | "sbt" => "scala",
         "scss" => "scss",
         "ssh" | "ssh-config" | "ssh_config" => "ssh_config",
+        "known-hosts" | "known_hosts" | "ssh-known-hosts" | "ssh_known_hosts" => "known_hosts",
         "swift" => "swift",
         "ts" | "mts" | "cts" => "typescript",
         "tsx" | "typescriptreact" => "tsx",

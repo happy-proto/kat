@@ -28,6 +28,43 @@ const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn kat_auto_detects_known_hosts_and_renders_revocation_warning() -> TestResult {
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/known_hosts/known_hosts");
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        120,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(120, ROWS, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+    for (needle, expected, bold) in [
+        ("@revoked", (255, 184, 108), true),
+        ("example.com", (139, 233, 253), false),
+        ("|1|c2FsdA==|aGFzaA==", (139, 233, 253), false),
+        ("# Public host keys", (98, 114, 164), false),
+    ] {
+        let y = rendered.line_index(needle);
+        let line = &rendered.screen[y];
+        assert!(line.starts_with(needle));
+        let style = rendered
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x: 0, y: y as u32 }))?
+            .style()?;
+        let StyleColor::Rgb(color) = style.fg_color else {
+            panic!("expected RGB syntax color for {needle}: {style:?}");
+        };
+        assert_eq!((color.r, color.g, color.b), expected, "{needle}");
+        assert_eq!(style.bold, bold, "{needle}");
+    }
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
 fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
     let narrow = render_fixture_in_ghostty("markdown/ghostty-e2e.md", COLS, ROWS)?;
     let wide = render_fixture_in_ghostty("markdown/ghostty-e2e.md", 96, ROWS)?;

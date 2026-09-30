@@ -173,6 +173,14 @@
 
 ## 特殊文件与检测场景
 
+### SSH 主机公钥记录（known_hosts）
+
+`known_hosts` 与 `ssh_known_hosts` 按精确文件名进入独立 `known_hosts` runtime，因此相对路径 `.ssh/known_hosts`、绝对路径下的 `.ssh/known_hosts` 和 `/etc/ssh/ssh_known_hosts` 都能识别。普通 `config`、`known_hosts.bak` 与 stdin 不会因 SSH 主机公钥内容而进入这个 runtime；已有 `ssh_config`、`sshd_config`、`.ssh/config` 和 `authorized_keys` 识别保持独立。
+
+当前高亮覆盖域名/IP、逗号分隔的主机列表、`[host]:port`、通配与否定 pattern、`|1|salt|hash` 哈希主机、密钥类型和注释。`@cert-authority` 标记为关键字，`@revoked` 使用警示样式，公钥载荷弱化显示。parser 严格区分行边界并支持 CRLF 与末行无换行，但不进行密钥解码、密码学验证或信任判断。fixture 和 Ghostty E2E 覆盖识别与终端样式。
+
+### 检测场景总览
+
 | 场景 | `kat` 当前状态 | `zed` 参考情况 | 现阶段判断 |
 | --- | --- | --- | --- |
 | `Cargo.toml` | 🟩 已支持 | `zed` 语言系统里也把 manifest 作为 Rust / TOML 生态的一部分使用。 | 已达标。 |

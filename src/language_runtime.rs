@@ -52,6 +52,8 @@ const NASM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/nasm/queries/highl
 const ASCIIDOC_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/asciidoc/queries/highlights.scm");
 const AUTHORIZED_KEYS_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/authorized_keys/queries/highlights.scm");
+const KNOWN_HOSTS_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/known_hosts/queries/highlights.scm");
 const AWK_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/awk/queries/highlights.scm");
 const BASH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/bash/queries/highlights.scm");
 const BASH_INJECTIONS_QUERY: &str = include_str!("../grammars/bash/queries/injections.scm");
@@ -597,6 +599,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "authorized_keys",
         language_fn: AUTHORIZED_KEYS_LANGUAGE,
         highlights_query: AUTHORIZED_KEYS_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "known_hosts",
+        language_fn: tree_sitter_kat_parsers::KNOWN_HOSTS_LANGUAGE,
+        highlights_query: KNOWN_HOSTS_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },

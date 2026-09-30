@@ -494,6 +494,25 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "known_hosts"
+library_name = "tree-sitter-known-hosts"
+parser_source = "crate"
+extensions = []
+filenames = ["known_hosts", "ssh_known_hosts"]
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "keyword",
+  "operator",
+  "punctuation.delimiter",
+  "string.special.key",
+  "text.warning",
+  "type",
+]
+
+[[grammar]]
 name = "awk"
 library_name = "tree-sitter-awk"
 parser_source = "crate"
