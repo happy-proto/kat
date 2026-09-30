@@ -77,6 +77,7 @@ enum SupportedLanguage {
     Asp,
     Asm,
     AuthorizedKeys,
+    KnownHosts,
     OpenPgpArmor,
     Awk,
     Bash,
@@ -579,6 +580,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "nasm" => SupportedLanguage::Nasm,
         "asciidoc" => SupportedLanguage::AsciiDoc,
         "authorized_keys" => SupportedLanguage::AuthorizedKeys,
+        "known_hosts" => SupportedLanguage::KnownHosts,
         "pem" => SupportedLanguage::Pem,
         "openpgp_armor" => SupportedLanguage::OpenPgpArmor,
         "awk" => SupportedLanguage::Awk,
@@ -1378,6 +1380,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "nasm" => DocumentKind::plain("nasm"),
         "asciidoc" => DocumentKind::plain("asciidoc"),
         "authorized_keys" => DocumentKind::plain("authorized_keys"),
+        "known_hosts" => DocumentKind::plain("known_hosts"),
         "pem" => DocumentKind::plain("pem"),
         "openpgp_armor" => DocumentKind::plain("openpgp_armor"),
         "awk" => DocumentKind::plain("awk"),
@@ -1855,6 +1858,10 @@ pub(crate) fn detect_document_kind(
         || is_authorized_keys_pub_path(source_path, source)
     {
         return Some(DocumentKind::plain("authorized_keys"));
+    }
+
+    if matches_path(grammar("known_hosts"), source_path) {
+        return Some(DocumentKind::plain("known_hosts"));
     }
 
     if is_pem_path(source_path, source) || looks_like_pem(source) {
@@ -4595,6 +4602,7 @@ mod tests {
         "git_mailmap",
         "git_log",
         "authorized_keys",
+        "known_hosts",
         "ssh_config",
         "gitattributes",
         "git_commit",
@@ -5499,6 +5507,17 @@ mod tests {
             expected_fragments: &["interface", "Theme", "GetTheme", "NotFound"],
         },
         FixtureCase {
+            relative_path: "known_hosts/known_hosts",
+            expect_highlight: true,
+            expected_fragments: &[
+                "example.com",
+                "ssh-ed25519",
+                "@cert-authority",
+                "@revoked",
+                "|1|",
+            ],
+        },
+        FixtureCase {
             relative_path: "ssh_config/.ssh/config",
             expect_highlight: true,
             expected_fragments: &["Host", "HostName", "IdentityFile", "Match", "Port"],
@@ -5533,6 +5552,11 @@ mod tests {
                 "@@",
                 "Add git metadata",
             ],
+        },
+        FixtureCase {
+            relative_path: "authorized_keys/id_ed25519.pub",
+            expect_highlight: true,
+            expected_fragments: &["ssh-ed25519", "dcjanusmacbook-pro tailnet", "Example/8"],
         },
         FixtureCase {
             relative_path: "authorized_keys/authorized_keys",

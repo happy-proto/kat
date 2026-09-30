@@ -28,6 +28,64 @@ const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn kat_renders_public_key_comments_and_base64_suffixes_consistently() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("testdata/fixtures/authorized_keys/id_ed25519.pub");
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        100,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(100, ROWS, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+    rendered.assert_text_style("ssh-ed25519", (139, 233, 253), false)?;
+    rendered.assert_text_style("dcjanusmacbook-pro tailnet", (98, 114, 164), true)?;
+    rendered.assert_text_style("AAAAC3NzaC1lZDI1NTE5AAAAIExample/8", (189, 147, 249), false)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn kat_auto_detects_known_hosts_and_renders_revocation_warning() -> TestResult {
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/known_hosts/known_hosts");
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        120,
+        ROWS,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(120, ROWS, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+    for (needle, expected, bold) in [
+        ("@revoked", (255, 184, 108), true),
+        ("example.com", (139, 233, 253), false),
+        ("|1|c2FsdA==|aGFzaA==", (139, 233, 253), false),
+        ("# Public host keys", (98, 114, 164), false),
+    ] {
+        let y = rendered.line_index(needle);
+        let line = &rendered.screen[y];
+        assert!(line.starts_with(needle));
+        let style = rendered
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x: 0, y: y as u32 }))?
+            .style()?;
+        let StyleColor::Rgb(color) = style.fg_color else {
+            panic!("expected RGB syntax color for {needle}: {style:?}");
+        };
+        assert_eq!((color.r, color.g, color.b), expected, "{needle}");
+        assert_eq!(style.bold, bold, "{needle}");
+    }
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
 fn kat_uses_pty_width_for_wrapping() -> Result<(), Box<dyn std::error::Error>> {
     let narrow = render_fixture_in_ghostty("markdown/ghostty-e2e.md", COLS, ROWS)?;
     let wide = render_fixture_in_ghostty("markdown/ghostty-e2e.md", 96, ROWS)?;
@@ -697,6 +755,56 @@ impl RenderedTerminal {
         assert!(
             self.hyperlink_uris()?.contains(&uri.to_string()),
             "expected OSC 8 hyperlink {uri:?} on Ghostty cells:\n{}",
+            self.screen_text()
+        );
+        Ok(())
+    }
+
+    fn assert_text_style(
+        &self,
+        needle: &str,
+        foreground: (u8, u8, u8),
+        italic: bool,
+    ) -> TestResult {
+        let mut state = RenderState::new()?;
+        let snapshot = state.update(&self.terminal)?;
+        let mut rows = RowIterator::new()?;
+        let mut cells = CellIterator::new()?;
+        let mut row_iter = rows.update(&snapshot)?;
+        let mut found = false;
+        while let Some(row) = row_iter.next() {
+            let mut text = String::new();
+            let mut styles = Vec::new();
+            let mut cell_iter = cells.update(row)?;
+            while let Some(cell) = cell_iter.next() {
+                let mut grapheme = String::new();
+                cell.graphemes_utf8(&mut grapheme)?;
+                if grapheme.is_empty() {
+                    grapheme.push(' ');
+                }
+                // These are UTF-8 offsets into collected cell text, not display columns.
+                let start = text.len();
+                text.push_str(&grapheme);
+                styles.push((start..text.len(), cell.style()?));
+            }
+            for (start, _) in text.match_indices(needle) {
+                found = true;
+                let end = start + needle.len();
+                for (_, style) in styles
+                    .iter()
+                    .filter(|(range, _)| range.start < end && range.end > start)
+                {
+                    let StyleColor::Rgb(color) = style.fg_color else {
+                        panic!("expected RGB color for {needle}: {style:?}");
+                    };
+                    assert_eq!((color.r, color.g, color.b), foreground, "{needle}");
+                    assert_eq!(style.italic, italic, "{needle}");
+                }
+            }
+        }
+        assert!(
+            found,
+            "expected {needle} in Ghostty screen:\n{}",
             self.screen_text()
         );
         Ok(())

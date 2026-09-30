@@ -1,0 +1,6 @@
+# Public host keys; illustrative payloads, not real trust records.
+example.com,192.0.2.1 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample example host
+[example.net]:2222,[2001:db8::1]:2222 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDemo
+@cert-authority *.example.org,!excluded.example.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICA
+@revoked old.example.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIRevoked
+|1|c2FsdA==|aGFzaA== ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHashed

@@ -101,7 +101,7 @@
 | Assembly (`.s` / `.S`) | 🟨 基础 | 已支持 `.s` / `.S`；当前独立 `asm` runtime 已覆盖最小汇编语法高亮，并补上 fixture，继续承接传统汇编入口。 | 生态里已有通用 assembly Tree-sitter grammar，可覆盖这类传统汇编入口。 | 把 `.s` / `.S` 留在通用 `asm` runtime，比把所有汇编方言都塞进同一套 profile 更稳妥；需要方言化时，再沿 detector/runtime 继续拆。 |
 | NASM / x86-64 Assembly | 🟨 基础 | 已支持 `.asm` / `.nasm` / `.yasm` / `.inc` / `.mac`；当前独立 `nasm` runtime 已覆盖 comment、label、register、instruction、directive、size hint、立即数 / string 等基础结构，并补上 fixture / showcase。 | 生态里已有独立 NASM Tree-sitter grammar，可直接把 x86 / x86_64 风格入口从通用 assembly 里拆出来。 | 这一层最重要的决策是把 NASM 方言独立成 runtime，而不是继续拿通用 `asm` grammar 硬吃 `.asm`；后续再做深时，收益会主要来自 instruction family、memory operand 和 preprocessor 细节。 |
 | AsciiDoc | 🟨 基础 | 已支持 `.adoc` / `.ad` / `.asciidoc`；当前独立 `asciidoc` runtime 已接入 grammar、scanner、support files 与 highlights query，并补上 fixture。 | 生态里已有独立 AsciiDoc Tree-sitter grammar，可作为后续继续补 heading/list/admonition 细节的基础。 | 这门语言现在已经脱离“纯文本”阶段；下一步更值得做的是围绕 markup 语义继续抠 query，而不是重新讨论 runtime 是否独立。 |
-| Authorized Keys | 🟨 基础 | 已支持 `authorized_keys` / `authorized_keys2` 文件名，并对明显 SSH 公钥内容的 `.pub` 文件补上内容感知检测；当前仓库内还维护了一个面向 key type / base64 blob / option / comment 的小型本地 grammar。fixture 已覆盖常见 authorized_keys 场景。 | 成熟编辑器生态未必都会单独细化这类 SSH plumbing 文件，但把它作为独立 mini-runtime 处理，比退回普通文本更适合终端阅读。 | 这是一个很符合 `kat` 当前 detector + mini-runtime 模型的文件类型：格式稳定、收益高，而且不值得为了它引入更重的 grammar 依赖链。 |
+| Authorized Keys | 🟨 基础 | 已支持 `authorized_keys` / `authorized_keys2` 文件名，并对明显 SSH 公钥内容的 `.pub` 文件补上内容感知检测；小型独立 grammar 通过密钥算法与显式字段/行边界区分授权选项、完整 Base64 公钥和任意尾注。无授权选项的普通公钥、尾部 `/8`、带空格的尾注、CRLF 与末行无换行均有回归覆盖；尾注统一按注释样式显示。 | 成熟编辑器生态未必都会单独细化这类 SSH plumbing 文件，但把它作为独立 mini-runtime 处理，比退回普通文本更适合终端阅读。 | 这是一个很符合 `kat` 当前 detector + mini-runtime 模型的文件类型：格式稳定、收益高，而且不值得为了它引入更重的 grammar 依赖链。 |
 | PEM / OpenPGP ASCII armor | 🟨 基础 | 已支持内容检测 PEM 文本封装与 OpenPGP ASCII armor；`.pem` / `.crt` / `.cer` / `.csr` / `.crl` / `.key`、`.asc` / `.pgp` / `.gpg` 这类路径只在内容确实包含匹配的 `BEGIN` / `END` armor block 时命中。当前 pseudo-runtime 高亮 `BEGIN` / `END` 边界、证书 / key / PGP block label、PEM legacy header、OpenPGP armor header、base64 body 与 checksum；私钥 label 会用 warning 风格突出。fixture 覆盖证书链、PGP 公钥和 cleartext signed message；私钥 warning 行为用运行时拼接的测试输入覆盖，避免把完整私钥 block 写进仓库。 | PEM 有很小的 Tree-sitter grammar 可参考，但没有成熟 crate-backed 入口；OpenPGP armor 更适合按文本封装层处理，而不是直接引入 packet 解析器。 | 这一类格式的高价值点在“快速看清这是证书、公钥、私钥还是 PGP 消息”，不是在终端里解析 ASN.1 / OpenPGP packet。先用 pseudo-runtime 固定文本契约，比为了少量 token 引入重依赖更稳。 |
 | AWK | 🟨 基础 | 已支持 `.awk` 与 `awk` / `gawk` / `mawk` / `nawk` shebang；当前独立 `awk` runtime 已接入 grammar/scanner/highlights 资产，并补上 fixture。 | 生态里已有独立 AWK grammar，可作为后续补 pattern/action、builtin variable 和 regexp 细节的基础。 | 这一层已经把脚本文件识别与基础可读性补齐；后续若继续做深，重点是 query 细化，而不是宿主分发。 |
 | BibTeX | 🟨 基础 | 已支持 `.bib`；当前独立 `bibtex` runtime 已接入 grammar、highlights 与 locals query，并补上 fixture。 | 生态里已有独立 BibTeX grammar，可作为后续继续补 entry type、field key/value 语义的基础。 | 现在已经有了稳定 runtime 入口；下一步若继续推进，价值主要来自把 bibliography 结构语义补细，而不是 detector。 |
@@ -172,6 +172,14 @@
 其中 `JSDoc` 当前最值得继续观察的是：是否要升级 grammar revision、补独立 injections，或者接受它维持在“tags / types 已经够用”的层级。`GraphQL` 则已经接通 runtime，但 query 还明显浅于样板语言；`SQL` / `Regex` 的剩余工作更多集中在共享 grammar 的表达上限。
 
 ## 特殊文件与检测场景
+
+### SSH 主机公钥记录（known_hosts）
+
+`known_hosts` 与 `ssh_known_hosts` 按精确文件名进入独立 `known_hosts` runtime，因此相对路径 `.ssh/known_hosts`、绝对路径下的 `.ssh/known_hosts` 和 `/etc/ssh/ssh_known_hosts` 都能识别。普通 `config`、`known_hosts.bak` 与 stdin 不会因 SSH 主机公钥内容而进入这个 runtime；已有 `ssh_config`、`sshd_config`、`.ssh/config` 和 `authorized_keys` 识别保持独立。
+
+当前高亮覆盖域名/IP、逗号分隔的主机列表、`[host]:port`、通配与否定 pattern、`|1|salt|hash` 哈希主机、密钥类型和注释。`@cert-authority` 标记为关键字，`@revoked` 使用警示样式，公钥载荷弱化显示。parser 严格区分行边界并支持 CRLF 与末行无换行，但不进行密钥解码、密码学验证或信任判断。fixture 和 Ghostty E2E 覆盖识别与终端样式。
+
+### 检测场景总览
 
 | 场景 | `kat` 当前状态 | `zed` 参考情况 | 现阶段判断 |
 | --- | --- | --- | --- |
