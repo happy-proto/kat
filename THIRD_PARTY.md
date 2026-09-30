@@ -891,7 +891,7 @@ Upstream projects:
   Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/asciidoc/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/known_hosts/queries/highlights.scm`
-  Source: kat local integration; parser grammar is maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers/tree/14b54468f206fc35fc948a907e767b7fc587fcff/upstreams/known_hosts).
+  Source: kat local integration; parser grammar is maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers/tree/b200ff6b7bc81ba6d51df01b6552c8e24ef4a33c/upstreams/known_hosts).
   Revision: repository-local query
   License: MIT
   Notes: independent OpenSSH known_hosts runtime; no third-party grammar or query code is imported. Generated parser assets live only in kat-parsers.
