@@ -3,6 +3,36 @@ use std::path::Path;
 use kat::{HighlightStyle, PreparedDocument, RenderOptions};
 
 #[test]
+fn public_key_trailing_comment_has_one_comment_style() {
+    let source = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample dcjanusmacbook-pro tailnet\n";
+    assert_eq!(
+        kat::detected_language_name(Some(Path::new("id_ed25519.pub")), source),
+        Some("authorized_keys")
+    );
+    for needle in ["dcjanusmacbook-pro", "tailnet"] {
+        let style = style_at(source, needle, 0, "id_ed25519.pub");
+        assert_eq!(style.foreground, (98, 114, 164), "{needle}");
+        assert!(style.italic, "{needle}");
+    }
+    assert_eq!(
+        style_at(source, "ssh-ed25519", 0, "id_ed25519.pub").foreground,
+        (139, 233, 253)
+    );
+}
+
+#[test]
+fn public_key_base64_slash_suffix_keeps_the_key_blob_style() {
+    let source = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample/8\n";
+    for needle in ["AAAAC3", "Example", "/8"] {
+        assert_eq!(
+            style_at(source, needle, 0, "id_ed25519.pub").foreground,
+            (189, 147, 249),
+            "{needle}"
+        );
+    }
+}
+
+#[test]
 fn known_hosts_detection_uses_exact_filenames_without_content_guessing() {
     let source = "example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample\n";
     for path in [

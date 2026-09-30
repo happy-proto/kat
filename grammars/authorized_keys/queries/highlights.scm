@@ -20,5 +20,4 @@
 (key_type) @type
 (key_blob) @constant
 
-(entry
-  comment: (entry_comment) @string.special)
+(entry_comment) @comment

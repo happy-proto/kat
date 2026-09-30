@@ -5554,6 +5554,11 @@ mod tests {
             ],
         },
         FixtureCase {
+            relative_path: "authorized_keys/id_ed25519.pub",
+            expect_highlight: true,
+            expected_fragments: &["ssh-ed25519", "dcjanusmacbook-pro tailnet", "Example/8"],
+        },
+        FixtureCase {
             relative_path: "authorized_keys/authorized_keys",
             expect_highlight: true,
             expected_fragments: &["restrict", "command=", "ssh-ed25519", "kat@example"],

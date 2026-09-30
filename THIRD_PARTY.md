@@ -891,7 +891,7 @@ Upstream projects:
   Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/asciidoc/` directory now only keeps kat-side integration assets such as queries.
 
 - `grammars/known_hosts/queries/highlights.scm`
-  Source: kat local integration; parser grammar is maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers/tree/ee8b4fad7ad4943af748ec05f0913fca022116a2/upstreams/known_hosts).
+  Source: kat local integration; parser grammar is maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers/tree/14b54468f206fc35fc948a907e767b7fc587fcff/upstreams/known_hosts).
   Revision: repository-local query
   License: MIT
   Notes: independent OpenSSH known_hosts runtime; no third-party grammar or query code is imported. Generated parser assets live only in kat-parsers.
@@ -900,7 +900,7 @@ Upstream projects:
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/authorized_keys/` directory now only keeps kat-side integration assets such as queries.
+  Notes: parser sources are no longer vendored in this repository; the runtime parser now comes from the git-backed Rust crate dependency on [tree-sitter-kat-parsers](https://github.com/happy-proto/kat-parsers). The local `grammars/authorized_keys/` directory only keeps integration assets. Trailing entry comments use the shared comment style; the parser separates optional authorization options, key algorithm and the complete Base64 payload using explicit field and line boundaries.
 
 - `grammars/awk/*`
   Source: [Beaglefoot/tree-sitter-awk](https://github.com/Beaglefoot/tree-sitter-awk)
