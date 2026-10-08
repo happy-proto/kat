@@ -6,6 +6,7 @@ use serde::Serialize;
 pub(crate) enum DocumentProfile {
     Plain,
     PrekConfig,
+    HkConfig,
     GitHubActionsWorkflow,
     GitHubActionMetadata,
     GitConfig,
@@ -30,6 +31,7 @@ impl DocumentProfile {
         match self {
             Self::Plain => "plain",
             Self::PrekConfig => "prek_config",
+            Self::HkConfig => "hk_config",
             Self::GitHubActionsWorkflow => "github_actions_workflow",
             Self::GitHubActionMetadata => "github_action_metadata",
             Self::GitConfig => "git_config",

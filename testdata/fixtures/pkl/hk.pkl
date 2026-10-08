@@ -1,0 +1,18 @@
+amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Builtins.pkl"
+local label = "测试"
+steps {
+  ["rust"] {
+    glob = "*.rs"
+    check = "echo \"\(label)\"; cargo fmt -- {{files}}"
+    fix = #"echo "$HOME"; printf '\n'"#
+  }
+  ["fish"] {
+    shell = "fish -c"
+    check = #"""
+      set label "蓝色"
+      echo $label {{files}}
+      """#
+  }
+  ["argv"] { check = List("echo", "$HOME", "{{files}}") }
+}

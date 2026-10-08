@@ -516,6 +516,7 @@ fn token_style_for(capture: &str, text: &str) -> TokenStyle {
         | "property.json_key"
         | "property.cel"
         | "property.proto"
+        | "property.pkl"
         | "property.toml"
         | "property.userscript"
         | "property.yaml"

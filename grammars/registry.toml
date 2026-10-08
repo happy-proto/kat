@@ -3660,3 +3660,34 @@ highlight_names = [
   "variable.member",
   "variable.parameter",
 ]
+
+[[grammar]]
+name = "pkl"
+library_name = "tree-sitter-pkl"
+parser_source = "crate"
+extensions = ["pkl"]
+filenames = ["PklProject"]
+shebang_substrings = ["pkl"]
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "constant.builtin",
+  "function.builtin",
+  "function.method",
+  "function.call",
+  "keyword",
+  "number",
+  "operator",
+  "property",
+  "property.pkl",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.builtin",
+  "variable.parameter",
+]

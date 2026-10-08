@@ -107,6 +107,8 @@ const TOML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/toml/queries/highl
 const YAML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/yaml/queries/highlights.scm");
 const YAML_INJECTIONS_QUERY: &str = include_str!("../grammars/yaml/queries/injections.scm");
 const HCL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/hcl/queries/highlights.scm");
+const PKL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/pkl/queries/highlights.scm");
+const PKL_LOCALS_QUERY: &str = include_str!("../grammars/pkl/queries/locals.scm");
 const RUST_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/rust/queries/highlights.scm");
 const RUST_INJECTIONS_QUERY: &str = include_str!("../grammars/rust/queries/injections.scm");
 const PYTHON_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/python/queries/highlights.scm");
@@ -497,6 +499,13 @@ pub struct LanguageRuntime {
 }
 
 const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
+    StaticLanguageAsset {
+        name: "pkl",
+        language_fn: tree_sitter_pkl::LANGUAGE,
+        highlights_query: PKL_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: PKL_LOCALS_QUERY,
+    },
     StaticLanguageAsset {
         name: "json",
         language_fn: JSON_LANGUAGE,

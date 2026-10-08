@@ -40,6 +40,7 @@ pub(crate) enum InjectionVisualAnchor {
 pub(crate) enum InjectionProjectionSegment {
     Source(Range<usize>),
     Synthetic(String),
+    MappedText { text: String, source: Range<usize> },
 }
 
 #[derive(Debug)]
@@ -228,6 +229,7 @@ fn collect_host_injection_candidates(
     let mut candidates = Vec::new();
 
     match (document_kind.runtime_name(), document_kind.profile()) {
+        ("pkl", _) => candidates.extend(crate::pkl::injections(document_kind, tree, source)),
         ("dockerfile", _) => candidates.extend(collect_dockerfile_injection_candidates(
             language_runtime,
             tree,

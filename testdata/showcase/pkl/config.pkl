@@ -1,0 +1,18 @@
+/// Application configuration with [documentation](https://pkl-lang.org).
+module example.Config
+import "pkl:math"
+
+class Server {
+  host: String = "localhost"
+  port: UInt16 = 8080
+  enabled: Boolean = true
+  function endpoint(): String = "https://\(host):\(port)"
+}
+local server = new Server { host = "示例.example" }
+servers = new Listing<Server> { server }
+raw = ##"A literal \n and an escape \##n"##
+pattern = Regex(#"^[a-z]+$"#)
+message = """
+  Listening on \(server.endpoint())
+  Ready
+  """

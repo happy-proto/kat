@@ -11,6 +11,7 @@
 - Rust 文档注释里的 Markdown
 - `Justfile` 里的 Bash / Python / Zsh / Fish recipe
 - 宿主语言里的 SQL / GraphQL / Regex
+- Pkl 配置中的 Markdown / Regex，以及 `hk.pkl` 里的 shell 命令
 - 特殊文件名、shebang 和无扩展名内容识别
 
 ## 为什么有这个项目

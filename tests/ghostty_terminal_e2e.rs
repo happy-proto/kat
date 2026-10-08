@@ -28,6 +28,47 @@ const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn kat_renders_pkl_and_hk_commands_with_host_and_shell_styles() -> TestResult {
+    for (file, styles) in [
+        (
+            "config.pkl",
+            vec![
+                ("class", (255, 121, 198)),
+                ("UInt16", (139, 233, 253)),
+                ("8080", (255, 184, 108)),
+            ],
+        ),
+        (
+            "hk.local.pkl",
+            vec![
+                ("echo", (80, 250, 123)),
+                ("files", (189, 147, 249)),
+                ("set", (139, 233, 253)),
+            ],
+        ),
+    ] {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("testdata/fixtures/pkl")
+            .join(file);
+        let mut session = KatPtySession::spawn(
+            &[fixture.to_str().unwrap()],
+            120,
+            32,
+            &[("COLORTERM", "truecolor")],
+        )?;
+        let rendered = session.wait_for_screen(120, 32, |rendered| {
+            rendered.screen_text().contains("q:quit")
+        })?;
+        for (text, expected) in styles {
+            rendered.assert_text_style(text, expected, text == "files")?;
+        }
+        session.write_input(b"q")?;
+        session.wait_success()?;
+    }
+    Ok(())
+}
+
+#[test]
 fn kat_renders_public_key_comments_and_base64_suffixes_consistently() -> TestResult {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("testdata/fixtures/authorized_keys/id_ed25519.pub");
