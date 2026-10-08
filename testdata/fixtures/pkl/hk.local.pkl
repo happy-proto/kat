@@ -1,0 +1,7 @@
+steps {
+  ["shell"] { check = "echo hello {{files}}" }
+  ["fish"] {
+    shell = "fish -c"
+    check = "set color blue"
+  }
+}

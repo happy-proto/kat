@@ -11,6 +11,7 @@ mod host_injections;
 mod language_aliases;
 mod language_runtime;
 mod layout;
+mod pkl;
 mod proto_annotations;
 mod python_docstrings;
 mod render_ops;
@@ -127,6 +128,7 @@ enum SupportedLanguage {
     GoSum,
     GoWork,
     Graphql,
+    Pkl,
     Groovy,
     Hcl,
     Html,
@@ -615,6 +617,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "toml" => SupportedLanguage::Toml,
         "yaml" => SupportedLanguage::Yaml,
         "hcl" => SupportedLanguage::Hcl,
+        "pkl" => SupportedLanguage::Pkl,
         "rust" => SupportedLanguage::Rust,
         "python" => SupportedLanguage::Python,
         "c" => SupportedLanguage::C,
@@ -1418,6 +1421,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "toml" => DocumentKind::plain("toml"),
         "yaml" => DocumentKind::plain("yaml"),
         "hcl" => DocumentKind::plain("hcl"),
+        "pkl" => DocumentKind::plain("pkl"),
         "rust" => DocumentKind::plain("rust"),
         "python" => DocumentKind::plain("python"),
         "python_docstring" => {
@@ -1803,6 +1807,11 @@ pub(crate) fn detect_document_kind(
     let toml = grammar("toml");
     if matches_path(toml, source_path) {
         return Some(toml_document_kind(source_path));
+    }
+
+    let pkl = grammar("pkl");
+    if matches_path(pkl, source_path) || matches_shebang(pkl, source) {
+        return Some(crate::pkl::document_kind(source_path, source));
     }
 
     let yaml = grammar("yaml");
@@ -3592,6 +3601,13 @@ fn build_projected_virtual_source(
                 &mut trim_remaining,
                 shared_indent,
             ),
+            InjectionProjectionSegment::MappedText { text, source } => {
+                append_mapped_text(&mut virtual_source, &mut source_map, source.clone(), text);
+                if !text.is_empty() {
+                    at_line_start = text.ends_with('\n');
+                    trim_remaining = if at_line_start { shared_indent } else { 0 };
+                }
+            }
         }
     }
 
@@ -4589,6 +4605,7 @@ mod tests {
         "plain",
     ];
     const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
+        "pkl",
         "bash",
         "fish",
         "zsh",
@@ -4694,6 +4711,21 @@ mod tests {
     ];
 
     const FIXTURE_CASES: &[FixtureCase] = &[
+        FixtureCase {
+            relative_path: "pkl/config.pkl",
+            expect_highlight: true,
+            expected_fragments: &["Server", "host", "8080", "Regex"],
+        },
+        FixtureCase {
+            relative_path: "pkl/hk.pkl",
+            expect_highlight: true,
+            expected_fragments: &["steps", "check", "{{files}}", "echo"],
+        },
+        FixtureCase {
+            relative_path: "pkl/hk.local.pkl",
+            expect_highlight: true,
+            expected_fragments: &["steps", "check", "{{files}}", "set"],
+        },
         FixtureCase {
             relative_path: "json/basic.json",
             expect_highlight: true,
@@ -6061,6 +6093,7 @@ mod tests {
     }
 
     const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
+        "pkl",
         "cel",
         "csv",
         "css",

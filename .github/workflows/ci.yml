@@ -456,6 +456,8 @@ jobs:
           for sample in \
             testdata/showcase/systemverilog/rich.sv \
             testdata/showcase/bash/rich.sh \
+            testdata/showcase/pkl/config.pkl \
+            testdata/showcase/pkl/hk.pkl \
             testdata/showcase/rust/rich.rs; do
             "${ARTIFACT_PATH}" --debug-analysis "${sample}" > /dev/null
           done

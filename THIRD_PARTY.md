@@ -3,6 +3,8 @@
 This repository now primarily keeps Tree-sitter query and other kat-side integration assets. Parser source files that still need vendored maintenance are externalized to [kat-parsers](https://github.com/happy-proto/kat-parsers), while this repository only retains the local assets required for runtime integration.
 
 Included sources:
+- `grammars/pkl/queries/highlights.scm`
+- `grammars/pkl/queries/locals.scm`
 - `grammars/actionscript/queries/highlights.scm`
 - `grammars/ada/queries/highlights.scm`
 - `grammars/ada/queries/locals.scm`
@@ -1153,3 +1155,9 @@ Upstream projects:
   Notes: repository-local copies of the upstream Nix highlights and injections queries. Parser code is linked from the Rust crate `tree-sitter-nix`.
 
 These files may be modified locally as needed for integration into `kat`.
+
+- `grammars/pkl/queries/highlights.scm` and `grammars/pkl/queries/locals.scm`
+  Source: [apple/tree-sitter-pkl](https://github.com/apple/tree-sitter-pkl)
+  Revision: `c837eff683d62f3cb5e6309b44c257640f202d4b` (upstream package version 0.21.0)
+  License: Apache-2.0; license and notice are retained in `grammars/pkl/LICENSE` and `grammars/pkl/NOTICE`.
+  Notes: the parser and scanner are consumed directly from the revision-pinned upstream Rust crate. The highlights query is adapted for kat capture priority, configuration keys, structural type/call roles, string interpolation, escapes, and all custom string delimiters. The locals query is unchanged. Markdown documentation, decoded Regex literals, and hk step commands are dispatched by kat's AST-based host resolver; no generated parser assets are copied into this repository.

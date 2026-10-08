@@ -320,6 +320,7 @@ fn semantic_capture_spans_for(
             | "sql_sqlite"
             | "jsdoc"
             | "proto"
+            | "pkl"
     );
     let has_profile_overlays = matches!(
         profile,
@@ -333,6 +334,10 @@ fn semantic_capture_spans_for(
 
     let tree = parse_language_tree(language_name, source)?;
     let mut spans = Vec::new();
+
+    if language_name == "pkl" {
+        spans.extend(crate::pkl::semantic_spans(profile, &tree, source));
+    }
 
     walk_tree(tree.root_node(), &mut |node| {
         if let Some(shell_language) = ShellLanguage::from_name(language_name) {

@@ -18,6 +18,11 @@
 
 ## 语言与 Runtime
 
+### Pkl / hk
+
+- 当前已接入通用 Pkl、文档注释 Markdown、Regex 字面量和 hk step 命令的静态 AST 分发。
+- 后续收益主要来自 Java regex 专属语义，以及不执行配置前提下对本地引用、amendment 继承和命令拼接的静态分析；导入模块读取与配置求值不属于高亮器职责。
+
 ### SQL
 
 - 继续增强 SQL 方言 detector，补更多内容感知信号和宿主上下文信号。
