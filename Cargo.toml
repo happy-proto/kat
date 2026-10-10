@@ -17,7 +17,7 @@ bin-dir = "kat-{ target }/{ bin }{ binary-ext }"
 pkg-fmt = "zip"
 
 [package.metadata.binstall.overrides.'cfg(not(target_os = "windows"))']
-pkg-fmt = "tgz"
+pkg-fmt = "txz"
 
 [[bin]]
 name = "kat"
