@@ -463,6 +463,55 @@ fn kat_builtin_pager_supports_page_home_and_end_navigation() -> TestResult {
 }
 
 #[test]
+fn kat_builtin_pager_handles_burst_and_split_cursor_input() -> TestResult {
+    let fixture = temp_plain_fixture(
+        "ghostty-builtin-pager-input-stream",
+        &(1..=100)
+            .map(|line| format!("SCROLL-LINE-{line:03}\n"))
+            .collect::<String>(),
+    )?;
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().expect("UTF-8 fixture path")],
+        COLS,
+        ROWS,
+        &[],
+    )?;
+    session.wait_for_screen(COLS, ROWS, |screen| {
+        screen.screen_text().contains("SCROLL-LINE-001")
+    })?;
+
+    session.write_input(&b"\x1b[B".repeat(10))?;
+    let screen = session.wait_for_screen(COLS, ROWS, |screen| {
+        screen.screen_text().lines().next().map(str::trim_end) == Some("SCROLL-LINE-011")
+    })?;
+    screen.assert_active_screen(Screen::Alternate)?;
+
+    session.write_input(b"\x1b")?;
+    thread::sleep(Duration::from_millis(30));
+    session.write_input(b"[")?;
+    thread::sleep(Duration::from_millis(30));
+    session.write_input(b"B")?;
+    let screen = session.wait_for_screen(COLS, ROWS, |screen| {
+        screen.screen_text().lines().next().map(str::trim_end) == Some("SCROLL-LINE-012")
+    })?;
+    screen.assert_active_screen(Screen::Alternate)?;
+
+    session.write_input(b"G")?;
+    session.wait_for_screen(COLS, ROWS, |screen| {
+        screen.screen_text().contains("SCROLL-LINE-100")
+    })?;
+    session.write_input(&b"\x1b[B".repeat(100))?;
+    session.write_input(b"g")?;
+    let screen = session.wait_for_screen(COLS, ROWS, |screen| {
+        screen.screen_text().lines().next().map(str::trim_end) == Some("SCROLL-LINE-001")
+    })?;
+    screen.assert_active_screen(Screen::Alternate)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
 fn kat_builtin_pager_supports_less_style_half_page_navigation() -> TestResult {
     let fixture = temp_plain_fixture(
         "ghostty-builtin-pager-half-page-navigation",

@@ -9,6 +9,7 @@ use std::{
 use anyhow::{Context, Result};
 #[cfg(unix)]
 use signal_hook::{consts::signal::SIGWINCH, flag};
+use termwiz::input::{InputEvent, InputParser, KeyCode, KeyEvent, Modifiers};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -53,20 +54,13 @@ pub(crate) fn run(mut render_source: impl FnMut(usize) -> Result<PagerSource>) -
 
         let mut buf = [0_u8; 16];
         let len = stdin.read(&mut buf).context("failed to read pager input")?;
-        if len == 0 {
+        let events = state.input_parser.parse_as_vec(&buf[..len], len != 0);
+        if events.is_empty() {
             continue;
         }
-
         size = terminal_size();
         let viewport = PagerViewport::build(&document, size.cols);
-        let outcome = handle_input(
-            &buf[..len],
-            &document,
-            &viewport,
-            &mut state,
-            &mut mode,
-            size,
-        );
+        let outcome = handle_events(events, &document, &viewport, &mut state, &mut mode, size);
         if matches!(outcome, PagerInputOutcome::Quit) {
             return Ok(());
         }
@@ -254,6 +248,7 @@ impl PagerDocument {
 
 #[derive(Default)]
 struct PagerState {
+    input_parser: InputParser,
     top_row: usize,
     anchor: RowAnchor,
     search: Option<SearchState>,
@@ -468,26 +463,35 @@ enum PagerAction {
 }
 
 impl PagerAction {
-    fn parse(input: &[u8]) -> Option<Self> {
-        match input {
-            [b'q' | b'Q'] | [0x03] | [0x1b] => Some(Self::Quit),
-            [b'j'] => Some(Self::LineDown),
-            [b'k'] => Some(Self::LineUp),
-            [b' '] => Some(Self::PageDown),
-            [b'b'] => Some(Self::PageUp),
-            [0x04] => Some(Self::HalfPageDown),
-            [0x15] => Some(Self::HalfPageUp),
-            [b'g'] => Some(Self::Home),
-            [b'G'] => Some(Self::End),
-            [b'/'] => Some(Self::SearchStart),
-            [b'n'] => Some(Self::SearchNext),
-            [b'N'] => Some(Self::SearchPrevious),
-            [0x1b, b'[', b'A', ..] => Some(Self::LineUp),
-            [0x1b, b'[', b'B', ..] => Some(Self::LineDown),
-            [0x1b, b'[', b'H', ..] => Some(Self::Home),
-            [0x1b, b'[', b'F', ..] => Some(Self::End),
-            [0x1b, b'[', b'5', b'~', ..] => Some(Self::PageUp),
-            [0x1b, b'[', b'6', b'~', ..] => Some(Self::PageDown),
+    fn parse(input: &KeyEvent) -> Option<Self> {
+        if input.modifiers.contains(Modifiers::ALT) {
+            return None;
+        }
+        if input.modifiers.contains(Modifiers::CTRL) {
+            return match input.key {
+                KeyCode::Char('c' | 'C') => Some(Self::Quit),
+                KeyCode::Char('d' | 'D') => Some(Self::HalfPageDown),
+                KeyCode::Char('u' | 'U') => Some(Self::HalfPageUp),
+                _ => None,
+            };
+        }
+        match input.key {
+            KeyCode::Char('q' | 'Q' | '\x03') | KeyCode::Escape => Some(Self::Quit),
+            KeyCode::Char('j') | KeyCode::DownArrow | KeyCode::ApplicationDownArrow => {
+                Some(Self::LineDown)
+            }
+            KeyCode::Char('k') | KeyCode::UpArrow | KeyCode::ApplicationUpArrow => {
+                Some(Self::LineUp)
+            }
+            KeyCode::Char(' ') | KeyCode::PageDown => Some(Self::PageDown),
+            KeyCode::Char('b') | KeyCode::PageUp => Some(Self::PageUp),
+            KeyCode::Char('\x04') => Some(Self::HalfPageDown),
+            KeyCode::Char('\x15') => Some(Self::HalfPageUp),
+            KeyCode::Char('g') | KeyCode::Home => Some(Self::Home),
+            KeyCode::Char('G') | KeyCode::End => Some(Self::End),
+            KeyCode::Char('/') => Some(Self::SearchStart),
+            KeyCode::Char('n') => Some(Self::SearchNext),
+            KeyCode::Char('N') => Some(Self::SearchPrevious),
             _ => None,
         }
     }
@@ -495,10 +499,7 @@ impl PagerAction {
 
 enum PagerMode {
     Normal,
-    Search {
-        query: String,
-        pending_utf8: Vec<u8>,
-    },
+    Search { query: String },
 }
 
 enum PagerInputOutcome {
@@ -511,6 +512,7 @@ enum SearchDirection {
     Backward,
 }
 
+#[cfg(test)]
 fn handle_input(
     input: &[u8],
     document: &PagerDocument,
@@ -519,57 +521,50 @@ fn handle_input(
     mode: &mut PagerMode,
     size: PagerSize,
 ) -> PagerInputOutcome {
-    match mode {
-        PagerMode::Normal if input.first() == Some(&b'/') => {
-            *mode = PagerMode::Search {
-                query: String::new(),
-                pending_utf8: Vec::new(),
-            };
-            if input.len() == 1 {
-                PagerInputOutcome::Continue
-            } else {
-                handle_input(&input[1..], document, viewport, state, mode, size)
-            }
-        }
-        PagerMode::Normal => handle_normal_input(input, viewport, state, mode, size),
-        PagerMode::Search {
-            query,
-            pending_utf8,
-        } => {
-            let outcome =
-                handle_search_input(input, document, viewport, state, query, pending_utf8);
-            if outcome.close_search {
-                *mode = PagerMode::Normal;
-            }
-            if outcome.quit {
-                PagerInputOutcome::Quit
-            } else {
-                PagerInputOutcome::Continue
-            }
-        }
-    }
+    let events = state.input_parser.parse_as_vec(input, !input.is_empty());
+    handle_events(events, document, viewport, state, mode, size)
 }
 
-fn handle_normal_input(
-    input: &[u8],
+fn handle_events(
+    events: Vec<InputEvent>,
+    document: &PagerDocument,
     viewport: &PagerViewport,
     state: &mut PagerState,
     mode: &mut PagerMode,
     size: PagerSize,
 ) -> PagerInputOutcome {
-    if input.len() > 1 && input.first() != Some(&0x1b) {
-        for byte in input {
-            let outcome = handle_normal_input(&[*byte], viewport, state, mode, size);
-            if matches!(outcome, PagerInputOutcome::Quit) {
-                return PagerInputOutcome::Quit;
+    for event in events {
+        let outcome = match mode {
+            PagerMode::Normal => match event {
+                InputEvent::Key(key) => handle_normal_input(&key, viewport, state, mode, size),
+                _ => PagerInputOutcome::Continue,
+            },
+            PagerMode::Search { query } => {
+                let outcome = handle_search_input(event, document, viewport, state, query);
+                if outcome.close_search {
+                    *mode = PagerMode::Normal;
+                }
+                if outcome.quit {
+                    PagerInputOutcome::Quit
+                } else {
+                    PagerInputOutcome::Continue
+                }
             }
-            if !matches!(mode, PagerMode::Normal) {
-                return PagerInputOutcome::Continue;
-            }
+        };
+        if matches!(outcome, PagerInputOutcome::Quit) {
+            return outcome;
         }
-        return PagerInputOutcome::Continue;
     }
+    PagerInputOutcome::Continue
+}
 
+fn handle_normal_input(
+    input: &KeyEvent,
+    viewport: &PagerViewport,
+    state: &mut PagerState,
+    mode: &mut PagerMode,
+    size: PagerSize,
+) -> PagerInputOutcome {
     let Some(action) = PagerAction::parse(input) else {
         return PagerInputOutcome::Continue;
     };
@@ -578,7 +573,6 @@ fn handle_normal_input(
         PagerAction::SearchStart => {
             *mode = PagerMode::Search {
                 query: String::new(),
-                pending_utf8: Vec::new(),
             };
             PagerInputOutcome::Continue
         }
@@ -598,72 +592,54 @@ fn handle_normal_input(
 }
 
 fn handle_search_input(
-    input: &[u8],
+    input: InputEvent,
     document: &PagerDocument,
     viewport: &PagerViewport,
     state: &mut PagerState,
     query: &mut String,
-    pending_utf8: &mut Vec<u8>,
 ) -> SearchInputOutcome {
-    for byte in input {
-        match *byte {
-            0x03 => {
+    match input {
+        InputEvent::Paste(text) => query.push_str(&text),
+        InputEvent::Key(key) if !key.modifiers.contains(Modifiers::ALT) => match key.key {
+            KeyCode::Char('\x03') => {
                 return SearchInputOutcome {
                     close_search: true,
                     quit: true,
                 };
             }
-            0x1b => {
+            KeyCode::Char('c' | 'C') if key.modifiers.contains(Modifiers::CTRL) => {
+                return SearchInputOutcome {
+                    close_search: true,
+                    quit: true,
+                };
+            }
+            KeyCode::Escape => {
                 return SearchInputOutcome {
                     close_search: true,
                     quit: false,
                 };
             }
-            b'\r' | b'\n' => {
-                flush_pending_search_utf8(query, pending_utf8);
-                let query = query.clone();
-                state.search(document, viewport, &query);
+            KeyCode::Enter => {
+                state.search(document, viewport, query);
                 return SearchInputOutcome {
                     close_search: true,
                     quit: false,
                 };
             }
-            0x7f | 0x08 => {
-                pending_utf8.clear();
+            KeyCode::Backspace => {
                 query.pop();
             }
-            byte if byte.is_ascii_control() => {}
-            byte if byte.is_ascii() => query.push(char::from(byte)),
-            byte => push_search_utf8_byte(query, pending_utf8, byte),
-        }
+            KeyCode::Char(c) if !c.is_control() && !key.modifiers.contains(Modifiers::CTRL) => {
+                query.push(c)
+            }
+            _ => {}
+        },
+        _ => {}
     }
     SearchInputOutcome {
         close_search: false,
         quit: false,
     }
-}
-
-fn push_search_utf8_byte(query: &mut String, pending_utf8: &mut Vec<u8>, byte: u8) {
-    pending_utf8.push(byte);
-    match std::str::from_utf8(pending_utf8) {
-        Ok(text) => {
-            query.push_str(text);
-            pending_utf8.clear();
-        }
-        Err(error) if error.error_len().is_some() => {
-            query.push_str(&String::from_utf8_lossy(pending_utf8));
-            pending_utf8.clear();
-        }
-        Err(_) => {}
-    }
-}
-
-fn flush_pending_search_utf8(query: &mut String, pending_utf8: &mut Vec<u8>) {
-    if pending_utf8.is_empty() {
-        return;
-    }
-    query.push_str(&String::from_utf8_lossy(pending_utf8));
-    pending_utf8.clear();
 }
 
 struct SearchInputOutcome {
@@ -1140,6 +1116,76 @@ impl RawTerminalMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dense_cursor_input_does_not_quit_or_drop_steps() {
+        let document = PagerDocument::new(&"line\n".repeat(100));
+        let viewport = PagerViewport::build(&document, 80);
+        let size = PagerSize { cols: 80, rows: 12 };
+        let mut state = PagerState::default();
+        let mut mode = PagerMode::Normal;
+        let input = b"\x1b[B".repeat(10);
+        for chunk in input.chunks(16) {
+            assert!(matches!(
+                handle_input(chunk, &document, &viewport, &mut state, &mut mode, size),
+                PagerInputOutcome::Continue
+            ));
+        }
+        assert_eq!(state.top_row, 10);
+    }
+
+    #[test]
+    fn cursor_sequences_survive_every_read_chunk_size() {
+        let document = PagerDocument::new(&"line\n".repeat(100));
+        let viewport = PagerViewport::build(&document, 80);
+        let size = PagerSize { cols: 80, rows: 12 };
+        let input = b"\x1b[B\x1bOB".repeat(10);
+        for chunk_size in 1..=input.len() {
+            let mut state = PagerState::default();
+            let mut mode = PagerMode::Normal;
+            for chunk in input.chunks(chunk_size) {
+                assert!(matches!(
+                    handle_input(chunk, &document, &viewport, &mut state, &mut mode, size),
+                    PagerInputOutcome::Continue
+                ));
+            }
+            assert_eq!(state.top_row, 20, "chunk size {chunk_size}");
+        }
+    }
+
+    #[test]
+    fn lone_escape_waits_for_idle_before_quitting() {
+        let document = PagerDocument::new("line\n");
+        let viewport = PagerViewport::build(&document, 80);
+        let size = PagerSize { cols: 80, rows: 12 };
+        let mut state = PagerState::default();
+        let mut mode = PagerMode::Normal;
+        assert!(matches!(
+            handle_input(b"\x1b", &document, &viewport, &mut state, &mut mode, size),
+            PagerInputOutcome::Continue
+        ));
+        assert!(matches!(
+            handle_input(b"", &document, &viewport, &mut state, &mut mode, size),
+            PagerInputOutcome::Quit
+        ));
+    }
+
+    #[test]
+    fn search_handles_split_unicode_and_cursor_keys_without_cancelling() {
+        let document = PagerDocument::new("before\n中文\nafter\n");
+        let viewport = PagerViewport::build(&document, 80);
+        let size = PagerSize { cols: 80, rows: 12 };
+        let mut state = PagerState::default();
+        let mut mode = PagerMode::Normal;
+        for byte in "/中文\x1b[A".as_bytes() {
+            handle_input(&[*byte], &document, &viewport, &mut state, &mut mode, size);
+        }
+        assert!(matches!(&mode, PagerMode::Search { query } if query == "中文"));
+        handle_input(b"\rj", &document, &viewport, &mut state, &mut mode, size);
+        assert!(matches!(mode, PagerMode::Normal));
+        assert_eq!(state.top_row, 2);
+        assert_eq!(state.search.as_ref().unwrap().query, "中文");
+    }
 
     #[test]
     fn source_anchor_survives_source_aware_relayout() {
