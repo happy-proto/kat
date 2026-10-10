@@ -32,6 +32,8 @@
 cargo binstall --git https://github.com/happy-proto/kat kat
 ```
 
+发布包的格式与下载约定由 [CI workflow](.github/workflows/ci.yml) 和 [Cargo.toml](Cargo.toml) 统一定义；调整压缩格式时会同步更新，安装命令不变。
+
 如果你想基于同一个仓库源码直接本地编译安装，也可以用：
 
 ```bash

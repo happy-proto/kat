@@ -282,21 +282,21 @@ jobs:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             linker: cc
-            archive_ext: tgz
+            archive_ext: tar.xz
             binary_ext: ""
             use_link_wrapper: true
             use_sccache: true
           - runner: macos-15-intel
             target: x86_64-apple-darwin
             linker: cc
-            archive_ext: tgz
+            archive_ext: tar.xz
             binary_ext: ""
             use_link_wrapper: true
             use_sccache: true
           - runner: macos-latest
             target: aarch64-apple-darwin
             linker: cc
-            archive_ext: tgz
+            archive_ext: tar.xz
             binary_ext: ""
             use_link_wrapper: true
             use_sccache: true
@@ -518,7 +518,7 @@ jobs:
           rm -rf "${package_dir}" "${archive_path}"
           mkdir -p "${package_dir}"
           cp "${ARTIFACT_PATH}" "${package_dir}/kat${BINARY_EXT}"
-          tar -C "${RUNNER_TEMP}" -czf "${archive_path}" "kat-${TARGET}"
+          tar -C "${RUNNER_TEMP}" -cf - "kat-${TARGET}" | xz -9 -T0 > "${archive_path}"
 
           echo "PACKAGE_PATH=${archive_path}" >> "${GITHUB_ENV}"
 
