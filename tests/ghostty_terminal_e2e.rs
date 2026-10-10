@@ -28,6 +28,44 @@ const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn rainbow_brackets_keep_pair_colors_after_resize_and_can_be_disabled() -> TestResult {
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/brackets/nested.py");
+    let line = "values = [wrap((1, 2))]";
+    for disabled in [false, true] {
+        let mut args = vec![fixture.to_str().unwrap()];
+        if disabled {
+            args.push("--no-rainbow-brackets");
+        }
+        let mut session = KatPtySession::spawn(&args, 40, ROWS, &[("COLORTERM", "truecolor")])?;
+        for cols in [40, 30, 40] {
+            session.resize(cols, ROWS)?;
+            let rendered = session.wait_for_screen(cols, ROWS, |screen| {
+                screen.screen_text().contains(line) && screen.screen_text().contains("q:quit")
+            })?;
+            for (offset, color) in [
+                (9, (241, 250, 140)),
+                (22, (241, 250, 140)),
+                (14, (189, 147, 249)),
+                (21, (189, 147, 249)),
+                (15, (139, 233, 253)),
+                (20, (139, 233, 253)),
+            ] {
+                rendered.assert_text_range_style(
+                    line,
+                    offset..offset + 1,
+                    if disabled { None } else { Some(color) },
+                    false,
+                )?;
+            }
+        }
+        session.write_input(b"q")?;
+        session.wait_success()?;
+    }
+    Ok(())
+}
+
+#[test]
 fn kat_renders_pkl_and_hk_commands_with_host_and_shell_styles() -> TestResult {
     for (file, styles) in [
         (
@@ -856,6 +894,16 @@ impl RenderedTerminal {
         foreground: (u8, u8, u8),
         italic: bool,
     ) -> TestResult {
+        self.assert_text_range_style(needle, 0..needle.len(), Some(foreground), italic)
+    }
+
+    fn assert_text_range_style(
+        &self,
+        needle: &str,
+        range: std::ops::Range<usize>,
+        foreground: Option<(u8, u8, u8)>,
+        italic: bool,
+    ) -> TestResult {
         let mut state = RenderState::new()?;
         let snapshot = state.update(&self.terminal)?;
         let mut rows = RowIterator::new()?;
@@ -879,15 +927,18 @@ impl RenderedTerminal {
             }
             for (start, _) in text.match_indices(needle) {
                 found = true;
-                let end = start + needle.len();
+                let end = start + range.end;
+                let start = start + range.start;
                 for (_, style) in styles
                     .iter()
                     .filter(|(range, _)| range.start < end && range.end > start)
                 {
-                    let StyleColor::Rgb(color) = style.fg_color else {
-                        panic!("expected RGB color for {needle}: {style:?}");
+                    let actual = match style.fg_color {
+                        StyleColor::Rgb(color) => Some((color.r, color.g, color.b)),
+                        StyleColor::None => None,
+                        _ => panic!("unexpected indexed color for {needle}: {style:?}"),
                     };
-                    assert_eq!((color.r, color.g, color.b), foreground, "{needle}");
+                    assert_eq!(actual, foreground, "{needle}");
                     assert_eq!(style.italic, italic, "{needle}");
                 }
             }

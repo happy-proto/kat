@@ -1,5 +1,6 @@
 [[grammar]]
 name = "json"
+brackets_query = "json"
 library_name = "tree-sitter-json"
 parser_source = "crate"
 extensions = ["json", "jsonc", "jsonl", "ipynb"]
@@ -1126,6 +1127,7 @@ highlight_names = [
 
 [[grammar]]
 name = "bash"
+brackets_query = "bash"
 library_name = "tree-sitter-bash"
 parser_source = "crate"
 extensions = ["sh", "bash", "ash", "ksh", "kshrc", "bashrc", "bash_profile", "bash_login", "bash_logout", "ebuild", "eclass"]
@@ -1156,6 +1158,7 @@ highlight_names = [
 
 [[grammar]]
 name = "fish"
+brackets_query = "fish"
 library_name = "tree-sitter-fish"
 parser_source = "crate"
 extensions = ["fish"]
@@ -1260,6 +1263,7 @@ highlight_names = [
 
 [[grammar]]
 name = "toml"
+brackets_query = "toml"
 library_name = "tree-sitter-toml"
 parser_source = "crate"
 extensions = ["toml"]
@@ -1337,6 +1341,7 @@ highlight_names = [
 
 [[grammar]]
 name = "rust"
+brackets_query = "rust"
 library_name = "tree-sitter-rust"
 parser_source = "crate"
 extensions = ["rs"]
@@ -1377,6 +1382,7 @@ highlight_names = [
 
 [[grammar]]
 name = "python"
+brackets_query = "python"
 library_name = "tree-sitter-python"
 parser_source = "crate"
 extensions = ["py"]
@@ -1521,6 +1527,7 @@ highlight_names = [
 
 [[grammar]]
 name = "sql"
+brackets_query = "sql"
 library_name = "tree-sitter-sql"
 parser_source = "crate"
 extensions = ["sql", "ddl", "dml", "psql", "pgsql", "postgresql", "mysql", "mariadb", "sqlite", "sqlite3"]
@@ -1603,6 +1610,7 @@ highlight_names = [
 
 [[grammar]]
 name = "javascript"
+brackets_query = "javascript"
 library_name = "tree-sitter-javascript"
 parser_source = "crate"
 extensions = ["js", "mjs", "cjs", "jsx"]
@@ -2364,6 +2372,7 @@ highlight_names = [
 
 [[grammar]]
 name = "typescript"
+brackets_query = "typescript"
 library_name = "tree-sitter-typescript"
 parser_source = "crate"
 extensions = ["ts", "mts", "cts"]
@@ -2406,6 +2415,7 @@ highlight_names = [
 
 [[grammar]]
 name = "tsx"
+brackets_query = "tsx"
 library_name = "tree-sitter-typescript"
 parser_source = "crate"
 extensions = ["tsx"]
@@ -3663,6 +3673,7 @@ highlight_names = [
 
 [[grammar]]
 name = "pkl"
+brackets_query = "pkl"
 library_name = "tree-sitter-pkl"
 parser_source = "crate"
 extensions = ["pkl"]

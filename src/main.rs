@@ -243,6 +243,7 @@ struct CliOptions {
     image_fit: ImageFitArg,
     image_background: ImageBackgroundArg,
     hyperlinks: HyperlinkMode,
+    no_rainbow_brackets: bool,
     language: Option<String>,
     install_completion: Option<CompletionShell>,
     paths: Vec<PathBuf>,
@@ -457,6 +458,9 @@ struct CliArgs {
     language: Option<String>,
     #[arg(long, value_enum)]
     hyperlinks: Option<HyperlinkMode>,
+    /// Disable rainbow bracket colors in rendered output.
+    #[arg(long)]
+    no_rainbow_brackets: bool,
     #[arg(
         value_name = "PATH|-",
         add = ArgValueCompleter::new(complete_input_paths)
@@ -735,6 +739,7 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         image_fit: cli.image_fit,
         image_background: cli.image_background,
         hyperlinks: resolve_hyperlink_mode(cli.hyperlinks)?,
+        no_rainbow_brackets: cli.no_rainbow_brackets,
         language,
         install_completion: cli.install_completion,
         paths: cli.paths,
@@ -989,12 +994,14 @@ fn render_output_with_timing(
             Some(language_name) => kat::PreparedDocument::named_language(
                 language_name,
                 source,
-                kat::RenderOptions::terminal(hyperlinks_enabled),
+                kat::RenderOptions::terminal(hyperlinks_enabled)
+                    .with_rainbow_brackets(!options.no_rainbow_brackets),
             )?,
             None => kat::PreparedDocument::detect(
                 source_path,
                 source,
-                kat::RenderOptions::terminal(hyperlinks_enabled),
+                kat::RenderOptions::terminal(hyperlinks_enabled)
+                    .with_rainbow_brackets(!options.no_rainbow_brackets),
             )?,
         };
         let render_output = prepared.render(terminal_width);
@@ -1402,6 +1409,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: Some("fish".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
@@ -1428,6 +1436,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: Some("regex".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("pattern.re")],
@@ -1453,6 +1462,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("docs/architecture.md")],
@@ -1480,6 +1490,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: Some("markdown".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1503,6 +1514,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1528,6 +1540,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1553,6 +1566,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1605,6 +1619,7 @@ mod tests {
                 image_fit: ImageFitArg::Original,
                 image_background: ImageBackgroundArg::Checker,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("image.tiff")],
@@ -1627,6 +1642,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: None,
                 paths: vec![],
@@ -1652,6 +1668,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: Some(CompletionShell::Bash),
                 paths: vec![],
@@ -1708,6 +1725,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
@@ -1741,6 +1759,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                no_rainbow_brackets: false,
                 language: Some("python".to_owned()),
                 install_completion: None,
                 paths: vec![],

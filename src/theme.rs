@@ -12,6 +12,7 @@ pub enum ColorMode {
 pub struct Theme {
     color_mode: ColorMode,
     nested_region_tint: Option<RgbColor>,
+    rainbow_brackets: bool,
 }
 
 impl Theme {
@@ -19,7 +20,38 @@ impl Theme {
         Self {
             color_mode,
             nested_region_tint,
+            rainbow_brackets: true,
         }
+    }
+
+    pub(crate) fn with_rainbow_brackets(mut self, enabled: bool) -> Self {
+        self.rainbow_brackets = enabled;
+        self
+    }
+
+    pub(crate) fn rainbow_brackets_enabled(&self) -> bool {
+        self.rainbow_brackets && self.color_mode != ColorMode::NoColor
+    }
+
+    pub(crate) fn bracket_style(
+        &self,
+        parent: Option<TokenStyle>,
+        depth: usize,
+    ) -> Option<TokenStyle> {
+        if !self.rainbow_brackets_enabled() {
+            return parent;
+        }
+        const COLORS: [DraculaColor; 6] = [
+            DraculaColor::Yellow,
+            DraculaColor::Purple,
+            DraculaColor::Cyan,
+            DraculaColor::Pink,
+            DraculaColor::Green,
+            DraculaColor::Orange,
+        ];
+        let mut style = parent.unwrap_or_else(|| TokenStyle::new(DraculaColor::Foreground));
+        style.color = COLORS[depth % COLORS.len()];
+        Some(style)
     }
 
     #[cfg(test)]

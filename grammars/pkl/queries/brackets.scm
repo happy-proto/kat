@@ -1,0 +1,7 @@
+; Kat-owned structural bracket pairs. Match siblings in the same AST node.
+("(" @open ")" @close)
+("[" @open "]" @close)
+("{" @open "}" @close)
+
+(typeArgumentList "<" @open ">" @close)
+(typeParameterList "<" @open ">" @close)

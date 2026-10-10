@@ -46,6 +46,8 @@ cargo install --git https://github.com/happy-proto/kat kat
 kat path/to/file
 ```
 
+已支持配对查询的语言默认按嵌套层级显示彩虹括号，同一对括号始终同色；普通字符串和注释中的括号不参与。嵌入代码沿各自语言独立配色。可用 `--no-rainbow-brackets` 关闭渲染中的括号染色；库调用方可使用 `RenderOptions::with_rainbow_brackets(false)`。
+
 直接在支持 inline image 的终端里展示图片：
 
 ```bash

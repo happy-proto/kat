@@ -1,5 +1,6 @@
 mod analysis;
 mod armor_formats;
+mod brackets;
 #[cfg(feature = "compact-parser-tables")]
 mod compact_parser_tables;
 mod debug_progress;
@@ -33,7 +34,6 @@ use std::{
 
 use anyhow::{Context, Result, anyhow};
 use serde::Serialize;
-use tree_sitter::Parser;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
 use crate::analysis::AnalysisDocument;
@@ -58,9 +58,11 @@ use crate::language_runtime::{global_highlight_name, runtime, supports_runtime};
 use crate::layout::LayoutDocument;
 use crate::python_docstrings::{render_python_docstring, resolve_python_docstring_document_kind};
 use crate::render_ops::RenderPlan;
+#[cfg(test)]
+use crate::semantic_overlays::semantic_capture_spans;
 use crate::semantic_overlays::{
     debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
-    github_actions_expression_spans, semantic_capture_spans,
+    github_actions_expression_spans,
 };
 use crate::sql_dialect::resolve_sql_runtime;
 use crate::terminal::TerminalCapabilities;
@@ -298,6 +300,12 @@ pub struct RenderOptions {
 }
 
 impl RenderOptions {
+    /// Enable or disable structural rainbow bracket colors (enabled by default).
+    pub fn with_rainbow_brackets(mut self, enabled: bool) -> Self {
+        self.theme = self.theme.with_rainbow_brackets(enabled);
+        self
+    }
+
     /// Probe the terminal palette for the kat CLI's rendering behavior.
     pub fn terminal(hyperlinks_enabled: bool) -> Self {
         Self {
@@ -1640,8 +1648,11 @@ fn highlight_named_language_render_data_with_depth(
         timings.record_highlight(highlight_started_at);
     }
 
+    // Explicit analysis queries share one tree; the highlighter owns its own parse.
     let semantic_started_at = Instant::now();
-    spans = overlay_semantic_captures(resolved_document_kind, source, spans, theme)?;
+    let analysis_tree = semantic_overlays::parse_language_tree(resolved_runtime_name, source)?;
+    spans =
+        overlay_semantic_captures(resolved_document_kind, source, spans, theme, &analysis_tree)?;
     if log_progress {
         progress_log(
             "semantic",
@@ -1658,12 +1669,13 @@ fn highlight_named_language_render_data_with_depth(
     }
 
     let injections_started_at = Instant::now();
-    let nested_regions = collect_top_level_injection_regions(
+    let nested_regions = collect_top_level_injection_regions_from_tree(
         resolved_document_kind,
         source,
         theme,
         nested_depth,
         timings.as_deref_mut(),
+        &analysis_tree,
     )?;
     if log_progress {
         progress_log(
@@ -1684,6 +1696,15 @@ fn highlight_named_language_render_data_with_depth(
     for region in &nested_regions {
         spans = overlay_nested_region(spans, region);
     }
+    // Host AST delimiters retain their structural depth even when the same
+    // runtime is reinjected (e.g. Rust macro token trees). Opaque child content
+    // has no host bracket captures and keeps its independently computed colors.
+    if theme.rainbow_brackets_enabled() {
+        let bracket_spans =
+            brackets::styled_brackets(language_runtime, &analysis_tree, source, &spans, theme);
+        spans = overlay_style_spans(spans, bracket_spans);
+    }
+
     if log_progress {
         progress_log(
             "nested_overlays",
@@ -1712,34 +1733,36 @@ fn overlay_semantic_captures(
     source: &str,
     parent_spans: Vec<StyledSpan>,
     theme: &Theme,
+    tree: &tree_sitter::Tree,
 ) -> Result<Vec<StyledSpan>> {
     let invalid_style = theme.token_style_for("invalid.illegal.regex", "");
-    let overlays = semantic_capture_spans(document_kind, source)?
-        .into_iter()
-        .filter_map(|span| {
-            let text = &source[span.range.clone()];
-            theme
-                .token_style_for(span.capture, text)
-                .map(|overlay_style| {
-                    let style = match (
-                        style_covering_span(&parent_spans, span.range.start, span.range.end),
-                        invalid_style,
-                    ) {
-                        (Some(parent_style), Some(invalid_style))
-                            if parent_style == invalid_style =>
-                        {
-                            Some(parent_style.merge(overlay_style))
+    let overlays =
+        semantic_overlays::semantic_capture_spans_with_tree(document_kind, source, tree)?
+            .into_iter()
+            .filter_map(|span| {
+                let text = &source[span.range.clone()];
+                theme
+                    .token_style_for(span.capture, text)
+                    .map(|overlay_style| {
+                        let style = match (
+                            style_covering_span(&parent_spans, span.range.start, span.range.end),
+                            invalid_style,
+                        ) {
+                            (Some(parent_style), Some(invalid_style))
+                                if parent_style == invalid_style =>
+                            {
+                                Some(parent_style.merge(overlay_style))
+                            }
+                            _ => Some(overlay_style),
+                        };
+                        StyledSpan {
+                            range: span.range,
+                            style,
+                            hyperlink: None,
                         }
-                        _ => Some(overlay_style),
-                    };
-                    StyledSpan {
-                        range: span.range,
-                        style,
-                        hyperlink: None,
-                    }
-                })
-        })
-        .collect::<Vec<_>>();
+                    })
+            })
+            .collect::<Vec<_>>();
 
     Ok(overlay_style_spans(parent_spans, overlays))
 }
@@ -3062,6 +3085,7 @@ struct CoveredLine {
     role: CoveredLineRole,
 }
 
+#[cfg(test)]
 fn collect_top_level_injection_regions(
     document_kind: DocumentKind,
     source: &str,
@@ -3069,45 +3093,41 @@ fn collect_top_level_injection_regions(
     nested_visual_level: usize,
     timings: Option<&mut RenderTimings>,
 ) -> Result<Vec<NestedRegion>> {
+    let tree = semantic_overlays::parse_language_tree(document_kind.runtime_name(), source)?;
+    collect_top_level_injection_regions_from_tree(
+        document_kind,
+        source,
+        theme,
+        nested_visual_level,
+        timings,
+        &tree,
+    )
+}
+
+fn collect_top_level_injection_regions_from_tree(
+    document_kind: DocumentKind,
+    source: &str,
+    theme: &Theme,
+    nested_visual_level: usize,
+    timings: Option<&mut RenderTimings>,
+    tree: &tree_sitter::Tree,
+) -> Result<Vec<NestedRegion>> {
     let runtime_name = document_kind.runtime_name();
     let language_runtime = runtime(runtime_name)
         .with_context(|| format!("missing language runtime for {runtime_name}"))?;
-    if language_runtime.injections_query.is_none() {
-        let mut parser = Parser::new();
-        parser
-            .set_language(&language_runtime.language)
-            .with_context(|| format!("failed to set parser language for {runtime_name}"))?;
-        let tree = parser
-            .parse(source, None)
-            .with_context(|| format!("failed to parse source for {runtime_name}"))?;
-        let candidates = prune_to_top_level_injection_regions(collect_injection_candidates(
-            document_kind,
-            language_runtime,
-            &tree,
-            source,
-        )?);
-        return render_injection_candidates(
-            source,
-            theme,
-            nested_visual_level,
-            timings,
-            candidates,
-        );
-    }
-
-    let mut parser = Parser::new();
-    parser
-        .set_language(&language_runtime.language)
-        .with_context(|| format!("failed to set parser language for {runtime_name}"))?;
-    let tree = parser
-        .parse(source, None)
-        .with_context(|| format!("failed to parse source for {runtime_name}"))?;
-
-    let candidates = collect_injection_candidates(document_kind, language_runtime, &tree, source)?;
-    let candidates = prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
-        source, candidates,
-    ));
-    render_injection_candidates(source, theme, nested_visual_level, timings, candidates)
+    let candidates = collect_injection_candidates(document_kind, language_runtime, tree, source)?;
+    let candidates = if language_runtime.injections_query.is_some() {
+        merge_adjacent_combined_candidates(source, candidates)
+    } else {
+        candidates
+    };
+    render_injection_candidates(
+        source,
+        theme,
+        nested_visual_level,
+        timings,
+        prune_to_top_level_injection_regions(candidates),
+    )
 }
 
 fn render_injection_candidates(

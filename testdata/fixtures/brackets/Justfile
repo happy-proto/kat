@@ -1,0 +1,6 @@
+python-demo:
+    #!/usr/bin/env python3
+    values = [wrap((1, 2))]
+
+shell-demo:
+    echo "$(printf '%s' "$(echo nested)")"

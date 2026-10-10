@@ -36,6 +36,8 @@
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
+- 彩虹括号使用 `grammars/registry.toml` 的可选 `brackets_query` 注册语言级 `queries/brackets.scm`，runtime 缓存编译后的配对 query。基础 highlighter 保留自己的解析；semantic overlay、括号查询和 injection candidate 收集共享另一份显式 AST，避免为括号再解析一次。
+- 括号对在每个 runtime 内按全文的结构包含关系计算深度，只改已配对 delimiter 的前景色，保留背景、文字效果和超链接。子语言先在 virtual source 上独立计算深度，再通过现有 source map 回到原文；当前 runtime 在合成子区域后为自己的 AST delimiter 落色，确保 Rust macro 这类同 runtime 再注入仍保留宿主深度。宿主字符串中的子语言内容没有宿主括号 capture，因而保留独立配色。缺失 delimiter 和直接落在错误节点内的配对不参与，完整的内部结构仍可染色。颜色属于宽度无关的 styled spans，滚动和 resize 不重新计算括号层级。
 - Rust 库与 CLI 共用公开的 `PreparedDocument`：调用方提供 `RenderOptions` 后，可通过 `spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 样式，通过 `background_lines` 获取 kat 布局层计算的嵌套背景，或通过 `render` 获取完整终端输出。CLI 使用终端探测选项；嵌入式查看器提供自身前景、背景色，不触发终端查询。调用方负责将源范围与自身的差异颜色和折行合成。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。

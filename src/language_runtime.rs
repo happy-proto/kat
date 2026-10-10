@@ -10,7 +10,7 @@ use tree_sitter_highlight::HighlightConfiguration;
 use tree_sitter_language::LanguageFn;
 
 use crate::debug_progress::log as progress_log;
-use crate::grammar_registry::HIGHLIGHT_NAMES;
+use crate::grammar_registry::{HIGHLIGHT_NAMES, REGISTRY};
 
 const SQL_POSTGRES_HIGHLIGHTS_QUERY: &str = concat!(
     include_str!("../grammars/sql/queries/highlights.scm"),
@@ -496,6 +496,7 @@ pub struct LanguageRuntime {
     pub language: Language,
     pub flat_configuration: HighlightConfiguration,
     pub injections_query: Option<Query>,
+    pub(crate) brackets_query: Option<Query>,
 }
 
 const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
@@ -1520,6 +1521,23 @@ pub fn global_highlight_name(highlight_index: usize) -> &'static str {
     HIGHLIGHT_NAMES[highlight_index]
 }
 
+fn bracket_query_source(name: &str) -> Result<&'static str> {
+    Ok(match name {
+        "json" => include_str!("../grammars/json/queries/brackets.scm"),
+        "rust" => include_str!("../grammars/rust/queries/brackets.scm"),
+        "javascript" => include_str!("../grammars/javascript/queries/brackets.scm"),
+        "typescript" => include_str!("../grammars/typescript/queries/brackets.scm"),
+        "tsx" => include_str!("../grammars/tsx/queries/brackets.scm"),
+        "python" => include_str!("../grammars/python/queries/brackets.scm"),
+        "toml" => include_str!("../grammars/toml/queries/brackets.scm"),
+        "pkl" => include_str!("../grammars/pkl/queries/brackets.scm"),
+        "bash" => include_str!("../grammars/bash/queries/brackets.scm"),
+        "fish" => include_str!("../grammars/fish/queries/brackets.scm"),
+        "sql" => include_str!("../grammars/sql/queries/brackets.scm"),
+        _ => anyhow::bail!("unknown bracket query asset {name}"),
+    })
+}
+
 fn build_runtime(asset: StaticLanguageAsset) -> Result<LanguageRuntime> {
     progress_log("runtime_init", format!("begin runtime={}", asset.name));
     let started_at = Instant::now();
@@ -1543,9 +1561,25 @@ fn build_runtime(asset: StaticLanguageAsset) -> Result<LanguageRuntime> {
     })?;
     flat_configuration.configure(&HIGHLIGHT_NAMES);
 
+    let registry_name = match asset.name {
+        "sql_postgres" | "sql_mysql" | "sql_sqlite" => "sql",
+        name => name,
+    };
+    let brackets_query = REGISTRY
+        .grammar
+        .iter()
+        .find(|grammar| grammar.name == registry_name)
+        .and_then(|grammar| grammar.brackets_query.as_deref())
+        .map(|name| {
+            Query::new(&language, bracket_query_source(name)?)
+                .with_context(|| format!("failed to build bracket query for {}", asset.name))
+        })
+        .transpose()?;
+
     let runtime = LanguageRuntime {
         language: language.clone(),
         flat_configuration,
+        brackets_query,
         injections_query: if asset.injections_query.trim().is_empty() {
             None
         } else {

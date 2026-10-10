@@ -42,6 +42,14 @@
 对 `kat` 来说，真正要对齐的是前一层。
 后一层不是终端渲染器的直接目标，但可以作为 `zed` 语言成熟度的旁证。
 
+## 彩虹括号
+
+- 当前默认支持 Rust、JSON、JavaScript、TypeScript、TSX、Python、TOML、Pkl、Bash、Fish 和 SQL（含现有方言 runtime）的结构配对染色；没有注册 `brackets_query` 的 runtime 保留普通高亮。
+- 普通代码覆盖该 grammar 中可配对的 `()`、`[]`、`{}`；SQL 当前只处理圆括号，不把方括号标识符当作结构嵌套。Rust、TypeScript/TSX、Pkl 的泛型尖括号按类型 AST 处理，比较运算符与 JSX 标签不参与。
+- Markdown fenced code、Justfile recipe、宿主注入的 SQL 以及 hk 静态命令等复用子语言分析和源码映射，每个独立注入区域重新从最外层颜色开始。虚拟占位内容不映射成原文染色。
+- 普通字符串和注释内的括号不参与；字符串中的有效插值表达式、Bash 命令替换和显式注入的子语言仍按其语法配对。缺失或无法可信配对的 delimiter 保留原样式。
+- 彩虹括号使用六种 Dracula 前景色循环，仅帮助区分层级，不表达错误诊断。CLI 的 `--no-rainbow-brackets` 关闭普通渲染中的染色；调试出口继续呈现默认分析结果。无颜色模式不增加括号颜色。
+
 ## `kat` 层级定义
 
 - `🟥 占位`：语言已经注册，能出基础颜色，但 capture 很粗，几乎还没做过针对性打磨。

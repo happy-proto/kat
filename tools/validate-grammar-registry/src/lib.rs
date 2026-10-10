@@ -14,6 +14,7 @@ pub struct GrammarRegistry {
 #[derive(Debug, Deserialize)]
 pub struct GrammarSpec {
     pub name: String,
+    pub brackets_query: Option<String>,
     #[serde(default)]
     pub parser_source: ParserSource,
 }
@@ -49,6 +50,22 @@ pub fn validate_repository_layout(manifest_dir: &Path) -> Result<(), String> {
                 grammar_dir.display()
             ));
             continue;
+        }
+
+        if let Some(query_name) = &grammar.brackets_query {
+            let query_path = grammars_dir.join(query_name).join("queries/brackets.scm");
+            if !registry
+                .grammar
+                .iter()
+                .any(|entry| entry.name == *query_name)
+                || !query_path.is_file()
+            {
+                errors.push(format!(
+                    "grammar `{}` references missing bracket query `{}`",
+                    grammar.name,
+                    query_path.display()
+                ));
+            }
         }
 
         match grammar.parser_source {

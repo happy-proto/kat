@@ -2,6 +2,12 @@
 
 This repository now primarily keeps Tree-sitter query and other kat-side integration assets. Parser source files that still need vendored maintenance are externalized to [kat-parsers](https://github.com/happy-proto/kat-parsers), while this repository only retains the local assets required for runtime integration.
 
+The `queries/brackets.scm` assets for JSON, Rust, JavaScript, TypeScript, TSX,
+Python, TOML, Pkl, Bash, Fish and SQL are authored and maintained in kat against
+the existing parser revisions listed below; they are not copied upstream query
+snapshots. Their `@open` / `@close` capture convention follows the documented
+[Zed bracket-query interface](https://zed.dev/docs/extensions/languages#bracket-matching).
+
 Included sources:
 - `grammars/pkl/queries/highlights.scm`
 - `grammars/pkl/queries/locals.scm`

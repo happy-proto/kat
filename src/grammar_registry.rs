@@ -18,6 +18,8 @@ pub struct GrammarSpec {
     pub filename_prefixes: Vec<String>,
     pub shebang_substrings: Vec<String>,
     pub highlight_names: Vec<String>,
+    /// Name of the compiled bracket query asset, shared across compatible runtimes.
+    pub brackets_query: Option<String>,
 }
 
 pub static REGISTRY: LazyLock<GrammarRegistry> = LazyLock::new(|| {

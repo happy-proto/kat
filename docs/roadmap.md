@@ -18,6 +18,11 @@
 
 ## 语言与 Runtime
 
+### 彩虹括号
+
+- 常用代码和配置语言已通过共享配对查询、全文深度计算与注入源码映射接入。
+- 后续按真实可读性收益扩展语言级 `brackets.scm`；HTML/XML 标签、关键字块和 Regex delimiter 暂不纳入普通括号配色。
+
 ### Pkl / hk
 
 - 当前已接入通用 Pkl、文档注释 Markdown、Regex 字面量和 hk step 命令的静态 AST 分发。
