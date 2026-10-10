@@ -5449,6 +5449,7 @@ mod tests {
             expect_highlight: true,
             expected_fragments: &[
                 "Foundation",
+                "nil",
                 "ThemePreview",
                 "defaultTheme",
                 "render",
@@ -6019,6 +6020,23 @@ mod tests {
     #[test]
     fn fixture_suite_matches_systems_programming_rendering_behavior() {
         run_fixture_suite(FIXTURE_SYSTEMS_PROGRAMMING_FAMILIES);
+    }
+
+    #[test]
+    fn swift_nil_literal_is_highlighted_as_a_builtin_constant() {
+        let path = fixture_path("swift/ThemePreview.swift");
+        let source = read_file(&path);
+        let json =
+            debug_analysis_json(Some(path.as_path()), &source).expect("Swift should be analyzed");
+        let analysis: Value = serde_json::from_str(&json).expect("analysis JSON should parse");
+        let start = source.find("nil").expect("fixture should contain nil") as u64;
+        assert!(analysis["spans"].as_array().unwrap().iter().any(|span| {
+            span["start"].as_u64().is_some_and(|offset| offset <= start)
+                && span["end"]
+                    .as_u64()
+                    .is_some_and(|offset| offset >= start + 3)
+                && span["style"]["color_name"] == "purple"
+        }));
     }
 
     #[test]

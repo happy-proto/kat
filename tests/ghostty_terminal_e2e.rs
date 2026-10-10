@@ -10,7 +10,7 @@ use std::{
 };
 
 use libghostty_vt::{
-    RenderState, Terminal, TerminalOptions,
+    RenderState, Terminal,
     render::{CellIterator, RowIterator},
     screen::Screen,
     style::{StyleColor, Underline},
@@ -1096,12 +1096,11 @@ fn render_path_in_ghostty(
 }
 
 fn ghostty_terminal(cols: u16, rows: u16) -> Terminal<'static, 'static> {
-    Terminal::new(TerminalOptions {
-        cols,
-        rows,
-        max_scrollback: 100,
-    })
-    .expect("Ghostty terminal should initialize")
+    let mut terminal = Terminal::new(cols, rows).expect("Ghostty terminal should initialize");
+    terminal
+        .set_scrollback_max_lines(Some(100))
+        .expect("Ghostty scrollback limit should initialize");
+    terminal
 }
 
 struct KatPtySession {
