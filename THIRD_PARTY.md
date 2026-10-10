@@ -779,6 +779,7 @@ Upstream projects:
 - `grammars/php/queries/injections-text.scm`
   Source: [tree-sitter/tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php)
   Revision: `3f2465c217d0a966d41e584b42d75522f2a3149e`
+  Parser revision: `58d5643086ae60e93a3746cca648363ee97c8761` (`tree-sitter-php` 0.25.1); the query revision above remains the local asset baseline.
   License: MIT
   Notes: repository-local copies of the upstream PHP query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-php](https://crates.io/crates/tree-sitter-php).
 
@@ -794,8 +795,9 @@ Upstream projects:
 - `grammars/swift/queries/locals.scm`
   Source: [alex-pinkus/tree-sitter-swift](https://github.com/alex-pinkus/tree-sitter-swift)
   Revision: `78521a22771afcc0ed007e79aa94ad788027c91a`
+  Parser revision: `tree-sitter-swift` 0.7.4, published from a dirty working tree based on `171fa3bc343233fe07f5e17205aaada33d778825` according to the crate's `.cargo_vcs_info.json`; the query revision above remains the local asset baseline.
   License: MIT
-  Notes: repository-local copies of the upstream Swift query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-swift](https://crates.io/crates/tree-sitter-swift).
+  Notes: repository-local copies of the upstream Swift query assets, with the nil capture adapted to the parser's named `nil_literal` node. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-swift](https://crates.io/crates/tree-sitter-swift).
 
 - `grammars/dart/queries/highlights.scm`
 - `grammars/dart/queries/locals.scm`
@@ -925,6 +927,7 @@ Upstream projects:
 - `grammars/cfml/queries/*`
   Source: [cfmleditor/tree-sitter-cfml](https://github.com/cfmleditor/tree-sitter-cfml)
   Revision: `6b4a43943c191950ee2c77f7b94cec5e903318a4`
+  Parser revision: `ffdd4d763b037a1ecbc1635ee1b5510a9f3425df` (`tree-sitter-cfml` 0.26.43); the query revision above remains the local asset baseline.
   License: MIT
   Notes: parser now comes from the Rust crate [tree-sitter-cfml](https://crates.io/crates/tree-sitter-cfml); the repository only keeps repository-local adapted highlights and injections queries as integration assets.
 
@@ -999,6 +1002,7 @@ Upstream projects:
 - `grammars/erlang/queries/highlights.scm`
   Source: [WhatsApp/tree-sitter-erlang](https://github.com/WhatsApp/tree-sitter-erlang)
   Revision: `e446ec60022a7cafe157805742b41c04b499cc5d`
+  Parser revision: `0386a11c835950f5e1ebfbcbf49863d8495de4e0` (`tree-sitter-erlang` 0.21.0); the query revision above remains the local asset baseline.
   License: Apache-2.0
   Notes: parser now comes from the Rust crate [tree-sitter-erlang](https://crates.io/crates/tree-sitter-erlang); the repository only keeps the upstream highlights query as an integration asset.
 

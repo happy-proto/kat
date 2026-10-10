@@ -94,6 +94,7 @@
 - OSC 8 hyperlink 只来自高亮链路里已经确认的 URI 语义；URL 安全过滤集中在 terminal 层，默认只接受 `http://` / `https://` 目标，不对纯文本透传做全局 URL regex 改写。
 - `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-layout`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、display-space layout、render IR 和 terminal 编码层。
 - 测试策略默认用 Ghostty E2E 锁住用户可见的 CLI / 终端行为；只有目标本身是 `analysis` / `visual` / `layout` / `render_ops` 这类 debug contract，或真实终端难以稳定观察时，才直接断言对应稳定 IR。
+- Ghostty E2E 的 Rust bindings 按固定 Git revision 集成，bindings 与其构建脚本固定的 Ghostty C API 源码配套升级，所需 Zig 版本由根 `mise.toml` 管理；该依赖只在可选的 `ghostty-e2e` feature 中启用。终端实例通过尺寸初始化，再显式设置 scrollback 限制。
 
 ## 维护约定
 

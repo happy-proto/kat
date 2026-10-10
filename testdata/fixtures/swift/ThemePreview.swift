@@ -1,5 +1,7 @@
 import Foundation
 
+let optionalTheme: String? = nil
+
 @available(*, deprecated)
 struct ThemePreview {
     static let defaultTheme = "Dracula"

@@ -26,47 +26,47 @@ required-features = ["terminal-images"]
 
 [dependencies]
 anstyle = "1.0.14"
-anyhow = "1.0.102"
-base64 = { version = "0.23.0", optional = true }
-clap = { version = "4.6.0", features = ["derive"] }
-clap_complete = { version = "4.6.5", features = ["unstable-dynamic"] }
+anyhow = "1.0.104"
+base64 = { version = "0.23.1", optional = true }
+clap = { version = "4.6.7", features = ["derive"] }
+clap_complete = { version = "4.6.11", features = ["unstable-dynamic"] }
 icy_sixel = { version = "0.7.0", optional = true }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp", "ico", "qoi", "pnm", "ff", "hdr", "dds", "avif-native"], optional = true }
-libghostty-vt = { version = "0.2.0", default-features = false, optional = true }
+libghostty-vt = { default-features = false, optional = true, git = "https://github.com/uzaaft/libghostty-rs", rev = "d2036baeb605d31d09a9e2ba6d0c923e04c34d54" }
 miette = { version = "7.6.0", features = ["fancy"] }
 portable-pty = { version = "0.9.0", optional = true }
 resvg = { version = "0.48.1", optional = true }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
 shadow-rs = { version = "2.0.0", default-features = false }
-signal-hook = "0.4.4"
+signal-hook = "0.4.5"
 terminal_size = "0.4.4"
 termwiz = { git = "https://github.com/DCjanus/wezterm.git", branch = "feat/upstream-termwiz-default-color-probe" }
-toml = "1.1.0"
-tree-sitter = "0.27.0"
+toml = "1.1.8"
+tree-sitter = "0.27.1"
 tree-sitter-ada = { git = "https://github.com/briot/tree-sitter-ada" }
 tree-sitter-bash = "0.25.1"
 tree-sitter-batch = "0.11.1"
 tree-sitter-c = "0.24.2"
-tree-sitter-c-sharp = "0.23.1"
+tree-sitter-c-sharp = "0.23.5"
 tree-sitter-cel = { git = "https://github.com/bufbuild/tree-sitter-cel" }
-tree-sitter-cfml = "0.26.20"
-tree-sitter-clojure-orchard = "0.2.5"
-tree-sitter-cmake = "0.7.1"
+tree-sitter-cfml = "0.26.43"
+tree-sitter-clojure-orchard = "0.2.8"
+tree-sitter-cmake = "0.7.5"
 tree-sitter-cpp = "0.23.4"
 tree-sitter-css = "0.25.0"
 tree-sitter-d = "0.8.2"
 tree-sitter-dart = "0.2.0"
 tree-sitter-diff = "0.1.0"
 tree-sitter-elixir = "0.3.5"
-tree-sitter-elm = "5.9.0"
+tree-sitter-elm = "5.9.4"
 tree-sitter-embedded-template = "0.25.0"
-tree-sitter-erlang = "0.20.0"
+tree-sitter-erlang = "0.21.0"
 tree-sitter-fortran = "0.6.0"
-tree-sitter-fsharp = "0.3.0"
+tree-sitter-fsharp = "0.3.12"
 tree-sitter-go = "0.25.0"
 tree-sitter-groovy = "0.1.2"
-tree-sitter-highlight = "0.27.0"
+tree-sitter-highlight = "0.27.1"
 tree-sitter-html = "0.23.2"
 tree-sitter-ini = "1.4.0"
 tree-sitter-java = "0.23.5"
@@ -75,12 +75,12 @@ tree-sitter-jsdoc = "0.25.0"
 tree-sitter-json = "0.24.8"
 tree-sitter-kat-parsers = { git = "https://github.com/happy-proto/kat-parsers" }
 tree-sitter-kotlin-ng = "1.1.0"
-tree-sitter-language = "0.1.7"
+tree-sitter-language = "0.1.9"
 tree-sitter-lua = "0.5.0"
 tree-sitter-make = "1.1.1"
 tree-sitter-nginx = "1.0.1"
 tree-sitter-nix = "0.3.0"
-tree-sitter-php = "0.24.2"
+tree-sitter-php = "0.25.1"
 tree-sitter-pkl = { git = "https://github.com/apple/tree-sitter-pkl", rev = "c837eff683d62f3cb5e6309b44c257640f202d4b" }
 tree-sitter-powershell = "0.26.4"
 tree-sitter-properties = "0.3.0"
@@ -88,11 +88,11 @@ tree-sitter-python = "0.25.0"
 tree-sitter-regex = "0.25.0"
 tree-sitter-ruby = "0.23.1"
 tree-sitter-rust = "0.24.2"
-tree-sitter-scala = "0.26.0"
+tree-sitter-scala = "0.26.2"
 tree-sitter-sequel = "0.3.11"
 tree-sitter-solidity = "1.2.13"
-tree-sitter-swift = "0.7.2"
-tree-sitter-systemverilog = "0.4.0"
+tree-sitter-swift = "0.7.4"
+tree-sitter-systemverilog = "0.4.1"
 tree-sitter-toml-ng = "0.7.0"
 tree-sitter-typescript = "0.23.2"
 tree-sitter-varlink = "0.6.1"
@@ -103,9 +103,9 @@ tree-sitter-xml = "0.7.0"
 tree-sitter-yaml = "0.7.2"
 tree-sitter-zig = "1.1.2"
 tree-sitter-zsh = "0.63.4"
-unicode-segmentation = "1.13.2"
+unicode-segmentation = "1.13.3"
 unicode-width = "0.2.2"
-zstd = { version = "0.14.0", optional = true, default-features = false }
+zstd = { version = "0.14.1", optional = true, default-features = false }
 
 [build-dependencies]
 shadow-rs = { version = "2.0.0", default-features = false, features = ["build"] }
