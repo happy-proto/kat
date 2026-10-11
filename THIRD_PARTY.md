@@ -3,6 +3,11 @@
 This repository now primarily keeps Tree-sitter query and other kat-side integration assets. Parser source files that still need vendored maintenance are externalized to [kat-parsers](https://github.com/happy-proto/kat-parsers), while this repository only retains the local assets required for runtime integration.
 
 Included sources:
+- `grammars/mermaid/queries/highlights.scm`
+  Source: [Latias94/merman](https://github.com/Latias94/merman/tree/2029bd547077b1a6800878e125663633d81e6d87/distribution/tree-sitter-mermaid), canonical `queries/portable/highlights.scm` from `tree-sitter-mermaid` 0.3.0.
+  Revision: `2029bd547077b1a6800878e125663633d81e6d87`.
+  License: MIT; copyright and license retained in `grammars/mermaid/LICENSE`.
+  Notes: unchanged upstream highlight query, configured with kat's capture vocabulary and theme. Parser/scanner sources and derivation notices are maintained in the external `kat-parsers` bundle; its revision is locked in `Cargo.lock`. Upstream Cargo's exact `tree-sitter-language =0.1.8` requirement conflicts with kat's Tree-sitter 0.27.1 / `tree-sitter-language` 0.1.9, so the bundle generates compatible bindings without altering the grammar. No generated parser files are copied into this repository. Rendering, strict validation and Mermaid-internal language injections are outside this integration.
 - `grammars/ghostty/queries/highlights.scm` is authored for kat. Its parser is independently maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers), based on Ghostty's official `src/cli/args.zig`, `src/config/Config.zig` and `src/config/file_load.zig` at `b1d9492cfa5d0d22c534a00e81bea623957113e7`. No community Ghostty grammar was copied or adapted. The parser revision is locked in `Cargo.lock`.
 - `grammars/pkl/queries/highlights.scm`
 - `grammars/pkl/queries/locals.scm`

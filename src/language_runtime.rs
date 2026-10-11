@@ -168,6 +168,7 @@ const JQ_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jq/queries/highlight
 const LESS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/less/queries/highlights.scm");
 const DOT_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dot/queries/highlights.scm");
 const DOT_INJECTIONS_QUERY: &str = include_str!("../grammars/dot/queries/injections.scm");
+const MERMAID_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/mermaid/queries/highlights.scm");
 const NGINX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/nginx/queries/highlights.scm");
 const TYPESCRIPT_HIGHLIGHTS_QUERY: &str =
     include_str!("../grammars/typescript/queries/highlights.scm");
@@ -1057,6 +1058,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         language_fn: DOT_LANGUAGE,
         highlights_query: DOT_HIGHLIGHTS_QUERY,
         injections_query: DOT_INJECTIONS_QUERY,
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "mermaid",
+        language_fn: tree_sitter_kat_parsers::MERMAID_LANGUAGE,
+        highlights_query: MERMAID_HIGHLIGHTS_QUERY,
+        injections_query: "",
         locals_query: "",
     },
     StaticLanguageAsset {

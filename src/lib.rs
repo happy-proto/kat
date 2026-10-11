@@ -149,6 +149,7 @@ enum SupportedLanguage {
     Lua,
     Make,
     Markdown,
+    Mermaid,
     Nasm,
     Nginx,
     Ninja,
@@ -651,6 +652,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "jq" => SupportedLanguage::Jq,
         "less" => SupportedLanguage::Less,
         "dot" => SupportedLanguage::Dot,
+        "mermaid" => SupportedLanguage::Mermaid,
         "nginx" => SupportedLanguage::Nginx,
         "typescript" => SupportedLanguage::TypeScript,
         "tsx" => SupportedLanguage::Tsx,
@@ -1456,6 +1458,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "jq" => DocumentKind::plain("jq"),
         "less" => DocumentKind::plain("less"),
         "dot" => DocumentKind::plain("dot"),
+        "mermaid" => DocumentKind::plain("mermaid"),
         "nginx" => DocumentKind::plain("nginx"),
         "typescript" => DocumentKind::plain("typescript"),
         "tsx" => DocumentKind::plain("tsx"),
@@ -2163,6 +2166,10 @@ pub(crate) fn detect_document_kind(
     let dot = grammar("dot");
     if matches_path(dot, source_path) {
         return Some(DocumentKind::plain("dot"));
+    }
+
+    if matches_path(grammar("mermaid"), source_path) {
+        return Some(DocumentKind::plain("mermaid"));
     }
 
     let nginx = grammar("nginx");
@@ -4607,6 +4614,7 @@ mod tests {
         "toml",
         "yaml",
         "markdown",
+        "mermaid",
         "asciidoc",
         "armor",
         "bibtex",
@@ -4739,6 +4747,21 @@ mod tests {
     ];
 
     const FIXTURE_CASES: &[FixtureCase] = &[
+        FixtureCase {
+            relative_path: "mermaid/flowchart.mmd",
+            expect_highlight: true,
+            expected_fragments: &["flowchart", "客户端", "-->", "数据库"],
+        },
+        FixtureCase {
+            relative_path: "mermaid/sequence.mermaid",
+            expect_highlight: true,
+            expected_fragments: &["sequenceDiagram", "GET /health", "-->>"],
+        },
+        FixtureCase {
+            relative_path: "markdown/mermaid_fences.md",
+            expect_highlight: true,
+            expected_fragments: &["flowchart", "sequenceDiagram", "读者", "代码块后的正文"],
+        },
         FixtureCase {
             relative_path: "pkl/config.pkl",
             expect_highlight: true,
@@ -6155,6 +6178,7 @@ mod tests {
         "jinja",
         "json",
         "markdown",
+        "mermaid",
         "latex",
         "proto",
         "query",

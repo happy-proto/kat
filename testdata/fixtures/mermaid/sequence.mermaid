@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant Client
+    participant API
+    Client->>API: GET /health
+    alt healthy
+        API-->>Client: 200 OK
+    else unavailable
+        API-->>Client: 503 Unavailable
+    end

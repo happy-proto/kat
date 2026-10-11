@@ -1,0 +1,10 @@
+%% 服务调用流程
+flowchart TD
+    Client["客户端"] -->|请求| Gateway{鉴权}
+    Gateway -->|允许| Service[服务]
+    Gateway -.->|拒绝| Error[错误]
+    subgraph Backend[后端]
+        Service --> Database[(数据库)]
+    end
+    classDef healthy fill:#50fa7b,stroke:#282a36
+    class Service healthy

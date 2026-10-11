@@ -89,7 +89,7 @@ fn collect_query_injection_candidates(
     language_runtime: &LanguageRuntime,
     tree: &Tree,
     source: &str,
-    _runtime_name: &str,
+    runtime_name: &str,
 ) -> Result<Vec<InjectionCandidate>> {
     let Some(query) = language_runtime.injections_query.as_ref() else {
         return Ok(Vec::new());
@@ -129,7 +129,7 @@ fn collect_query_injection_candidates(
             .and_then(|property| property.value.as_deref())
             .map(InjectionDecode::from_query_value)
             .unwrap_or(InjectionDecode::None);
-        let mut content_ranges = Vec::new();
+        let mut content_nodes = Vec::new();
         let document_profile = query
             .property_settings(query_match.pattern_index)
             .iter()
@@ -163,7 +163,7 @@ fn collect_query_injection_candidates(
                     let node_text = &source[capture.node.byte_range()];
                     injection_language = normalize_language_name(node_text).map(str::to_owned);
                 }
-                "injection.content" => content_ranges.push(capture.node.byte_range()),
+                "injection.content" => content_nodes.push(capture.node),
                 _ => {}
             }
         }
@@ -172,7 +172,7 @@ fn collect_query_injection_candidates(
             continue;
         };
 
-        if !supports_runtime(&injection_language) || content_ranges.is_empty() {
+        if !supports_runtime(&injection_language) || content_nodes.is_empty() {
             continue;
         }
 
@@ -184,7 +184,7 @@ fn collect_query_injection_candidates(
         if injection_combined {
             candidates.push(InjectionCandidate {
                 document_kind,
-                ranges: normalize_ranges(content_ranges),
+                ranges: normalize_ranges(content_nodes.iter().map(Node::byte_range).collect()),
                 projection: InjectionProjection::RawRanges,
                 is_combined: true,
                 strip_shared_indent: true,
@@ -198,12 +198,18 @@ fn collect_query_injection_candidates(
             continue;
         }
 
-        for range in content_ranges {
+        for node in content_nodes {
+            let range = node.byte_range();
             if range.start < range.end {
                 candidates.push(InjectionCandidate {
                     document_kind,
                     ranges: vec![range],
-                    projection: InjectionProjection::RawRanges,
+                    projection: if runtime_name == "markdown" && node.kind() == "code_fence_content"
+                    {
+                        markdown_fence_projection(node)
+                    } else {
+                        InjectionProjection::RawRanges
+                    },
                     is_combined: false,
                     strip_shared_indent: false,
                     merge_parent_styles,
@@ -218,6 +224,25 @@ fn collect_query_injection_candidates(
     }
 
     Ok(candidates)
+}
+
+fn markdown_fence_projection(node: Node) -> InjectionProjection {
+    let mut segments = Vec::new();
+    let mut start = node.start_byte();
+    // Continuations belong to the Markdown container (quotes/list indentation),
+    // not to the fenced language. Keep newlines and map each source segment back.
+    for continuation in named_children(node).filter(|child| child.kind() == "block_continuation") {
+        if start < continuation.start_byte() {
+            segments.push(InjectionProjectionSegment::Source(
+                start..continuation.start_byte(),
+            ));
+        }
+        start = continuation.end_byte();
+    }
+    if start < node.end_byte() {
+        segments.push(InjectionProjectionSegment::Source(start..node.end_byte()));
+    }
+    InjectionProjection::TemplateSegments(segments)
 }
 
 fn collect_host_injection_candidates(

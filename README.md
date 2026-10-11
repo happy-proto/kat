@@ -9,6 +9,7 @@
 它的重点不是把更多文件“简单点亮”，而是尽量把那些依赖结构语义、宿主感知和嵌套分发的场景做深，比如：
 
 - Rust 文档注释里的 Markdown
+- Markdown 代码块里的 Mermaid 图表源码高亮
 - `Justfile` 里的 Bash / Python / Zsh / Fish recipe
 - 宿主语言里的 SQL / GraphQL / Regex
 - Pkl 配置中的 Markdown / Regex，以及 `hk.pkl` 里的 shell 命令
