@@ -11,6 +11,7 @@ mod host_injections;
 mod language_aliases;
 mod language_runtime;
 mod layout;
+mod mise;
 mod pkl;
 mod proto_annotations;
 mod python_docstrings;

@@ -1263,7 +1263,10 @@ name = "toml"
 library_name = "tree-sitter-toml"
 parser_source = "crate"
 extensions = ["toml"]
-filenames = ["Cargo.toml", "Cargo.lock", "uv.lock"]
+filenames = [
+  "Cargo.toml", "Cargo.lock", "uv.lock",
+  "mise.toml", ".mise.toml", "mise.local.toml", ".mise.local.toml",
+]
 filename_prefixes = []
 shebang_substrings = []
 extra_c_flags = []

@@ -12,6 +12,7 @@
 - `Justfile` 里的 Bash / Python / Zsh / Fish recipe
 - 宿主语言里的 SQL / GraphQL / Regex
 - Pkl 配置中的 Markdown / Regex，以及 `hk.pkl` 里的 shell 命令
+- mise TOML 配置里的任务脚本，按 shell 配置或 shebang 嵌入高亮
 - 特殊文件名、shebang 和无扩展名内容识别
 
 ## 为什么有这个项目

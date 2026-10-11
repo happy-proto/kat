@@ -252,6 +252,9 @@ fn collect_host_injection_candidates(
         ("toml", DocumentProfile::PrekConfig) => candidates.extend(
             collect_prek_toml_injection_candidates(tree.root_node(), source),
         ),
+        ("toml", DocumentProfile::MiseConfig) => {
+            candidates.extend(crate::mise::injections(tree, source))
+        }
         (
             "yaml",
             DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata,

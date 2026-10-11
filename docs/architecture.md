@@ -113,6 +113,8 @@
 
 ## 已知边界
 
+- mise 配置使用 TOML runtime 下的 `mise_config` profile，通过宿主 resolver 提取任务命令，不新增 grammar。字符串经 TOML 解码后投影到子语言，转义保留原始 UTF-8 映射；Tera 插值、控制块和注释以 unmapped placeholder 隔离，保留外层 TOML 样式。解释器只根据当前文件里的 shebang、task/template 的 `shell` 和 `task_config.shell` 静态选择，不运行 mise、不求值模板、不读取其它配置文件或本机环境。
+
 - 大多数注入目标都需要是仓库里已注册并构建的 runtime；少数 host-owned pseudo-runtime（例如 `python_docstring`）是例外，它们不依赖独立 parser，而是直接复用 host 提取和仓库内语义层。
 - 无扩展名内容检测目前仍是有限启发式，不是完整内容识别系统。
 - 部分共享 grammar 的表达能力仍然限制了 query 可细化的上限，例如 SQL、Regex、JSDoc 一类场景。
