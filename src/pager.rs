@@ -4,6 +4,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result};
@@ -22,10 +23,13 @@ const SEARCH_MATCH_STYLE: &str = "\x1b[7m";
 const SEARCH_MATCH_RESET: &str = "\x1b[27m";
 const SEARCH_CURRENT_STYLE: &str = "\x1b[7;4m";
 const SEARCH_CURRENT_RESET: &str = "\x1b[24;27m";
+const MESSAGE_DURATION: Duration = Duration::from_secs(3);
 
-pub(crate) fn run(mut render_source: impl FnMut(usize) -> Result<PagerSource>) -> Result<()> {
+pub(crate) fn run(
+    mut render_source: impl FnMut(usize, bool) -> Result<(PagerSource, bool)>,
+) -> Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        let source = render_source(terminal_size().cols)?;
+        let (source, _) = render_source(terminal_size().cols, false)?;
         return write_direct(&source.output());
     }
 
@@ -34,7 +38,7 @@ pub(crate) fn run(mut render_source: impl FnMut(usize) -> Result<PagerSource>) -
     register_resize_signal(resize_requested.clone())?;
 
     let mut size = terminal_size();
-    let mut document = PagerDocument::from_source(render_source(size.cols)?);
+    let mut document = PagerDocument::from_source(render_source(size.cols, false)?.0);
     let mut state = PagerState::default();
     let mut mode = PagerMode::Normal;
     let mut stdin = io::stdin().lock();
@@ -45,7 +49,7 @@ pub(crate) fn run(mut render_source: impl FnMut(usize) -> Result<PagerSource>) -
     loop {
         if resize_requested.swap(false, Ordering::Relaxed) {
             size = terminal_size();
-            document = PagerDocument::from_source(render_source(size.cols)?);
+            document = PagerDocument::from_source(render_source(size.cols, false)?.0);
             let viewport = PagerViewport::build(&document, size.cols);
             state.restore_anchor(&viewport);
             state.rebuild_search(&document);
@@ -55,14 +59,34 @@ pub(crate) fn run(mut render_source: impl FnMut(usize) -> Result<PagerSource>) -
         let mut buf = [0_u8; 16];
         let len = stdin.read(&mut buf).context("failed to read pager input")?;
         let events = state.input_parser.parse_as_vec(&buf[..len], len != 0);
+        if state.expire_message(Instant::now()) {
+            let viewport = PagerViewport::build(&document, size.cols);
+            render(&document, &viewport, &state, &mode, size)?;
+        }
         if events.is_empty() {
             continue;
         }
         size = terminal_size();
-        let viewport = PagerViewport::build(&document, size.cols);
-        let outcome = handle_events(events, &document, &viewport, &mut state, &mut mode, size);
-        if matches!(outcome, PagerInputOutcome::Quit) {
-            return Ok(());
+        let mut viewport = PagerViewport::build(&document, size.cols);
+        for event in events {
+            let outcome = handle_events([event], &document, &viewport, &mut state, &mut mode, size);
+            match outcome {
+                PagerInputOutcome::Quit => return Ok(()),
+                PagerInputOutcome::Reload => match render_source(size.cols, true) {
+                    Ok((source, changed)) => {
+                        document = PagerDocument::from_source(source);
+                        viewport = PagerViewport::build(&document, size.cols);
+                        state.restore_anchor(&viewport);
+                        state.rebuild_search(&document);
+                        state.show_message(format!(
+                            "Reloaded: {}  R:reload  q:quit",
+                            if changed { "changed" } else { "unchanged" }
+                        ));
+                    }
+                    Err(error) => state.show_message(format!("Reload failed: {error:#}")),
+                },
+                PagerInputOutcome::Continue => {}
+            }
         }
         render(&document, &viewport, &state, &mode, size)?;
     }
@@ -252,14 +276,40 @@ struct PagerState {
     top_row: usize,
     anchor: RowAnchor,
     search: Option<SearchState>,
+    message: Option<PagerMessage>,
+}
+
+struct PagerMessage {
+    text: String,
+    expires_at: Instant,
 }
 
 impl PagerState {
+    fn show_message(&mut self, text: String) {
+        self.message = Some(PagerMessage {
+            text,
+            expires_at: Instant::now() + MESSAGE_DURATION,
+        });
+    }
+
+    fn expire_message(&mut self, now: Instant) -> bool {
+        if self
+            .message
+            .as_ref()
+            .is_some_and(|message| now >= message.expires_at)
+        {
+            self.message = None;
+            true
+        } else {
+            false
+        }
+    }
+
     fn apply(&mut self, action: PagerAction, viewport: &PagerViewport, rows: usize) {
         let page = rows.saturating_sub(1).max(1);
         let half_page = page.div_ceil(2);
         match action {
-            PagerAction::Quit => {}
+            PagerAction::Quit | PagerAction::Reload => {}
             PagerAction::LineDown => self.top_row = self.top_row.saturating_add(1),
             PagerAction::LineUp => self.top_row = self.top_row.saturating_sub(1),
             PagerAction::PageDown => self.top_row = self.top_row.saturating_add(page),
@@ -449,6 +499,7 @@ struct SearchMatch {
 #[derive(Clone, Copy)]
 enum PagerAction {
     Quit,
+    Reload,
     LineDown,
     LineUp,
     PageDown,
@@ -492,6 +543,7 @@ impl PagerAction {
             KeyCode::Char('/') => Some(Self::SearchStart),
             KeyCode::Char('n') => Some(Self::SearchNext),
             KeyCode::Char('N') => Some(Self::SearchPrevious),
+            KeyCode::Char('R') => Some(Self::Reload),
             _ => None,
         }
     }
@@ -505,6 +557,7 @@ enum PagerMode {
 enum PagerInputOutcome {
     Continue,
     Quit,
+    Reload,
 }
 
 enum SearchDirection {
@@ -526,7 +579,7 @@ fn handle_input(
 }
 
 fn handle_events(
-    events: Vec<InputEvent>,
+    events: impl IntoIterator<Item = InputEvent>,
     document: &PagerDocument,
     viewport: &PagerViewport,
     state: &mut PagerState,
@@ -551,7 +604,7 @@ fn handle_events(
                 }
             }
         };
-        if matches!(outcome, PagerInputOutcome::Quit) {
+        if !matches!(outcome, PagerInputOutcome::Continue) {
             return outcome;
         }
     }
@@ -568,8 +621,10 @@ fn handle_normal_input(
     let Some(action) = PagerAction::parse(input) else {
         return PagerInputOutcome::Continue;
     };
+    state.message = None;
     match action {
         PagerAction::Quit => PagerInputOutcome::Quit,
+        PagerAction::Reload => PagerInputOutcome::Reload,
         PagerAction::SearchStart => {
             *mode = PagerMode::Search {
                 query: String::new(),
@@ -987,11 +1042,11 @@ fn render(
             .min(document.line_count())
     };
     let mut status = match mode {
-        PagerMode::Normal => format!(
-            "kat {}/{}  q:quit  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
+        PagerMode::Normal => state.message.as_ref().map(|message| message.text.clone()).unwrap_or_else(|| format!(
+            "kat {}/{}  q:quit  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
             end_line,
             document.line_count()
-        ),
+        )),
         PagerMode::Search { query, .. } => format!("/{query}"),
     };
     if status.chars().count() > size.cols {
@@ -1116,6 +1171,57 @@ impl RawTerminalMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn status_message_expires_and_repeated_refresh_restarts_timeout() {
+        let mut state = PagerState::default();
+        state.show_message("Reloaded: changed".to_owned());
+        let first_deadline = state.message.as_ref().unwrap().expires_at;
+        assert!(!state.expire_message(first_deadline - Duration::from_millis(1)));
+        state.show_message("Reloaded: unchanged".to_owned());
+        let next_deadline = state.message.as_ref().unwrap().expires_at;
+        assert!(!state.expire_message(next_deadline - Duration::from_millis(1)));
+        assert!(state.expire_message(next_deadline));
+        assert!(state.message.is_none());
+        assert!(!state.expire_message(next_deadline));
+    }
+
+    #[test]
+    fn reload_key_is_a_command_only_in_normal_mode() {
+        let document = PagerDocument::new("R\n");
+        let viewport = PagerViewport::build(&document, 80);
+        let size = PagerSize { cols: 80, rows: 12 };
+        let mut state = PagerState::default();
+        let mut mode = PagerMode::Normal;
+        assert!(matches!(
+            handle_input(b"R", &document, &viewport, &mut state, &mut mode, size),
+            PagerInputOutcome::Reload
+        ));
+        assert!(matches!(
+            handle_input(b"/R", &document, &viewport, &mut state, &mut mode, size),
+            PagerInputOutcome::Continue
+        ));
+        assert!(matches!(mode, PagerMode::Search { ref query } if query == "R"));
+    }
+
+    #[test]
+    fn reload_rebuilds_search_and_clamps_position_for_shorter_content() {
+        let old = PagerDocument::new("prefix\nneedle\nlast\n");
+        let old_viewport = PagerViewport::build(&old, 80);
+        let mut state = PagerState::default();
+        assert!(state.search(&old, &old_viewport, "needle"));
+        state.apply(PagerAction::LineDown, &old_viewport, 2);
+        let new = PagerDocument::new("needle needle\n");
+        let viewport = PagerViewport::build(&new, 80);
+        state.restore_anchor(&viewport);
+        state.rebuild_search(&new);
+        assert_eq!(state.top_row, 0);
+        assert_eq!(state.search.as_ref().unwrap().len(), 2);
+        let empty = PagerDocument::new("");
+        state.restore_anchor(&PagerViewport::build(&empty, 80));
+        state.rebuild_search(&empty);
+        assert!(state.search.is_none());
+    }
 
     #[test]
     fn dense_cursor_input_does_not_quit_or_drop_steps() {
