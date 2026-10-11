@@ -367,6 +367,54 @@ fn kat_builtin_pager_ignores_external_pager_and_uses_alternate_screen() -> TestR
 }
 
 #[test]
+fn kat_builtin_pager_reloads_files_and_reports_success_and_failure() -> TestResult {
+    let fixture = temp_plain_fixture("ghostty-reload", "before reload\n")?;
+    let mut session = KatPtySession::spawn(
+        &["--hyperlinks=never", fixture.to_str().unwrap()],
+        80,
+        ROWS,
+        &[],
+    )?;
+    session.wait_for_screen(80, ROWS, |screen| {
+        screen.screen_text().contains("before reload")
+    })?;
+    fs::write(&fixture, "after reload\n")?;
+    session.write_input(b"R")?;
+    let screen = session.wait_for_screen(80, ROWS, |screen| {
+        screen.screen_text().contains("Reloaded: changed")
+    })?;
+    screen.assert_screen_contains("after reload");
+    assert!(!screen.screen_text().contains("before reload"));
+
+    fs::remove_file(&fixture)?;
+    session.write_input(b"R")?;
+    let screen = session.wait_for_screen(80, ROWS, |screen| {
+        screen.screen_text().contains("Reload failed:")
+    })?;
+    screen.assert_screen_contains("after reload");
+
+    fs::write(&fixture, "recovered\n")?;
+    // The navigation event following R in the same read must also be processed.
+    session.write_input(b"Rg")?;
+    let screen = session.wait_for_screen(80, ROWS, |screen| {
+        screen.screen_text().contains("recovered") && screen.screen_text().contains("q:quit")
+    })?;
+    assert!(!screen.screen_text().contains("Reload failed:"));
+    session.write_input(b"R")?;
+    session.wait_for_screen(80, ROWS, |screen| {
+        screen.screen_text().contains("Reloaded: unchanged")
+    })?;
+    // The status must recover without another key press.
+    let screen = session.wait_for_screen(80, ROWS, |screen| {
+        screen.screen_text().contains("kat 1/1") && !screen.screen_text().contains("Reloaded:")
+    })?;
+    screen.assert_screen_contains("recovered");
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
 fn kat_builtin_pager_reflows_alternate_screen_on_resize() -> TestResult {
     let fixture = temp_plain_fixture(
         "ghostty-builtin-pager-reflow",

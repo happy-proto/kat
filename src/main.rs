@@ -125,7 +125,7 @@ fn try_main() -> Result<()> {
     let total_started_at = Instant::now();
     let mut built_output = build_output(&options)?;
     let write_started_at = Instant::now();
-    write_output(&built_output, &options)?;
+    write_output(&mut built_output, &options)?;
 
     if let Some(timings) = built_output.timings.as_mut() {
         timings.write_output += write_started_at.elapsed();
@@ -314,7 +314,9 @@ impl ViewerDocument {
         for (source_id, segment) in self.segments.iter().enumerate() {
             match segment {
                 ViewerSegment::Plain(output) => builder.append_plain(source_id, output),
-                ViewerSegment::Prepared(prepared) => {
+                ViewerSegment::Prepared {
+                    document: prepared, ..
+                } => {
                     let rendered = prepared.render(Some(terminal_width));
                     builder.append(source_id, &rendered.output, &rendered.row_anchors);
                 }
@@ -322,17 +324,80 @@ impl ViewerDocument {
         }
         builder.finish()
     }
+
+    fn reload(&mut self, options: &CliOptions) -> Result<bool> {
+        // Prepare every replacement before updating the visible document.
+        let replacements = self
+            .segments
+            .iter()
+            .map(|segment| {
+                let ViewerSegment::Prepared {
+                    path: Some(path),
+                    fingerprint,
+                    render_options,
+                    ..
+                } = segment
+                else {
+                    return Ok(None);
+                };
+                let bytes = read_bytes_from_path(path)?;
+                let new_fingerprint = content_fingerprint(&bytes);
+                if new_fingerprint == *fingerprint {
+                    return Ok(None);
+                }
+                if should_render_path_as_image(options, path, &bytes) {
+                    bail!("{} is now an image; reopen it to view", path.display());
+                }
+                let source = String::from_utf8_lossy(&bytes);
+                let document = match options.language.as_deref() {
+                    Some(language) => {
+                        kat::PreparedDocument::named_language(language, &source, *render_options)?
+                    }
+                    None => kat::PreparedDocument::detect(Some(path), &source, *render_options)?,
+                };
+                Ok(Some((document, new_fingerprint)))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let changed = replacements.iter().any(Option::is_some);
+        for (segment, replacement) in self.segments.iter_mut().zip(replacements) {
+            if let (
+                ViewerSegment::Prepared {
+                    document,
+                    fingerprint,
+                    ..
+                },
+                Some((replacement, new_fingerprint)),
+            ) = (segment, replacement)
+            {
+                **document = replacement;
+                *fingerprint = new_fingerprint;
+            }
+        }
+        Ok(changed)
+    }
 }
 
 #[derive(Debug)]
 enum ViewerSegment {
     Plain(String),
-    Prepared(kat::PreparedDocument),
+    Prepared {
+        path: Option<PathBuf>,
+        document: Box<kat::PreparedDocument>,
+        render_options: kat::RenderOptions,
+        fingerprint: (u64, usize),
+    },
 }
 
 struct RenderedSource {
     output: String,
     viewer_segment: Option<ViewerSegment>,
+}
+
+fn content_fingerprint(bytes: &[u8]) -> (u64, usize) {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    bytes.hash(&mut hasher);
+    (hasher.finish(), bytes.len())
 }
 
 fn format_duration(duration: Duration) -> String {
@@ -985,17 +1050,12 @@ fn render_output_with_timing(
     if matches!(options.mode, OutputMode::Render) {
         let terminal_width = io::stdout().is_terminal().then(terminal_columns).flatten();
         let hyperlinks_enabled = render_hyperlinks_enabled(options);
+        let render_options = kat::RenderOptions::terminal(hyperlinks_enabled);
         let prepared = match options.language.as_deref() {
-            Some(language_name) => kat::PreparedDocument::named_language(
-                language_name,
-                source,
-                kat::RenderOptions::terminal(hyperlinks_enabled),
-            )?,
-            None => kat::PreparedDocument::detect(
-                source_path,
-                source,
-                kat::RenderOptions::terminal(hyperlinks_enabled),
-            )?,
+            Some(language_name) => {
+                kat::PreparedDocument::named_language(language_name, source, render_options)?
+            }
+            None => kat::PreparedDocument::detect(source_path, source, render_options)?,
         };
         let render_output = prepared.render(terminal_width);
         if let Some(timings) = timings {
@@ -1011,7 +1071,12 @@ fn render_output_with_timing(
         }
         return Ok(RenderedSource {
             output: render_output.output,
-            viewer_segment: Some(ViewerSegment::Prepared(prepared)),
+            viewer_segment: Some(ViewerSegment::Prepared {
+                path: source_path.map(std::path::Path::to_path_buf),
+                document: Box::new(prepared),
+                render_options,
+                fingerprint: content_fingerprint(source.as_bytes()),
+            }),
         });
     }
 
@@ -1191,8 +1256,12 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         }
 
         let source = String::from_utf8_lossy(&bytes).into_owned();
-        let rendered =
+        let mut rendered =
             render_output_with_timing(options, Some(path.as_path()), &source, timings.as_mut())?;
+        if let Some(ViewerSegment::Prepared { fingerprint, .. }) = rendered.viewer_segment.as_mut()
+        {
+            *fingerprint = content_fingerprint(&bytes);
+        }
         output.push_str(&rendered.output);
         viewer_segments.extend(rendered.viewer_segment);
     }
@@ -1213,13 +1282,16 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
     })
 }
 
-fn write_output(built_output: &BuiltOutput, options: &CliOptions) -> Result<()> {
+fn write_output(built_output: &mut BuiltOutput, options: &CliOptions) -> Result<()> {
     if matches!(options.mode, OutputMode::Render)
         && !built_output.contains_terminal_image
         && io::stdout().is_terminal()
-        && let Some(viewer_document) = built_output.viewer_document.as_ref()
+        && let Some(viewer_document) = built_output.viewer_document.as_mut()
     {
-        pager::run(|terminal_width| Ok(viewer_document.render(terminal_width)))
+        pager::run(|terminal_width, reload| {
+            let changed = reload && viewer_document.reload(options)?;
+            Ok((viewer_document.render(terminal_width), changed))
+        })
     } else {
         write_output_direct(&built_output.output)
     }
@@ -1308,6 +1380,66 @@ fn read_stdin() -> io::Result<String> {
 
 #[cfg(test)]
 mod tests {
+    fn viewer_text(viewer: &super::ViewerDocument) -> String {
+        viewer
+            .segments
+            .iter()
+            .map(|segment| match segment {
+                super::ViewerSegment::Plain(text) => text.clone(),
+                super::ViewerSegment::Prepared { document, .. } => document.render(Some(80)).output,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn viewer_reload_detects_content_changes_and_is_atomic_on_failure() {
+        let dir = unique_temp_dir("kat-reload");
+        fs::create_dir_all(&dir).unwrap();
+        let first = dir.join("first.txt");
+        let second = dir.join("second.txt");
+        fs::write(&first, "first old\n").unwrap();
+        fs::write(&second, "second old\n").unwrap();
+        let options = parse_cli_args([
+            first.clone().into_os_string(),
+            second.clone().into_os_string(),
+        ])
+        .unwrap();
+        let mut viewer = super::build_output(&options)
+            .unwrap()
+            .viewer_document
+            .unwrap();
+        assert!(!viewer.reload(&options).unwrap());
+        fs::write(&first, "first new\n").unwrap();
+        fs::remove_file(&second).unwrap();
+        assert!(viewer.reload(&options).is_err());
+        assert!(viewer_text(&viewer).contains("first old"));
+        fs::write(&second, "second new\n").unwrap();
+        assert!(viewer.reload(&options).unwrap());
+        let text = viewer_text(&viewer);
+        assert!(text.contains("first new") && text.contains("second new"));
+        assert!(!viewer.reload(&options).unwrap());
+        fs::write(&first, b"invalid \xff\n").unwrap();
+        assert!(viewer.reload(&options).unwrap());
+        assert!(!viewer.reload(&options).unwrap());
+        fs::write(&first, b"invalid \xfe\n").unwrap();
+        assert!(
+            viewer.reload(&options).unwrap(),
+            "compare bytes before lossy UTF-8 decoding"
+        );
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn viewer_reload_retains_stdin_segments() {
+        let options = parse_cli_args([] as [OsString; 0]).unwrap();
+        let rendered =
+            super::render_output_with_timing(&options, None, "stdin snapshot\n", None).unwrap();
+        let mut viewer = super::ViewerDocument {
+            segments: vec![rendered.viewer_segment.unwrap()],
+        };
+        assert!(!viewer.reload(&options).unwrap());
+        assert!(viewer_text(&viewer).contains("stdin snapshot"));
+    }
     use std::{
         ffi::OsString,
         fs,

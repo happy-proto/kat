@@ -72,6 +72,8 @@ kat --debug-timing path/to/file >/dev/null
 
 TTY 下的普通渲染输出统一进入内建 alternate-screen viewer，从文件开头开始显示，并按终端宽度展开后的 display row 滚动；窗口大小变化时会按新宽度重新布局源码，同时尽量保持顶部源位置不变。viewer 支持 `j/k`、方向键、`Space`/`b` 与 PageUp/PageDown 整页滚动、`Ctrl+D`/`Ctrl+U` 半页滚动、Home/End、`/` 普通文本搜索、`n/N` 前后匹配和 `q` 退出。`kat` 不再启动外部 `PAGER`，也不再提供 `--paging` 开关。stdout 不是 TTY 时仍直接输出完整内容，适合 pipe/redirect。
 
+viewer 普通模式下按 `R` 可重新读取所有打开的文本文件。状态栏会区分 `Reloaded: changed`（内容有变化）、`Reloaded: unchanged`（内容未变）和 `Reload failed`（失败）；提示显示约 3 秒后自动恢复正常状态栏，导航或搜索操作也可提前清除提示。刷新会尽量保持阅读位置并重建搜索匹配；任一文件读取失败时保留整份旧内容，可再次按 `R` 重试。stdin 内容保留首次读取的快照，不会重新读取。
+
 在支持 OSC 8 的终端里，Markdown URL 这类有明确 URI 语义的片段默认会输出可点击超链接。可用 `--hyperlinks=auto|always|never` 或 `KAT_HYPERLINKS=auto|always|never` 覆盖；检测不到语言而走纯文本透传时不会额外注入超链接。
 
 查看当前构建的版本与构建元信息：
