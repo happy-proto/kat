@@ -17,6 +17,15 @@ hooks = [
 repo = "local"
 
 [[repos.hooks]]
+id = "zig-download-retry-test"
+name = "Zig download retry regression tests"
+language = "system"
+entry = "bash scripts/tests/zig-download-retry.sh"
+files = "^(scripts/(with-zig-download-retry\\.sh|zig-download-retry/zig|tests/zig-download-retry\\.sh)|justfile|\\.github/workflows/ci\\.yml)$"
+pass_filenames = false
+priority = 5
+
+[[repos.hooks]]
 id = "parser-packer-lint"
 name = "parser packer Ruff"
 language = "system"

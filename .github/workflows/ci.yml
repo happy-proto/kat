@@ -39,6 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           cargo fmt --check
+          bash scripts/tests/zig-download-retry.sh
 
   clippy:
     name: clippy (ubuntu-latest)
@@ -87,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           "${SCCACHE_PATH}" --zero-stats
-          cargo clippy --timings --workspace --locked --all-targets --all-features -- -D warnings
+          scripts/with-zig-download-retry.sh cargo clippy --timings --workspace --locked --all-targets --all-features -- -D warnings
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
@@ -250,7 +251,7 @@ jobs:
         run: |
           set -euo pipefail
           "${SCCACHE_PATH}" --zero-stats
-          cargo nextest run \
+          scripts/with-zig-download-retry.sh cargo nextest run \
             --workspace \
             --features ghostty-e2e \
             --test ghostty_terminal_e2e \

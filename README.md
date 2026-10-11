@@ -114,6 +114,7 @@ prek install
 ```
 
 普通测试使用 `just test`；包含真实 PTY 与 Ghostty 无头终端模型的端到端测试使用 `just ghostty-e2e`。
+Ghostty 构建遇到明确的 Zig 依赖下载网络错误时会有限退避重试；本地 E2E 与 CI 使用相同入口，编译错误直接返回。重试行为的回归检查包含在 `just test` 和提交前检查中。
 本地复现 CI 的紧凑 parser 静态发布构建使用 `just compact-release`，需预先安装 `uv` 和 C 编译器。该命令在独立的临时 Cargo home 中提取并压缩全部 parser 表，生成的 `target/release/kat` 会在首次使用某语言时按需解压其表。
 
 ## 文档入口
