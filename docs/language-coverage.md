@@ -58,6 +58,13 @@
 
 ## 当前结论
 
+### Ghostty 配置
+
+- `ghostty` 支持配置键、等号、整行注释和原始/双引号值高亮；裸布尔开关、空值、重复字段、行内 `#` 与 `=` 按官方文件解析规则处理。
+- 自动识别 `.ghostty`、`ghostty/config`、`com.mitchellh.ghostty/config` 和 `ghostty/themes/<名称>`；通用 `config` 不据内容猜测。其它自定义路径可用 `--language ghostty`，Markdown 的 `ghostty` fence 也使用同一 runtime。
+- parser 在 [kat-parsers](https://github.com/happy-proto/kat-parsers) 独立维护，直接根据 Ghostty 官方源码设计，没有采用社区 grammar。上游 CLI 对照测试及维护约定见该仓库的 `docs/ghostty.md`。
+- 值的类型由字段决定，因此当前将值作为字符串呈现，不把任意 `true`、数字或 keybind 内部结构误当通用配置语法；高亮不承担字段合法性校验。
+
 - `kat` 当前真正达到 `精细` 的，已经扩展为 `JSON`、`Bash`、`TOML`、`YAML`、`Git Config`、`Rust`、`Go`、`Markdown`、`Justfile`。
 - 前五门语言已经不只是“亮起来”，而是开始按 Dracula 官方 spec 的语言语义落色：
   `JSON` / `TOML` / `YAML` 的 key 走配置语言 key 语义，`YAML alias` 单独走绿色斜体下划线，`Rust` 则细分到 trait、attribute、macro、function definition、local variable 等层级。

@@ -80,6 +80,7 @@ enum SupportedLanguage {
     Asm,
     AuthorizedKeys,
     KnownHosts,
+    Ghostty,
     OpenPgpArmor,
     Awk,
     Bash,
@@ -584,6 +585,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "asciidoc" => SupportedLanguage::AsciiDoc,
         "authorized_keys" => SupportedLanguage::AuthorizedKeys,
         "known_hosts" => SupportedLanguage::KnownHosts,
+        "ghostty" => SupportedLanguage::Ghostty,
         "pem" => SupportedLanguage::Pem,
         "openpgp_armor" => SupportedLanguage::OpenPgpArmor,
         "awk" => SupportedLanguage::Awk,
@@ -1385,6 +1387,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "asciidoc" => DocumentKind::plain("asciidoc"),
         "authorized_keys" => DocumentKind::plain("authorized_keys"),
         "known_hosts" => DocumentKind::plain("known_hosts"),
+        "ghostty" => DocumentKind::plain("ghostty"),
         "pem" => DocumentKind::plain("pem"),
         "openpgp_armor" => DocumentKind::plain("openpgp_armor"),
         "awk" => DocumentKind::plain("awk"),
@@ -1796,6 +1799,12 @@ pub(crate) fn detect_document_kind(
     source_path: Option<&Path>,
     source: &str,
 ) -> Option<DocumentKind> {
+    // Ghostty theme names may have arbitrary suffixes, including other
+    // languages' extensions. Their explicit directory wins over those hints.
+    if matches_path(grammar("ghostty"), source_path) || is_ghostty_config_path(source_path) {
+        return Some(DocumentKind::plain("ghostty"));
+    }
+
     if is_tree_sitter_query_path(source_path) {
         return Some(DocumentKind::plain("query"));
     }
@@ -2499,6 +2508,23 @@ pub(crate) fn detect_document_kind(
     }
 
     None
+}
+
+fn is_ghostty_config_path(source_path: Option<&Path>) -> bool {
+    let Some(path) = source_path else {
+        return false;
+    };
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    let parent_name = parent.file_name().and_then(|name| name.to_str());
+    (path.file_name().is_some_and(|name| name == "config")
+        && matches!(parent_name, Some("ghostty" | "com.mitchellh.ghostty")))
+        || (parent_name == Some("themes")
+            && parent
+                .parent()
+                .and_then(Path::file_name)
+                .is_some_and(|name| name == "ghostty"))
 }
 
 fn matches_path(grammar: &grammar_registry::GrammarSpec, source_path: Option<&Path>) -> bool {
@@ -4606,6 +4632,7 @@ mod tests {
         "plain",
     ];
     const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
+        "ghostty",
         "pkl",
         "bash",
         "fish",
@@ -5541,6 +5568,11 @@ mod tests {
             expected_fragments: &["interface", "Theme", "GetTheme", "NotFound"],
         },
         FixtureCase {
+            relative_path: "ghostty/config.ghostty",
+            expect_highlight: true,
+            expected_fragments: &["font-family", "font-size", "keybind", "# literal"],
+        },
+        FixtureCase {
             relative_path: "known_hosts/known_hosts",
             expect_highlight: true,
             expected_fragments: &[
@@ -6112,6 +6144,7 @@ mod tests {
     }
 
     const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
+        "ghostty",
         "pkl",
         "cel",
         "csv",

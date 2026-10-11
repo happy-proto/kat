@@ -1,0 +1,18 @@
+# Ghostty keeps inline hashes and equals signs inside values.
+font-family = JetBrains Mono
+font-family = Noto Sans CJK SC
+font-size = 14
+theme = dark:Dracula,light:Catppuccin Latte
+background = #282a36
+foreground = #f8f8f2
+palette = 1=#ff5555
+window-padding-x = 4,8
+window-padding-y = 6
+quick-terminal-size = 50%,100%
+cursor-click-to-move
+cursor-color =
+keybind = global:ctrl+grave=toggle_quick_terminal
+keybind = ctrl+shift+t=new_tab
+keybind = ctrl+a>n=new_tab
+env = EDITOR=nvim
+title = "Terminal #1 = work"

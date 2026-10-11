@@ -612,6 +612,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         locals_query: "",
     },
     StaticLanguageAsset {
+        name: "ghostty",
+        language_fn: tree_sitter_kat_parsers::GHOSTTY_LANGUAGE,
+        highlights_query: include_str!("../grammars/ghostty/queries/highlights.scm"),
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
         name: "known_hosts",
         language_fn: tree_sitter_kat_parsers::KNOWN_HOSTS_LANGUAGE,
         highlights_query: KNOWN_HOSTS_HIGHLIGHTS_QUERY,
