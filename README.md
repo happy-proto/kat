@@ -39,8 +39,10 @@ cargo binstall --git https://github.com/happy-proto/kat kat
 如果你想基于同一个仓库源码直接本地编译安装，也可以用：
 
 ```bash
-cargo install --git https://github.com/happy-proto/kat kat
+cargo install --git https://github.com/happy-proto/kat --locked kat
 ```
+
+在本地 checkout 中使用 `just install` 安装。源码安装统一使用仓库的 `Cargo.lock`，避免重新解析依赖后与当前源码不匹配。
 
 ## 快速开始
 
