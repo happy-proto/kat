@@ -6,6 +6,7 @@ use serde::Serialize;
 pub(crate) enum DocumentProfile {
     Plain,
     PrekConfig,
+    MiseConfig,
     HkConfig,
     GitHubActionsWorkflow,
     GitHubActionMetadata,
@@ -31,6 +32,7 @@ impl DocumentProfile {
         match self {
             Self::Plain => "plain",
             Self::PrekConfig => "prek_config",
+            Self::MiseConfig => "mise_config",
             Self::HkConfig => "hk_config",
             Self::GitHubActionsWorkflow => "github_actions_workflow",
             Self::GitHubActionMetadata => "github_action_metadata",
@@ -164,7 +166,11 @@ fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile>
 
 fn toml_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
-    is_prek_config_path(path).then_some(DocumentProfile::PrekConfig)
+    if crate::mise::is_config_path(path) {
+        Some(DocumentProfile::MiseConfig)
+    } else {
+        is_prek_config_path(path).then_some(DocumentProfile::PrekConfig)
+    }
 }
 
 fn git_config_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {

@@ -1,0 +1,39 @@
+[tools]
+rust = "stable"
+python = "3.13"
+
+[tasks]
+format = "cargo fmt --check"
+
+[tasks.test]
+description = "Run Rust tests"
+run = ["cargo test --locked", { task = "format" }]
+
+[tasks.release]
+description = "Prepare release assets"
+run = '''
+set -eu
+mkdir -p dist
+for target in {{ vars.targets }}; do
+    cargo build --release --target "$target"
+    cp "target/$target/release/kat" "dist/kat-$target"
+done
+'''
+run_windows = 'echo Preparing Windows release'
+
+[tasks.report]
+run = '''
+#!/usr/bin/env -S uv run --script
+from pathlib import Path
+for artifact in Path("dist").glob("kat-*"):
+    print(f"{artifact.name}: {artifact.stat().st_size} bytes")
+'''
+
+[tasks.fish]
+shell = "fish -c"
+run = '''
+set label "构建完成"
+for artifact in dist/kat-*
+    echo "$label: $artifact"
+end
+'''

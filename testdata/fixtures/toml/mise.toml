@@ -1,0 +1,37 @@
+[tools]
+rust = "stable"
+
+[env]
+run = "not a task command"
+
+[tasks]
+short = "cargo fmt --check"
+
+[tasks.test]
+run = ["cargo test", { task = "short" }, "echo done"]
+
+[tasks.platform]
+run = "echo unix"
+run_windows = "echo windows"
+
+[tasks.report]
+run = '''
+#!/usr/bin/env python3
+for name in ["kat", "mise"]:
+    print(name)
+'''
+
+[tasks.fish]
+shell = "fish -c"
+run = "set label hello; echo $label"
+
+[tasks.zsh]
+shell = "zsh -c"
+run = "print hello"
+
+[tasks.unknown]
+shell = "custom-shell -c"
+run = "leave this as TOML"
+
+[tasks.test.env]
+run = "also not a task command"
