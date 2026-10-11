@@ -58,6 +58,13 @@
 
 ## 当前结论
 
+### Mermaid
+
+- 支持 `.mmd` / `.mermaid` 文件和 `--language mermaid`；Markdown 中的 `mermaid` 代码块复用同一 runtime，包括反引号、波浪线围栏和引用/列表内围栏，Rustdoc 等递归 Markdown 宿主也沿用通用分发。围栏分发按 AST 排除 `block_continuation` 宿主前缀，保留代码中的 `>`、换行及原始 UTF-8 位置映射；其它围栏语言同样适用。
+- 使用 Merman `tree-sitter-mermaid` 0.3.0 的容错 grammar 和完整 portable highlights query，覆盖图类型关键字、语句、节点/类型、连线运算符、标签、注释、数字和样式属性。流程图、时序图、类图、状态图、ER、Gantt、饼图与 mindmap 有自动化覆盖。
+- 只高亮原始 Mermaid 源码，不渲染图形，也不承担 Mermaid 语义合法性校验。不猜测无扩展名内容；Mermaid 自身的 frontmatter、directive 和 Markdown/HTML 标签目前使用 query 的基础样式，没有进一步注入子语言。
+- parser 源码与预生成产物由 `kat-parsers` 维护，Kat 仅保存 query 和许可证。上游 crate 的精确 `tree-sitter-language` 版本约束与当前 runtime 冲突，归属与 revision 见 [THIRD_PARTY.md](../THIRD_PARTY.md)。
+
 ### Ghostty 配置
 
 - `ghostty` 支持配置键、等号、整行注释和原始/双引号值高亮；裸布尔开关、空值、重复字段、行内 `#` 与 `=` 按官方文件解析规则处理。
@@ -208,6 +215,7 @@ mise 配置已通过 TOML 的 `mise_config` profile 支持任务脚本嵌套高�
 | `go.sum` | 🟩 已支持 | 现已按文件名直接进入独立 `gosum` runtime；module path、module version、pseudo-version、`go.mod` suffix、`h1:` 与 checksum value 都有专门 capture。 | `zed` 侧即便未必单独强调，也可视作 Go 生态常见文件名识别的一部分。 | `go.sum` 现在也不再只是“能认出来”，而是有自己合适的高亮语义。 |
 | Bash shebang | 🟩 已支持 | `zed` 主要依赖语言 matcher / 编辑器打开语义。 | 对终端工具来说已经足够关键。 |
 | Markdown fenced code | 🟩 已支持 | `zed` 也支持。 | 现在已经走统一的 fenced-language dispatch；后续收益应主要来自子语言本身继续细化。 |
+| Markdown fenced `mermaid` | 🟩 已支持 | 采用 Merman 的 Tree-sitter grammar / portable query。 | 与独立 `.mmd` / `.mermaid` 文件复用同一 runtime，仅高亮源码；围栏与正文保留 Markdown 样式。 |
 | Markdown YAML/TOML frontmatter | 🟩 已支持 | `zed` 也支持。 | 这部分已经对齐到合理基线。 |
 | HTML 内嵌 `<script>` / `<style>` / `style=` / `on*=` | 🟩 已支持 | `zed` 也支持。 | 这一层结构性注入已经补齐，后续主要继续细化 CSS / JS 本体 query。 |
 | Justfile recipe 嵌套语言 | 🟩 已支持 | `zed-just` 也支持默认 Bash、全局 shell 与多种 shebang 映射。 | `kat` 这一层已经具备对照 `zed-just` 的基础，并且由于 Bash heredoc 注入已下沉到共享 runtime，Justfile 中的 `python/node/bash <<'EOF'` 也会自动受益；后续重点应转向补 runtime 缺口与语言本体 query。 |
@@ -286,6 +294,7 @@ mise 配置已通过 TOML 的 `mise_config` profile 支持任务脚本嵌套高�
 - `JavaScript (Babel)`：`kat` 已覆盖 `js`、`mjs`、`jsx`、`cjs`；仍缺 `babel`、`es6`、`*.pac`
 - `JSON`：`kat` 已覆盖 `json`、`jsonc`、`jsonl`、`ipynb` 与 `flake.lock`；仍缺 `sublime-settings`、`sublime-menu`、`sublime-keymap`、`sublime-mousemap`、`sublime-theme`、`sublime-build`、`sublime-project`、`sublime-completions`、`sublime-commands`、`sublime-macro`、`sublime-color-scheme`、`Pipfile.lock`、`*.jsonld`、`*.geojson`、`*.ndjson`、`*.sarif`
 - `Markdown`：`kat` 已覆盖 `md`、`markdown`、`mdown`、`markdn`、`mkd`
+- `Mermaid`：`kat` 已覆盖 `mmd`、`mermaid`，也可用 `--language mermaid`
 - `Python`：`kat` 已覆盖 `py`；仍缺 `py3`、`pyw`、`pyi`、`pyx`、`pyx.in`、`pxd`、`pxd.in`、`pxi`、`pxi.in`、`rpy`、`cpy`、`SConstruct`、`Sconstruct`、`sconstruct`、`SConscript`、`gyp`、`gypi`、`Snakefile`、`vpy`、`wscript`、`bazel`、`bzl`、`*.xsh`、`*.xonshrc`
 - `Rust`：`kat` 已覆盖 `rs`；仍缺 `*.ron`
 - `SQL`：`kat` 已覆盖 `sql`、`ddl`、`dml`

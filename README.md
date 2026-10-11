@@ -9,6 +9,7 @@
 它的重点不是把更多文件“简单点亮”，而是尽量把那些依赖结构语义、宿主感知和嵌套分发的场景做深，比如：
 
 - Rust 文档注释里的 Markdown
+- Markdown 代码块里的 Mermaid 图表源码高亮
 - `Justfile` 里的 Bash / Python / Zsh / Fish recipe
 - 宿主语言里的 SQL / GraphQL / Regex
 - Pkl 配置中的 Markdown / Regex，以及 `hk.pkl` 里的 shell 命令
@@ -38,8 +39,10 @@ cargo binstall --git https://github.com/happy-proto/kat kat
 如果你想基于同一个仓库源码直接本地编译安装，也可以用：
 
 ```bash
-cargo install --git https://github.com/happy-proto/kat kat
+cargo install --git https://github.com/happy-proto/kat --locked kat
 ```
+
+在本地 checkout 中使用 `just install` 安装。源码安装统一使用仓库的 `Cargo.lock`，避免重新解析依赖后与当前源码不匹配。
 
 ## 快速开始
 

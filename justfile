@@ -44,4 +44,4 @@ showcase path="":
     fi
 
 install:
-    cargo install --path .
+    cargo install --path . --locked

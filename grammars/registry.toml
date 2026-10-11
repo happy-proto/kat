@@ -1971,6 +1971,40 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "mermaid"
+library_name = "tree-sitter-mermaid"
+parser_source = "crate"
+extensions = ["mmd", "mermaid"]
+filenames = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "comment.documentation",
+  "constant",
+  "function",
+  "function.macro",
+  "keyword",
+  "keyword.operator",
+  "namespace",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.special",
+  "type",
+  "type.builtin",
+  "variable",
+  "variable.member",
+]
+
+[[grammar]]
 name = "markdown"
 library_name = "tree-sitter-markdown"
 parser_source = "crate"
