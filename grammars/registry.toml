@@ -494,6 +494,17 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "ghostty"
+library_name = "tree-sitter-ghostty"
+parser_source = "crate"
+extensions = ["ghostty"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = ["comment", "operator", "property", "string"]
+
+[[grammar]]
 name = "known_hosts"
 library_name = "tree-sitter-known-hosts"
 parser_source = "crate"

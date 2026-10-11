@@ -1,0 +1,8 @@
+# Ghostty configuration
+font-family = JetBrains Mono
+font-size = 14
+window-padding-x = 4,8
+background = #282a36
+keybind = ctrl+shift+t=new_tab
+title = # literal
+cursor-click-to-move

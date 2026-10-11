@@ -3,6 +3,7 @@
 This repository now primarily keeps Tree-sitter query and other kat-side integration assets. Parser source files that still need vendored maintenance are externalized to [kat-parsers](https://github.com/happy-proto/kat-parsers), while this repository only retains the local assets required for runtime integration.
 
 Included sources:
+- `grammars/ghostty/queries/highlights.scm` is authored for kat. Its parser is independently maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers), based on Ghostty's official `src/cli/args.zig`, `src/config/Config.zig` and `src/config/file_load.zig` at `b1d9492cfa5d0d22c534a00e81bea623957113e7`. No community Ghostty grammar was copied or adapted. The parser revision is pinned in `Cargo.toml`.
 - `grammars/pkl/queries/highlights.scm`
 - `grammars/pkl/queries/locals.scm`
 - `grammars/actionscript/queries/highlights.scm`
