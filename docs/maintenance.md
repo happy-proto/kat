@@ -18,14 +18,12 @@
 
 ## Grammar 与 Query 维护
 
-- `grammar.js`、`scanner.*` 和 grammar 构建必需的 support 源文件，默认按上游 revision 快照管理。
-- 对 vendored `scanner.c` / `scanner.cc` / `scanner.cpp` 的本地改动，优先保持跨编译器可移植；不要在函数声明里直接写裸 `__attribute__(...)` 之类的 GNU 扩展，确实需要编译器特定属性时要通过可移植宏封装。
+主仓库所有 grammar 都使用 crate-backed parser，`grammars/<name>/` 只保存 query 等 kat 集成资产。parser 来源优先选择兼容且许可证合适的公开 crate；需要特化 grammar、scanner 或许可证隔离时，由 [kat-parsers](https://github.com/happy-proto/kat-parsers) 维护源码和预生成产物。来源选择依据由该仓库的 [grammar 维护理由](https://github.com/happy-proto/kat-parsers/blob/master/docs/vendor-grammar-reasons.md) 记录。来源变更同步更新 `grammars/registry.toml`、`THIRD_PARTY.md` 和相关文档。
+
 - `queries/*.scm` 默认按仓库内集成资产管理，可以独立于 grammar revision 演进。
-- 如果某个 grammar 改为 crate-backed parser，要在 `grammars/registry.toml` 明确标记 parser 来源，并同步更新相关文档与第三方归属说明；此时仓库内默认不再保留会误导维护者的本地 parser 源文件。
-- 对没有合适 crates.io crate、但又不希望继续让 `kat` 主仓库承担 parser 生成成本的语言，默认优先把 parser 源迁到外部仓库 [`kat-parsers`](https://github.com/happy-proto/kat-parsers)，由那个仓库预生成并提交 parser 产物。
-- `grammars/registry.toml` 中的每个 grammar 都必须对应一个 `grammars/<name>/` 目录；vendored grammar 必须保留 `grammar.js`，crate-backed grammar 也必须至少保留一个本地资产文件（通常是 `queries/*.scm`），这样仓库级校验、构建缓存和维护流程才能稳定工作。
+- `grammars/registry.toml` 中的每个 grammar 都必须对应一个 `grammars/<name>/` 目录，并至少保留一个本地集成资产文件（通常是 `queries/*.scm`），供仓库级校验和构建流程使用。
 - 仓库级 grammar 布局校验默认通过 workspace 内的独立 test crate `validate-grammar-registry` 覆盖；不要再把这类轻量校验重新挂回主 crate，否则 CI 会为了跑校验而额外触发 `kat` 的 `build.rs`。
-- 升级 grammar 时，优先按单个 upstream revision 同步最小必需源码资产。
+- 升级 parser 时，通过 Cargo 更新对应依赖；需要改造 grammar 或 scanner 的语言先在 `kat-parsers` 完成源码与生成产物的同步，再更新主仓库依赖。
 - 调整 query 时，优先服务当前仓库的 capture 语义、nested runtime 和 detector 设计，而不是机械贴近某个上游仓库。
 - 如果只是为了高亮效果或 injection 行为调整 query，默认不要顺手升级 grammar；只有当 query 目标明确受 upstream AST 或 grammar 变化驱动时，才一起升级 grammar。
 

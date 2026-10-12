@@ -1,33 +1,20 @@
+;; Locals for the fsharp_signature grammar (.fsi files). A signature has no
+;; expression layer, so the only scopes are namespaces and modules and the
+;; only definitions are the values, functions and types they declare.
+
 (identifier) @local.reference
 
 [
   (namespace)
   (named_module)
-  (function_or_value_defn)
+  (module_defn)
 ] @local.scope
 
-(value_declaration_left
-  .
-  [
-   (_ (identifier) @local.definition.var)
-   (_ (_ (identifier) @local.definition.var))
-   (_ (_ (_ (identifier) @local.definition.var)))
-   (_ (_ (_ (_ (identifier) @local.definition.var))))
-   (_ (_ (_ (_ (_ (identifier) @local.definition.var)))))
-   (_ (_ (_ (_ (_ (_ (identifier) @local.definition.var))))))
-  ])
+(value_definition
+  (value_declaration_left
+    . (identifier_pattern
+        (long_identifier_or_op
+          (identifier) @local.definition))))
 
-(function_declaration_left
-  .
-  ((_) @local.definition.function
-   (#set! "definition.function.scope" "parent"))
-  ((argument_patterns
-    [
-     (_ (identifier) @local.definition.parameter)
-     (_ (_ (identifier) @local.definition.parameter))
-     (_ (_ (_ (identifier) @local.definition.parameter)))
-     (_ (_ (_ (_ (identifier) @local.definition.parameter))))
-     (_ (_ (_ (_ (_ (identifier) @local.definition.parameter)))))
-     (_ (_ (_ (_ (_ (_ (identifier) @local.definition.parameter))))))
-    ])
-  ))
+(type_name type_name: (long_identifier (identifier) @local.definition))
+(type_name type_name: (identifier) @local.definition)

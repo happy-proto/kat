@@ -28,6 +28,8 @@
 
 ## 安装
 
+macOS 仅支持 Apple Silicon（ARM64）；Intel macOS 不再提供预编译安装包，也不再进行构建验证。
+
 推荐优先使用 [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) 基于当前仓库安装，它会直接下载对应平台的预编译二进制，避免本地编译 `kat`：
 
 ```bash
@@ -124,7 +126,6 @@ Ghostty 构建遇到明确的 Zig 依赖下载网络错误时会有限退避重�
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
 - 发布二进制体积实验：[`docs/binary-size-experiment.md`](docs/binary-size-experiment.md)
 - 仓库维护约定：[`docs/maintenance.md`](docs/maintenance.md)
-- 主仓库 vendored parser 现状：[`docs/vendor-grammar-exceptions.md`](docs/vendor-grammar-exceptions.md)
 - 测试样例约定：[`docs/test-assets.md`](docs/test-assets.md)
 - 面向 Agent 的开发调试入口：[SKILL.md](.agents/skills/kat-dev/SKILL.md)
 

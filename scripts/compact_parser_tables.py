@@ -16,6 +16,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import zstandard
@@ -218,8 +219,44 @@ def update_checksum(parser, crate_root):
         checksum.write_text(json.dumps(record, separators=(",", ":")))
 
 
+def compress_parser(job):
+    index, name, _crate_root, parser, shared_include, temporary = job
+    work = Path(temporary) / f"{index:03d}"
+    work.mkdir()
+    include_dir = (
+        parser.parent
+        if (parser.parent / "tree_sitter/parser.h").exists()
+        else shared_include
+    )
+    executable = compile_exporter(parser, work, include_dir)
+    direct = work / "direct.bin"
+    compact = work / "compact.bin"
+    map_offset = int(
+        run(
+            [str(executable), str(direct), str(compact)], capture_output=True
+        ).stdout.strip()
+    )
+    raw = compact.read_bytes()
+    if map_offset % 4 or map_offset >= len(raw):
+        raise ValueError(f"invalid compact map for {parser}")
+    # Each worker owns its compiler directory, compressor and parser file.
+    packed = zstandard.ZstdCompressor(level=19).compress(raw)
+    parser.write_text(
+        rewrite_parser(
+            parser.read_text(), direct.read_bytes(), packed, map_offset, len(raw)
+        )
+    )
+    return f"{index} {name}: {len(raw)} bytes compact"
+
+
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
+    cli.add_argument(
+        "--jobs",
+        type=int,
+        default=min(4, os.process_cpu_count() or 1),
+        help="并行压缩数量（默认最多 4，限制编译器与 Zstd 的内存占用）",
+    )
     cli.add_argument(
         "--manifest-path", required=True, type=Path, help="kat 的 Cargo.toml"
     )
@@ -230,6 +267,8 @@ def main():
         help="已执行 cargo fetch 的独立 CARGO_HOME",
     )
     args = cli.parse_args()
+    if args.jobs < 1:
+        cli.error("--jobs 必须大于 0")
     cargo_home = args.cargo_home.resolve()
     default_home = (Path.home() / ".cargo").resolve()
     if (
@@ -275,40 +314,20 @@ def main():
     sources.sort(key=lambda entry: (entry[0], str(entry[2])))
     if not sources:
         raise ValueError("no Tree-sitter parsers found in the isolated Cargo home")
-    compressor = zstandard.ZstdCompressor(level=19)
     with tempfile.TemporaryDirectory(prefix="kat-compact-") as temporary:
-        for index, (name, crate_root, parser) in enumerate(sources, 1):
-            work = Path(temporary) / f"{index:03d}"
-            work.mkdir()
-            include_dir = (
-                parser.parent
-                if (parser.parent / "tree_sitter/parser.h").exists()
-                else shared_include
-            )
-            executable = compile_exporter(parser, work, include_dir)
-            direct = work / "direct.bin"
-            compact = work / "compact.bin"
-            map_offset = int(
-                run(
-                    [str(executable), str(direct), str(compact)], capture_output=True
-                ).stdout.strip()
-            )
-            raw = compact.read_bytes()
-            if map_offset % 4 or map_offset >= len(raw):
-                raise ValueError(f"invalid compact map for {parser}")
-            parser.write_text(
-                rewrite_parser(
-                    parser.read_text(),
-                    direct.read_bytes(),
-                    compressor.compress(raw),
-                    map_offset,
-                    len(raw),
-                )
-            )
-            update_checksum(parser, crate_root)
-            print(
-                f"{index}/{len(sources)} {name}: {len(raw)} bytes compact", flush=True
-            )
+        jobs = [
+            (index, name, crate_root, parser, shared_include, temporary)
+            for index, (name, crate_root, parser) in enumerate(sources, 1)
+        ]
+        with ThreadPoolExecutor(max_workers=args.jobs) as executor:
+            # Ordered results keep logs stable; compression runs concurrently.
+            for job, result in zip(
+                jobs, executor.map(compress_parser, jobs), strict=True
+            ):
+                # Several parsers can share one crate's checksum manifest.
+                # Update it serially after each worker completes its parser.
+                update_checksum(job[3], job[2])
+                print(result, flush=True)
     print(f"compressed {len(sources)} parsers", flush=True)
 
 

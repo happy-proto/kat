@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, fs};
+use std::fs;
 
 use validate_grammar_registry::{
     ParserSource, default_repository_root, load_registry, scanner_sources_with_raw_gnu_attributes,
@@ -6,28 +6,19 @@ use validate_grammar_registry::{
 };
 
 #[test]
-fn vendored_grammar_exceptions_doc_matches_registry() {
+fn all_grammars_use_crate_backed_parsers() {
     let repository_root = default_repository_root();
     let registry = load_registry(&repository_root).expect("workspace grammar registry must load");
-    let documented_markdown =
-        fs::read_to_string(repository_root.join("docs/vendor-grammar-exceptions.md"))
-            .expect("vendor grammar exceptions doc must load");
-    let documented = documented_grammar_names(&documented_markdown);
-    let vendored_from_registry = registry
+    let vendored = registry
         .grammar
         .iter()
         .filter(|grammar| grammar.parser_source == ParserSource::Vendored)
         .map(|grammar| grammar.name.as_str())
-        .collect::<BTreeSet<_>>();
+        .collect::<Vec<_>>();
 
-    let documented_vendored = documented
-        .difference(&support_asset_exceptions())
-        .copied()
-        .collect::<BTreeSet<_>>();
-
-    assert_eq!(
-        documented_vendored, vendored_from_registry,
-        "docs/vendor-grammar-exceptions.md must list every vendored grammar exactly once"
+    assert!(
+        vendored.is_empty(),
+        "kat consumes pre-generated crate-backed parsers; vendored grammars: {vendored:?}"
     );
 }
 
@@ -61,23 +52,4 @@ fn scanner_sources_avoid_raw_gnu_attributes() {
         violations.is_empty(),
         "scanner sources must not use raw GNU __attribute__ annotations outside preprocessor guards: {violations:?}"
     );
-}
-
-fn documented_grammar_names(markdown: &str) -> BTreeSet<&str> {
-    markdown
-        .lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            if !line.starts_with("- `") {
-                return None;
-            }
-
-            let name = line.strip_prefix("- `")?.split('`').next()?;
-            Some(name)
-        })
-        .collect()
-}
-
-fn support_asset_exceptions() -> BTreeSet<&'static str> {
-    BTreeSet::from(["css"])
 }

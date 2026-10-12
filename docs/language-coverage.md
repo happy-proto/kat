@@ -13,7 +13,7 @@
 ## 相关文档
 
 - 项目说明见 [../README.md](../README.md)
-- 文档总入口见 [README.md](README.md)
+- 文档总入口见 [../README.md](../README.md)
 - 架构说明见 [architecture.md](architecture.md)
 - 未完成事项见 [roadmap.md](roadmap.md)
 
@@ -57,6 +57,10 @@
 - `🟩`：当前可作为样板语言，后续以维护和增量打磨为主。
 
 ## 当前结论
+
+### F# 签名文件
+
+- `.fsi` 使用独立的 `fsharp_signature` runtime，highlights 和 locals query 与当前 signature grammar 配套，覆盖模块、类型、成员和值签名。不能直接复用 `.fs` 的表达式与隐藏 supertype 查询；全量 runtime 加载检查覆盖这项兼容性。
 
 ### Mermaid
 
