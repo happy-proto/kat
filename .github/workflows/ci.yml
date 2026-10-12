@@ -287,13 +287,6 @@ jobs:
             binary_ext: ""
             use_link_wrapper: true
             use_sccache: true
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
-            linker: cc
-            archive_ext: tar.xz
-            binary_ext: ""
-            use_link_wrapper: true
-            use_sccache: true
           - runner: macos-latest
             target: aarch64-apple-darwin
             linker: cc
@@ -678,3 +671,13 @@ jobs:
           fi
 
           gh release upload latest "${RELEASE_ASSET_DIR}"/* --clobber
+
+          # Keep latest assets aligned with the current build matrix and archive format.
+          gh release view latest --json assets \
+            --jq '.assets[].name | select(startswith("kat-"))' \
+            > "${RUNNER_TEMP}/latest-release-package-names.txt"
+          while IFS= read -r asset; do
+            if [[ ! -f "${RELEASE_ASSET_DIR}/${asset}" ]]; then
+              gh release delete-asset latest "${asset}" --yes
+            fi
+          done < "${RUNNER_TEMP}/latest-release-package-names.txt"
