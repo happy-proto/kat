@@ -267,7 +267,8 @@ pub(crate) fn debug_named_language_tree(language_name: &str, source: &str) -> Re
 }
 
 pub(crate) fn debug_semantics(language_name: &str, source: &str) -> Result<String> {
-    let spans = semantic_capture_spans_for(language_name, DocumentProfile::Plain, source)?;
+    let tree = parse_language_tree(language_name, source)?;
+    let spans = semantic_capture_spans_for(language_name, DocumentProfile::Plain, source, &tree)?;
     let mut rendered = String::new();
 
     for span in spans {
@@ -284,14 +285,25 @@ pub(crate) fn debug_semantics(language_name: &str, source: &str) -> Result<Strin
     Ok(rendered)
 }
 
+#[cfg(test)]
 pub(crate) fn semantic_capture_spans(
     document_kind: DocumentKind,
     source: &str,
+) -> Result<Vec<SemanticCaptureSpan>> {
+    let tree = parse_language_tree(document_kind.runtime_name(), source)?;
+    semantic_capture_spans_with_tree(document_kind, source, &tree)
+}
+
+pub(crate) fn semantic_capture_spans_with_tree(
+    document_kind: DocumentKind,
+    source: &str,
+    tree: &tree_sitter::Tree,
 ) -> Result<Vec<SemanticCaptureSpan>> {
     semantic_capture_spans_for(
         document_kind.runtime_name(),
         document_kind.profile(),
         source,
+        tree,
     )
 }
 
@@ -299,6 +311,7 @@ fn semantic_capture_spans_for(
     language_name: &str,
     profile: DocumentProfile,
     source: &str,
+    tree: &tree_sitter::Tree,
 ) -> Result<Vec<SemanticCaptureSpan>> {
     let has_runtime_overlays = matches!(
         language_name,
@@ -332,11 +345,10 @@ fn semantic_capture_spans_for(
         return Ok(Vec::new());
     }
 
-    let tree = parse_language_tree(language_name, source)?;
     let mut spans = Vec::new();
 
     if language_name == "pkl" {
-        spans.extend(crate::pkl::semantic_spans(profile, &tree, source));
+        spans.extend(crate::pkl::semantic_spans(profile, tree, source));
     }
 
     walk_tree(tree.root_node(), &mut |node| {
@@ -904,7 +916,7 @@ fn is_sql_language(language_name: &str) -> bool {
     )
 }
 
-fn parse_language_tree(language_name: &str, source: &str) -> Result<tree_sitter::Tree> {
+pub(crate) fn parse_language_tree(language_name: &str, source: &str) -> Result<tree_sitter::Tree> {
     let language_runtime = runtime(language_name)
         .with_context(|| format!("missing language runtime for {language_name}"))?;
     let mut parser = Parser::new();

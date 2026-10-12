@@ -34,7 +34,9 @@ use std::{
 
 use anyhow::{Context, Result, anyhow};
 use serde::Serialize;
+#[cfg(test)]
 use tree_sitter::Parser;
+use tree_sitter::Tree;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
 use crate::analysis::AnalysisDocument;
@@ -59,9 +61,11 @@ use crate::language_runtime::{global_highlight_name, runtime, supports_runtime};
 use crate::layout::LayoutDocument;
 use crate::python_docstrings::{render_python_docstring, resolve_python_docstring_document_kind};
 use crate::render_ops::RenderPlan;
+#[cfg(test)]
+use crate::semantic_overlays::semantic_capture_spans;
 use crate::semantic_overlays::{
     debug_named_language_tree as debug_language_tree_impl, debug_semantics as debug_semantics_impl,
-    github_actions_expression_spans, semantic_capture_spans,
+    github_actions_expression_spans, parse_language_tree, semantic_capture_spans_with_tree,
 };
 use crate::sql_dialect::resolve_sql_runtime;
 use crate::terminal::TerminalCapabilities;
@@ -1648,7 +1652,10 @@ fn highlight_named_language_render_data_with_depth(
     }
 
     let semantic_started_at = Instant::now();
-    spans = overlay_semantic_captures(resolved_document_kind, source, spans, theme)?;
+    // The highlighter owns its tree internally. Share our analysis tree between
+    // semantic overlays and injections rather than parsing each phase again.
+    let tree = parse_language_tree(resolved_runtime_name, source)?;
+    spans = overlay_semantic_captures(resolved_document_kind, source, &tree, spans, theme)?;
     if log_progress {
         progress_log(
             "semantic",
@@ -1665,9 +1672,10 @@ fn highlight_named_language_render_data_with_depth(
     }
 
     let injections_started_at = Instant::now();
-    let nested_regions = collect_top_level_injection_regions(
+    let nested_regions = collect_top_level_injection_regions_from_tree(
         resolved_document_kind,
         source,
+        &tree,
         theme,
         nested_depth,
         timings.as_deref_mut(),
@@ -1717,11 +1725,12 @@ fn highlight_named_language_render_data_with_depth(
 fn overlay_semantic_captures(
     document_kind: DocumentKind,
     source: &str,
+    tree: &Tree,
     parent_spans: Vec<StyledSpan>,
     theme: &Theme,
 ) -> Result<Vec<StyledSpan>> {
     let invalid_style = theme.token_style_for("invalid.illegal.regex", "");
-    let overlays = semantic_capture_spans(document_kind, source)?
+    let overlays = semantic_capture_spans_with_tree(document_kind, source, tree)?
         .into_iter()
         .filter_map(|span| {
             let text = &source[span.range.clone()];
@@ -3096,9 +3105,29 @@ struct CoveredLine {
     role: CoveredLineRole,
 }
 
+#[cfg(test)]
 fn collect_top_level_injection_regions(
     document_kind: DocumentKind,
     source: &str,
+    theme: &Theme,
+    nested_visual_level: usize,
+    timings: Option<&mut RenderTimings>,
+) -> Result<Vec<NestedRegion>> {
+    let tree = parse_language_tree(document_kind.runtime_name(), source)?;
+    collect_top_level_injection_regions_from_tree(
+        document_kind,
+        source,
+        &tree,
+        theme,
+        nested_visual_level,
+        timings,
+    )
+}
+
+fn collect_top_level_injection_regions_from_tree(
+    document_kind: DocumentKind,
+    source: &str,
+    tree: &Tree,
     theme: &Theme,
     nested_visual_level: usize,
     timings: Option<&mut RenderTimings>,
@@ -3107,17 +3136,10 @@ fn collect_top_level_injection_regions(
     let language_runtime = runtime(runtime_name)
         .with_context(|| format!("missing language runtime for {runtime_name}"))?;
     if language_runtime.injections_query.is_none() {
-        let mut parser = Parser::new();
-        parser
-            .set_language(&language_runtime.language)
-            .with_context(|| format!("failed to set parser language for {runtime_name}"))?;
-        let tree = parser
-            .parse(source, None)
-            .with_context(|| format!("failed to parse source for {runtime_name}"))?;
         let candidates = prune_to_top_level_injection_regions(collect_injection_candidates(
             document_kind,
             language_runtime,
-            &tree,
+            tree,
             source,
         )?);
         return render_injection_candidates(
@@ -3129,15 +3151,7 @@ fn collect_top_level_injection_regions(
         );
     }
 
-    let mut parser = Parser::new();
-    parser
-        .set_language(&language_runtime.language)
-        .with_context(|| format!("failed to set parser language for {runtime_name}"))?;
-    let tree = parser
-        .parse(source, None)
-        .with_context(|| format!("failed to parse source for {runtime_name}"))?;
-
-    let candidates = collect_injection_candidates(document_kind, language_runtime, &tree, source)?;
+    let candidates = collect_injection_candidates(document_kind, language_runtime, tree, source)?;
     let candidates = prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
         source, candidates,
     ));

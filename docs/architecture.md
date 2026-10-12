@@ -28,6 +28,7 @@
 - `kat` 主仓库当前默认只消费预生成 parser crate，不再把 vendored grammar 的 parser 生成作为常规构建路径。
 - 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 或外部 parser bundle crate 提供的预生成 parser。
 - Tree-sitter 生成 CLI 和 JavaScript runtime 只属于 `kat-parsers` 的生成环境；`kat` 构建和运行均不调用它们。bundle 通过公开的 `LanguageFn` 导出接入，不在 `kat` 重复维护 C 符号声明。各 runtime 的语言构造函数、query 和一次性初始化槽共同注册；不同 Rust binding 的构造方式直接由函数表达，不使用假语言占位或按名称分支。
+- 每份宿主或投影源码的语义覆盖与注入收集共享同一棵 AST，避免两个阶段重复解析；基础高亮继续使用上游 `tree-sitter-highlight`，它内部持有自己的树且未公开树复用接口。保留这两次解析的边界，避免复制或依赖上游私有高亮实现。
 - bundle 使用 ABI 15；其它 grammar crate 使用 Tree-sitter runtime 支持的 ABI 范围。不能用 CLI 软件版本推断所有依赖的 ABI，也不为此在主仓库重新生成第三方 parser。全量 runtime 加载测试验证每个注册语言的 parser 与 highlights/locals/injections query 兼容性。
 - 如果未来确实重新引入需要在主仓库内生成 parser 的 vendored grammar，应优先把它当作例外处理，而不是恢复“大量语言都在 `kat` 内本地生成 parser”的旧模式。
 - 预编译发布产物不应要求目标系统额外安装 dav1d 动态库；当前 release build 会在 Linux、macOS 和 Windows 上静态链接 dav1d，并在打包前检查平台原生二进制依赖表。
