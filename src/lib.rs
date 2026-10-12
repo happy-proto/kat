@@ -5225,6 +5225,11 @@ mod tests {
             expected_fragments: &["module", "let", "render", "printfn"],
         },
         FixtureCase {
+            relative_path: "fsharp/Theme.fsi",
+            expect_highlight: true,
+            expected_fragments: &["module", "type", "member", "val", "render"],
+        },
+        FixtureCase {
             relative_path: "sml/theme.sml",
             expect_highlight: true,
             expected_fragments: &["structure", "ThemePreview", "fun", "print"],

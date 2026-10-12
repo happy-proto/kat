@@ -1,13 +1,19 @@
+;; Highlights for the fsharp_signature grammar (.fsi files).
+;; Derived from queries/highlights.scm, restricted to nodes the signature
+;; grammar actually produces (it narrows the expression layer and declares
+;; its own supertypes, so `_type`/`_pattern`/expression nodes are absent).
+
 ;; ----------------------------------------------------------------------------
 ;; Literals and comments
 
+;; `@spell` first: the colour capture, listed last, is the one that wins.
 [
   (line_comment)
+  (xml_doc)
   (block_comment)
-] @comment @spell
+] @spell @comment
 
-((line_comment) @comment.documentation @spell
- (#not-match? @comment.documentation "^///"))
+(xml_doc) @spell @comment.documentation
 
 (const
   [
@@ -20,24 +26,36 @@
 (class_as_reference
   (_) @variable.parameter.builtin)
 
-
 ((argument_patterns (long_identifier (identifier) @character.special))
- (#match? @character.special "^\_.*"))
+ (#match? @character.special "^_"))
 
 ;; ----------------------------------------------------------------------------
-;; Punctuation
+;; Types
 
 (type_name type_name: (_) @type.definition)
 (exception_definition exception_name: (_) @type.definition)
 
 [
- (_type)
  (atomic_type)
+ (simple_type)
+ (generic_type)
+ (function_type)
+ (compound_type)
+ (postfix_type)
+ (list_type)
+ (static_type)
+ (constrained_type)
+ (flexible_type)
+ (byref_type)
+ (paren_type)
+ (struct_type)
 ] @type
 
 (member_signature
   .
-  (identifier) @function.member
+  (identifier) @function.member)
+
+(member_signature
   (curried_spec
     (arguments_spec
       "*"* @operator
@@ -47,11 +65,6 @@
           name: (_) @variable.parameter)))))
 
 (union_type_case (identifier) @constant)
-
-(rules
-  (rule
-    pattern: (_) @constant
-    block: (_)))
 
 (wildcard_pattern) @character.special
 
@@ -75,13 +88,6 @@
   .
   (_) @module)
 
-(ce_expression
-  .
-  (_) @constant.macro)
-
-(field_initializer
-  field: (_) @property)
-
 (record_fields
   (record_field
     .
@@ -94,53 +100,19 @@
 
 (argument_patterns) @variable.parameter
 (typed_pattern
-  (_pattern) @variable.parameter
-  (_type) @type)
+  . (_) @variable.parameter)
 
 (member_defn
   (method_or_prop_defn
-    [
-      (property_or_ident) @function
-      (property_or_ident
-        instance: (identifier) @variable.parameter.builtin
-        method: (identifier) @function.method)
-    ]
+    (property_or_ident . (identifier) @function .)
     args: (_)* @variable.parameter))
 
-
-(dot_expression
-  .
-  (_) @variable.member
-  .
-  (_))
-
-(application_expression
-  .
-  (_) @function.call
-  .
-  (_) @variable)
-
-((infix_expression
-  .
-  (_)
-  .
-  (infix_op) @operator
-  .
-  (_) @function.call
-  )
- (#eq? @operator "|>")
- )
-
-((infix_expression
-  .
-  (_) @function.call
-  .
-  (infix_op) @operator
-  .
-  (_)
-  )
- (#eq? @operator "<|")
- )
+(member_defn
+  (method_or_prop_defn
+    (property_or_ident
+      instance: (identifier) @variable.parameter.builtin
+      method: (identifier) @function.method)
+    args: (_)* @variable.parameter))
 
 [
   (xint)
@@ -169,6 +141,8 @@
   (triple_quoted_string)
   (verbatim_string)
   (char)
+  (format_string)
+  (format_triple_quoted_string)
 ] @spell @string)
 
 (compiler_directive_decl) @keyword.directive
@@ -178,7 +152,7 @@
 
 (attribute
   target: (identifier)? @keyword
-  (_type) @attribute)
+  (simple_type) @attribute)
 
 [
   "("
@@ -198,15 +172,8 @@
   ">]"
 ] @punctuation.special
 
-(format_string_eval
-  [
-    "{"
-    "}"
-  ] @punctuation.special)
-
 [
   ","
-  ";"
   ":"
   "."
 ] @punctuation.delimiter
@@ -214,21 +181,8 @@
 [
   "|"
   "="
-  ">"
-  "<"
-  "-"
-  "~"
   "->"
-  "<-"
-  "&"
-  "&&"
-  "|"
-  "||"
-  ":>"
-  ":?>"
-  ".."
-  (infix_op)
-  (prefix_op)
+  "*"
   (op_identifier)
 ] @operator
 
@@ -239,37 +193,15 @@
   ] @punctuation.bracket)
 
 [
-  "if"
-  "then"
-  "else"
-  "elif"
   "when"
-  "match"
-  "match!"
+  "then"
 ] @keyword.conditional
 
 [
   "and"
   "or"
   "not"
-  "upcast"
-  "downcast"
 ] @keyword.operator
-
-[
-  "return"
-  "return!"
-  "yield"
-  "yield!"
-] @keyword.return
-
-[
-  "for"
-  "while"
-  "downto"
-  "to"
-] @keyword.repeat
-
 
 [
   "open"
@@ -280,6 +212,7 @@
 [
   "abstract"
   "delegate"
+  "extern"
   "static"
   "inline"
   "mutable"
@@ -291,9 +224,6 @@
 
 [
   "let"
-  "let!"
-  "use"
-  "use!"
   "member"
 ] @keyword.function
 
@@ -308,24 +238,14 @@
   "struct"
 ] @keyword.type
 
-((identifier) @keyword.exception
- (#any-of? @keyword.exception "failwith" "failwithf" "raise" "reraise"))
-
 [
   "as"
-  "assert"
   "begin"
   "end"
-  "done"
   "default"
-  "in"
   "do"
-  "do!"
-  "fun"
-  "function"
   "get"
   "set"
-  "lazy"
   "new"
   "of"
   "struct"
@@ -339,20 +259,6 @@
   "null"
 ] @constant.builtin
 
-(match_expression "with" @keyword.conditional)
-
-(try_expression
-  [
-    "try"
-    "with"
-    "finally"
-  ] @keyword.exception)
-
-((_type
- (simple_type
-    (long_identifier
-      (identifier) @type.builtin)))
- (#any-of? @type.builtin "bool" "byte" "sbyte" "int16" "uint16" "int" "uint" "int64" "uint64" "nativeint" "unativeint" "decimal" "float" "double" "float32" "single" "char" "string" "unit"))
 
 (preproc_if
   [
@@ -364,23 +270,29 @@
 (preproc_else
   "#else" @keyword.directive)
 
+(preproc_inactive) @comment
+
 ((long_identifier
   (identifier)+ @variable.member
   .
   (identifier)))
 
+;; Every segment of a module path (`namespace Company.Product`,
+;; `open System.IO`), a type path or an attribute path is part of that name,
+;; not a member access; re-capture the segments the rule above marked as
+;; members (the last capture of a node wins). @type.builtin follows so it
+;; still wins over the plain @type.
+(namespace name: (long_identifier (identifier) @module))
+(named_module name: (long_identifier (identifier) @module))
+(import_decl (long_identifier (identifier) @module))
+(module_abbrev (long_identifier (identifier) @module))
+(simple_type (long_identifier (identifier) @type))
+(attribute (simple_type (long_identifier (identifier) @attribute)))
+
+((simple_type
+   (long_identifier
+     (identifier) @type.builtin))
+ (#any-of? @type.builtin "bool" "byte" "sbyte" "int16" "uint16" "int" "uint" "int64" "uint64" "nativeint" "unativeint" "decimal" "float" "double" "float32" "single" "char" "string" "unit"))
+
 ((identifier) @module.builtin
  (#any-of? @module.builtin "Array" "Async" "Directory" "File" "List" "Option" "Path" "Map" "Set" "Lazy" "Seq" "Task" "String" "Result" ))
-
-((value_declaration
-   (attributes
-     (attribute
-       (_type
-         (simple_type
-          (long_identifier
-            (identifier) @attribute)))))
-   (function_or_value_defn
-     (value_declaration_left
-       .
-       (_) @constant)))
- (#eq? @attribute "Literal"))
