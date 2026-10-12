@@ -267,6 +267,9 @@ pub(crate) fn debug_named_language_tree(language_name: &str, source: &str) -> Re
 }
 
 pub(crate) fn debug_semantics(language_name: &str, source: &str) -> Result<String> {
+    if !has_semantic_overlays(language_name, DocumentProfile::Plain) {
+        return Ok(String::new());
+    }
     let tree = parse_language_tree(language_name, source)?;
     let spans = semantic_capture_spans_for(language_name, DocumentProfile::Plain, source, &tree)?;
     let mut rendered = String::new();
@@ -307,12 +310,7 @@ pub(crate) fn semantic_capture_spans_with_tree(
     )
 }
 
-fn semantic_capture_spans_for(
-    language_name: &str,
-    profile: DocumentProfile,
-    source: &str,
-    tree: &tree_sitter::Tree,
-) -> Result<Vec<SemanticCaptureSpan>> {
+fn has_semantic_overlays(language_name: &str, profile: DocumentProfile) -> bool {
     let has_runtime_overlays = matches!(
         language_name,
         "bash"
@@ -341,7 +339,16 @@ fn semantic_capture_spans_for(
     ) && language_name == "yaml"
         || profile == DocumentProfile::FishVariables && language_name == "fish";
 
-    if !has_runtime_overlays && !has_profile_overlays {
+    has_runtime_overlays || has_profile_overlays
+}
+
+fn semantic_capture_spans_for(
+    language_name: &str,
+    profile: DocumentProfile,
+    source: &str,
+    tree: &tree_sitter::Tree,
+) -> Result<Vec<SemanticCaptureSpan>> {
+    if !has_semantic_overlays(language_name, profile) {
         return Ok(Vec::new());
     }
 

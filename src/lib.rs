@@ -4569,6 +4569,17 @@ pub(crate) fn span_covering_range_from<'a>(
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn debug_semantics_is_empty_for_languages_without_overlays() {
+        for language in ["pem", "openpgp_armor", "python_docstring", "json"] {
+            assert_eq!(
+                super::debug_semantics(language, "plain text").unwrap(),
+                "",
+                "{language} has no semantic overlays"
+            );
+        }
+    }
+
     use std::{
         fs,
         path::{Path, PathBuf},
