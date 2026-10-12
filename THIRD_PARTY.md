@@ -1035,7 +1035,13 @@ Upstream projects:
   Source: [ionide/tree-sitter-fsharp](https://github.com/ionide/tree-sitter-fsharp), `fsharp_signature/queries/`
   Revision: `aefd0c8741bdf3aeb827a228aa4a996a6536697e` (tree-sitter-fsharp 0.3.12)
   License: MIT
-  Notes: signature-specific upstream queries replace the older source-grammar queries, whose hidden `_type` supertype and expression patterns are not valid in the signature grammar. Signature injections remain repository-local adapted assets from revision `594c500ecace8618db32dd1144307897277db067`.
+  Notes: unchanged signature-specific upstream queries paired with the tree-sitter-fsharp 0.3.12 grammar.
+
+- `grammars/fsharp_signature/queries/injections.scm`
+  Source: [ionide/tree-sitter-fsharp](https://github.com/ionide/tree-sitter-fsharp)
+  Revision: `594c500ecace8618db32dd1144307897277db067`
+  License: MIT
+  Notes: repository-local adapted injection query, maintained independently of the signature highlights and locals queries.
 
 - `grammars/fstab/*`
   Source: repository-local

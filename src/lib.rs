@@ -3133,26 +3133,13 @@ fn collect_top_level_injection_regions_from_tree(
     let runtime_name = document_kind.runtime_name();
     let language_runtime = runtime(runtime_name)
         .with_context(|| format!("missing language runtime for {runtime_name}"))?;
-    if language_runtime.injections_query.is_none() {
-        let candidates = prune_to_top_level_injection_regions(collect_injection_candidates(
-            document_kind,
-            language_runtime,
-            tree,
-            source,
-        )?);
-        return render_injection_candidates(
-            source,
-            theme,
-            nested_visual_level,
-            timings,
-            candidates,
-        );
-    }
-
     let candidates = collect_injection_candidates(document_kind, language_runtime, tree, source)?;
-    let candidates = prune_to_top_level_injection_regions(merge_adjacent_combined_candidates(
-        source, candidates,
-    ));
+    let candidates = if language_runtime.injections_query.is_some() {
+        merge_adjacent_combined_candidates(source, candidates)
+    } else {
+        candidates
+    };
+    let candidates = prune_to_top_level_injection_regions(candidates);
     render_injection_candidates(source, theme, nested_visual_level, timings, candidates)
 }
 

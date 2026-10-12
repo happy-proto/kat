@@ -13,7 +13,7 @@
 ## 相关文档
 
 - 项目说明见 [../README.md](../README.md)
-- 文档总入口见 [README.md](README.md)
+- 文档总入口见 [../README.md](../README.md)
 - 架构说明见 [architecture.md](architecture.md)
 - 未完成事项见 [roadmap.md](roadmap.md)
 

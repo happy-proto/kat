@@ -18,6 +18,8 @@
 
 ## Grammar 与 Query 维护
 
+主仓库所有 grammar 都使用 crate-backed parser，`grammars/<name>/` 只保存 query 等 kat 集成资产。parser 来源优先选择兼容且许可证合适的公开 crate；需要特化 grammar、scanner 或许可证隔离时，由 [kat-parsers](https://github.com/happy-proto/kat-parsers) 维护源码和预生成产物。来源选择依据由该仓库的 [grammar 维护理由](https://github.com/happy-proto/kat-parsers/blob/master/docs/vendor-grammar-reasons.md) 记录。来源变更同步更新 `grammars/registry.toml`、`THIRD_PARTY.md` 和相关文档。
+
 - `grammar.js`、`scanner.*` 和 grammar 构建必需的 support 源文件，默认按上游 revision 快照管理。
 - 对 vendored `scanner.c` / `scanner.cc` / `scanner.cpp` 的本地改动，优先保持跨编译器可移植；不要在函数声明里直接写裸 `__attribute__(...)` 之类的 GNU 扩展，确实需要编译器特定属性时要通过可移植宏封装。
 - `queries/*.scm` 默认按仓库内集成资产管理，可以独立于 grammar revision 演进。

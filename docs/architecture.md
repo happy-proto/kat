@@ -25,12 +25,8 @@
 
 ### 构建模型
 
-- `kat` 主仓库当前默认只消费预生成 parser crate，不再把 vendored grammar 的 parser 生成作为常规构建路径。
-- 对 crate-backed grammar，`kat` 不再在自己的 `build.rs` 中重新生成 parser，而是直接链接对应 grammar crate 或外部 parser bundle crate 提供的预生成 parser。
-- Tree-sitter 生成 CLI 和 JavaScript runtime 只属于 `kat-parsers` 的生成环境；`kat` 构建和运行均不调用它们。bundle 通过公开的 `LanguageFn` 导出接入，不在 `kat` 重复维护 C 符号声明。各 runtime 的语言构造函数、query 和一次性初始化槽共同注册；不同 Rust binding 的构造方式直接由函数表达，不使用假语言占位或按名称分支。
-- 每份宿主或投影源码的语义覆盖与注入收集共享同一棵 AST，避免两个阶段重复解析；基础高亮继续使用上游 `tree-sitter-highlight`，它内部持有自己的树且未公开树复用接口。保留这两次解析的边界，避免复制或依赖上游私有高亮实现。
-- bundle 使用 ABI 15；其它 grammar crate 使用 Tree-sitter runtime 支持的 ABI 范围。不能用 CLI 软件版本推断所有依赖的 ABI，也不为此在主仓库重新生成第三方 parser。全量 runtime 加载测试验证每个注册语言的 parser 与 highlights/locals/injections query 兼容性。
-- 如果未来确实重新引入需要在主仓库内生成 parser 的 vendored grammar，应优先把它当作例外处理，而不是恢复“大量语言都在 `kat` 内本地生成 parser”的旧模式。
+- `kat` 直接链接公开 grammar crate 或 `kat-parsers` 提供的预生成 parser。Tree-sitter 生成 CLI 和 JavaScript runtime 属于 bundle 的生成环境，主仓库构建和运行均不调用它们。parser 来源与归属约定见 [maintenance.md](maintenance.md)。
+- bundle 使用 ABI 15，其它 grammar crate 使用当前 Tree-sitter runtime 支持的 ABI 范围；全量 runtime 加载测试验证每个注册语言的 parser 与 highlights/locals/injections query 兼容性。
 - 预编译发布产物不应要求目标系统额外安装 dav1d 动态库；当前 release build 会在 Linux、macOS 和 Windows 上静态链接 dav1d，并在打包前检查平台原生二进制依赖表。
 - CI 发布构建在独立 Cargo home 中把所有 Tree-sitter parser 的大状态表转换为原生紧凑表结构，再以 Zstd level 19 分语言压缩并静态链接解码器。每种语言首次使用时只解压自己的表；并发初始化只执行一次。构建期改写的是依赖包生成的 C 数据，仓库不保存生成的 parser。普通本地构建不启用该 feature；`just compact-release` 可复现发布路径。体积与性能实验见 [binary-size-experiment.md](binary-size-experiment.md)。
 - 终端图片依赖由默认启用的 `terminal-images` feature 管理；只消费 `kat` 高亮库接口的项目可关闭默认 feature，避免编译图片解码、SVG 和 Sixel 栈。`kat` 二进制要求该 feature，以保持 CLI 图片行为完整。
@@ -40,6 +36,8 @@
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
+- 语言构造函数、query 与一次性初始化槽共同注册，bundle 使用公开的 `LanguageFn` 导出。每个 runtime 按需初始化和缓存；不同 Rust binding 直接提供各自的构造函数。
+- 每份宿主或投影源码的语义覆盖与注入收集共享同一棵 AST；基础高亮使用上游 `tree-sitter-highlight`，由它独立持有解析树。两次解析的边界来自公开接口，避免依赖上游私有高亮实现。
 - Rust 库与 CLI 共用公开的 `PreparedDocument`：调用方提供 `RenderOptions` 后，可通过 `spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 样式，通过 `background_lines` 获取 kat 布局层计算的嵌套背景，或通过 `render` 获取完整终端输出。CLI 使用终端探测选项；嵌入式查看器提供自身前景、背景色，不触发终端查询。调用方负责将源范围与自身的差异颜色和折行合成。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
@@ -106,7 +104,6 @@
 
 - grammar 与 query 默认分开治理：grammar 源文件按上游 revision 快照管理，query 按仓库内集成资产独立演进。
 - 具体同步和归属约定见 [maintenance.md](maintenance.md)。
-- 主仓库当前不再保留需要本地生成 parser 的 vendored grammar；现状与后续原则统一记录在 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 
 ### 文档分工
 
@@ -114,7 +111,6 @@
 - 当前支持现状统一放在 [language-coverage.md](language-coverage.md)。
 - 未完成事项统一放在 [roadmap.md](roadmap.md)。
 - 仓库维护约定见 [maintenance.md](maintenance.md)。
-- 主仓库 vendored parser 现状见 [vendor-grammar-exceptions.md](vendor-grammar-exceptions.md)。
 - 测试样例约定见 [test-assets.md](test-assets.md)。
 
 ## 已知边界
@@ -125,4 +121,3 @@
 - 无扩展名内容检测目前仍是有限启发式，不是完整内容识别系统。
 - 部分共享 grammar 的表达能力仍然限制了 query 可细化的上限，例如 SQL、Regex、JSDoc 一类场景。
 - 如果未来再次出现需要在主仓库内保留 vendored parser 生成链路的语言，应优先先证明外部 parser bundle 或公开 crate 路线都不可行，再接受这类额外构建成本。
-- `scanner.cc` 路线已经在当前环境验证过，但仍需要补 Linux 构建确认。
