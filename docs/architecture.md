@@ -96,6 +96,7 @@
 - `kat` 现在提供稳定 JSON debug 出口：`--debug-analysis`、`--debug-visual`、`--debug-layout`、`--debug-render-ops`、`--debug-terminal`，分别覆盖 analysis、visual、display-space layout、render IR 和 terminal 编码层。
 - 测试策略默认用 Ghostty E2E 锁住用户可见的 CLI / 终端行为；只有目标本身是 `analysis` / `visual` / `layout` / `render_ops` 这类 debug contract，或真实终端难以稳定观察时，才直接断言对应稳定 IR。
 - Ghostty E2E 的 Rust bindings 按固定 Git revision 集成，bindings 与其构建脚本固定的 Ghostty C API 源码配套升级，所需 Zig 版本由根 `mise.toml` 管理；该依赖只在可选的 `ghostty-e2e` feature 中启用。终端实例通过尺寸初始化，再显式设置 scrollback 限制。
+- Ghostty 构建通过仓库级 Zig 包装入口对明确的依赖下载网络错误做有限退避重试，保留诊断和最终退出码；编译、校验或未知错误直接失败，不重跑整个 Cargo 测试任务。
 
 ## 维护约定
 

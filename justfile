@@ -1,4 +1,5 @@
 test:
+    bash scripts/tests/zig-download-retry.sh
     @extra_args=""; \
     if [ "${KAT_AGENT_TEST_LOG_MODE:-}" = "quiet" ]; then \
       extra_args="--status-level fail --final-status-level fail --success-output never --show-progress none"; \
@@ -6,7 +7,7 @@ test:
     cargo nextest run --workspace --config-file .config/nextest.toml --cargo-quiet --failure-output final --no-tests pass $extra_args
 
 ghostty-e2e:
-    mise exec -- cargo nextest run --workspace --features ghostty-e2e --test ghostty_terminal_e2e --config-file .config/nextest.toml
+    mise exec -- scripts/with-zig-download-retry.sh cargo nextest run --workspace --features ghostty-e2e --test ghostty_terminal_e2e --config-file .config/nextest.toml
 
 compact-release:
     @set -eu; \
