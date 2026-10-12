@@ -34,8 +34,6 @@ use std::{
 
 use anyhow::{Context, Result, anyhow};
 use serde::Serialize;
-#[cfg(test)]
-use tree_sitter::Parser;
 use tree_sitter::Tree;
 use tree_sitter_highlight::{Highlight, HighlightEvent, Highlighter};
 
