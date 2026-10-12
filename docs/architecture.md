@@ -17,11 +17,10 @@
 
 ### Grammar 资产模型
 
-- `grammars/<name>/` 默认只保留项目集成必需的最小资产：
-  `grammar.js`、`queries/*.scm`，以及可选的 `scanner.*` 或必要 support 文件。
+- `grammars/<name>/` 只保留 query 等 kat 集成资产；grammar 和 scanner 源码由 parser 提供方维护。
 - 不提交生成出来的 parser 产物，例如 `parser.c`、`grammar.json`、`node-types.json`。
 - `grammars/registry.toml` 是 grammar 注册、parser 来源、构建参数和运行时识别规则的单一事实来源。
-- 当某个 grammar 标记为 crate-backed 时，仓库内只保留 queries 等集成资产；底层 parser AST 由对应 Rust crate 或外部 parser bundle crate 提供。
+- 所有 grammar 均为 crate-backed，底层 parser 由对应 Rust crate 或 `kat-parsers` 提供。
 
 ### 构建模型
 
