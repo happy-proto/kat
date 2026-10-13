@@ -33,6 +33,30 @@ pub struct RenderedDocument {
     pub timings: RenderTimings,
 }
 
+/// One display row produced by layout. Encoding never changes its geometry.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DisplayRow {
+    pub text: String,
+    pub display_width: usize,
+    pub anchor: RenderedRowAnchor,
+    plan: RenderPlan,
+    theme: Theme,
+    hyperlinks_enabled: bool,
+}
+
+impl DisplayRow {
+    /// Highlight sorted, non-overlapping UTF-8 ranges in this row without parsing ANSI.
+    /// Range endpoints must lie on text character boundaries.
+    pub fn encode(
+        &self,
+        matches: &[std::ops::Range<usize>],
+        current: Option<&std::ops::Range<usize>>,
+    ) -> String {
+        self.plan
+            .encode_marked(self.theme, self.hyperlinks_enabled, matches, current)
+    }
+}
+
 #[derive(Clone, Debug)]
 /// Source-backed render state that can be laid out repeatedly at new widths.
 pub struct PreparedDocument {
@@ -73,6 +97,60 @@ impl RenderOptions {
 }
 
 impl PreparedDocument {
+    /// Prepare unstyled text with the same display geometry as syntax-highlighted text.
+    pub fn plain(source: &str) -> Self {
+        Self {
+            source: source.to_owned(),
+            visual: None,
+            theme: Theme::new(ColorMode::NoColor, None),
+            hyperlinks_enabled: false,
+            timings: RenderTimings::default(),
+        }
+    }
+
+    pub fn source(&self) -> &str {
+        &self.source
+    }
+
+    /// Layout is the sole owner of wrapping, widths and source anchors.
+    pub fn display_rows(&self, terminal_width: usize) -> Vec<DisplayRow> {
+        let (spans, regions) = self
+            .visual
+            .as_ref()
+            .map(|v| (v.spans(), v.regions()))
+            .unwrap_or((&[], &[]));
+        let layout = LayoutDocument::from_visual(
+            &self.source,
+            spans,
+            regions,
+            self.theme,
+            Some(terminal_width.max(1)),
+        );
+        let mut rows = layout
+            .rows()
+            .iter()
+            .map(|row| {
+                let plan = RenderPlan::compile_row(row, self.theme);
+                DisplayRow {
+                    text: plan.text(),
+                    display_width: row.display_width,
+                    anchor: RenderedRowAnchor {
+                        source_line_start: row.source_line_start,
+                        wrapped_from_column: row.wrapped_from_column,
+                    },
+                    plan,
+                    theme: self.theme,
+                    hyperlinks_enabled: self.hyperlinks_enabled,
+                }
+            })
+            .collect::<Vec<_>>();
+        // A final newline terminates the last source line; it is not another blank line.
+        if self.source.ends_with('\n') {
+            rows.pop();
+        }
+        rows
+    }
+
     /// Detects the document kind and prepares width-independent visual data.
     pub fn detect(
         source_path: Option<&Path>,

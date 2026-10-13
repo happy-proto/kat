@@ -11,18 +11,12 @@ use anyhow::{Context, Result};
 #[cfg(unix)]
 use signal_hook::{consts::signal::SIGWINCH, flag};
 use termwiz::input::{InputEvent, InputParser, KeyCode, KeyEvent, Modifiers};
-use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
 
 const ENTER_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049h";
 const LEAVE_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049l";
 const CLEAR_SCREEN: &[u8] = b"\x1b[H\x1b[2J";
 const CLEAR_LINE: &[u8] = b"\x1b[2K";
 const RESET_STYLE: &[u8] = b"\x1b[0m";
-const SEARCH_MATCH_STYLE: &str = "\x1b[7m";
-const SEARCH_MATCH_RESET: &str = "\x1b[27m";
-const SEARCH_CURRENT_STYLE: &str = "\x1b[7;4m";
-const SEARCH_CURRENT_RESET: &str = "\x1b[24;27m";
 const MESSAGE_DURATION: Duration = Duration::from_secs(3);
 
 pub(crate) fn run(
@@ -30,7 +24,14 @@ pub(crate) fn run(
 ) -> Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
         let (source, _) = render_source(terminal_size().cols, false)?;
-        return write_direct(&source.output());
+        return write_direct(
+            &source
+                .rows
+                .iter()
+                .map(|row| row.rendered.encode(&[], None))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
     }
 
     let _terminal = TerminalSession::enter()?;
@@ -42,17 +43,20 @@ pub(crate) fn run(
     let mut state = PagerState::default();
     let mut mode = PagerMode::Normal;
     let mut stdin = io::stdin().lock();
-    let viewport = PagerViewport::build(&document, size.cols);
+    let mut viewport = PagerViewport::build(&document, size.cols);
     state.restore_anchor(&viewport);
     render(&document, &viewport, &state, &mode, size)?;
 
     loop {
         if resize_requested.swap(false, Ordering::Relaxed) {
-            size = terminal_size();
-            document = PagerDocument::from_source(render_source(size.cols, false)?.0);
-            let viewport = PagerViewport::build(&document, size.cols);
-            state.restore_anchor(&viewport);
-            state.rebuild_search(&document);
+            let new_size = terminal_size();
+            if new_size.cols != size.cols {
+                document = PagerDocument::from_source(render_source(new_size.cols, false)?.0);
+                viewport = PagerViewport::build(&document, new_size.cols);
+                state.restore_anchor(&viewport);
+                state.rebuild_search(&document);
+            }
+            size = new_size;
             render(&document, &viewport, &state, &mode, size)?;
         }
 
@@ -60,14 +64,12 @@ pub(crate) fn run(
         let len = stdin.read(&mut buf).context("failed to read pager input")?;
         let events = state.input_parser.parse_as_vec(&buf[..len], len != 0);
         if state.expire_message(Instant::now()) {
-            let viewport = PagerViewport::build(&document, size.cols);
             render(&document, &viewport, &state, &mode, size)?;
         }
         if events.is_empty() {
             continue;
         }
-        size = terminal_size();
-        let mut viewport = PagerViewport::build(&document, size.cols);
+
         for event in events {
             let outcome = handle_events([event], &document, &viewport, &mut state, &mut mode, size);
             match outcome {
@@ -100,97 +102,53 @@ pub(crate) struct PagerRowAnchor {
 }
 
 #[derive(Debug)]
-struct PagerSourceLine {
-    ansi: String,
-    anchor: PagerRowAnchor,
-}
-
-#[derive(Debug)]
 pub(crate) struct PagerSource {
-    lines: Vec<PagerSourceLine>,
-}
-
-impl PagerSource {
-    fn output(&self) -> String {
-        self.lines
-            .iter()
-            .map(|line| line.ansi.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
+    rows: Vec<DisplayRow>,
 }
 
 #[derive(Debug, Default)]
 pub(crate) struct PagerSourceBuilder {
-    lines: Vec<PagerSourceLine>,
-    open_line: Option<PagerSourceLine>,
+    rows: Vec<DisplayRow>,
+    open_line: bool,
 }
 
 impl PagerSourceBuilder {
     pub(crate) fn append(
         &mut self,
         source_id: usize,
-        output: &str,
-        anchors: &[kat::RenderedRowAnchor],
+        document: &kat::PreparedDocument,
+        cols: usize,
     ) {
-        if output.is_empty() {
-            self.open_line.get_or_insert_with(|| PagerSourceLine {
-                ansi: String::new(),
-                anchor: PagerRowAnchor {
-                    source_id,
-                    ..PagerRowAnchor::default()
-                },
-            });
+        if document.source().is_empty() {
             return;
         }
-
-        for (line_index, part) in output.split_inclusive('\n').enumerate() {
-            let has_newline = part.ends_with('\n');
-            let content = part.strip_suffix('\n').unwrap_or(part);
-            let anchor = anchors.get(line_index).copied().unwrap_or_default();
-            let line = self.open_line.get_or_insert_with(|| PagerSourceLine {
-                ansi: String::new(),
-                anchor: PagerRowAnchor {
-                    source_id,
-                    source_line_start: anchor.source_line_start,
-                    wrapped_from_column: anchor.wrapped_from_column,
-                },
-            });
-            line.ansi.push_str(content);
-            if has_newline {
-                self.lines
-                    .push(self.open_line.take().expect("open pager source line"));
-            }
+        let mut rows = document.display_rows(cols);
+        // The leading separator newline terminates an unfinished previous segment.
+        if self.open_line && document.source().starts_with('\n') {
+            rows.remove(0);
         }
+        self.open_line = !document.source().ends_with('\n');
+        self.rows
+            .extend(rows.into_iter().map(|rendered| DisplayRow {
+                line_index: 0,
+                source_id,
+                source_line_start: rendered.anchor.source_line_start,
+                source_column_start: rendered.anchor.wrapped_from_column,
+                start_column: 0,
+                end_column: rendered.display_width,
+                start_plain: 0,
+                end_plain: rendered.text.len(),
+                plain: rendered.text.clone(),
+                rendered,
+            }));
     }
 
-    pub(crate) fn append_plain(&mut self, source_id: usize, output: &str) {
-        let mut line_start = 0usize;
-        let anchors = output
-            .split_inclusive('\n')
-            .map(|line| {
-                let anchor = kat::RenderedRowAnchor {
-                    source_line_start: line_start,
-                    wrapped_from_column: 0,
-                };
-                line_start += line.len();
-                anchor
-            })
-            .collect::<Vec<_>>();
-        self.append(source_id, output, &anchors);
+    pub(crate) fn append_plain(&mut self, source_id: usize, source: &str, cols: usize) {
+        self.append(source_id, &kat::PreparedDocument::plain(source), cols);
     }
 
-    pub(crate) fn finish(mut self) -> PagerSource {
-        if let Some(line) = self.open_line.take() {
-            self.lines.push(line);
-        }
-        if self.lines.is_empty() {
-            self.lines.push(PagerSourceLine {
-                ansi: String::new(),
-                anchor: PagerRowAnchor::default(),
-            });
-        }
-        PagerSource { lines: self.lines }
+    pub(crate) fn finish(self) -> PagerSource {
+        PagerSource { rows: self.rows }
     }
 }
 
@@ -215,51 +173,43 @@ fn write_direct(output: &str) -> Result<()> {
 }
 
 struct PagerDocument {
-    lines: Vec<String>,
+    rows: Arc<[DisplayRow]>,
     plain_lines: Vec<String>,
     anchors: Vec<PagerRowAnchor>,
 }
 
 impl PagerDocument {
     #[cfg(test)]
-    fn new(output: &str) -> Self {
-        let mut lines = output
-            .split('\n')
-            .map(str::to_owned)
-            .collect::<Vec<String>>();
-        if output.ends_with('\n') {
-            lines.pop();
+    fn new(source: &str) -> Self {
+        let mut builder = PagerSourceBuilder::default();
+        builder.append_plain(0, source, 80);
+        Self::from_source(builder.finish())
+    }
+
+    fn from_source(mut source: PagerSource) -> Self {
+        let mut plain_lines: Vec<String> = Vec::new();
+        let mut anchors = Vec::new();
+        for row in &mut source.rows {
+            let anchor = PagerRowAnchor {
+                source_id: row.source_id,
+                source_line_start: row.source_line_start,
+                wrapped_from_column: 0,
+            };
+            if anchors.last() != Some(&anchor) {
+                anchors.push(anchor);
+                plain_lines.push(String::new());
+            }
+            row.line_index = plain_lines.len() - 1;
+            let line = plain_lines.last_mut().unwrap();
+            row.start_plain = line.len();
+            line.push_str(&row.plain);
+            row.end_plain = line.len();
         }
-        let plain_lines = lines.iter().map(|line| strip_ansi(line)).collect();
-        let anchors = (0..lines.len())
-            .map(|source_line_start| PagerRowAnchor {
-                source_line_start,
-                ..PagerRowAnchor::default()
-            })
-            .collect();
         Self {
-            lines,
+            rows: source.rows.into(),
             plain_lines,
             anchors,
         }
-    }
-
-    fn from_source(source: PagerSource) -> Self {
-        let (lines, anchors): (Vec<_>, Vec<_>) = source
-            .lines
-            .into_iter()
-            .map(|line| (line.ansi, line.anchor))
-            .unzip();
-        let plain_lines = lines.iter().map(|line| strip_ansi(line)).collect();
-        Self {
-            lines,
-            plain_lines,
-            anchors,
-        }
-    }
-
-    fn line_count(&self) -> usize {
-        self.lines.len()
     }
 
     fn line_index_for_anchor(&self, anchor: RowAnchor) -> Option<usize> {
@@ -342,7 +292,7 @@ impl PagerState {
             matches,
             selected,
         });
-        self.top_row = viewport.first_row_for_line(self.current_search_match().line_index);
+        self.top_row = viewport.row_for_match(self.current_search_match());
         self.clamp(viewport);
         true
     }
@@ -357,7 +307,7 @@ impl PagerState {
                 search.selected = search.selected.checked_sub(1).unwrap_or(search.len() - 1);
             }
         }
-        self.top_row = viewport.first_row_for_line(self.current_search_match().line_index);
+        self.top_row = viewport.row_for_match(self.current_search_match());
         self.clamp(viewport);
         true
     }
@@ -371,18 +321,6 @@ impl PagerState {
             .as_ref()
             .and_then(SearchState::selected_match)
             .expect("current search match should exist when search state is present")
-    }
-
-    fn current_search_match_in_row(&self, row: &DisplayRow) -> Option<SearchMatch> {
-        let item = self.search.as_ref()?.selected_match()?;
-        if item.line_index == row.line_index
-            && row.start_plain <= item.start_plain
-            && item.start_plain < row.end_plain
-        {
-            Some(item)
-        } else {
-            None
-        }
     }
 
     fn restore_anchor(&mut self, viewport: &PagerViewport) {
@@ -720,22 +658,14 @@ fn terminal_size() -> PagerSize {
 }
 
 struct PagerViewport {
-    rows: Vec<DisplayRow>,
+    rows: Arc<[DisplayRow]>,
 }
 
 impl PagerViewport {
-    fn build(document: &PagerDocument, cols: usize) -> Self {
-        let mut rows = Vec::new();
-        for (line_index, line) in document.lines.iter().enumerate() {
-            wrap_line(
-                line_index,
-                line,
-                document.anchors[line_index],
-                cols.max(1),
-                &mut rows,
-            );
+    fn build(document: &PagerDocument, _cols: usize) -> Self {
+        Self {
+            rows: document.rows.clone(),
         }
-        Self { rows }
     }
 
     fn row_count(&self) -> usize {
@@ -754,14 +684,19 @@ impl PagerViewport {
             .unwrap_or_else(|| self.rows.len().saturating_sub(1))
     }
 
-    fn first_row_for_line(&self, line_index: usize) -> usize {
+    fn row_for_match(&self, item: SearchMatch) -> usize {
         self.rows
             .iter()
-            .position(|row| row.line_index == line_index)
+            .position(|row| {
+                row.line_index == item.line_index
+                    && row.start_plain <= item.start_plain
+                    && item.start_plain < row.end_plain
+            })
             .unwrap_or_else(|| self.rows.len().saturating_sub(1))
     }
 }
 
+#[derive(Debug)]
 struct DisplayRow {
     line_index: usize,
     source_id: usize,
@@ -771,9 +706,8 @@ struct DisplayRow {
     end_column: usize,
     start_plain: usize,
     end_plain: usize,
-    ansi: String,
+    rendered: kat::DisplayRow,
     plain: String,
-    plain_to_ansi: Vec<(usize, usize)>,
 }
 
 impl DisplayRow {
@@ -803,213 +737,10 @@ impl DisplayRow {
             wrapped_from_column: self.source_column_start,
         }
     }
-
-    fn display_width(&self) -> usize {
-        self.end_column.saturating_sub(self.start_column)
-    }
-
-    fn ansi_offset_for_plain(&self, plain_offset: usize) -> Option<usize> {
-        if plain_offset == self.plain.len() {
-            return Some(self.ansi.len());
-        }
-        self.plain_to_ansi
-            .iter()
-            .find_map(|(plain, ansi)| (*plain == plain_offset).then_some(*ansi))
-    }
-}
-
-fn wrap_line(
-    line_index: usize,
-    line: &str,
-    source_anchor: PagerRowAnchor,
-    cols: usize,
-    rows: &mut Vec<DisplayRow>,
-) {
-    let mut parser = AnsiLineParser::new(line);
-    let mut row = String::new();
-    let mut plain = String::new();
-    let mut plain_to_ansi = Vec::new();
-    let mut replay_prefix = String::new();
-    let mut column = 0;
-    let mut row_start_column = 0;
-    let mut row_start_plain = 0;
-    let mut plain_offset = 0;
-    let mut emitted = false;
-
-    while let Some(token) = parser.next_token() {
-        match token {
-            AnsiToken::Control(control) => {
-                replay_prefix.push_str(control);
-                row.push_str(control);
-            }
-            AnsiToken::Text(text) => {
-                for grapheme in text.graphemes(true) {
-                    let (rendered, width) = rendered_grapheme(grapheme, column);
-                    if column > 0 && column + width > cols {
-                        rows.push(DisplayRow {
-                            line_index,
-                            source_id: source_anchor.source_id,
-                            source_line_start: source_anchor.source_line_start,
-                            source_column_start: source_anchor.wrapped_from_column,
-                            start_column: row_start_column,
-                            end_column: row_start_column + column,
-                            start_plain: row_start_plain,
-                            end_plain: plain_offset,
-                            ansi: row,
-                            plain,
-                            plain_to_ansi,
-                        });
-                        row = replay_prefix.clone();
-                        plain = String::new();
-                        plain_to_ansi = Vec::new();
-                        row_start_column += column;
-                        row_start_plain = plain_offset;
-                        column = 0;
-                        emitted = true;
-                    }
-
-                    plain_to_ansi.push((plain.len(), row.len()));
-                    row.push_str(&rendered);
-                    plain.push_str(grapheme);
-                    column += width;
-                    plain_offset += grapheme.len();
-
-                    if column >= cols {
-                        rows.push(DisplayRow {
-                            line_index,
-                            source_id: source_anchor.source_id,
-                            source_line_start: source_anchor.source_line_start,
-                            source_column_start: source_anchor.wrapped_from_column,
-                            start_column: row_start_column,
-                            end_column: row_start_column + column,
-                            start_plain: row_start_plain,
-                            end_plain: plain_offset,
-                            ansi: row,
-                            plain,
-                            plain_to_ansi,
-                        });
-                        row = replay_prefix.clone();
-                        plain = String::new();
-                        plain_to_ansi = Vec::new();
-                        row_start_column += column;
-                        row_start_plain = plain_offset;
-                        column = 0;
-                        emitted = true;
-                    }
-                }
-            }
-        }
-    }
-
-    if column > 0 || !emitted || !row.is_empty() {
-        rows.push(DisplayRow {
-            line_index,
-            source_id: source_anchor.source_id,
-            source_line_start: source_anchor.source_line_start,
-            source_column_start: source_anchor.wrapped_from_column,
-            start_column: row_start_column,
-            end_column: row_start_column + column,
-            start_plain: row_start_plain,
-            end_plain: plain_offset,
-            ansi: row,
-            plain,
-            plain_to_ansi,
-        });
-    }
-}
-
-fn rendered_grapheme(grapheme: &str, column: usize) -> (String, usize) {
-    if grapheme == "\t" {
-        let width = 8 - (column % 8);
-        (" ".repeat(width), width)
-    } else {
-        (grapheme.to_owned(), UnicodeWidthStr::width(grapheme).max(1))
-    }
-}
-
-enum AnsiToken<'a> {
-    Control(&'a str),
-    Text(&'a str),
-}
-
-struct AnsiLineParser<'a> {
-    line: &'a str,
-    index: usize,
-}
-
-impl<'a> AnsiLineParser<'a> {
-    fn new(line: &'a str) -> Self {
-        Self { line, index: 0 }
-    }
-
-    fn next_token(&mut self) -> Option<AnsiToken<'a>> {
-        if self.index >= self.line.len() {
-            return None;
-        }
-
-        let bytes = self.line.as_bytes();
-        if bytes[self.index] == 0x1b {
-            let start = self.index;
-            self.index = control_sequence_end(self.line, self.index);
-            return Some(AnsiToken::Control(&self.line[start..self.index]));
-        }
-
-        let start = self.index;
-        while self.index < bytes.len() && bytes[self.index] != 0x1b {
-            self.index += self.line[self.index..]
-                .chars()
-                .next()
-                .map(char::len_utf8)
-                .unwrap_or(1);
-        }
-        Some(AnsiToken::Text(&self.line[start..self.index]))
-    }
-}
-
-fn control_sequence_end(text: &str, start: usize) -> usize {
-    let bytes = text.as_bytes();
-    if bytes.get(start + 1) == Some(&b'[') {
-        let mut index = start + 2;
-        while index < bytes.len() {
-            let byte = bytes[index];
-            index += 1;
-            if (0x40..=0x7e).contains(&byte) {
-                break;
-            }
-        }
-        return index;
-    }
-
-    if bytes.get(start + 1) == Some(&b']') {
-        let mut index = start + 2;
-        while index < bytes.len() {
-            if bytes[index] == 0x07 {
-                return index + 1;
-            }
-            if bytes[index] == 0x1b && bytes.get(index + 1) == Some(&b'\\') {
-                return index + 2;
-            }
-            index += 1;
-        }
-        return index;
-    }
-
-    (start + 1).min(text.len())
-}
-
-fn strip_ansi(text: &str) -> String {
-    let mut parser = AnsiLineParser::new(text);
-    let mut stripped = String::with_capacity(text.len());
-    while let Some(token) = parser.next_token() {
-        if let AnsiToken::Text(text) = token {
-            stripped.push_str(text);
-        }
-    }
-    stripped
 }
 
 fn render(
-    document: &PagerDocument,
+    _document: &PagerDocument,
     viewport: &PagerViewport,
     state: &PagerState,
     mode: &PagerMode,
@@ -1019,33 +750,28 @@ fn render(
     let mut stdout = io::stdout().lock();
     stdout.write_all(CLEAR_SCREEN)?;
 
-    for row in viewport.rows.iter().skip(state.top_row).take(body_rows) {
+    for (screen_row, row) in viewport
+        .rows
+        .iter()
+        .skip(state.top_row)
+        .take(body_rows)
+        .enumerate()
+    {
+        write!(stdout, "\x1b[{};1H", screen_row + 1)?;
         write_row(&mut stdout, row, state)?;
         stdout.write_all(RESET_STYLE)?;
-        if row.display_width() < size.cols {
-            stdout.write_all(b"\r\n")?;
-        }
     }
 
     write!(stdout, "\x1b[{};1H", size.rows)?;
     stdout.write_all(RESET_STYLE)?;
     stdout.write_all(CLEAR_LINE)?;
 
-    let end_line = if viewport.row_count() == 0 {
-        0
-    } else {
-        viewport
-            .rows
-            .get((state.top_row + body_rows).saturating_sub(1))
-            .map(|row| row.line_index + 1)
-            .unwrap_or(document.line_count())
-            .min(document.line_count())
-    };
+    let end_line = (state.top_row + body_rows).min(viewport.row_count());
     let mut status = match mode {
         PagerMode::Normal => state.message.as_ref().map(|message| message.text.clone()).unwrap_or_else(|| format!(
             "kat {}/{}  q:quit  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
             end_line,
-            document.line_count()
+            viewport.row_count()
         )),
         PagerMode::Search { query, .. } => format!("/{query}"),
     };
@@ -1060,44 +786,40 @@ fn render(
 }
 
 fn write_row(mut stdout: impl Write, row: &DisplayRow, state: &PagerState) -> Result<()> {
-    let Some(query) = state.search_query() else {
-        stdout.write_all(row.ansi.as_bytes())?;
-        return Ok(());
-    };
-    if query.is_empty() {
-        stdout.write_all(row.ansi.as_bytes())?;
-        return Ok(());
-    }
-
-    let current_match = state.current_search_match_in_row(row);
-    let mut search_from = 0;
-    let mut ansi_from = 0;
-    while let Some(relative_start) = row.plain[search_from..].find(query) {
-        let plain_start = search_from + relative_start;
-        let plain_end = plain_start + query.len();
-        if let (Some(ansi_start), Some(ansi_end)) = (
-            row.ansi_offset_for_plain(plain_start),
-            row.ansi_offset_for_plain(plain_end),
-        ) {
-            stdout.write_all(&row.ansi.as_bytes()[ansi_from..ansi_start])?;
-            let is_current = current_match.is_some_and(|item| {
-                item.start_plain == row.start_plain + plain_start
-                    && item.end_plain == row.start_plain + plain_end
-            });
-            let (style, reset) = if is_current {
-                (SEARCH_CURRENT_STYLE, SEARCH_CURRENT_RESET)
-            } else {
-                (SEARCH_MATCH_STYLE, SEARCH_MATCH_RESET)
-            };
-            stdout.write_all(style.as_bytes())?;
-            stdout.write_all(&row.ansi.as_bytes()[ansi_start..ansi_end])?;
-            stdout.write_all(reset.as_bytes())?;
-            ansi_from = ansi_end;
-        }
-        search_from = plain_end;
-    }
-
-    stdout.write_all(&row.ansi.as_bytes()[ansi_from..])?;
+    let matches = state
+        .search
+        .as_ref()
+        .map(|search| {
+            search
+                .matches
+                .items
+                .iter()
+                .filter(|item| {
+                    item.line_index == row.line_index
+                        && item.start_plain < row.end_plain
+                        && item.end_plain > row.start_plain
+                })
+                .map(|item| {
+                    item.start_plain.max(row.start_plain) - row.start_plain
+                        ..item.end_plain.min(row.end_plain) - row.start_plain
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let current = state
+        .search
+        .as_ref()
+        .and_then(SearchState::selected_match)
+        .filter(|item| {
+            item.line_index == row.line_index
+                && item.start_plain < row.end_plain
+                && item.end_plain > row.start_plain
+        })
+        .map(|item| {
+            item.start_plain.max(row.start_plain) - row.start_plain
+                ..item.end_plain.min(row.end_plain) - row.start_plain
+        });
+    stdout.write_all(row.rendered.encode(&matches, current.as_ref()).as_bytes())?;
     Ok(())
 }
 
@@ -1171,6 +893,23 @@ impl RawTerminalMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn colored_full_width_rows_have_one_navigation_slot_each() {
+        let source = format!("{{\"instructions_template\":\"{}\"}}\n", "a".repeat(400));
+        let prepared = kat::PreparedDocument::named_language(
+            "json",
+            &source,
+            kat::RenderOptions::with_colors((255, 255, 255), (0, 0, 0)),
+        )
+        .unwrap();
+        let rendered = prepared.render(Some(40));
+        let mut builder = PagerSourceBuilder::default();
+        builder.append(0, &prepared, 40);
+        let document = PagerDocument::from_source(builder.finish());
+        let viewport = PagerViewport::build(&document, 40);
+        assert_eq!(viewport.row_count(), rendered.row_anchors.len());
+    }
 
     #[test]
     fn status_message_expires_and_repeated_refresh_restarts_timeout() {
@@ -1295,44 +1034,18 @@ mod tests {
 
     #[test]
     fn source_anchor_survives_source_aware_relayout() {
-        let narrow = PagerSource {
-            lines: vec![
-                PagerSourceLine {
-                    ansi: "first half".to_owned(),
-                    anchor: PagerRowAnchor {
-                        source_id: 7,
-                        source_line_start: 42,
-                        wrapped_from_column: 0,
-                    },
-                },
-                PagerSourceLine {
-                    ansi: "second half".to_owned(),
-                    anchor: PagerRowAnchor {
-                        source_id: 7,
-                        source_line_start: 42,
-                        wrapped_from_column: 10,
-                    },
-                },
-            ],
-        };
-        let narrow_document = PagerDocument::from_source(narrow);
-        let narrow_viewport = PagerViewport::build(&narrow_document, 80);
-        let anchor = narrow_viewport.rows[1].anchor();
-
-        let wide = PagerSource {
-            lines: vec![PagerSourceLine {
-                ansi: "first half second half".to_owned(),
-                anchor: PagerRowAnchor {
-                    source_id: 7,
-                    source_line_start: 42,
-                    wrapped_from_column: 0,
-                },
-            }],
-        };
-        let wide_document = PagerDocument::from_source(wide);
-        let wide_viewport = PagerViewport::build(&wide_document, 80);
-
-        assert_eq!(wide_viewport.row_for_anchor(anchor), 0);
+        let source = kat::PreparedDocument::plain("first half second half");
+        let mut narrow = PagerSourceBuilder::default();
+        narrow.append(7, &source, 10);
+        let narrow_doc = PagerDocument::from_source(narrow.finish());
+        let anchor = PagerViewport::build(&narrow_doc, 10).rows[1].anchor();
+        let mut wide = PagerSourceBuilder::default();
+        wide.append(7, &source, 80);
+        let wide_doc = PagerDocument::from_source(wide.finish());
+        assert_eq!(
+            PagerViewport::build(&wide_doc, 80).row_for_anchor(anchor),
+            0
+        );
     }
 
     #[test]
