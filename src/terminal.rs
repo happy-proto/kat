@@ -4,12 +4,12 @@ use anstyle::RgbColor;
 use serde::Serialize;
 use termwiz::caps::{Capabilities, ColorLevel};
 
-use crate::{
-    debug_runtime_log,
-    render_ops::RenderPlanSnapshot,
-    terminal_background::detect_nested_region_tint,
-    theme::{ColorMode, RgbColorSnapshot, Theme},
-};
+use crate::debug_runtime_log;
+use crate::render_ops::RenderPlanSnapshot;
+use crate::terminal_background::detect_nested_region_tint;
+use crate::theme::ColorMode;
+use crate::theme::RgbColorSnapshot;
+use crate::theme::Theme;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TerminalCapabilities {

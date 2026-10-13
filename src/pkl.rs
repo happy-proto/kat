@@ -2,15 +2,15 @@ use std::{ops::Range, path::Path};
 
 use tree_sitter::{Node, Parser, Tree};
 
-use crate::{
-    document_kind::{DocumentKind, DocumentProfile},
-    host_injections::{
-        InjectionCandidate, InjectionDecode, InjectionProjection,
-        InjectionProjectionSegment as Segment, InjectionVisualKind,
-    },
-    language_aliases::normalize_language_name,
-    semantic_overlays::SemanticCaptureSpan,
-};
+use crate::document_kind::DocumentKind;
+use crate::document_kind::DocumentProfile;
+use crate::host_injections::InjectionCandidate;
+use crate::host_injections::InjectionDecode;
+use crate::host_injections::InjectionProjection;
+use crate::host_injections::InjectionProjectionSegment as Segment;
+use crate::host_injections::InjectionVisualKind;
+use crate::language_aliases::normalize_language_name;
+use crate::semantic_overlays::SemanticCaptureSpan;
 
 pub(crate) fn document_kind(path: Option<&Path>, source: &str) -> DocumentKind {
     if path
@@ -478,7 +478,8 @@ mod tests {
             let node = children(property).find(|node| is_literal(*node)).unwrap();
             let (range, segments) = project_literal(node, &source, true).unwrap();
             let injection = candidate("bash", vec![range], segments, false);
-            let (text, map) = crate::build_candidate_virtual_source(&source, &injection);
+            let (text, map) =
+                crate::projection::build_candidate_virtual_source(&source, &injection);
             assert_eq!(text, expected, "{literal}");
             assert_eq!(map.len(), text.len());
             assert!(map.iter().all(|range| range.end <= source.len()));

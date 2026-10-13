@@ -8,7 +8,8 @@ use termwiz::{
     terminal::{Terminal, new_terminal},
 };
 
-use crate::{debug_runtime_log, theme::ColorMode};
+use crate::debug_runtime_log;
+use crate::theme::ColorMode;
 
 pub(crate) fn detect_nested_region_tint(color_mode: ColorMode) -> Option<RgbColor> {
     if color_mode != ColorMode::TrueColor {

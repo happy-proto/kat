@@ -3,13 +3,13 @@ use std::{ops::Range, path::Path};
 use anyhow::{Context, Result};
 use tree_sitter::{Node, QueryCursor, StreamingIterator, Tree};
 
-use crate::{
-    detect_document_kind,
-    document_kind::{DocumentKind, DocumentProfile},
-    language_aliases::normalize_language_name,
-    language_runtime::{LanguageRuntime, supports_runtime},
-    plain_document_kind,
-};
+use crate::detection::detect_document_kind;
+use crate::document_kind::DocumentKind;
+use crate::document_kind::DocumentProfile;
+use crate::document_kind::plain_document_kind;
+use crate::language_aliases::normalize_language_name;
+use crate::language_runtime::LanguageRuntime;
+use crate::language_runtime::supports_runtime;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum InjectionDecode {

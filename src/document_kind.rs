@@ -1,6 +1,7 @@
-use std::path::Path;
-
+use crate::api::canonical_language_name;
+use anyhow::Result;
 use serde::Serialize;
+use std::path::Path;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DocumentProfile {
@@ -150,7 +151,7 @@ pub(crate) fn template_document_kind(
     DocumentKind::with_profile(runtime_name, profile)
 }
 
-fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+pub(crate) fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
 
     if is_github_actions_workflow_path(path) {
@@ -164,7 +165,7 @@ fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile>
     None
 }
 
-fn toml_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+pub(crate) fn toml_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
     if crate::mise::is_config_path(path) {
         Some(DocumentProfile::MiseConfig)
@@ -173,7 +174,7 @@ fn toml_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     }
 }
 
-fn git_config_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+pub(crate) fn git_config_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
 
     if matches!(
@@ -190,7 +191,7 @@ fn git_config_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     None
 }
 
-fn template_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+pub(crate) fn template_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
     let file_name = path.file_name()?.to_str()?;
     let mut segments = file_name.rsplit('.');
@@ -211,12 +212,12 @@ fn template_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     })
 }
 
-fn fish_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
+pub(crate) fn fish_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
     let path = source_path?;
     is_fish_variables_path(path).then_some(DocumentProfile::FishVariables)
 }
 
-fn is_github_actions_workflow_path(path: &Path) -> bool {
+pub(crate) fn is_github_actions_workflow_path(path: &Path) -> bool {
     if !matches!(
         path.extension().and_then(|extension| extension.to_str()),
         Some("yml" | "yaml")
@@ -240,21 +241,21 @@ fn is_github_actions_workflow_path(path: &Path) -> bool {
     workflows == "workflows" && github == ".github"
 }
 
-fn is_github_action_metadata_path(path: &Path) -> bool {
+pub(crate) fn is_github_action_metadata_path(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
         Some("action.yml" | "action.yaml")
     )
 }
 
-fn is_prek_config_path(path: &Path) -> bool {
+pub(crate) fn is_prek_config_path(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
         Some("prek.toml")
     )
 }
 
-fn is_git_config_path(path: &Path) -> bool {
+pub(crate) fn is_git_config_path(path: &Path) -> bool {
     let components = path
         .iter()
         .filter_map(|component| component.to_str())
@@ -269,9 +270,167 @@ fn is_git_config_path(path: &Path) -> bool {
     )
 }
 
-fn is_fish_variables_path(path: &Path) -> bool {
+pub(crate) fn is_fish_variables_path(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
         Some("fish_variables")
     )
+}
+
+pub(crate) fn named_document_kind(language_name: &str) -> Result<DocumentKind> {
+    Ok(plain_document_kind(canonical_language_name(language_name)?))
+}
+
+pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
+    match language_name {
+        "json" => DocumentKind::plain("json"),
+        "query" => DocumentKind::plain("query"),
+        "actionscript" => DocumentKind::plain("actionscript"),
+        "ada" => DocumentKind::plain("ada"),
+        "applescript" => DocumentKind::plain("applescript"),
+        "asm" => DocumentKind::plain("asm"),
+        "nasm" => DocumentKind::plain("nasm"),
+        "asciidoc" => DocumentKind::plain("asciidoc"),
+        "authorized_keys" => DocumentKind::plain("authorized_keys"),
+        "known_hosts" => DocumentKind::plain("known_hosts"),
+        "ghostty" => DocumentKind::plain("ghostty"),
+        "pem" => DocumentKind::plain("pem"),
+        "openpgp_armor" => DocumentKind::plain("openpgp_armor"),
+        "awk" => DocumentKind::plain("awk"),
+        "ignore" => DocumentKind::plain("ignore"),
+        "git_link" => DocumentKind::plain("git_link"),
+        "git_mailmap" => DocumentKind::plain("git_mailmap"),
+        "git_log" => DocumentKind::plain("git_log"),
+        "git_config" => DocumentKind::plain("git_config"),
+        "dockerfile" => DocumentKind::plain("dockerfile"),
+        "bash" => DocumentKind::plain("bash"),
+        "batch" => DocumentKind::plain("batch"),
+        "bibtex" => DocumentKind::plain("bibtex"),
+        "cabal" => DocumentKind::plain("cabal"),
+        "cfml" => DocumentKind::plain("cfml"),
+        "clojure" => DocumentKind::plain("clojure"),
+        "cmakecache" => DocumentKind::plain("cmakecache"),
+        "coffeescript" => DocumentKind::plain("coffeescript"),
+        "command_help" => DocumentKind::plain("command_help"),
+        "cpuinfo" => DocumentKind::plain("cpuinfo"),
+        "crontab" => DocumentKind::plain("crontab"),
+        "crystal" => DocumentKind::plain("crystal"),
+        "d" => DocumentKind::plain("d"),
+        "debsources" => DocumentKind::plain("debsources"),
+        "elm" => DocumentKind::plain("elm"),
+        "email" => DocumentKind::plain("email"),
+        "erlang" => DocumentKind::plain("erlang"),
+        "fish" => DocumentKind::plain("fish"),
+        "fortran" => DocumentKind::plain("fortran"),
+        "fortran_namelist" => DocumentKind::plain("fortran_namelist"),
+        "fsharp" => DocumentKind::plain("fsharp"),
+        "fsharp_signature" => DocumentKind::plain("fsharp_signature"),
+        "fstab" => DocumentKind::plain("fstab"),
+        "powershell" => DocumentKind::plain("powershell"),
+        "zsh" => DocumentKind::plain("zsh"),
+        "toml" => DocumentKind::plain("toml"),
+        "yaml" => DocumentKind::plain("yaml"),
+        "hcl" => DocumentKind::plain("hcl"),
+        "pkl" => DocumentKind::plain("pkl"),
+        "rust" => DocumentKind::plain("rust"),
+        "python" => DocumentKind::plain("python"),
+        "python_docstring" => {
+            DocumentKind::with_profile("python_docstring", DocumentProfile::PythonDocstringAuto)
+        }
+        "c" => DocumentKind::plain("c"),
+        "cpp" => DocumentKind::plain("cpp"),
+        "java" => DocumentKind::plain("java"),
+        "kotlin" => DocumentKind::plain("kotlin"),
+        "csharp" => DocumentKind::plain("csharp"),
+        "groovy" => DocumentKind::plain("groovy"),
+        "diff" => DocumentKind::plain("diff"),
+        "properties" => DocumentKind::plain("properties"),
+        "php" => DocumentKind::plain("php"),
+        "scala" => DocumentKind::plain("scala"),
+        "swift" => DocumentKind::plain("swift"),
+        "dart" => DocumentKind::plain("dart"),
+        "elixir" => DocumentKind::plain("elixir"),
+        "zig" => DocumentKind::plain("zig"),
+        "ssh_config" => DocumentKind::plain("ssh_config"),
+        "gitattributes" => DocumentKind::plain("gitattributes"),
+        "git_commit" => DocumentKind::plain("git_commit"),
+        "git_rebase" => DocumentKind::plain("git_rebase"),
+        "requirements" => DocumentKind::plain("requirements"),
+        "apache" => DocumentKind::plain("apache"),
+        "scss" => DocumentKind::plain("scss"),
+        "sass" => DocumentKind::plain("sass"),
+        "jq" => DocumentKind::plain("jq"),
+        "less" => DocumentKind::plain("less"),
+        "dot" => DocumentKind::plain("dot"),
+        "graph_easy" => DocumentKind::plain("graph_easy"),
+        "mermaid" => DocumentKind::plain("mermaid"),
+        "nginx" => DocumentKind::plain("nginx"),
+        "typescript" => DocumentKind::plain("typescript"),
+        "tsx" => DocumentKind::plain("tsx"),
+        "go" => DocumentKind::plain("go"),
+        "gomod" => DocumentKind::plain("gomod"),
+        "gowork" => DocumentKind::plain("gowork"),
+        "gosum" => DocumentKind::plain("gosum"),
+        "proto" => DocumentKind::plain("proto"),
+        "cel" => DocumentKind::plain("cel"),
+        "sql" => DocumentKind::plain("sql"),
+        "sql_postgres" => DocumentKind::plain("sql_postgres"),
+        "sql_mysql" => DocumentKind::plain("sql_mysql"),
+        "sql_sqlite" => DocumentKind::plain("sql_sqlite"),
+        "textproto" => DocumentKind::plain("textproto"),
+        "latex" => DocumentKind::plain("latex"),
+        "sml" => DocumentKind::plain("sml"),
+        "solidity" => DocumentKind::plain("solidity"),
+        "strace" => DocumentKind::plain("strace"),
+        "stylus" => DocumentKind::plain("stylus"),
+        "syslog" => DocumentKind::plain("syslog"),
+        "tcl" => DocumentKind::plain("tcl"),
+        "textile" => DocumentKind::plain("textile"),
+        "csv" => DocumentKind::plain("csv"),
+        "todotxt" => DocumentKind::plain("todotxt"),
+        "tsv" => DocumentKind::plain("tsv"),
+        "typst" => DocumentKind::plain("typst"),
+        "varlink" => DocumentKind::plain("varlink"),
+        "html" => DocumentKind::plain("html"),
+        "vue" => DocumentKind::plain("vue"),
+        "svelte" => DocumentKind::plain("svelte"),
+        "css" => DocumentKind::plain("css"),
+        "javascript" => DocumentKind::plain("javascript"),
+        "graphql" => DocumentKind::plain("graphql"),
+        "regex" => DocumentKind::plain("regex"),
+        "regex_javascript" => DocumentKind::plain("regex_javascript"),
+        "regex_python" => DocumentKind::plain("regex_python"),
+        "regex_rust" => DocumentKind::plain("regex_rust"),
+        "regex_go" => DocumentKind::plain("regex_go"),
+        "regex_posix" => DocumentKind::plain("regex_posix"),
+        "jsdoc" => DocumentKind::plain("jsdoc"),
+        "userscript_metadata" => DocumentKind::plain("userscript_metadata"),
+        "markdown" => DocumentKind::plain("markdown"),
+        "markdown_inline" => DocumentKind::plain("markdown_inline"),
+        "just" => DocumentKind::plain("just"),
+        "ruby" => DocumentKind::plain("ruby"),
+        "lua" => DocumentKind::plain("lua"),
+        "nix" => DocumentKind::plain("nix"),
+        "dotenv" => DocumentKind::plain("dotenv"),
+        "ini" => DocumentKind::plain("ini"),
+        "xml" => DocumentKind::plain("xml"),
+        "make" => DocumentKind::plain("make"),
+        "cmake" => DocumentKind::plain("cmake"),
+        "ninja" => DocumentKind::plain("ninja"),
+        "jinja" => DocumentKind::plain("jinja"),
+        "eex" => DocumentKind::plain("eex"),
+        "twig" => DocumentKind::plain("twig"),
+        "erb" => DocumentKind::plain("erb"),
+        "jsp" => DocumentKind::plain("jsp"),
+        "asp" => DocumentKind::plain("asp"),
+        "adp" => DocumentKind::plain("adp"),
+        "vhdl" => DocumentKind::plain("vhdl"),
+        "verilog" => DocumentKind::plain("verilog"),
+        "systemverilog" => DocumentKind::plain("systemverilog"),
+        "vim" => DocumentKind::plain("vim"),
+        "vimhelp" => DocumentKind::plain("vimhelp"),
+        "vyper" => DocumentKind::plain("vyper"),
+        "wgsl" => DocumentKind::plain("wgsl"),
+        other => panic!("unsupported runtime name {other}"),
+    }
 }

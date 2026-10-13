@@ -1,10 +1,13 @@
 use serde::Serialize;
 
-use crate::{
-    layout::LayoutDocument,
-    terminal::{OSC8_CLOSE, escape_control_sequences, osc8_open},
-    theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
-};
+use crate::layout::LayoutDocument;
+use crate::terminal::OSC8_CLOSE;
+use crate::terminal::escape_control_sequences;
+use crate::terminal::osc8_open;
+use crate::theme::ColorMode;
+use crate::theme::Theme;
+use crate::theme::TokenStyle;
+use crate::theme::TokenStyleSnapshot;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct RenderPlan {

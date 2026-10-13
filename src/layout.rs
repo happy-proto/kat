@@ -2,12 +2,15 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::{
-    StyledSpan, VisualRegion,
-    display_geometry::{DEFAULT_TAB_WIDTH, DisplayProfile},
-    span_covering_range_from,
-    theme::{ColorMode, Theme, TokenStyle, TokenStyleSnapshot},
-};
+use crate::display_geometry::DEFAULT_TAB_WIDTH;
+use crate::display_geometry::DisplayProfile;
+use crate::render_data::StyledSpan;
+use crate::render_data::VisualRegion;
+use crate::span_ops::span_covering_range_from;
+use crate::theme::ColorMode;
+use crate::theme::Theme;
+use crate::theme::TokenStyle;
+use crate::theme::TokenStyleSnapshot;
 
 #[derive(Clone, Debug)]
 pub(crate) struct LayoutDocument {
@@ -402,7 +405,7 @@ fn resolve_background_runs(
 
 fn segment_content_slices(
     source: &str,
-    segment: &crate::RegionSegment,
+    segment: &crate::render_data::RegionSegment,
     line_rows: &HashMap<usize, Vec<RowRef>>,
     profile: DisplayProfile,
 ) -> Vec<BackgroundSlice> {
@@ -427,7 +430,7 @@ fn segment_content_slices(
 
 fn rect_block_slices(
     source: &str,
-    segments: &[crate::RegionSegment],
+    segments: &[crate::render_data::RegionSegment],
     line_rows: &HashMap<usize, Vec<RowRef>>,
     profile: DisplayProfile,
 ) -> Vec<BackgroundSlice> {

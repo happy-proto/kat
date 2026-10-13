@@ -2,11 +2,11 @@ use std::ops::Range;
 
 use anyhow::Result;
 
-use crate::{
-    HighlightRenderData, StyledSpan,
-    document_kind::DocumentKind,
-    theme::{Theme, TokenStyle},
-};
+use crate::document_kind::DocumentKind;
+use crate::render_data::HighlightRenderData;
+use crate::render_data::StyledSpan;
+use crate::theme::Theme;
+use crate::theme::TokenStyle;
 
 const PEM_LABELS: &[&str] = &[
     "AGE ENCRYPTED FILE",

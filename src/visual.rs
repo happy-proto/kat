@@ -1,11 +1,10 @@
+use crate::analysis::AnalysisDocument;
+use crate::render_data::NestedRegion;
+use crate::render_data::StyledSpan;
+use crate::render_data::VisualRegion;
+use crate::theme::ColorMode;
+use crate::theme::TokenStyleSnapshot;
 use serde::Serialize;
-
-use crate::{
-    StyledSpan, VisualRegion,
-    analysis::AnalysisDocument,
-    collect_visual_regions,
-    theme::{ColorMode, TokenStyleSnapshot},
-};
 
 #[derive(Clone, Debug)]
 pub(crate) struct VisualDocument {
@@ -102,4 +101,28 @@ pub(crate) struct VisualRegionSegmentSnapshot {
     pub line_start: usize,
     pub left: usize,
     pub text_end: usize,
+}
+
+pub(crate) fn collect_visual_regions(nested_regions: &[NestedRegion]) -> Vec<VisualRegion> {
+    let mut regions = Vec::new();
+
+    for region in nested_regions {
+        if region.visual_kind.is_block() {
+            regions.push(VisualRegion {
+                visual_kind: region.visual_kind,
+                visual_level: region.visual_level,
+                segments: region.layout_segments.clone(),
+            });
+        }
+        regions.extend(region.child_regions.iter().cloned());
+    }
+
+    regions.sort_by_key(|region| {
+        region
+            .segments
+            .first()
+            .map(|segment| (segment.line_start, segment.left, region.visual_level))
+            .unwrap_or((0, 0, region.visual_level))
+    });
+    regions
 }
