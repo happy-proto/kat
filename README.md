@@ -4,129 +4,34 @@
 [![dependency status](https://deps.rs/repo/github/happy-proto/kat/status.svg)](https://deps.rs/repo/github/happy-proto/kat)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/happy-proto/kat/blob/master/LICENSE)
 
-`kat` 是一个基于 Tree-sitter 的高亮版 `cat`。
+`kat` 是一个基于 Tree-sitter 的高亮版 `cat`，让终端里的源码更容易读。
 
-它的重点不是把更多文件“简单点亮”，而是尽量把那些依赖结构语义、宿主感知和嵌套分发的场景做深，比如：
+它最在意的是嵌套语言：Rust 文档注释里的 Markdown、Markdown 代码块里的 Mermaid、Justfile 和 mise / hk 配置里的脚本，都能按各自的语言高亮。也支持直接查看图片。
 
-- Rust 文档注释里的 Markdown
-- Markdown 代码块里的 Mermaid 图表源码高亮
-- `Justfile` 里的 Bash / Python / Zsh / Fish recipe
-- 宿主语言里的 SQL / GraphQL / Regex
-- Pkl 配置中的 Markdown / Regex，以及 `hk.pkl` 里的 shell 命令
-- mise TOML 配置里的任务脚本，按 shell 配置或 shebang 嵌入高亮
-- 特殊文件名、shebang 和无扩展名内容识别
-
-## 为什么有这个项目
-
-我之前主要用 [bat](https://github.com/sharkdp/bat)，但它在嵌套高亮这类场景上，尤其是 `Justfile` 支持，一直没有特别顺手。`bat` 底层使用的是 `syntect`，读取的是 Sublime Text 的 `.sublime-syntax`；这套模型可以处理一部分嵌套高亮，但对我想要的那种更深、更多依赖结构语义的嵌套高亮，似乎较难继续做深，所以我就开始自己写这个。
-
-这个项目直接选了基于 Tree-sitter 的路线。原因也很直接：我更想把这类依赖结构语义、宿主感知和嵌套分发的高亮场景继续做深，而不是停留在较浅的规则拼接上。
-
-这个项目实现过程中也大量参考了 [Zed](https://github.com/zed-industries/zed) 的代码。它支持了很多语言的高亮，而且效果很好，所以在 query、嵌套语言处理和语言支持范围这些问题上，它一直是一个很有价值的参考对象。
-
-这个项目本质上就是个人玩具：完全 vibe Coding，基本不 Review。
+这个项目源于我使用 [bat](https://github.com/sharkdp/bat) 时对嵌套高亮的需求，实现中参考了 [Zed](https://github.com/zed-industries/zed) 的语言支持。它是一个个人玩具，完全 vibe Coding，基本不 Review。
 
 ## 安装
 
-macOS 仅支持 Apple Silicon（ARM64）；Intel macOS 不再提供预编译安装包，也不再进行构建验证。
-
-推荐优先使用 [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) 基于当前仓库安装，它会直接下载对应平台的预编译二进制，避免本地编译 `kat`：
+推荐使用 [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) 下载预编译二进制：
 
 ```bash
 cargo binstall --git https://github.com/happy-proto/kat kat
 ```
 
-发布包的格式与下载约定由 [CI workflow](.github/workflows/ci.yml) 和 [Cargo.toml](Cargo.toml) 统一定义；调整压缩格式时会同步更新，安装命令不变。
+也可以[从源码安装](docs/maintenance.md#开发环境)。macOS 仅支持 Apple Silicon。
 
-如果你想基于同一个仓库源码直接本地编译安装，也可以用：
-
-```bash
-cargo install --git https://github.com/happy-proto/kat --locked kat
-```
-
-在本地 checkout 中使用 `just install` 安装。源码安装统一使用仓库的 `Cargo.lock`，避免重新解析依赖后与当前源码不匹配。
-
-## 快速开始
-
-日常使用：
+## 使用
 
 ```bash
 kat path/to/file
-```
-
-直接在支持 inline image 的终端里展示图片：
-
-```bash
 kat path/to/image.png
 ```
 
-当前会自动选择 iTerm2 inline image、Kitty graphics 或 Sixel；必要时可用 `KAT_IMAGE_PROTOCOL=iterm2|kitty|sixel|auto|none` 覆盖。
-当前图片识别覆盖 PNG、JPEG、GIF、WebP、TIFF、BMP、ICO、QOI、PNM、Farbfeld、HDR、DDS、SVG 和 AVIF。
-图片默认会按当前终端宽度和约 80% 终端高度做等比缩放；可用 `--image-width`、`--image-height` 或 `--image-fit=original` 覆盖。
-透明图片默认保留透明通道；如果终端协议对透明支持不理想，可用 `--image-background=black|white|checker` 先合成背景。
-如果 stdout 不是 TTY，或者当前终端没有可用图片协议，`kat` 会输出图片尺寸、格式和原因说明；可用 `--debug-image` 查看图片检测、EXIF orientation、目标尺寸和协议选择的 JSON。
+在终端中打开文本会进入内建 viewer，支持滚动、搜索和刷新；`q` 退出。通过管道或重定向则输出完整内容。
 
-查看当前文件在 `kat` 内部各阶段的耗时：
+## 继续了解
 
-```bash
-kat --debug-timing path/to/file >/dev/null
-```
-
-TTY 下的普通渲染输出统一进入内建 alternate-screen viewer，从文件开头开始显示，并按终端宽度展开后的 display row 滚动；窗口大小变化时会按新宽度重新布局源码，同时尽量保持顶部源位置不变。viewer 支持 `j/k`、方向键、`Space`/`b` 与 PageUp/PageDown 整页滚动、`Ctrl+D`/`Ctrl+U` 半页滚动、Home/End、`/` 普通文本搜索、`n/N` 前后匹配和 `q` 退出。`kat` 不再启动外部 `PAGER`，也不再提供 `--paging` 开关。stdout 不是 TTY 时仍直接输出完整内容，适合 pipe/redirect。
-
-viewer 普通模式下按 `R` 可重新读取所有打开的文本文件。状态栏会区分 `Reloaded: changed`（内容有变化）、`Reloaded: unchanged`（内容未变）和 `Reload failed`（失败）；提示显示约 3 秒后自动恢复正常状态栏，导航或搜索操作也可提前清除提示。刷新会尽量保持阅读位置并重建搜索匹配；任一文件读取失败时保留整份旧内容，可再次按 `R` 重试。stdin 内容保留首次读取的快照，不会重新读取。
-
-在支持 OSC 8 的终端里，Markdown URL 这类有明确 URI 语义的片段默认会输出可点击超链接。可用 `--hyperlinks=auto|always|never` 或 `KAT_HYPERLINKS=auto|always|never` 覆盖；检测不到语言而走纯文本透传时不会额外注入超链接。
-
-查看当前构建的版本与构建元信息：
-
-```bash
-kat --version
-```
-
-安装 shell completion 到用户目录：
-
-```bash
-kat --install-completion bash
-kat --install-completion fish
-kat --install-completion zsh
-```
-
-默认安装位置（若设置了 XDG 目录变量，会优先使用对应 XDG 路径）：
-
-- `bash`：`~/.local/share/bash-completion/completions/kat`
-- `fish`：`~/.config/fish/completions/kat.fish`
-- `zsh`：`~/.local/share/zsh/site-functions/_kat`
-
-如果你更想手动启用，也可以继续直接 source 动态补全脚本：
-
-```bash
-echo 'source <(COMPLETE=bash kat)' >> ~/.bashrc
-echo 'source <(COMPLETE=zsh kat)' >> ~/.zshrc
-echo 'COMPLETE=fish kat | source' >> ~/.config/fish/completions/kat.fish
-```
-
-## 开发
-
-仓库通过 [mise](https://mise.jdx.dev/) 管理 Ghostty bindings 所需的 Zig 版本；Rust 仍使用 stable toolchain。首次进入仓库后运行：
-
-```bash
-mise install
-prek install
-```
-
-普通测试使用 `just test`；包含真实 PTY 与 Ghostty 无头终端模型的端到端测试使用 `just ghostty-e2e`。
-Ghostty 构建遇到明确的 Zig 依赖下载网络错误时会有限退避重试；本地 E2E 与 CI 使用相同入口，编译错误直接返回。重试行为的回归检查包含在 `just test` 和提交前检查中。
-本地复现 CI 的紧凑 parser 静态发布构建使用 `just compact-release`，需预先安装 `uv` 和 C 编译器。该命令在独立的临时 Cargo home 中提取并压缩全部 parser 表，生成的 `target/release/kat` 会在首次使用某语言时按需解压其表。
-
-## 文档入口
-
-- 当前支持现状：[`docs/language-coverage.md`](docs/language-coverage.md)
-- 架构说明：[`docs/architecture.md`](docs/architecture.md)
-- 路线图：[`docs/roadmap.md`](docs/roadmap.md)
-- 发布二进制体积实验：[`docs/binary-size-experiment.md`](docs/binary-size-experiment.md)
-- 仓库维护约定：[`docs/maintenance.md`](docs/maintenance.md)
-- 测试样例约定：[`docs/test-assets.md`](docs/test-assets.md)
-- 面向 Agent 的开发调试入口：[SKILL.md](.agents/skills/kat-dev/SKILL.md)
-
-如果你最关心的是“现在到底支持哪些语言、做到什么程度”，先读 [`docs/language-coverage.md`](docs/language-coverage.md)。如果你想看这个仓库为什么会长成现在这样，再看 [`docs/architecture.md`](docs/architecture.md)。
+- [使用指南](docs/usage.md)：viewer 操作、图片选项和 shell 补全
+- [语言支持](docs/language-coverage.md)：支持范围与检测边界
+- [开发与维护](docs/maintenance.md)：环境准备、检查和源码安装
+- [架构](docs/architecture.md) · [路线图](docs/roadmap.md) · [测试样例](docs/test-assets.md)

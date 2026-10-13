@@ -1,4 +1,5 @@
 test:
+    bash scripts/tests/check-config.sh
     bash scripts/tests/zig-download-retry.sh
     @extra_args=""; \
     if [ "${KAT_AGENT_TEST_LOG_MODE:-}" = "quiet" ]; then \

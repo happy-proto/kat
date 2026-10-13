@@ -27,7 +27,7 @@ description: 介绍 kat 当前架构分层，并按层整理调试命令与其�
 ## 其他命令
 
 - 跑测试：`just test`
-- 提交前检查：`prek run --all-files`
+- 提交前检查：`mise exec -- hk check --all`
 - 校验 grammar 注册与布局：`cargo run --quiet --locked -p validate-grammar-registry`
 - 跑仓库性能基线：`just perf`
 - 跑单文件性能基线：`just perf-file path/to/file`

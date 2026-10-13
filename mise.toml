@@ -1,4 +1,5 @@
 [tools]
+hk = { version = "2.5.0", workflow = "release.yml" }
 zig = "0.16.0"
 
 [settings]

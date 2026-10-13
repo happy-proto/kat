@@ -33,14 +33,38 @@
 - 升级已有 grammar 或 query 时，要同步更新 [THIRD_PARTY.md](../THIRD_PARTY.md) 中的来源、revision 与本地改编说明；如果升级带来了行为层面的新结论或边界变化，也要同步更新相关文档。
 - 添加或更新语言支持、文件识别规则或相关路线图时，要同步更新 [language-coverage.md](language-coverage.md)。
 - 有意义的进展和已经确认的决策要记录到对应文档中，不要只留在聊天历史里。
-- 如果仓库工作流发生变化，要同步更新 [README.md](../README.md)、`prek.toml` 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`。
+- 如果仓库工作流发生变化，要同步更新 [README.md](../README.md)、[`hk.pkl`](../hk.pkl) 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`。
+
+## 开发环境
+
+仓库通过 [mise](https://mise.jdx.dev/) 管理开发工具；Rust 使用 stable toolchain。首次进入仓库后运行：
+
+```bash
+mise install
+mise exec -- hk install --mise
+```
+
+从旧配置迁移时，先运行 `prek uninstall` 移除原来的 hook，再安装 hk，避免重复执行检查。工具和 schema 版本分别由 [mise.toml](../mise.toml) 与 [hk.pkl](../hk.pkl) 维护，升级 hk 时保持两者一致。
+
+普通测试使用 `just test`；真实 PTY 与 Ghostty 无头终端模型的端到端测试使用 `just ghostty-e2e`。Ghostty 构建遇到明确的 Zig 依赖下载网络错误时会有限退避重试；本地 E2E 与 CI 使用相同入口，编译错误直接返回。重试行为的回归检查包含在 `just test` 中。
+
+本地复现 CI 的紧凑 parser 静态发布构建使用 `just compact-release`，需预先安装 `uv` 和 C 编译器。该命令在独立临时 Cargo home 中提取并压缩 parser 表，生成的二进制在首次使用某语言时按需解压其表。
+
+从仓库源码安装：
+
+```bash
+cargo install --git https://github.com/happy-proto/kat --locked kat
+```
+
+在本地 checkout 中使用 `just install`。源码安装统一使用仓库的 `Cargo.lock`。
 
 ## 提交前检查
 
-- 本地提交前检查统一收敛到根目录的 `prek.toml`。
-- 安装 Git hooks 使用 `prek install`；默认使用 `pre-commit` 的标准入口。
-- 当前提交前检查统一通过默认 `prek run` 执行；具体检查项只在 `prek.toml` 中维护。
-- 如果调整了提交前检查范围，优先修改 `prek.toml`，再同步 README、相关任务入口与 CI 说明，避免把配置内容重复散落到其它文档里。
+- 本地提交前检查统一收敛到根目录的 [hk.pkl](../hk.pkl)，手动完整检查使用 `mise exec -- hk check --all`。
+- 提交时保存未暂存改动，只检查暂存版本，不自动修复或暂存；完成后恢复未暂存改动。
+- TOML / YAML 语法检查由 [check-config.py](../scripts/check-config.py) 承载，使用 `uv` 管理脚本依赖；其它检查优先复用 hk 工具和现有命令。
+- 全项目 Rust 检查始终执行，顺序为格式、Clippy、`just test`，避免 Cargo 构建争用；测试入口同时覆盖 Zig 下载重试回归。
+- 调整检查范围时先修改 [hk.pkl](../hk.pkl)，再按需同步文档、任务入口和 CI，检查项不在文档里重复维护。
 
 ## Release 与分发
 

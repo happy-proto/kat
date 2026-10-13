@@ -1,0 +1,38 @@
+amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
+
+steps {
+  ["merge-conflict"] {
+    types = List("text")
+    check = "hk util check-merge-conflict {{files}}"
+  }
+  ["private-key"] {
+    types = List("text")
+    check = "hk util detect-private-key {{files}}"
+  }
+  ["config-syntax"] {
+    glob = List("**/*.toml", "**/*.yaml", "**/*.yml")
+    check = "uv run --script scripts/check-config.py {{files}}"
+  }
+  ["script-lint"] {
+    glob = "scripts/*.py"
+    check = "uvx ruff check {{files}}"
+  }
+  ["fmt"] { check = "cargo fmt --check" }
+  ["clippy"] {
+    depends = "fmt"
+    check = "cargo clippy --workspace --locked --all-targets -- -D warnings"
+  }
+  ["test"] {
+    depends = "clippy"
+    check = "just test"
+  }
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = false
+    stage = false
+    stash = "git"
+  }
+  ["fix"] { enabled = false }
+}
