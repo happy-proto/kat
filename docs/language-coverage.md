@@ -32,6 +32,8 @@
 - 配色语义不以 `bat` 或 `zed` 的具体实现为准，而以 Dracula 官方 spec 为准。
 - 如果 `bat` / `zed` 与 Dracula 官方语义冲突，`kat` 应优先遵循官方规范。
 
+普通文件名、扩展名和 shebang 的识别以 `grammars/registry.toml` 为准；宿主路径、内容与 profile 的覆盖优先级由 detector 显式表达。F# 实现与签名文件保留各自的 runtime 身份。
+
 ## 评估口径
 
 为了避免把 IDE 能力和终端高亮混在一起，本文档把比较口径拆成两层：

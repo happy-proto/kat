@@ -2,7 +2,6 @@ use std::{ops::Range, path::Path};
 
 use tree_sitter::{Node, Tree};
 
-use crate::document_kind::DocumentKind;
 use crate::host_injections::InjectionCandidate;
 use crate::host_injections::InjectionDecode;
 use crate::host_injections::InjectionProjection;
@@ -99,7 +98,7 @@ pub(crate) fn injections(tree: &Tree, source: &str) -> Vec<InjectionCandidate> {
                 continue;
             }
             result.push(InjectionCandidate {
-                document_kind: DocumentKind::plain(language),
+                document_kind: crate::document_kind::plain_document_kind(language),
                 ranges: vec![range],
                 projection: InjectionProjection::TemplateSegments(project_units(
                     &units, &decoded, source,

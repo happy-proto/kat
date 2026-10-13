@@ -13,288 +13,20 @@ use crate::grammar_registry;
 use crate::grammar_registry::grammar;
 use crate::language_aliases::normalize_language_name;
 use crate::language_aliases::shebang_interpreter_name;
+use crate::language_runtime::RuntimeId;
 use crate::python_docstrings::resolve_python_docstring_document_kind;
 use crate::sql_dialect::resolve_sql_runtime;
 use std::path::Path;
 
 #[cfg(test)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum SupportedLanguage {
-    ActionScript,
-    Ada,
-    Adp,
-    AppleScript,
-    AsciiDoc,
-    Asp,
-    Asm,
-    AuthorizedKeys,
-    KnownHosts,
-    Ghostty,
-    OpenPgpArmor,
-    Awk,
-    Bash,
-    Batch,
-    Bibtex,
-    Cabal,
-    C,
-    Cel,
-    Cfml,
-    Csharp,
-    Clojure,
-    CmakeCache,
-    Cmake,
-    CoffeeScript,
-    CommandHelp,
-    CpuInfo,
-    Crystal,
-    Crontab,
-    Csv,
-    Css,
-    Cpp,
-    Apache,
-    D,
-    Debsources,
-    Diff,
-    Dockerfile,
-    Dot,
-    GraphEasy,
-    Dotenv,
-    Dart,
-    Eex,
-    Erb,
-    Elixir,
-    Fish,
-    Fortran,
-    FortranNamelist,
-    Fsharp,
-    Fstab,
-    GitAttributes,
-    GitCommit,
-    GitConfig,
-    GitLink,
-    GitLog,
-    GitMailmap,
-    GitRebase,
-    Go,
-    GoMod,
-    GoSum,
-    GoWork,
-    Graphql,
-    Pkl,
-    Groovy,
-    Hcl,
-    Html,
-    Ignore,
-    Ini,
-    Java,
-    Jinja,
-    JavaScript,
-    Jq,
-    Just,
-    Json,
-    Jsp,
-    Kotlin,
-    Latex,
-    Less,
-    Lua,
-    Make,
-    Markdown,
-    Mermaid,
-    Nasm,
-    Nginx,
-    Ninja,
-    Nix,
-    Pem,
-    Php,
-    Properties,
-    Proto,
-    Powershell,
-    Python,
-    Query,
-    Requirements,
-    Ruby,
-    Sass,
-    Scala,
-    Scss,
-    Sml,
-    Solidity,
-    SshConfig,
-    Sql,
-    Rust,
-    Strace,
-    Stylus,
-    Svelte,
-    Swift,
-    Syslog,
-    SystemVerilog,
-    Tcl,
-    Textile,
-    Textproto,
-    TodoTxt,
-    Toml,
-    Tsv,
-    Tsx,
-    TypeScript,
-    Twig,
-    Typst,
-    Varlink,
-    Verilog,
-    Vue,
-    Vhdl,
-    Vim,
-    VimHelp,
-    Vyper,
-    Wgsl,
-    Xml,
-    Yaml,
-    Zig,
-    Zsh,
-    Elm,
-    Email,
-    Erlang,
-}
+pub(crate) use crate::language_runtime::RuntimeId as SupportedLanguage;
 
 #[cfg(test)]
 pub(crate) fn detect_language(
     source_path: Option<&Path>,
     source: &str,
 ) -> Option<SupportedLanguage> {
-    let document_kind = detect_document_kind(source_path, source)?;
-    Some(match document_kind.runtime_name() {
-        "json" => SupportedLanguage::Json,
-        "query" => SupportedLanguage::Query,
-        "actionscript" => SupportedLanguage::ActionScript,
-        "ada" => SupportedLanguage::Ada,
-        "applescript" => SupportedLanguage::AppleScript,
-        "asm" => SupportedLanguage::Asm,
-        "nasm" => SupportedLanguage::Nasm,
-        "asciidoc" => SupportedLanguage::AsciiDoc,
-        "authorized_keys" => SupportedLanguage::AuthorizedKeys,
-        "known_hosts" => SupportedLanguage::KnownHosts,
-        "ghostty" => SupportedLanguage::Ghostty,
-        "pem" => SupportedLanguage::Pem,
-        "openpgp_armor" => SupportedLanguage::OpenPgpArmor,
-        "awk" => SupportedLanguage::Awk,
-        "bash" => SupportedLanguage::Bash,
-        "batch" => SupportedLanguage::Batch,
-        "bibtex" => SupportedLanguage::Bibtex,
-        "cabal" => SupportedLanguage::Cabal,
-        "cfml" => SupportedLanguage::Cfml,
-        "clojure" => SupportedLanguage::Clojure,
-        "cmakecache" => SupportedLanguage::CmakeCache,
-        "coffeescript" => SupportedLanguage::CoffeeScript,
-        "command_help" => SupportedLanguage::CommandHelp,
-        "cpuinfo" => SupportedLanguage::CpuInfo,
-        "crontab" => SupportedLanguage::Crontab,
-        "crystal" => SupportedLanguage::Crystal,
-        "d" => SupportedLanguage::D,
-        "debsources" => SupportedLanguage::Debsources,
-        "elm" => SupportedLanguage::Elm,
-        "email" => SupportedLanguage::Email,
-        "erlang" => SupportedLanguage::Erlang,
-        "dockerfile" => SupportedLanguage::Dockerfile,
-        "fish" => SupportedLanguage::Fish,
-        "fortran" => SupportedLanguage::Fortran,
-        "fortran_namelist" => SupportedLanguage::FortranNamelist,
-        "fsharp" | "fsharp_signature" => SupportedLanguage::Fsharp,
-        "fstab" => SupportedLanguage::Fstab,
-        "git_link" => SupportedLanguage::GitLink,
-        "git_log" => SupportedLanguage::GitLog,
-        "git_mailmap" => SupportedLanguage::GitMailmap,
-        "git_config" => SupportedLanguage::GitConfig,
-        "zsh" => SupportedLanguage::Zsh,
-        "toml" => SupportedLanguage::Toml,
-        "yaml" => SupportedLanguage::Yaml,
-        "hcl" => SupportedLanguage::Hcl,
-        "pkl" => SupportedLanguage::Pkl,
-        "rust" => SupportedLanguage::Rust,
-        "python" => SupportedLanguage::Python,
-        "c" => SupportedLanguage::C,
-        "cel" => SupportedLanguage::Cel,
-        "cpp" => SupportedLanguage::Cpp,
-        "java" => SupportedLanguage::Java,
-        "kotlin" => SupportedLanguage::Kotlin,
-        "csharp" => SupportedLanguage::Csharp,
-        "groovy" => SupportedLanguage::Groovy,
-        "diff" => SupportedLanguage::Diff,
-        "properties" => SupportedLanguage::Properties,
-        "php" => SupportedLanguage::Php,
-        "scala" => SupportedLanguage::Scala,
-        "swift" => SupportedLanguage::Swift,
-        "dart" => SupportedLanguage::Dart,
-        "elixir" => SupportedLanguage::Elixir,
-        "zig" => SupportedLanguage::Zig,
-        "ssh_config" => SupportedLanguage::SshConfig,
-        "gitattributes" => SupportedLanguage::GitAttributes,
-        "git_commit" => SupportedLanguage::GitCommit,
-        "git_rebase" => SupportedLanguage::GitRebase,
-        "requirements" => SupportedLanguage::Requirements,
-        "apache" => SupportedLanguage::Apache,
-        "adp" => SupportedLanguage::Adp,
-        "asp" => SupportedLanguage::Asp,
-        "scss" => SupportedLanguage::Scss,
-        "sass" => SupportedLanguage::Sass,
-        "jq" => SupportedLanguage::Jq,
-        "less" => SupportedLanguage::Less,
-        "dot" => SupportedLanguage::Dot,
-        "graph_easy" => SupportedLanguage::GraphEasy,
-        "mermaid" => SupportedLanguage::Mermaid,
-        "nginx" => SupportedLanguage::Nginx,
-        "typescript" => SupportedLanguage::TypeScript,
-        "tsx" => SupportedLanguage::Tsx,
-        "go" => SupportedLanguage::Go,
-        "gomod" => SupportedLanguage::GoMod,
-        "gowork" => SupportedLanguage::GoWork,
-        "gosum" => SupportedLanguage::GoSum,
-        "graphql" => SupportedLanguage::Graphql,
-        "sql" => SupportedLanguage::Sql,
-        "textproto" => SupportedLanguage::Textproto,
-        "todotxt" => SupportedLanguage::TodoTxt,
-        "html" => SupportedLanguage::Html,
-        "vue" => SupportedLanguage::Vue,
-        "svelte" => SupportedLanguage::Svelte,
-        "csv" => SupportedLanguage::Csv,
-        "ignore" => SupportedLanguage::Ignore,
-        "css" => SupportedLanguage::Css,
-        "javascript" => SupportedLanguage::JavaScript,
-        "markdown" => SupportedLanguage::Markdown,
-        "proto" => SupportedLanguage::Proto,
-        "powershell" => SupportedLanguage::Powershell,
-        "just" => SupportedLanguage::Just,
-        "ruby" => SupportedLanguage::Ruby,
-        "lua" => SupportedLanguage::Lua,
-        "nix" => SupportedLanguage::Nix,
-        "dotenv" => SupportedLanguage::Dotenv,
-        "ini" => SupportedLanguage::Ini,
-        "xml" => SupportedLanguage::Xml,
-        "make" => SupportedLanguage::Make,
-        "cmake" => SupportedLanguage::Cmake,
-        "ninja" => SupportedLanguage::Ninja,
-        "jinja" => SupportedLanguage::Jinja,
-        "twig" => SupportedLanguage::Twig,
-        "eex" => SupportedLanguage::Eex,
-        "erb" => SupportedLanguage::Erb,
-        "jsp" => SupportedLanguage::Jsp,
-        "latex" => SupportedLanguage::Latex,
-        "sml" => SupportedLanguage::Sml,
-        "solidity" => SupportedLanguage::Solidity,
-        "strace" => SupportedLanguage::Strace,
-        "stylus" => SupportedLanguage::Stylus,
-        "syslog" => SupportedLanguage::Syslog,
-        "systemverilog" => SupportedLanguage::SystemVerilog,
-        "vhdl" => SupportedLanguage::Vhdl,
-        "varlink" => SupportedLanguage::Varlink,
-        "verilog" => SupportedLanguage::Verilog,
-        "vim" => SupportedLanguage::Vim,
-        "vimhelp" => SupportedLanguage::VimHelp,
-        "vyper" => SupportedLanguage::Vyper,
-        "wgsl" => SupportedLanguage::Wgsl,
-        "tcl" => SupportedLanguage::Tcl,
-        "textile" => SupportedLanguage::Textile,
-        "tsv" => SupportedLanguage::Tsv,
-        "typst" => SupportedLanguage::Typst,
-        other => panic!("unsupported test language mapping for {other}"),
-    })
+    detect_document_kind(source_path, source).map(DocumentKind::runtime_id)
 }
 
 pub(crate) fn detect_document_kind(
@@ -304,16 +36,15 @@ pub(crate) fn detect_document_kind(
     // Ghostty theme names may have arbitrary suffixes, including other
     // languages' extensions. Their explicit directory wins over those hints.
     if matches_path(grammar("ghostty"), source_path) || is_ghostty_config_path(source_path) {
-        return Some(DocumentKind::plain("ghostty"));
+        return Some(DocumentKind::plain(RuntimeId::Ghostty));
     }
 
     if is_tree_sitter_query_path(source_path) {
-        return Some(DocumentKind::plain("query"));
+        return Some(DocumentKind::plain(RuntimeId::Query));
     }
 
-    let just = grammar("just");
-    if matches_path(just, source_path) {
-        return Some(DocumentKind::plain("just"));
+    if let Some(kind) = detect_registry_languages(&[RuntimeId::Just], source_path, source) {
+        return Some(kind);
     }
 
     let toml = grammar("toml");
@@ -339,495 +70,217 @@ pub(crate) fn detect_document_kind(
     // TODO: Keep HCL as one generic runtime for now. If Terraform/tfvars or
     // Nomad later need different file detection or semantics, split that at the
     // detector/runtime-overlay layer instead of fragmenting the base grammar.
-    let hcl = grammar("hcl");
-    if matches_path(hcl, source_path) {
-        return Some(DocumentKind::plain("hcl"));
-    }
-
-    let actionscript = grammar("actionscript");
-    if matches_path(actionscript, source_path) {
-        return Some(DocumentKind::plain("actionscript"));
-    }
-
-    let ada = grammar("ada");
-    if matches_path(ada, source_path) {
-        return Some(DocumentKind::plain("ada"));
-    }
-
-    let applescript = grammar("applescript");
-    if matches_path(applescript, source_path) || matches_shebang(applescript, source) {
-        return Some(DocumentKind::plain("applescript"));
-    }
-
-    let asm = grammar("asm");
-    if matches_path(asm, source_path) {
-        return Some(DocumentKind::plain("asm"));
-    }
-
-    let nasm = grammar("nasm");
-    if matches_path(nasm, source_path) {
-        return Some(DocumentKind::plain("nasm"));
-    }
-
-    let asciidoc = grammar("asciidoc");
-    if matches_path(asciidoc, source_path) {
-        return Some(DocumentKind::plain("asciidoc"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::Hcl,
+            RuntimeId::ActionScript,
+            RuntimeId::Ada,
+            RuntimeId::AppleScript,
+            RuntimeId::Asm,
+            RuntimeId::Nasm,
+            RuntimeId::AsciiDoc,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let authorized_keys = grammar("authorized_keys");
     if matches_path(authorized_keys, source_path)
         || is_authorized_keys_pub_path(source_path, source)
     {
-        return Some(DocumentKind::plain("authorized_keys"));
+        return Some(DocumentKind::plain(RuntimeId::AuthorizedKeys));
     }
 
-    if matches_path(grammar("known_hosts"), source_path) {
-        return Some(DocumentKind::plain("known_hosts"));
+    if let Some(kind) = detect_registry_languages(&[RuntimeId::KnownHosts], source_path, source) {
+        return Some(kind);
     }
 
     if is_pem_path(source_path, source) || looks_like_pem(source) {
-        return Some(DocumentKind::plain("pem"));
+        return Some(DocumentKind::plain(RuntimeId::Pem));
     }
 
     if is_openpgp_armor_path(source_path, source) || looks_like_openpgp_armor(source) {
-        return Some(DocumentKind::plain("openpgp_armor"));
+        return Some(DocumentKind::plain(RuntimeId::OpenPgpArmor));
     }
 
-    let awk = grammar("awk");
-    if matches_path(awk, source_path) || matches_shebang(awk, source) {
-        return Some(DocumentKind::plain("awk"));
-    }
-
-    let bibtex = grammar("bibtex");
-    if matches_path(bibtex, source_path) {
-        return Some(DocumentKind::plain("bibtex"));
-    }
-
-    let cabal = grammar("cabal");
-    if matches_path(cabal, source_path) {
-        return Some(DocumentKind::plain("cabal"));
-    }
-
-    let cfml = grammar("cfml");
-    if matches_path(cfml, source_path) {
-        return Some(DocumentKind::plain("cfml"));
-    }
-
-    let clojure = grammar("clojure");
-    if matches_path(clojure, source_path) {
-        return Some(DocumentKind::plain("clojure"));
-    }
-
-    let cmakecache = grammar("cmakecache");
-    if matches_path(cmakecache, source_path) {
-        return Some(DocumentKind::plain("cmakecache"));
-    }
-
-    let coffeescript = grammar("coffeescript");
-    if matches_path(coffeescript, source_path) {
-        return Some(DocumentKind::plain("coffeescript"));
-    }
-
-    let command_help = grammar("command_help");
-    if matches_path(command_help, source_path) {
-        return Some(DocumentKind::plain("command_help"));
-    }
-
-    let cpuinfo = grammar("cpuinfo");
-    if matches_path(cpuinfo, source_path) {
-        return Some(DocumentKind::plain("cpuinfo"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::Awk,
+            RuntimeId::Bibtex,
+            RuntimeId::Cabal,
+            RuntimeId::Cfml,
+            RuntimeId::Clojure,
+            RuntimeId::CmakeCache,
+            RuntimeId::CoffeeScript,
+            RuntimeId::CommandHelp,
+            RuntimeId::CpuInfo,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let crontab = grammar("crontab");
     if matches_path(crontab, source_path) || is_cron_d_path(source_path) {
-        return Some(DocumentKind::plain("crontab"));
+        return Some(DocumentKind::plain(RuntimeId::Crontab));
     }
 
-    let crystal = grammar("crystal");
-    if matches_path(crystal, source_path) {
-        return Some(DocumentKind::plain("crystal"));
-    }
-
-    let d = grammar("d");
-    if matches_path(d, source_path) {
-        return Some(DocumentKind::plain("d"));
-    }
-
-    let debsources = grammar("debsources");
-    if matches_path(debsources, source_path) {
-        return Some(DocumentKind::plain("debsources"));
-    }
-
-    let elm = grammar("elm");
-    if matches_path(elm, source_path) {
-        return Some(DocumentKind::plain("elm"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::Crystal,
+            RuntimeId::D,
+            RuntimeId::Debsources,
+            RuntimeId::Elm,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let email = grammar("email");
     if matches_path(email, source_path) || is_mail_spool_path(source_path) {
-        return Some(DocumentKind::plain("email"));
+        return Some(DocumentKind::plain(RuntimeId::Email));
     }
 
-    let erlang = grammar("erlang");
-    if matches_path(erlang, source_path) || matches_shebang(erlang, source) {
-        return Some(DocumentKind::plain("erlang"));
-    }
-
-    let fortran = grammar("fortran");
-    if matches_path(fortran, source_path) {
-        return Some(DocumentKind::plain("fortran"));
-    }
-
-    let fortran_namelist = grammar("fortran_namelist");
-    if matches_path(fortran_namelist, source_path) {
-        return Some(DocumentKind::plain("fortran_namelist"));
-    }
-
-    let fsharp_signature = grammar("fsharp_signature");
-    if matches_path(fsharp_signature, source_path) {
-        return Some(DocumentKind::plain("fsharp_signature"));
-    }
-
-    let fsharp = grammar("fsharp");
-    if matches_path(fsharp, source_path) {
-        return Some(DocumentKind::plain("fsharp"));
-    }
-
-    let fstab = grammar("fstab");
-    if matches_path(fstab, source_path) {
-        return Some(DocumentKind::plain("fstab"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::Erlang,
+            RuntimeId::Fortran,
+            RuntimeId::FortranNamelist,
+            RuntimeId::Fsharp,
+            RuntimeId::FsharpSignature,
+            RuntimeId::Fstab,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     if let Some(document_kind) = cmake_template_document_kind(source_path) {
         return Some(document_kind);
     }
 
-    let rust = grammar("rust");
-    if matches_path(rust, source_path) {
-        return Some(DocumentKind::plain("rust"));
-    }
-
-    let python = grammar("python");
-    if matches_path(python, source_path) {
-        return Some(DocumentKind::plain("python"));
-    }
-
-    let c = grammar("c");
-    if matches_path(c, source_path) {
-        return Some(DocumentKind::plain("c"));
-    }
-
-    let cpp = grammar("cpp");
-    if matches_path(cpp, source_path) {
-        return Some(DocumentKind::plain("cpp"));
-    }
-
-    let java = grammar("java");
-    if matches_path(java, source_path) {
-        return Some(DocumentKind::plain("java"));
-    }
-
-    let kotlin = grammar("kotlin");
-    if matches_path(kotlin, source_path) {
-        return Some(DocumentKind::plain("kotlin"));
-    }
-
-    let csharp = grammar("csharp");
-    if matches_path(csharp, source_path) {
-        return Some(DocumentKind::plain("csharp"));
-    }
-
-    let groovy = grammar("groovy");
-    if matches_path(groovy, source_path) || matches_shebang(groovy, source) {
-        return Some(DocumentKind::plain("groovy"));
-    }
-
-    let diff = grammar("diff");
-    if matches_path(diff, source_path) {
-        return Some(DocumentKind::plain("diff"));
-    }
-
-    let properties = grammar("properties");
-    if matches_path(properties, source_path) {
-        return Some(DocumentKind::plain("properties"));
-    }
-
-    let php = grammar("php");
-    if matches_path(php, source_path) || matches_shebang(php, source) {
-        return Some(DocumentKind::plain("php"));
-    }
-
-    let scala = grammar("scala");
-    if matches_path(scala, source_path) {
-        return Some(DocumentKind::plain("scala"));
-    }
-
-    let swift = grammar("swift");
-    if matches_path(swift, source_path) || matches_shebang(swift, source) {
-        return Some(DocumentKind::plain("swift"));
-    }
-
-    let dart = grammar("dart");
-    if matches_path(dart, source_path) {
-        return Some(DocumentKind::plain("dart"));
-    }
-
-    let elixir = grammar("elixir");
-    if matches_path(elixir, source_path) || matches_shebang(elixir, source) {
-        return Some(DocumentKind::plain("elixir"));
-    }
-
-    let zig = grammar("zig");
-    if matches_path(zig, source_path) {
-        return Some(DocumentKind::plain("zig"));
-    }
-
-    let vhdl = grammar("vhdl");
-    if matches_path(vhdl, source_path) {
-        return Some(DocumentKind::plain("vhdl"));
-    }
-
-    let verilog = grammar("verilog");
-    if matches_path(verilog, source_path) {
-        return Some(DocumentKind::plain("verilog"));
-    }
-
-    let systemverilog = grammar("systemverilog");
-    if matches_path(systemverilog, source_path) {
-        return Some(DocumentKind::plain("systemverilog"));
-    }
-
-    let vim = grammar("vim");
-    if matches_path(vim, source_path) {
-        return Some(DocumentKind::plain("vim"));
-    }
-
-    let vimhelp = grammar("vimhelp");
-    if matches_path(vimhelp, source_path) {
-        return Some(DocumentKind::plain("vimhelp"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::Rust,
+            RuntimeId::Python,
+            RuntimeId::C,
+            RuntimeId::Cpp,
+            RuntimeId::Java,
+            RuntimeId::Kotlin,
+            RuntimeId::Csharp,
+            RuntimeId::Groovy,
+            RuntimeId::Diff,
+            RuntimeId::Properties,
+            RuntimeId::Php,
+            RuntimeId::Scala,
+            RuntimeId::Swift,
+            RuntimeId::Dart,
+            RuntimeId::Elixir,
+            RuntimeId::Zig,
+            RuntimeId::Vhdl,
+            RuntimeId::Verilog,
+            RuntimeId::SystemVerilog,
+            RuntimeId::Vim,
+            RuntimeId::VimHelp,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let ssh_config = grammar("ssh_config");
     if matches_path(ssh_config, source_path) || is_ssh_config_path(source_path) {
-        return Some(DocumentKind::plain("ssh_config"));
+        return Some(DocumentKind::plain(RuntimeId::SshConfig));
     }
 
     let gitattributes = grammar("gitattributes");
     if matches_path(gitattributes, source_path) || is_gitattributes_path(source_path) {
-        return Some(DocumentKind::plain("gitattributes"));
+        return Some(DocumentKind::plain(RuntimeId::GitAttributes));
     }
 
-    let git_commit = grammar("git_commit");
-    if matches_path(git_commit, source_path) {
-        return Some(DocumentKind::plain("git_commit"));
-    }
-
-    let git_rebase = grammar("git_rebase");
-    if matches_path(git_rebase, source_path) {
-        return Some(DocumentKind::plain("git_rebase"));
-    }
-
-    let requirements = grammar("requirements");
-    if matches_path(requirements, source_path) {
-        return Some(DocumentKind::plain("requirements"));
-    }
-
-    let todotxt = grammar("todotxt");
-    if matches_path(todotxt, source_path) {
-        return Some(DocumentKind::plain("todotxt"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::GitCommit,
+            RuntimeId::GitRebase,
+            RuntimeId::Requirements,
+            RuntimeId::TodoTxt,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let apache = grammar("apache");
     if matches_path(apache, source_path) || is_apache_path(source_path) {
-        return Some(DocumentKind::plain("apache"));
+        return Some(DocumentKind::plain(RuntimeId::Apache));
     }
 
-    let scss = grammar("scss");
-    if matches_path(scss, source_path) {
-        return Some(DocumentKind::plain("scss"));
-    }
-
-    let sass = grammar("sass");
-    if matches_path(sass, source_path) {
-        return Some(DocumentKind::plain("sass"));
-    }
-
-    let jq = grammar("jq");
-    if matches_path(jq, source_path) {
-        return Some(DocumentKind::plain("jq"));
-    }
-
-    let less = grammar("less");
-    if matches_path(less, source_path) {
-        return Some(DocumentKind::plain("less"));
-    }
-
-    if matches_path(grammar("graph_easy"), source_path) {
-        return Some(DocumentKind::plain("graph_easy"));
-    }
-
-    let dot = grammar("dot");
-    if matches_path(dot, source_path) {
-        return Some(DocumentKind::plain("dot"));
-    }
-
-    if matches_path(grammar("mermaid"), source_path) {
-        return Some(DocumentKind::plain("mermaid"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::Scss,
+            RuntimeId::Sass,
+            RuntimeId::Jq,
+            RuntimeId::Less,
+            RuntimeId::GraphEasy,
+            RuntimeId::Dot,
+            RuntimeId::Mermaid,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let nginx = grammar("nginx");
     if matches_path(nginx, source_path) || is_nginx_path(source_path) {
-        return Some(DocumentKind::plain("nginx"));
+        return Some(DocumentKind::plain(RuntimeId::Nginx));
     }
 
-    let typescript = grammar("typescript");
-    if matches_path(typescript, source_path) {
-        return Some(DocumentKind::plain("typescript"));
-    }
-
-    let tsx = grammar("tsx");
-    if matches_path(tsx, source_path) {
-        return Some(DocumentKind::plain("tsx"));
-    }
-
-    let go = grammar("go");
-    if matches_path(go, source_path) {
-        return Some(DocumentKind::plain("go"));
-    }
-
-    let gomod = grammar("gomod");
-    if matches_path(gomod, source_path) {
-        return Some(DocumentKind::plain("gomod"));
-    }
-
-    let gowork = grammar("gowork");
-    if matches_path(gowork, source_path) {
-        return Some(DocumentKind::plain("gowork"));
-    }
-
-    let gosum = grammar("gosum");
-    if matches_path(gosum, source_path) {
-        return Some(DocumentKind::plain("gosum"));
-    }
-
-    let sql = grammar("sql");
-    if matches_path(sql, source_path) {
-        return Some(DocumentKind::plain("sql"));
-    }
-
-    let html = grammar("html");
-    if matches_path(html, source_path) {
-        return Some(DocumentKind::plain("html"));
-    }
-
-    let vue = grammar("vue");
-    if matches_path(vue, source_path) {
-        return Some(DocumentKind::plain("vue"));
-    }
-
-    let svelte = grammar("svelte");
-    if matches_path(svelte, source_path) {
-        return Some(DocumentKind::plain("svelte"));
-    }
-
-    let css = grammar("css");
-    if matches_path(css, source_path) {
-        return Some(DocumentKind::plain("css"));
-    }
-
-    let graphql = grammar("graphql");
-    if matches_path(graphql, source_path) {
-        return Some(DocumentKind::plain("graphql"));
-    }
-
-    let proto = grammar("proto");
-    if matches_path(proto, source_path) {
-        return Some(DocumentKind::plain("proto"));
-    }
-
-    let cel = grammar("cel");
-    if matches_path(cel, source_path) {
-        return Some(DocumentKind::plain("cel"));
-    }
-
-    let textproto = grammar("textproto");
-    if matches_path(textproto, source_path) {
-        return Some(DocumentKind::plain("textproto"));
-    }
-
-    let latex = grammar("latex");
-    if matches_path(latex, source_path) {
-        return Some(DocumentKind::plain("latex"));
-    }
-
-    let sml = grammar("sml");
-    if matches_path(sml, source_path) {
-        return Some(DocumentKind::plain("sml"));
-    }
-
-    let solidity = grammar("solidity");
-    if matches_path(solidity, source_path) {
-        return Some(DocumentKind::plain("solidity"));
-    }
-
-    let strace = grammar("strace");
-    if matches_path(strace, source_path) {
-        return Some(DocumentKind::plain("strace"));
-    }
-
-    let stylus = grammar("stylus");
-    if matches_path(stylus, source_path) {
-        return Some(DocumentKind::plain("stylus"));
-    }
-
-    let syslog = grammar("syslog");
-    if matches_path(syslog, source_path) {
-        return Some(DocumentKind::plain("syslog"));
-    }
-
-    let tcl = grammar("tcl");
-    if matches_path(tcl, source_path) || matches_shebang(tcl, source) {
-        return Some(DocumentKind::plain("tcl"));
-    }
-
-    let textile = grammar("textile");
-    if matches_path(textile, source_path) {
-        return Some(DocumentKind::plain("textile"));
-    }
-
-    let csv = grammar("csv");
-    if matches_path(csv, source_path) {
-        return Some(DocumentKind::plain("csv"));
-    }
-
-    let tsv = grammar("tsv");
-    if matches_path(tsv, source_path) {
-        return Some(DocumentKind::plain("tsv"));
-    }
-
-    let typst = grammar("typst");
-    if matches_path(typst, source_path) {
-        return Some(DocumentKind::plain("typst"));
-    }
-
-    let varlink = grammar("varlink");
-    if matches_path(varlink, source_path) {
-        return Some(DocumentKind::plain("varlink"));
-    }
-
-    let vyper = grammar("vyper");
-    if matches_path(vyper, source_path) {
-        return Some(DocumentKind::plain("vyper"));
-    }
-
-    let wgsl = grammar("wgsl");
-    if matches_path(wgsl, source_path) {
-        return Some(DocumentKind::plain("wgsl"));
-    }
-
-    let javascript = grammar("javascript");
-    if matches_path(javascript, source_path) || matches_shebang(javascript, source) {
-        return Some(DocumentKind::plain("javascript"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::TypeScript,
+            RuntimeId::Tsx,
+            RuntimeId::Go,
+            RuntimeId::GoMod,
+            RuntimeId::GoWork,
+            RuntimeId::GoSum,
+            RuntimeId::Sql,
+            RuntimeId::Html,
+            RuntimeId::Vue,
+            RuntimeId::Svelte,
+            RuntimeId::Css,
+            RuntimeId::Graphql,
+            RuntimeId::Proto,
+            RuntimeId::Cel,
+            RuntimeId::Textproto,
+            RuntimeId::Latex,
+            RuntimeId::Sml,
+            RuntimeId::Solidity,
+            RuntimeId::Strace,
+            RuntimeId::Stylus,
+            RuntimeId::Syslog,
+            RuntimeId::Tcl,
+            RuntimeId::Textile,
+            RuntimeId::Csv,
+            RuntimeId::Tsv,
+            RuntimeId::Typst,
+            RuntimeId::Varlink,
+            RuntimeId::Vyper,
+            RuntimeId::Wgsl,
+            RuntimeId::JavaScript,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let fish = grammar("fish");
@@ -835,69 +288,26 @@ pub(crate) fn detect_document_kind(
         return Some(fish_document_kind(source_path));
     }
 
-    let zsh = grammar("zsh");
-    if matches_path(zsh, source_path) || matches_shebang(zsh, source) {
-        return Some(DocumentKind::plain("zsh"));
-    }
-
-    let powershell = grammar("powershell");
-    if matches_path(powershell, source_path) || matches_shebang(powershell, source) {
-        return Some(DocumentKind::plain("powershell"));
-    }
-
-    let batch = grammar("batch");
-    if matches_path(batch, source_path) {
-        return Some(DocumentKind::plain("batch"));
-    }
-
-    let markdown = grammar("markdown");
-    if matches_path(markdown, source_path) {
-        return Some(DocumentKind::plain("markdown"));
-    }
-
-    let ruby = grammar("ruby");
-    if matches_path(ruby, source_path) || matches_shebang(ruby, source) {
-        return Some(DocumentKind::plain("ruby"));
-    }
-
-    let lua = grammar("lua");
-    if matches_path(lua, source_path) || matches_shebang(lua, source) {
-        return Some(DocumentKind::plain("lua"));
-    }
-
-    let nix = grammar("nix");
-    if matches_path(nix, source_path) {
-        return Some(DocumentKind::plain("nix"));
-    }
-
-    let dotenv = grammar("dotenv");
-    if matches_path(dotenv, source_path) {
-        return Some(DocumentKind::plain("dotenv"));
-    }
-
-    let ini = grammar("ini");
-    if matches_path(ini, source_path) {
-        return Some(DocumentKind::plain("ini"));
-    }
-
-    let xml = grammar("xml");
-    if matches_path(xml, source_path) {
-        return Some(DocumentKind::plain("xml"));
-    }
-
-    let make = grammar("make");
-    if matches_path(make, source_path) {
-        return Some(DocumentKind::plain("make"));
-    }
-
-    let cmake = grammar("cmake");
-    if matches_path(cmake, source_path) {
-        return Some(DocumentKind::plain("cmake"));
-    }
-
-    let ninja = grammar("ninja");
-    if matches_path(ninja, source_path) {
-        return Some(DocumentKind::plain("ninja"));
+    if let Some(kind) = detect_registry_languages(
+        &[
+            RuntimeId::Zsh,
+            RuntimeId::Powershell,
+            RuntimeId::Batch,
+            RuntimeId::Markdown,
+            RuntimeId::Ruby,
+            RuntimeId::Lua,
+            RuntimeId::Nix,
+            RuntimeId::Dotenv,
+            RuntimeId::Ini,
+            RuntimeId::Xml,
+            RuntimeId::Make,
+            RuntimeId::Cmake,
+            RuntimeId::Ninja,
+        ],
+        source_path,
+        source,
+    ) {
+        return Some(kind);
     }
 
     let jinja = grammar("jinja");
@@ -908,7 +318,7 @@ pub(crate) fn detect_document_kind(
             DocumentProfile::TemplateHtml
         };
         return Some(template_document_kind(
-            "jinja",
+            RuntimeId::Jinja,
             source_path,
             default_profile,
         ));
@@ -917,7 +327,7 @@ pub(crate) fn detect_document_kind(
     let eex = grammar("eex");
     if matches_path(eex, source_path) {
         return Some(template_document_kind(
-            "eex",
+            RuntimeId::Eex,
             source_path,
             DocumentProfile::TemplateHtml,
         ));
@@ -926,7 +336,7 @@ pub(crate) fn detect_document_kind(
     let twig = grammar("twig");
     if matches_path(twig, source_path) {
         return Some(template_document_kind(
-            "twig",
+            RuntimeId::Twig,
             source_path,
             DocumentProfile::TemplateHtml,
         ));
@@ -939,13 +349,17 @@ pub(crate) fn detect_document_kind(
         } else {
             DocumentProfile::TemplateHtml
         };
-        return Some(template_document_kind("erb", source_path, default_profile));
+        return Some(template_document_kind(
+            RuntimeId::Erb,
+            source_path,
+            default_profile,
+        ));
     }
 
     let jsp = grammar("jsp");
     if matches_path(jsp, source_path) {
         return Some(template_document_kind(
-            "jsp",
+            RuntimeId::Jsp,
             source_path,
             DocumentProfile::TemplateHtml,
         ));
@@ -954,7 +368,7 @@ pub(crate) fn detect_document_kind(
     let asp = grammar("asp");
     if matches_path(asp, source_path) {
         return Some(template_document_kind(
-            "asp",
+            RuntimeId::Asp,
             source_path,
             DocumentProfile::TemplateHtml,
         ));
@@ -963,7 +377,7 @@ pub(crate) fn detect_document_kind(
     let adp = grammar("adp");
     if matches_path(adp, source_path) {
         return Some(template_document_kind(
-            "adp",
+            RuntimeId::Adp,
             source_path,
             DocumentProfile::TemplateHtml,
         ));
@@ -971,40 +385,38 @@ pub(crate) fn detect_document_kind(
 
     let json = grammar("json");
     if matches_path(json, source_path) || looks_like_json(source) {
-        return Some(DocumentKind::plain("json"));
+        return Some(DocumentKind::plain(RuntimeId::Json));
     }
 
     let ignore = grammar("ignore");
     if matches_path(ignore, source_path) || is_ignore_path(source_path) {
-        return Some(DocumentKind::plain("ignore"));
+        return Some(DocumentKind::plain(RuntimeId::Ignore));
     }
 
     let git_link = grammar("git_link");
     if matches_path(git_link, source_path) || looks_like_git_link(source) {
-        return Some(DocumentKind::plain("git_link"));
+        return Some(DocumentKind::plain(RuntimeId::GitLink));
     }
 
-    let git_mailmap = grammar("git_mailmap");
-    if matches_path(git_mailmap, source_path) {
-        return Some(DocumentKind::plain("git_mailmap"));
+    if let Some(kind) = detect_registry_languages(&[RuntimeId::GitMailmap], source_path, source) {
+        return Some(kind);
     }
 
     let git_log = grammar("git_log");
     if matches_path(git_log, source_path) || looks_like_git_log(source) {
-        return Some(DocumentKind::plain("git_log"));
+        return Some(DocumentKind::plain(RuntimeId::GitLog));
     }
 
-    let dockerfile = grammar("dockerfile");
-    if matches_path(dockerfile, source_path) {
-        return Some(DocumentKind::plain("dockerfile"));
+    if let Some(kind) = detect_registry_languages(&[RuntimeId::Dockerfile], source_path, source) {
+        return Some(kind);
     }
 
     if source_path.is_none() && looks_like_graphql(source) {
-        return Some(DocumentKind::plain("graphql"));
+        return Some(DocumentKind::plain(RuntimeId::Graphql));
     }
 
     if source_path.is_none() && looks_like_sql(source) {
-        return Some(DocumentKind::plain("sql"));
+        return Some(DocumentKind::plain(RuntimeId::Sql));
     }
 
     let bash = grammar("bash");
@@ -1014,7 +426,7 @@ pub(crate) fn detect_document_kind(
         || is_shell_profile_path(source_path)
         || is_os_release_path(source_path)
     {
-        return Some(DocumentKind::plain("bash"));
+        return Some(DocumentKind::plain(RuntimeId::Bash));
     }
 
     None
@@ -1067,13 +479,13 @@ pub(crate) fn cmake_template_document_kind(source_path: Option<&Path>) -> Option
     let file_name = source_path?.file_name()?.to_str()?.to_ascii_lowercase();
 
     if file_name.ends_with(".h.in") {
-        return Some(DocumentKind::plain("c"));
+        return Some(DocumentKind::plain(RuntimeId::C));
     }
 
     [".hh.in", ".hpp.in", ".hxx.in", ".h++.in"]
         .iter()
         .any(|suffix| file_name.ends_with(suffix))
-        .then_some(DocumentKind::plain("cpp"))
+        .then_some(DocumentKind::plain(RuntimeId::Cpp))
 }
 
 pub(crate) fn is_git_config_path(source_path: Option<&Path>) -> bool {
@@ -1553,9 +965,28 @@ pub(crate) fn resolve_highlight_document_kind(
     match document_kind.runtime_name() {
         "python_docstring" => resolve_python_docstring_document_kind(document_kind, source),
         "sql" | "sql_postgres" | "sql_mysql" | "sql_sqlite" => DocumentKind::with_profile(
-            resolve_sql_runtime(source_path, document_kind.runtime_name(), source),
+            crate::document_kind::plain_document_kind(resolve_sql_runtime(
+                source_path,
+                document_kind.runtime_name(),
+                source,
+            ))
+            .runtime_id(),
             document_kind.profile(),
         ),
         _ => document_kind,
     }
+}
+
+fn detect_registry_languages(
+    ids: &[RuntimeId],
+    path: Option<&Path>,
+    source: &str,
+) -> Option<DocumentKind> {
+    ids.iter()
+        .copied()
+        .find(|id| {
+            let spec = grammar(id.name());
+            matches_path(spec, path) || matches_shebang(spec, source)
+        })
+        .map(DocumentKind::plain)
 }
