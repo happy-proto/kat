@@ -24,6 +24,7 @@ mod render_data;
 mod render_ops;
 mod semantic_overlays;
 mod source_highlight;
+mod source_map;
 mod span_ops;
 mod sql_dialect;
 mod terminal;

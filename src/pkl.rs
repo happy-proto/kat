@@ -483,11 +483,14 @@ mod tests {
                 crate::projection::build_candidate_virtual_source(&source, &injection);
             assert_eq!(text, expected, "{literal}");
             assert_eq!(map.len(), text.len());
-            assert!(map.iter().all(|range| range.end <= source.len()));
+            assert!(
+                (0..text.len())
+                    .filter_map(|offset| map.get(offset))
+                    .all(|range| range.end <= source.len())
+            );
             if text == "🟣" {
                 assert!(
-                    map.iter()
-                        .all(|range| &source[range.clone()] == r"\u{1f7e3}")
+                    (0..text.len()).all(|offset| &source[map.get(offset).unwrap()] == r"\u{1f7e3}")
                 );
             }
         }
