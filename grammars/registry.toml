@@ -2360,6 +2360,28 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "graph_easy"
+library_name = "tree-sitter-graph-easy"
+parser_source = "crate"
+extensions = ["ge"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = []
+extra_c_flags = []
+highlight_names = [
+  "comment",
+  "error",
+  "keyword",
+  "namespace",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "type",
+]
+
+[[grammar]]
 name = "dot"
 library_name = "tree-sitter-dot"
 parser_source = "crate"

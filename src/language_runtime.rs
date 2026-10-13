@@ -167,6 +167,8 @@ const VIM_INJECTIONS_QUERY: &str = include_str!("../grammars/vim/queries/injecti
 const JQ_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jq/queries/highlights.scm");
 const LESS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/less/queries/highlights.scm");
 const DOT_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dot/queries/highlights.scm");
+const GRAPH_EASY_HIGHLIGHTS_QUERY: &str =
+    include_str!("../grammars/graph_easy/queries/highlights.scm");
 const DOT_INJECTIONS_QUERY: &str = include_str!("../grammars/dot/queries/injections.scm");
 const MERMAID_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/mermaid/queries/highlights.scm");
 const NGINX_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/nginx/queries/highlights.scm");
@@ -973,6 +975,13 @@ const STATIC_LANGUAGE_ASSETS: &[StaticLanguageAsset] = &[
         name: "less",
         language: || Language::from(LESS_LANGUAGE),
         highlights_query: LESS_HIGHLIGHTS_QUERY,
+        injections_query: "",
+        locals_query: "",
+    },
+    StaticLanguageAsset {
+        name: "graph_easy",
+        language: || Language::from(tree_sitter_kat_parsers::GRAPH_EASY_LANGUAGE),
+        highlights_query: GRAPH_EASY_HIGHLIGHTS_QUERY,
         injections_query: "",
         locals_query: "",
     },

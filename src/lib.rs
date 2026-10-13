@@ -110,6 +110,7 @@ enum SupportedLanguage {
     Diff,
     Dockerfile,
     Dot,
+    GraphEasy,
     Dotenv,
     Dart,
     Eex,
@@ -654,6 +655,7 @@ fn detect_language(source_path: Option<&Path>, source: &str) -> Option<Supported
         "jq" => SupportedLanguage::Jq,
         "less" => SupportedLanguage::Less,
         "dot" => SupportedLanguage::Dot,
+        "graph_easy" => SupportedLanguage::GraphEasy,
         "mermaid" => SupportedLanguage::Mermaid,
         "nginx" => SupportedLanguage::Nginx,
         "typescript" => SupportedLanguage::TypeScript,
@@ -1460,6 +1462,7 @@ pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
         "jq" => DocumentKind::plain("jq"),
         "less" => DocumentKind::plain("less"),
         "dot" => DocumentKind::plain("dot"),
+        "graph_easy" => DocumentKind::plain("graph_easy"),
         "mermaid" => DocumentKind::plain("mermaid"),
         "nginx" => DocumentKind::plain("nginx"),
         "typescript" => DocumentKind::plain("typescript"),
@@ -2168,6 +2171,10 @@ pub(crate) fn detect_document_kind(
     let less = grammar("less");
     if matches_path(less, source_path) {
         return Some(DocumentKind::plain("less"));
+    }
+
+    if matches_path(grammar("graph_easy"), source_path) {
+        return Some(DocumentKind::plain("graph_easy"));
     }
 
     let dot = grammar("dot");
@@ -4733,6 +4740,7 @@ mod tests {
         "stylus",
     ];
     const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
+        "graph_easy",
         "adp",
         "asp",
         "eex",
@@ -4757,6 +4765,16 @@ mod tests {
     ];
 
     const FIXTURE_CASES: &[FixtureCase] = &[
+        FixtureCase {
+            relative_path: "graph_easy/minimal.ge",
+            expect_highlight: true,
+            expected_fragments: &["R", "Longest", "->"],
+        },
+        FixtureCase {
+            relative_path: "graph_easy/features.ge",
+            expect_highlight: true,
+            expected_fragments: &["Pipeline", "输入", "请求", "##>", "shape"],
+        },
         FixtureCase {
             relative_path: "mermaid/flowchart.mmd",
             expect_highlight: true,
@@ -6182,6 +6200,7 @@ mod tests {
     }
 
     const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
+        "graph_easy",
         "ghostty",
         "pkl",
         "cel",

@@ -1,0 +1,18 @@
+# Graph::Easy: branching pipeline
+graph { flow: east; }
+node { shape: box; }
+node.warning { color: red; }
+( Pipeline
+  [ 输入 ] { label: "读取数据"; } -- 请求 --> [ Worker ]
+  [ Worker ] -- { label: retry; color: blue; } --> [ 输出 ]
+)
+[ Worker ] <--> [ Cache ]
+[ Cache ] ..> [ Store ]
+[ Store ] ==> [ Backup ]
+[ Backup ] ~~> [ Remote ]
+[ Remote ] ##> [ Done ]
+[ A ], [ B ] -> [ C ] -> [ D ]
+Start -> Finish <- Other
+[ A ] -- request-v2 --> [ B ]
+build-step -> deploy.step
+[ 多行\n标签 ] -- [ Hash # inside ]
