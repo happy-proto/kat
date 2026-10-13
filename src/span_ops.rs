@@ -52,9 +52,11 @@ pub(crate) fn style_covering_span(
     start: usize,
     end: usize,
 ) -> Option<TokenStyle> {
+    // Pipeline spans are sorted and disjoint; use their interval order directly.
+    let index = spans.partition_point(|span| span.range.end <= start);
     spans
-        .iter()
-        .find(|span| span.range.start <= start && span.range.end >= end)
+        .get(index)
+        .filter(|span| span.range.start <= start && span.range.end >= end)
         .and_then(|span| span.style)
 }
 

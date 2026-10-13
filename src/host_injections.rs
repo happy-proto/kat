@@ -245,6 +245,40 @@ fn markdown_fence_projection(node: Node) -> InjectionProjection {
     InjectionProjection::TemplateSegments(segments)
 }
 
+#[derive(Clone, Copy)]
+pub(crate) enum HostResolver {
+    Pkl,
+    Dockerfile,
+    Template,
+    Prek,
+    Mise,
+    Actions,
+    Hcl,
+    Proto,
+    EcmaScript,
+}
+
+pub(crate) fn host_resolver(kind: DocumentKind) -> Option<HostResolver> {
+    use DocumentProfile::*;
+    use HostResolver::*;
+    match (kind.runtime_name(), kind.profile()) {
+        ("pkl", _) => Some(Pkl),
+        ("dockerfile", _) => Some(Dockerfile),
+        (
+            "jinja" | "twig" | "erb" | "eex" | "jsp" | "asp" | "adp",
+            TemplateHtml | TemplateXml | TemplateYaml | TemplateSql | TemplateCss
+            | TemplateCoffeeScript | TemplateJavaScript,
+        ) => Some(Template),
+        ("toml", PrekConfig) => Some(Prek),
+        ("toml", MiseConfig) => Some(Mise),
+        ("yaml", GitHubActionsWorkflow | GitHubActionMetadata) => Some(Actions),
+        ("hcl", _) => Some(Hcl),
+        ("proto", _) => Some(Proto),
+        ("javascript" | "typescript" | "tsx", _) => Some(EcmaScript),
+        _ => None,
+    }
+}
+
 fn collect_host_injection_candidates(
     document_kind: DocumentKind,
     language_runtime: &LanguageRuntime,
@@ -253,48 +287,35 @@ fn collect_host_injection_candidates(
 ) -> Result<Vec<InjectionCandidate>> {
     let mut candidates = Vec::new();
 
-    match (document_kind.runtime_name(), document_kind.profile()) {
-        ("pkl", _) => candidates.extend(crate::pkl::injections(document_kind, tree, source)),
-        ("dockerfile", _) => candidates.extend(collect_dockerfile_injection_candidates(
-            language_runtime,
-            tree,
-            source,
-        )?),
-        (
-            "jinja" | "twig" | "erb" | "eex" | "jsp" | "asp" | "adp",
-            DocumentProfile::TemplateHtml
-            | DocumentProfile::TemplateXml
-            | DocumentProfile::TemplateYaml
-            | DocumentProfile::TemplateSql
-            | DocumentProfile::TemplateCss
-            | DocumentProfile::TemplateCoffeeScript
-            | DocumentProfile::TemplateJavaScript,
-        ) => candidates.extend(collect_template_injection_candidates(
+    match host_resolver(document_kind) {
+        Some(HostResolver::Pkl) => {
+            candidates.extend(crate::pkl::injections(document_kind, tree, source))
+        }
+        Some(HostResolver::Dockerfile) => candidates.extend(
+            collect_dockerfile_injection_candidates(language_runtime, tree, source)?,
+        ),
+        Some(HostResolver::Template) => candidates.extend(collect_template_injection_candidates(
             document_kind.runtime_name(),
             document_kind.profile(),
             tree.root_node(),
         )),
-        ("toml", DocumentProfile::PrekConfig) => candidates.extend(
-            collect_prek_toml_injection_candidates(tree.root_node(), source),
+        Some(HostResolver::Prek) => candidates.extend(collect_prek_toml_injection_candidates(
+            tree.root_node(),
+            source,
+        )),
+        Some(HostResolver::Mise) => candidates.extend(crate::mise::injections(tree, source)),
+        Some(HostResolver::Actions) => candidates.extend(
+            collect_github_actions_yaml_injection_candidates(tree, source),
         ),
-        ("toml", DocumentProfile::MiseConfig) => {
-            candidates.extend(crate::mise::injections(tree, source))
-        }
-        (
-            "yaml",
-            DocumentProfile::GitHubActionsWorkflow | DocumentProfile::GitHubActionMetadata,
-        ) => candidates.extend(collect_github_actions_yaml_injection_candidates(
-            tree, source,
-        )),
-        ("hcl", _) => candidates.extend(collect_hcl_template_injection_candidates(
+        Some(HostResolver::Hcl) => candidates.extend(collect_hcl_template_injection_candidates(
             tree.root_node(),
             source,
         )),
-        ("proto", _) => candidates.extend(collect_proto_cel_injection_candidates(
+        Some(HostResolver::Proto) => candidates.extend(collect_proto_cel_injection_candidates(
             tree.root_node(),
             source,
         )),
-        ("javascript" | "typescript" | "tsx", _) => {
+        Some(HostResolver::EcmaScript) => {
             candidates.extend(collect_ecmascript_comment_injection_candidates(
                 document_kind.runtime_name(),
                 tree,

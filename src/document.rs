@@ -268,6 +268,7 @@ impl PreparedDocument {
             };
         };
 
+        let layout_started_at = Instant::now();
         let layout = LayoutDocument::from_visual(
             &self.source,
             visual.spans(),
@@ -275,6 +276,7 @@ impl PreparedDocument {
             self.theme,
             terminal_width,
         );
+        timings.layout += layout_started_at.elapsed();
         let mut row_anchors = layout
             .rows()
             .iter()

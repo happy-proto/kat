@@ -270,9 +270,11 @@ impl DebugTimingStats {
                 " read={}",
                 " detect={}",
                 " highlight={}",
+                " analysis_parse={}",
                 " semantic={}",
                 " injections={}",
                 " nested_overlays={}",
+                " layout={}",
                 " ansi_render={}",
                 " pipeline={}",
                 " write={}",
@@ -284,9 +286,11 @@ impl DebugTimingStats {
             format_duration(self.read_source),
             format_duration(self.render_pipeline.detect_document_kind),
             format_duration(self.render_pipeline.highlight),
+            format_duration(self.render_pipeline.analysis_parse),
             format_duration(self.render_pipeline.semantic_overlays),
             format_duration(self.render_pipeline.injection_regions),
             format_duration(self.render_pipeline.nested_region_overlays),
+            format_duration(self.render_pipeline.layout),
             format_duration(self.render_pipeline.render_styled_spans),
             format_duration(self.render_pipeline.total_render_pipeline()),
             format_duration(self.write_output),
@@ -1060,15 +1064,7 @@ fn render_output_with_timing(
         };
         let render_output = prepared.render(terminal_width);
         if let Some(timings) = timings {
-            timings.render_pipeline.detect_document_kind +=
-                render_output.timings.detect_document_kind;
-            timings.render_pipeline.highlight += render_output.timings.highlight;
-            timings.render_pipeline.semantic_overlays += render_output.timings.semantic_overlays;
-            timings.render_pipeline.injection_regions += render_output.timings.injection_regions;
-            timings.render_pipeline.nested_region_overlays +=
-                render_output.timings.nested_region_overlays;
-            timings.render_pipeline.render_styled_spans +=
-                render_output.timings.render_styled_spans;
+            timings.render_pipeline.merge(&render_output.timings);
         }
         return Ok(RenderedSource {
             output: render_output.output,
@@ -2008,9 +2004,11 @@ mod tests {
             render_pipeline: kat::RenderTimings {
                 detect_document_kind: Duration::from_millis(2),
                 highlight: Duration::from_millis(3),
+                analysis_parse: Duration::from_millis(1),
                 semantic_overlays: Duration::from_millis(4),
                 injection_regions: Duration::from_millis(5),
                 nested_region_overlays: Duration::from_millis(6),
+                layout: Duration::from_millis(1),
                 render_styled_spans: Duration::from_millis(7),
             },
             write_output: Duration::from_millis(8),
@@ -2026,11 +2024,13 @@ mod tests {
             "read=1.000ms",
             "detect=2.000ms",
             "highlight=3.000ms",
+            "analysis_parse=1.000ms",
             "semantic=4.000ms",
             "injections=5.000ms",
             "nested_overlays=6.000ms",
+            "layout=1.000ms",
             "ansi_render=7.000ms",
-            "pipeline=27.000ms",
+            "pipeline=29.000ms",
             "write=8.000ms",
             "total=36.000ms",
         ] {

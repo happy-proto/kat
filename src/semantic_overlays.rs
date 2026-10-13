@@ -310,7 +310,7 @@ pub(crate) fn semantic_capture_spans_with_tree(
     )
 }
 
-fn has_semantic_overlays(language_name: &str, profile: DocumentProfile) -> bool {
+pub(crate) fn has_semantic_overlays(language_name: &str, profile: DocumentProfile) -> bool {
     let has_runtime_overlays = matches!(
         language_name,
         "bash"
