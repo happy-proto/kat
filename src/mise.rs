@@ -2,14 +2,14 @@ use std::{ops::Range, path::Path};
 
 use tree_sitter::{Node, Tree};
 
-use crate::{
-    document_kind::DocumentKind,
-    host_injections::{
-        InjectionCandidate, InjectionDecode, InjectionProjection,
-        InjectionProjectionSegment as Segment, InjectionVisualKind,
-    },
-    language_aliases::{normalize_language_name, shebang_interpreter_name},
-};
+use crate::document_kind::DocumentKind;
+use crate::host_injections::InjectionCandidate;
+use crate::host_injections::InjectionDecode;
+use crate::host_injections::InjectionProjection;
+use crate::host_injections::InjectionProjectionSegment as Segment;
+use crate::host_injections::InjectionVisualKind;
+use crate::language_aliases::normalize_language_name;
+use crate::language_aliases::shebang_interpreter_name;
 
 // Generic config.toml is only special inside a known mise directory.
 pub(crate) fn is_config_path(path: &Path) -> bool {

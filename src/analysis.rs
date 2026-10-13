@@ -1,14 +1,35 @@
-use std::{path::Path, time::Instant};
-
+use crate::armor_formats::render_armor_format;
+use crate::debug_progress::log as progress_log;
+use crate::detection::detect_document_kind;
+use crate::detection::resolve_highlight_document_kind;
+use crate::document_kind::DocumentKind;
+use crate::document_kind::DocumentKindSnapshot;
+use crate::document_kind::named_document_kind;
+use crate::injection::collect_top_level_injection_regions_from_tree;
+use crate::language_runtime::global_highlight_name;
+use crate::language_runtime::runtime;
+use crate::render_data::HighlightRenderData;
+use crate::render_data::NestedRegion;
+use crate::render_data::StyledSpan;
+use crate::semantic_overlays::parse_language_tree;
+use crate::semantic_overlays::semantic_capture_spans_with_tree;
+use crate::span_ops::overlay_nested_region;
+use crate::span_ops::overlay_style_spans;
+use crate::span_ops::push_span;
+use crate::span_ops::style_covering_span;
+use crate::theme::ColorMode;
+use crate::theme::Theme;
+use crate::theme::TokenStyleSnapshot;
+use crate::timing::RenderTimings;
+use anyhow::Context;
 use anyhow::Result;
 use serde::Serialize;
-
-use crate::{
-    HighlightRenderData, NestedRegion, RenderTimings, StyledSpan, detect_document_kind,
-    document_kind::{DocumentKind, DocumentKindSnapshot},
-    named_document_kind,
-    theme::{ColorMode, Theme, TokenStyleSnapshot},
-};
+use std::path::Path;
+use std::time::Instant;
+use tree_sitter::Tree;
+use tree_sitter_highlight::Highlight;
+use tree_sitter_highlight::HighlightEvent;
+use tree_sitter_highlight::Highlighter;
 
 #[derive(Clone, Debug)]
 pub(crate) struct AnalysisDocument {
@@ -27,7 +48,7 @@ impl AnalysisDocument {
         theme: Theme,
         timings: Option<&mut RenderTimings>,
     ) -> Result<Self> {
-        let render_data = crate::highlight_named_language_render_data(
+        let render_data = crate::analysis::highlight_named_language_render_data(
             document_kind,
             source_path,
             source,
@@ -207,8 +228,8 @@ pub(crate) struct RegionSegmentSnapshot {
     pub left_column_override: Option<usize>,
 }
 
-impl From<crate::RegionSegment> for RegionSegmentSnapshot {
-    fn from(segment: crate::RegionSegment) -> Self {
+impl From<crate::render_data::RegionSegment> for RegionSegmentSnapshot {
+    fn from(segment: crate::render_data::RegionSegment) -> Self {
         Self {
             line_start: segment.line_start,
             left: segment.left,
@@ -226,11 +247,240 @@ pub(crate) struct VisualRegionSnapshot {
 }
 
 impl VisualRegionSnapshot {
-    fn from_region(region: &crate::VisualRegion) -> Self {
+    fn from_region(region: &crate::render_data::VisualRegion) -> Self {
         Self {
             visual_kind: region.visual_kind.snapshot_name(),
             visual_level: region.visual_level,
             segments: region.segments.iter().copied().map(Into::into).collect(),
         }
     }
+}
+
+pub(crate) fn highlight_named_language_render_data(
+    document_kind: DocumentKind,
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+    timings: Option<&mut RenderTimings>,
+) -> Result<HighlightRenderData> {
+    highlight_named_language_render_data_with_depth(
+        document_kind,
+        source_path,
+        source,
+        theme,
+        0,
+        timings,
+    )
+}
+
+pub(crate) fn highlight_named_language_render_data_with_depth(
+    document_kind: DocumentKind,
+    source_path: Option<&Path>,
+    source: &str,
+    theme: &Theme,
+    nested_depth: usize,
+    mut timings: Option<&mut RenderTimings>,
+) -> Result<HighlightRenderData> {
+    let resolved_document_kind =
+        resolve_highlight_document_kind(document_kind, source_path, source);
+    let resolved_runtime_name = resolved_document_kind.runtime_name();
+    if matches!(resolved_runtime_name, "pem" | "openpgp_armor") {
+        return render_armor_format(resolved_document_kind, source, theme);
+    }
+    let log_progress = source_path.is_some();
+    if log_progress {
+        progress_log(
+            "highlight",
+            format!(
+                "begin runtime={} depth={} bytes={}",
+                resolved_runtime_name,
+                nested_depth,
+                source.len()
+            ),
+        );
+    }
+    let language_runtime = runtime(resolved_runtime_name)
+        .with_context(|| format!("missing language runtime for {resolved_runtime_name}"))?;
+    let highlight_started_at = Instant::now();
+    let mut highlighter = Highlighter::new();
+    let events = highlighter
+        .highlight(
+            &language_runtime.flat_configuration,
+            source.as_bytes(),
+            None,
+            None,
+            |_| None,
+        )
+        .context("failed to highlight source")?;
+
+    let mut spans = collect_styled_spans(source, events, theme)?;
+    if log_progress {
+        progress_log(
+            "highlight",
+            format!(
+                "highlight_done runtime={} spans={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                spans.len(),
+                highlight_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
+    }
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.record_highlight(highlight_started_at);
+    }
+
+    let semantic_started_at = Instant::now();
+    // The highlighter owns its tree internally. Share our analysis tree between
+    // semantic overlays and injections rather than parsing each phase again.
+    let tree = parse_language_tree(resolved_runtime_name, source)?;
+    spans = overlay_semantic_captures(resolved_document_kind, source, &tree, spans, theme)?;
+    if log_progress {
+        progress_log(
+            "semantic",
+            format!(
+                "done runtime={} spans={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                spans.len(),
+                semantic_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
+    }
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.record_semantic_overlays(semantic_started_at);
+    }
+
+    let injections_started_at = Instant::now();
+    let nested_regions = collect_top_level_injection_regions_from_tree(
+        resolved_document_kind,
+        source,
+        &tree,
+        theme,
+        nested_depth,
+        timings.as_deref_mut(),
+    )?;
+    if log_progress {
+        progress_log(
+            "injections",
+            format!(
+                "regions_done runtime={} regions={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                nested_regions.len(),
+                injections_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
+    }
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.record_injection_regions(injections_started_at);
+    }
+
+    let nested_overlay_started_at = Instant::now();
+    for region in &nested_regions {
+        spans = overlay_nested_region(spans, region);
+    }
+    if log_progress {
+        progress_log(
+            "nested_overlays",
+            format!(
+                "done runtime={} spans={} regions={} elapsed={:.3}ms",
+                resolved_runtime_name,
+                spans.len(),
+                nested_regions.len(),
+                nested_overlay_started_at.elapsed().as_secs_f64() * 1_000.0
+            ),
+        );
+    }
+    if let Some(timings) = timings {
+        timings.record_nested_region_overlays(nested_overlay_started_at);
+    }
+
+    Ok(HighlightRenderData {
+        resolved_document_kind,
+        spans,
+        nested_regions,
+    })
+}
+
+pub(crate) fn overlay_semantic_captures(
+    document_kind: DocumentKind,
+    source: &str,
+    tree: &Tree,
+    parent_spans: Vec<StyledSpan>,
+    theme: &Theme,
+) -> Result<Vec<StyledSpan>> {
+    let invalid_style = theme.token_style_for("invalid.illegal.regex", "");
+    let overlays = semantic_capture_spans_with_tree(document_kind, source, tree)?
+        .into_iter()
+        .filter_map(|span| {
+            let text = &source[span.range.clone()];
+            theme
+                .token_style_for(span.capture, text)
+                .map(|overlay_style| {
+                    let style = match (
+                        style_covering_span(&parent_spans, span.range.start, span.range.end),
+                        invalid_style,
+                    ) {
+                        (Some(parent_style), Some(invalid_style))
+                            if parent_style == invalid_style =>
+                        {
+                            Some(parent_style.merge(overlay_style))
+                        }
+                        _ => Some(overlay_style),
+                    };
+                    StyledSpan {
+                        range: span.range,
+                        style,
+                        hyperlink: None,
+                    }
+                })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(overlay_style_spans(parent_spans, overlays))
+}
+
+pub(crate) fn collect_styled_spans<'a>(
+    source: &str,
+    events: impl Iterator<Item = Result<HighlightEvent, tree_sitter_highlight::Error>> + 'a,
+    theme: &Theme,
+) -> Result<Vec<StyledSpan>> {
+    let mut active_highlights: Vec<Highlight> = Vec::new();
+    let mut spans = Vec::new();
+
+    for event in events {
+        match event.context("failed to process highlight event")? {
+            HighlightEvent::Source { start, end } => {
+                if start == end {
+                    continue;
+                }
+
+                let text = &source[start..end];
+                let active_captures = active_highlights
+                    .iter()
+                    .map(|highlight| global_highlight_name(highlight.0))
+                    .collect::<Vec<_>>();
+                let style = theme
+                    .merged_token_style_for(active_captures.iter().copied(), text)
+                    .or_else(|| theme.default_style());
+                let hyperlink = active_captures
+                    .contains(&"text.uri")
+                    .then(|| crate::terminal::terminal_hyperlink_destination(text))
+                    .flatten();
+                push_span(&mut spans, start..end, style, hyperlink);
+            }
+            HighlightEvent::HighlightStart(highlight) => active_highlights.push(highlight),
+            HighlightEvent::HighlightEnd => {
+                active_highlights.pop();
+            }
+        }
+    }
+
+    if spans.is_empty() && !source.is_empty() {
+        spans.push(StyledSpan {
+            range: 0..source.len(),
+            style: theme.default_style(),
+            hyperlink: None,
+        });
+    }
+
+    Ok(spans)
 }

@@ -50,6 +50,13 @@
 - Pkl 使用 Apple 上游固定 revision 的预生成 Rust parser，不需要调整 `kat-parsers`。通用 Pkl runtime 承接文档注释中的 Markdown 与 `Regex(...)` 中的字面量；`hk_config` profile 在同一 runtime 上按 step 的命令字段和显式 `shell` 分发子语言。字符串投影按 AST 区分普通片段、转义和插值，解码后的字符保留原始源码范围，动态表达式和 hk 模板用无源码映射的占位符维持子语言结构，因此宿主高亮不会被覆盖。
 - SQL 方言、Regex host-aware runtime、模板宿主 profile、Justfile shell dispatch、Dockerfile shell dispatch、GitHub Actions `run`/`shell` dispatch，以及 `python_docstring` 这类 host-owned pseudo-runtime，都建立在这套共享 runtime + document profile + host resolver / custom nested runtime 模型之上。
 
+### 模块职责
+
+- `lib.rs` 只声明模块与公共导出；`api` 提供 CLI 和库的入口及调试输出，`document` 持有可复用的 `PreparedDocument` 和呈现选项。
+- `detection` 负责文件、路径和内容检测，`document_kind` 负责 runtime 与 profile 的组合。
+- `analysis` 编排高亮、语义与嵌套分析；`injection` 收集递归区域与宿主视觉策略，`projection` 负责虚拟源码及其原文映射。
+- `render_data` 定义各阶段共享的数据，`span_ops` 合成源范围上的样式，`timing` 记录阶段耗时。各模块从实际所有者导入，不通过根模块共享私有实现。
+
 ### 渲染分层
 
 当前渲染链路明确拆成 5 层：

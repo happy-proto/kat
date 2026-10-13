@@ -3,11 +3,11 @@ use std::ops::Range;
 use anyhow::{Context, Result};
 use tree_sitter::{Node, Parser};
 
-use crate::{
-    document_kind::{DocumentKind, DocumentProfile},
-    language_aliases::normalize_language_name,
-    language_runtime::{runtime, supports_runtime},
-};
+use crate::document_kind::DocumentKind;
+use crate::document_kind::DocumentProfile;
+use crate::language_aliases::normalize_language_name;
+use crate::language_runtime::runtime;
+use crate::language_runtime::supports_runtime;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct SemanticCaptureSpan {

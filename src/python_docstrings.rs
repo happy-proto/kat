@@ -2,14 +2,21 @@ use std::ops::Range;
 
 use anyhow::Result;
 
-use crate::{
-    HighlightRenderData, NestedRegion, StyledSpan, VisualRegion, build_region_segments,
-    document_kind::{DocumentKind, DocumentProfile},
-    host_injections::{InjectionVisualAnchor, InjectionVisualKind},
-    map_virtual_nested_regions_to_source, map_virtual_regions_to_source,
-    map_virtual_spans_to_source, plain_document_kind, render_virtual_injection_render_data,
-    theme::Theme,
-};
+use crate::document_kind::DocumentKind;
+use crate::document_kind::DocumentProfile;
+use crate::document_kind::plain_document_kind;
+use crate::host_injections::InjectionVisualAnchor;
+use crate::host_injections::InjectionVisualKind;
+use crate::injection::build_region_segments;
+use crate::injection::render_virtual_injection_render_data;
+use crate::projection::map_virtual_nested_regions_to_source;
+use crate::projection::map_virtual_regions_to_source;
+use crate::projection::map_virtual_spans_to_source;
+use crate::render_data::HighlightRenderData;
+use crate::render_data::NestedRegion;
+use crate::render_data::StyledSpan;
+use crate::render_data::VisualRegion;
+use crate::theme::Theme;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SectionKind {
