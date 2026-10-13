@@ -132,13 +132,13 @@ impl PagerSourceBuilder {
             .extend(rows.into_iter().map(|rendered| DisplayRow {
                 line_index: 0,
                 source_id,
-                source_line_start: rendered.anchor.source_line_start,
-                source_column_start: rendered.anchor.wrapped_from_column,
+                source_line_start: rendered.anchor().source_line_start,
+                source_column_start: rendered.anchor().wrapped_from_column,
                 start_column: 0,
-                end_column: rendered.display_width,
+                end_column: rendered.display_width(),
                 start_plain: 0,
-                end_plain: rendered.text.len(),
-                plain: rendered.text.clone(),
+                end_plain: rendered.text().len(),
+                plain: rendered.text().to_owned(),
                 rendered,
             }));
     }
@@ -767,7 +767,7 @@ fn render(
     stdout.write_all(CLEAR_LINE)?;
 
     let end_line = (state.top_row + body_rows).min(viewport.row_count());
-    let mut status = match mode {
+    let status = match mode {
         PagerMode::Normal => state.message.as_ref().map(|message| message.text.clone()).unwrap_or_else(|| format!(
             "kat {}/{}  q:quit  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
             end_line,
@@ -775,11 +775,14 @@ fn render(
         )),
         PagerMode::Search { query, .. } => format!("/{query}"),
     };
-    if status.chars().count() > size.cols {
-        status = status.chars().take(size.cols).collect();
-    }
+    let status_row = kat::PreparedDocument::plain(&status)
+        .display_rows(size.cols)
+        .into_iter()
+        .next();
     stdout.write_all(b"\x1b[7m")?;
-    stdout.write_all(status.as_bytes())?;
+    if let Some(row) = status_row {
+        stdout.write_all(row.text().as_bytes())?;
+    }
     stdout.write_all(RESET_STYLE)?;
     stdout.flush()?;
     Ok(())

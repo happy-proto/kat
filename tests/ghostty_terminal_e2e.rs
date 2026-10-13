@@ -1456,3 +1456,95 @@ fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> 
     fs::remove_file(fixture)?;
     Ok(())
 }
+
+#[test]
+fn wide_search_status_does_not_wrap_or_scroll_the_body() -> TestResult {
+    let source = (0..80)
+        .map(|i| format!("line-{i:03}\n"))
+        .collect::<String>();
+    let fixture = temp_plain_fixture("kat-wide-search-status", &source)?;
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        40,
+        17,
+        &[
+            ("KAT_COLOR_MODE", "truecolor"),
+            ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+        ],
+    )?;
+    session.wait_for_screen(40, 17, |frame| {
+        frame
+            .screen
+            .last()
+            .is_some_and(|line| line.starts_with("kat "))
+    })?;
+    session.write_input(format!("/{}", "中".repeat(40)).as_bytes())?;
+    let rendered = session.wait_for_screen(40, 17, |frame| {
+        frame.screen.last().is_some_and(|line| line.contains("中"))
+    })?;
+    assert_eq!(
+        rendered.screen[0].trim_end(),
+        "line-000",
+        "{}",
+        rendered.screen_text()
+    );
+    assert_eq!(rendered.screen[15].trim_end(), "line-015");
+    assert_eq!(
+        rendered.screen[16].replace(' ', ""),
+        format!("/{}", "中".repeat(19))
+    );
+    session.write_input(b"\x03")?;
+    session.wait_success()?;
+    fs::remove_file(fixture)?;
+    Ok(())
+}
+
+#[test]
+fn source_control_characters_cannot_reposition_viewer_rows() -> TestResult {
+    let source = "safe \x1b[2Jcontrol\nleft\rright\nlast\n";
+    let fixture = temp_plain_fixture("kat-source-controls", source)?;
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        40,
+        8,
+        &[
+            ("KAT_COLOR_MODE", "truecolor"),
+            ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+        ],
+    )?;
+    let rendered = session.wait_for_screen(40, 8, |frame| {
+        frame
+            .screen
+            .last()
+            .is_some_and(|line| line.starts_with("kat "))
+    })?;
+    assert_eq!(rendered.screen[0].trim_end(), "safe ␛[2Jcontrol");
+    assert_eq!(rendered.screen[1].trim_end(), "left␍right");
+    assert_eq!(rendered.screen[2].trim_end(), "last");
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    fs::remove_file(fixture)?;
+    Ok(())
+}
+
+#[test]
+fn expanded_tabs_fill_narrow_viewer_rows() -> TestResult {
+    let fixture = temp_plain_fixture("kat-narrow-tabs", "abcd\t012\n")?;
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        3,
+        8,
+        &[
+            ("KAT_COLOR_MODE", "truecolor"),
+            ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+        ],
+    )?;
+    let rendered = session.wait_for_screen(3, 8, |frame| {
+        frame.screen.last().is_some_and(|line| line == "kat")
+    })?;
+    assert_eq!(&rendered.screen[..4], &["abc", "d  ", "  0", "12 "]);
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    fs::remove_file(fixture)?;
+    Ok(())
+}

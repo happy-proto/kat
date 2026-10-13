@@ -211,9 +211,13 @@ impl RenderPlanBuilder {
         }
 
         if !text.is_empty() {
-            self.ops.push(RenderOp::Text {
-                text: text.to_owned(),
-            });
+            if let Some(RenderOp::Text { text: previous }) = self.ops.last_mut() {
+                previous.push_str(text);
+            } else {
+                self.ops.push(RenderOp::Text {
+                    text: text.to_owned(),
+                });
+            }
         }
     }
 
@@ -312,4 +316,55 @@ fn next_background_boundary(row: &crate::layout::LayoutRow, column: usize) -> Op
 
 fn next_cell_column(row: &crate::layout::LayoutRow, cell_index: usize) -> Option<usize> {
     row.cells.get(cell_index).map(|cell| cell.column)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render_data::StyledSpan;
+
+    #[test]
+    fn a_contiguous_plain_line_is_one_text_run() {
+        let theme = Theme::for_mode(ColorMode::NoColor);
+        let source = "x".repeat(100_000);
+        let layout = LayoutDocument::from_visual(&source, &[], &[], theme, None);
+        let plan = RenderPlan::compile(&layout, theme);
+        assert_eq!(plan.ops.len(), 1);
+        assert_eq!(plan.encode(theme, false), source);
+    }
+
+    #[test]
+    fn text_runs_end_at_style_link_and_row_boundaries() {
+        let theme = Theme::for_mode(ColorMode::TrueColor);
+        let keyword = theme.token_style_for("keyword", "");
+        let string = theme.token_style_for("string", "");
+        let spans = [
+            StyledSpan {
+                range: 0..3,
+                style: keyword,
+                hyperlink: Some("https://example.invalid/a".to_owned()),
+            },
+            StyledSpan {
+                range: 3..6,
+                style: keyword,
+                hyperlink: Some("https://example.invalid/b".to_owned()),
+            },
+            StyledSpan {
+                range: 6..9,
+                style: string,
+                hyperlink: Some("https://example.invalid/b".to_owned()),
+            },
+        ];
+        let layout = LayoutDocument::from_visual("aaabbbccc\nd", &spans, &[], theme, None);
+        let plan = RenderPlan::compile(&layout, theme);
+        let texts = plan
+            .ops
+            .iter()
+            .filter_map(|op| match op {
+                RenderOp::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(texts, ["aaa", "bbb", "ccc", "d"]);
+    }
 }

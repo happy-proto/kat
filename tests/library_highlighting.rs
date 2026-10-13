@@ -224,10 +224,10 @@ fn unknown_file_has_no_syntax_spans() {
 fn display_rows_preserve_zero_width_text_and_real_blank_lines() {
     let rows = kat::PreparedDocument::plain("\u{200b}\n\n").display_rows(40);
     assert_eq!(rows.len(), 2);
-    assert_eq!(rows[0].text, "\u{200b}");
-    assert_eq!(rows[0].display_width, 0);
-    assert_eq!(rows[1].text, "");
-    assert_eq!(rows[1].display_width, 0);
+    assert_eq!(rows[0].text(), "\u{200b}");
+    assert_eq!(rows[0].display_width(), 0);
+    assert_eq!(rows[1].text(), "");
+    assert_eq!(rows[1].display_width(), 0);
 }
 
 #[test]
@@ -270,4 +270,43 @@ fn json_without_analysis_capabilities_does_not_parse_an_extra_tree() {
     assert_eq!(output.timings.analysis_parse, std::time::Duration::ZERO);
     assert_eq!(output.timings.semantic_overlays, std::time::Duration::ZERO);
     assert!(output.timings.layout > std::time::Duration::ZERO);
+}
+
+#[test]
+fn display_rows_distinguish_source_controls_from_zero_width_text() {
+    let source = "a\0b\x1b[2J\rc\u{200b}";
+    let rows = kat::PreparedDocument::plain(source).display_rows(40);
+    assert_eq!(rows[0].text(), "a␀b␛[2J␍c\u{200b}");
+    assert_eq!(rows[0].display_width(), 9);
+    let encoded = rows[0].encode(&[], None);
+    assert!(!encoded.contains('\x1b'));
+    assert!(!encoded.contains('\r'));
+}
+
+#[test]
+fn crlf_and_lf_have_the_same_terminal_geometry() {
+    let source = "# title\n\n```bash\necho 这里是一段代码\n```\n";
+    let options = kat::RenderOptions::with_colors((255, 255, 255), (0, 0, 0));
+    let lf = kat::PreparedDocument::named_language("markdown", source, options)
+        .unwrap()
+        .display_rows(20);
+    let crlf =
+        kat::PreparedDocument::named_language("markdown", &source.replace('\n', "\r\n"), options)
+            .unwrap()
+            .display_rows(20);
+    let rows = |rows: &[kat::DisplayRow]| {
+        rows.iter()
+            .map(|row| (row.text().to_owned(), row.display_width()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(rows(&lf), rows(&crlf));
+}
+
+#[test]
+fn expanded_tabs_wrap_as_display_spaces_at_narrow_widths() {
+    let rows = kat::PreparedDocument::plain("abcd\t012").display_rows(3);
+    let text = rows.iter().map(|row| row.text()).collect::<Vec<_>>();
+    assert_eq!(text, ["abc", "d  ", "  0", "12"]);
+    assert!(rows.iter().all(|row| row.display_width() <= 3));
+    assert_eq!(rows[2].anchor().wrapped_from_column, 6);
 }

@@ -36,15 +36,25 @@ pub struct RenderedDocument {
 /// One display row produced by layout. Encoding never changes its geometry.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DisplayRow {
-    pub text: String,
-    pub display_width: usize,
-    pub anchor: RenderedRowAnchor,
+    text: String,
+    display_width: usize,
+    anchor: RenderedRowAnchor,
     plan: RenderPlan,
     theme: Theme,
     hyperlinks_enabled: bool,
 }
 
 impl DisplayRow {
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+    pub fn display_width(&self) -> usize {
+        self.display_width
+    }
+    pub fn anchor(&self) -> RenderedRowAnchor {
+        self.anchor
+    }
+
     /// Highlight sorted, non-overlapping UTF-8 ranges in this row without parsing ANSI.
     /// Range endpoints must lie on text character boundaries.
     pub fn encode(
