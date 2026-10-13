@@ -9,6 +9,12 @@
 - `perf/` 放仓库内性能基线清单与相关输入组织约定。
 - `showcase/` 放便于人工查看渲染效果的较完整样例。
 
+## 测试契约
+
+库内部测试按 `src/tests/` 下的 corpus、detection、semantics、injections、layout、pipeline 和 highlighting 分组；公共的源码、样式与 snapshot 辅助函数集中在 `mod.rs`。corpus 组独立维护 fixture/showcase 清单，语言特性测试断言 runtime 身份、源范围或具体语义，而不是复制注册表。公开库契约保留在 `tests/library_highlighting.rs` 等集成测试中；真实 viewer 行为由后台 PTY + Ghostty 回放验证。
+
+复现用户文件中的问题时，只提交能触发同一边界的最小合成输入。长字符串、编号和配置字段均使用虚构内容，不把用户真实配置或提示文本作为测试资产。
+
 ## 维护约定
 
 - 每个新的语言支持、检测规则或嵌套高亮场景，都应先补最小 `fixture`。
