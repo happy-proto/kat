@@ -1,3 +1,4 @@
+use crate::language_runtime::RuntimeId;
 #[test]
 fn debug_semantics_is_empty_for_languages_without_overlays() {
     for language in ["pem", "openpgp_armor", "python_docstring", "json"] {
@@ -1912,7 +1913,7 @@ fn fish_and_zsh_detect_by_extension_filename_and_shebang() {
             "SETUVAR fish_user_paths:/opt/homebrew/bin\\x1e/Users/example/bin\n"
         ),
         Some(DocumentKind::with_profile(
-            "fish",
+            RuntimeId::Fish,
             DocumentProfile::FishVariables
         ))
     );
@@ -2686,7 +2687,7 @@ fn newer_languages_and_special_files_detect_by_path() {
             Some(Path::new("Theme.fsi")),
             "module Theme\nval render: unit -> unit\n",
         ),
-        Some(SupportedLanguage::Fsharp)
+        Some(SupportedLanguage::FsharpSignature)
     ));
     assert!(matches!(
         detect_language(

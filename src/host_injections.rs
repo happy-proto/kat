@@ -178,7 +178,7 @@ fn collect_query_injection_candidates(
 
         let base_document_kind = plain_document_kind(&injection_language);
         let document_kind = document_profile.map_or(base_document_kind, |profile| {
-            DocumentKind::with_profile(base_document_kind.runtime_name(), profile)
+            DocumentKind::with_profile(base_document_kind.runtime_id(), profile)
         });
 
         if injection_combined {

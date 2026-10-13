@@ -1,4 +1,5 @@
 use crate::api::canonical_language_name;
+use crate::language_runtime::RuntimeId;
 use anyhow::Result;
 use serde::Serialize;
 use std::path::Path;
@@ -73,27 +74,31 @@ impl DocumentProfile {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct DocumentKind {
-    runtime_name: &'static str,
+    runtime_id: RuntimeId,
     profile: DocumentProfile,
 }
 
 impl DocumentKind {
-    pub(crate) const fn plain(runtime_name: &'static str) -> Self {
+    pub(crate) const fn plain(runtime_id: RuntimeId) -> Self {
         Self {
-            runtime_name,
+            runtime_id,
             profile: DocumentProfile::Plain,
         }
     }
 
-    pub(crate) const fn with_profile(runtime_name: &'static str, profile: DocumentProfile) -> Self {
+    pub(crate) const fn with_profile(runtime_id: RuntimeId, profile: DocumentProfile) -> Self {
         Self {
-            runtime_name,
+            runtime_id,
             profile,
         }
     }
 
     pub(crate) const fn runtime_name(self) -> &'static str {
-        self.runtime_name
+        self.runtime_id.name()
+    }
+
+    pub(crate) const fn runtime_id(self) -> RuntimeId {
+        self.runtime_id
     }
 
     pub(crate) const fn profile(self) -> DocumentProfile {
@@ -102,7 +107,7 @@ impl DocumentKind {
 
     pub(crate) fn snapshot(self) -> DocumentKindSnapshot {
         DocumentKindSnapshot {
-            runtime_name: self.runtime_name,
+            runtime_name: self.runtime_name(),
             profile: self.profile.name(),
         }
     }
@@ -116,39 +121,39 @@ pub(crate) struct DocumentKindSnapshot {
 
 pub(crate) fn yaml_document_kind(source_path: Option<&Path>) -> DocumentKind {
     match github_actions_profile(source_path) {
-        Some(profile) => DocumentKind::with_profile("yaml", profile),
-        None => DocumentKind::plain("yaml"),
+        Some(profile) => DocumentKind::with_profile(RuntimeId::Yaml, profile),
+        None => DocumentKind::plain(RuntimeId::Yaml),
     }
 }
 
 pub(crate) fn toml_document_kind(source_path: Option<&Path>) -> DocumentKind {
     match toml_profile(source_path) {
-        Some(profile) => DocumentKind::with_profile("toml", profile),
-        None => DocumentKind::plain("toml"),
+        Some(profile) => DocumentKind::with_profile(RuntimeId::Toml, profile),
+        None => DocumentKind::plain(RuntimeId::Toml),
     }
 }
 
 pub(crate) fn git_config_document_kind(source_path: Option<&Path>) -> DocumentKind {
     match git_config_profile(source_path) {
-        Some(profile) => DocumentKind::with_profile("git_config", profile),
-        None => DocumentKind::plain("git_config"),
+        Some(profile) => DocumentKind::with_profile(RuntimeId::GitConfig, profile),
+        None => DocumentKind::plain(RuntimeId::GitConfig),
     }
 }
 
 pub(crate) fn fish_document_kind(source_path: Option<&Path>) -> DocumentKind {
     match fish_profile(source_path) {
-        Some(profile) => DocumentKind::with_profile("fish", profile),
-        None => DocumentKind::plain("fish"),
+        Some(profile) => DocumentKind::with_profile(RuntimeId::Fish, profile),
+        None => DocumentKind::plain(RuntimeId::Fish),
     }
 }
 
 pub(crate) fn template_document_kind(
-    runtime_name: &'static str,
+    runtime_id: RuntimeId,
     source_path: Option<&Path>,
     default_profile: DocumentProfile,
 ) -> DocumentKind {
     let profile = template_profile(source_path).unwrap_or(default_profile);
-    DocumentKind::with_profile(runtime_name, profile)
+    DocumentKind::with_profile(runtime_id, profile)
 }
 
 pub(crate) fn github_actions_profile(source_path: Option<&Path>) -> Option<DocumentProfile> {
@@ -282,155 +287,8 @@ pub(crate) fn named_document_kind(language_name: &str) -> Result<DocumentKind> {
 }
 
 pub(crate) fn plain_document_kind(language_name: &str) -> DocumentKind {
-    match language_name {
-        "json" => DocumentKind::plain("json"),
-        "query" => DocumentKind::plain("query"),
-        "actionscript" => DocumentKind::plain("actionscript"),
-        "ada" => DocumentKind::plain("ada"),
-        "applescript" => DocumentKind::plain("applescript"),
-        "asm" => DocumentKind::plain("asm"),
-        "nasm" => DocumentKind::plain("nasm"),
-        "asciidoc" => DocumentKind::plain("asciidoc"),
-        "authorized_keys" => DocumentKind::plain("authorized_keys"),
-        "known_hosts" => DocumentKind::plain("known_hosts"),
-        "ghostty" => DocumentKind::plain("ghostty"),
-        "pem" => DocumentKind::plain("pem"),
-        "openpgp_armor" => DocumentKind::plain("openpgp_armor"),
-        "awk" => DocumentKind::plain("awk"),
-        "ignore" => DocumentKind::plain("ignore"),
-        "git_link" => DocumentKind::plain("git_link"),
-        "git_mailmap" => DocumentKind::plain("git_mailmap"),
-        "git_log" => DocumentKind::plain("git_log"),
-        "git_config" => DocumentKind::plain("git_config"),
-        "dockerfile" => DocumentKind::plain("dockerfile"),
-        "bash" => DocumentKind::plain("bash"),
-        "batch" => DocumentKind::plain("batch"),
-        "bibtex" => DocumentKind::plain("bibtex"),
-        "cabal" => DocumentKind::plain("cabal"),
-        "cfml" => DocumentKind::plain("cfml"),
-        "clojure" => DocumentKind::plain("clojure"),
-        "cmakecache" => DocumentKind::plain("cmakecache"),
-        "coffeescript" => DocumentKind::plain("coffeescript"),
-        "command_help" => DocumentKind::plain("command_help"),
-        "cpuinfo" => DocumentKind::plain("cpuinfo"),
-        "crontab" => DocumentKind::plain("crontab"),
-        "crystal" => DocumentKind::plain("crystal"),
-        "d" => DocumentKind::plain("d"),
-        "debsources" => DocumentKind::plain("debsources"),
-        "elm" => DocumentKind::plain("elm"),
-        "email" => DocumentKind::plain("email"),
-        "erlang" => DocumentKind::plain("erlang"),
-        "fish" => DocumentKind::plain("fish"),
-        "fortran" => DocumentKind::plain("fortran"),
-        "fortran_namelist" => DocumentKind::plain("fortran_namelist"),
-        "fsharp" => DocumentKind::plain("fsharp"),
-        "fsharp_signature" => DocumentKind::plain("fsharp_signature"),
-        "fstab" => DocumentKind::plain("fstab"),
-        "powershell" => DocumentKind::plain("powershell"),
-        "zsh" => DocumentKind::plain("zsh"),
-        "toml" => DocumentKind::plain("toml"),
-        "yaml" => DocumentKind::plain("yaml"),
-        "hcl" => DocumentKind::plain("hcl"),
-        "pkl" => DocumentKind::plain("pkl"),
-        "rust" => DocumentKind::plain("rust"),
-        "python" => DocumentKind::plain("python"),
-        "python_docstring" => {
-            DocumentKind::with_profile("python_docstring", DocumentProfile::PythonDocstringAuto)
-        }
-        "c" => DocumentKind::plain("c"),
-        "cpp" => DocumentKind::plain("cpp"),
-        "java" => DocumentKind::plain("java"),
-        "kotlin" => DocumentKind::plain("kotlin"),
-        "csharp" => DocumentKind::plain("csharp"),
-        "groovy" => DocumentKind::plain("groovy"),
-        "diff" => DocumentKind::plain("diff"),
-        "properties" => DocumentKind::plain("properties"),
-        "php" => DocumentKind::plain("php"),
-        "scala" => DocumentKind::plain("scala"),
-        "swift" => DocumentKind::plain("swift"),
-        "dart" => DocumentKind::plain("dart"),
-        "elixir" => DocumentKind::plain("elixir"),
-        "zig" => DocumentKind::plain("zig"),
-        "ssh_config" => DocumentKind::plain("ssh_config"),
-        "gitattributes" => DocumentKind::plain("gitattributes"),
-        "git_commit" => DocumentKind::plain("git_commit"),
-        "git_rebase" => DocumentKind::plain("git_rebase"),
-        "requirements" => DocumentKind::plain("requirements"),
-        "apache" => DocumentKind::plain("apache"),
-        "scss" => DocumentKind::plain("scss"),
-        "sass" => DocumentKind::plain("sass"),
-        "jq" => DocumentKind::plain("jq"),
-        "less" => DocumentKind::plain("less"),
-        "dot" => DocumentKind::plain("dot"),
-        "graph_easy" => DocumentKind::plain("graph_easy"),
-        "mermaid" => DocumentKind::plain("mermaid"),
-        "nginx" => DocumentKind::plain("nginx"),
-        "typescript" => DocumentKind::plain("typescript"),
-        "tsx" => DocumentKind::plain("tsx"),
-        "go" => DocumentKind::plain("go"),
-        "gomod" => DocumentKind::plain("gomod"),
-        "gowork" => DocumentKind::plain("gowork"),
-        "gosum" => DocumentKind::plain("gosum"),
-        "proto" => DocumentKind::plain("proto"),
-        "cel" => DocumentKind::plain("cel"),
-        "sql" => DocumentKind::plain("sql"),
-        "sql_postgres" => DocumentKind::plain("sql_postgres"),
-        "sql_mysql" => DocumentKind::plain("sql_mysql"),
-        "sql_sqlite" => DocumentKind::plain("sql_sqlite"),
-        "textproto" => DocumentKind::plain("textproto"),
-        "latex" => DocumentKind::plain("latex"),
-        "sml" => DocumentKind::plain("sml"),
-        "solidity" => DocumentKind::plain("solidity"),
-        "strace" => DocumentKind::plain("strace"),
-        "stylus" => DocumentKind::plain("stylus"),
-        "syslog" => DocumentKind::plain("syslog"),
-        "tcl" => DocumentKind::plain("tcl"),
-        "textile" => DocumentKind::plain("textile"),
-        "csv" => DocumentKind::plain("csv"),
-        "todotxt" => DocumentKind::plain("todotxt"),
-        "tsv" => DocumentKind::plain("tsv"),
-        "typst" => DocumentKind::plain("typst"),
-        "varlink" => DocumentKind::plain("varlink"),
-        "html" => DocumentKind::plain("html"),
-        "vue" => DocumentKind::plain("vue"),
-        "svelte" => DocumentKind::plain("svelte"),
-        "css" => DocumentKind::plain("css"),
-        "javascript" => DocumentKind::plain("javascript"),
-        "graphql" => DocumentKind::plain("graphql"),
-        "regex" => DocumentKind::plain("regex"),
-        "regex_javascript" => DocumentKind::plain("regex_javascript"),
-        "regex_python" => DocumentKind::plain("regex_python"),
-        "regex_rust" => DocumentKind::plain("regex_rust"),
-        "regex_go" => DocumentKind::plain("regex_go"),
-        "regex_posix" => DocumentKind::plain("regex_posix"),
-        "jsdoc" => DocumentKind::plain("jsdoc"),
-        "userscript_metadata" => DocumentKind::plain("userscript_metadata"),
-        "markdown" => DocumentKind::plain("markdown"),
-        "markdown_inline" => DocumentKind::plain("markdown_inline"),
-        "just" => DocumentKind::plain("just"),
-        "ruby" => DocumentKind::plain("ruby"),
-        "lua" => DocumentKind::plain("lua"),
-        "nix" => DocumentKind::plain("nix"),
-        "dotenv" => DocumentKind::plain("dotenv"),
-        "ini" => DocumentKind::plain("ini"),
-        "xml" => DocumentKind::plain("xml"),
-        "make" => DocumentKind::plain("make"),
-        "cmake" => DocumentKind::plain("cmake"),
-        "ninja" => DocumentKind::plain("ninja"),
-        "jinja" => DocumentKind::plain("jinja"),
-        "eex" => DocumentKind::plain("eex"),
-        "twig" => DocumentKind::plain("twig"),
-        "erb" => DocumentKind::plain("erb"),
-        "jsp" => DocumentKind::plain("jsp"),
-        "asp" => DocumentKind::plain("asp"),
-        "adp" => DocumentKind::plain("adp"),
-        "vhdl" => DocumentKind::plain("vhdl"),
-        "verilog" => DocumentKind::plain("verilog"),
-        "systemverilog" => DocumentKind::plain("systemverilog"),
-        "vim" => DocumentKind::plain("vim"),
-        "vimhelp" => DocumentKind::plain("vimhelp"),
-        "vyper" => DocumentKind::plain("vyper"),
-        "wgsl" => DocumentKind::plain("wgsl"),
-        other => panic!("unsupported runtime name {other}"),
-    }
+    DocumentKind::plain(
+        RuntimeId::from_name(language_name)
+            .unwrap_or_else(|| panic!("unsupported runtime name {language_name}")),
+    )
 }

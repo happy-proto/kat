@@ -276,400 +276,113 @@ pub(crate) fn to_pretty_json<T: Serialize>(value: &T) -> Result<String> {
     Ok(serde_json::to_string_pretty(value)?)
 }
 
-pub fn highlight_json(source: &str) -> Result<String> {
-    highlight_named_language("json", source, &detected_theme())
-}
-
-pub fn highlight_query(source: &str) -> Result<String> {
-    highlight_named_language("query", source, &detected_theme())
-}
-
-pub fn highlight_ignore(source: &str) -> Result<String> {
-    highlight_named_language("ignore", source, &detected_theme())
-}
-
-pub fn highlight_git_link(source: &str) -> Result<String> {
-    highlight_named_language("git_link", source, &detected_theme())
-}
-
-pub fn highlight_git_mailmap(source: &str) -> Result<String> {
-    highlight_named_language("git_mailmap", source, &detected_theme())
-}
-
-pub fn highlight_git_log(source: &str) -> Result<String> {
-    highlight_named_language("git_log", source, &detected_theme())
-}
-
-pub fn highlight_git_config(source: &str) -> Result<String> {
-    highlight_named_language("git_config", source, &detected_theme())
-}
-
-pub fn highlight_bash(source: &str) -> Result<String> {
-    highlight_named_language("bash", source, &detected_theme())
-}
-
-pub fn highlight_batch(source: &str) -> Result<String> {
-    highlight_named_language("batch", source, &detected_theme())
-}
-
-pub fn highlight_dockerfile(source: &str) -> Result<String> {
-    highlight_named_language("dockerfile", source, &detected_theme())
-}
-
-pub fn highlight_toml(source: &str) -> Result<String> {
-    highlight_named_language("toml", source, &detected_theme())
-}
-
-pub fn highlight_fish(source: &str) -> Result<String> {
-    highlight_named_language("fish", source, &detected_theme())
-}
-
-pub fn highlight_zsh(source: &str) -> Result<String> {
-    highlight_named_language("zsh", source, &detected_theme())
-}
-
-pub fn highlight_powershell(source: &str) -> Result<String> {
-    highlight_named_language("powershell", source, &detected_theme())
-}
-
-pub fn highlight_yaml(source: &str) -> Result<String> {
-    highlight_named_language("yaml", source, &detected_theme())
-}
-
-pub fn highlight_hcl(source: &str) -> Result<String> {
-    highlight_named_language("hcl", source, &detected_theme())
-}
-
-pub fn highlight_rust(source: &str) -> Result<String> {
-    highlight_named_language("rust", source, &detected_theme())
-}
-
-pub fn highlight_just(source: &str) -> Result<String> {
-    highlight_named_language("just", source, &detected_theme())
-}
-
-pub fn highlight_python(source: &str) -> Result<String> {
-    highlight_named_language("python", source, &detected_theme())
-}
-
-pub fn highlight_c(source: &str) -> Result<String> {
-    highlight_named_language("c", source, &detected_theme())
-}
-
-pub fn highlight_cpp(source: &str) -> Result<String> {
-    highlight_named_language("cpp", source, &detected_theme())
-}
-
-pub fn highlight_java(source: &str) -> Result<String> {
-    highlight_named_language("java", source, &detected_theme())
-}
-
-pub fn highlight_kotlin(source: &str) -> Result<String> {
-    highlight_named_language("kotlin", source, &detected_theme())
-}
-
-pub fn highlight_csharp(source: &str) -> Result<String> {
-    highlight_named_language("csharp", source, &detected_theme())
-}
-
-pub fn highlight_groovy(source: &str) -> Result<String> {
-    highlight_named_language("groovy", source, &detected_theme())
-}
-
-pub fn highlight_diff(source: &str) -> Result<String> {
-    highlight_named_language("diff", source, &detected_theme())
-}
-
-pub fn highlight_properties(source: &str) -> Result<String> {
-    highlight_named_language("properties", source, &detected_theme())
-}
-
-pub fn highlight_php(source: &str) -> Result<String> {
-    highlight_named_language("php", source, &detected_theme())
-}
-
-pub fn highlight_scala(source: &str) -> Result<String> {
-    highlight_named_language("scala", source, &detected_theme())
-}
-
-pub fn highlight_swift(source: &str) -> Result<String> {
-    highlight_named_language("swift", source, &detected_theme())
-}
-
-pub fn highlight_dart(source: &str) -> Result<String> {
-    highlight_named_language("dart", source, &detected_theme())
-}
-
-pub fn highlight_elixir(source: &str) -> Result<String> {
-    highlight_named_language("elixir", source, &detected_theme())
-}
-
-pub fn highlight_zig(source: &str) -> Result<String> {
-    highlight_named_language("zig", source, &detected_theme())
-}
-
-pub fn highlight_ssh_config(source: &str) -> Result<String> {
-    highlight_named_language("ssh_config", source, &detected_theme())
-}
-
-pub fn highlight_gitattributes(source: &str) -> Result<String> {
-    highlight_named_language("gitattributes", source, &detected_theme())
-}
-
-pub fn highlight_git_commit(source: &str) -> Result<String> {
-    highlight_named_language("git_commit", source, &detected_theme())
-}
-
-pub fn highlight_git_rebase(source: &str) -> Result<String> {
-    highlight_named_language("git_rebase", source, &detected_theme())
-}
-
-pub fn highlight_requirements(source: &str) -> Result<String> {
-    highlight_named_language("requirements", source, &detected_theme())
-}
-
-pub fn highlight_apache(source: &str) -> Result<String> {
-    highlight_named_language("apache", source, &detected_theme())
-}
-
-pub fn highlight_scss(source: &str) -> Result<String> {
-    highlight_named_language("scss", source, &detected_theme())
-}
-
-pub fn highlight_sass(source: &str) -> Result<String> {
-    highlight_named_language("sass", source, &detected_theme())
-}
-
-pub fn highlight_jq(source: &str) -> Result<String> {
-    highlight_named_language("jq", source, &detected_theme())
-}
-
-pub fn highlight_less(source: &str) -> Result<String> {
-    highlight_named_language("less", source, &detected_theme())
-}
-
-pub fn highlight_dot(source: &str) -> Result<String> {
-    highlight_named_language("dot", source, &detected_theme())
-}
-
-pub fn highlight_nginx(source: &str) -> Result<String> {
-    highlight_named_language("nginx", source, &detected_theme())
-}
-
-pub fn highlight_typescript(source: &str) -> Result<String> {
-    highlight_named_language("typescript", source, &detected_theme())
-}
-
-pub fn highlight_tsx(source: &str) -> Result<String> {
-    highlight_named_language("tsx", source, &detected_theme())
-}
-
-pub fn highlight_go(source: &str) -> Result<String> {
-    highlight_named_language("go", source, &detected_theme())
-}
-
-pub fn highlight_gomod(source: &str) -> Result<String> {
-    highlight_named_language("gomod", source, &detected_theme())
-}
-
-pub fn highlight_gowork(source: &str) -> Result<String> {
-    highlight_named_language("gowork", source, &detected_theme())
-}
-
-pub fn highlight_gosum(source: &str) -> Result<String> {
-    highlight_named_language("gosum", source, &detected_theme())
-}
-
-pub fn highlight_sql(source: &str) -> Result<String> {
-    highlight_named_language("sql", source, &detected_theme())
-}
-
-pub fn highlight_html(source: &str) -> Result<String> {
-    highlight_named_language("html", source, &detected_theme())
-}
-
-pub fn highlight_vue(source: &str) -> Result<String> {
-    highlight_named_language("vue", source, &detected_theme())
-}
-
-pub fn highlight_svelte(source: &str) -> Result<String> {
-    highlight_named_language("svelte", source, &detected_theme())
-}
-
-pub fn highlight_css(source: &str) -> Result<String> {
-    highlight_named_language("css", source, &detected_theme())
-}
-
-pub fn highlight_graphql(source: &str) -> Result<String> {
-    highlight_named_language("graphql", source, &detected_theme())
-}
-
-pub fn highlight_proto(source: &str) -> Result<String> {
-    highlight_named_language("proto", source, &detected_theme())
-}
-
-pub fn highlight_cel(source: &str) -> Result<String> {
-    highlight_named_language("cel", source, &detected_theme())
-}
-
-pub fn highlight_textproto(source: &str) -> Result<String> {
-    highlight_named_language("textproto", source, &detected_theme())
-}
-
-pub fn highlight_latex(source: &str) -> Result<String> {
-    highlight_named_language("latex", source, &detected_theme())
-}
-
-pub fn highlight_tcl(source: &str) -> Result<String> {
-    highlight_named_language("tcl", source, &detected_theme())
-}
-
-pub fn highlight_textile(source: &str) -> Result<String> {
-    highlight_named_language("textile", source, &detected_theme())
-}
-
-pub fn highlight_csv(source: &str) -> Result<String> {
-    highlight_named_language("csv", source, &detected_theme())
-}
-
-pub fn highlight_todotxt(source: &str) -> Result<String> {
-    highlight_named_language("todotxt", source, &detected_theme())
-}
-
-pub fn highlight_tsv(source: &str) -> Result<String> {
-    highlight_named_language("tsv", source, &detected_theme())
-}
-
-pub fn highlight_typst(source: &str) -> Result<String> {
-    highlight_named_language("typst", source, &detected_theme())
-}
-
-pub fn highlight_strace(source: &str) -> Result<String> {
-    highlight_named_language("strace", source, &detected_theme())
-}
-
-pub fn highlight_stylus(source: &str) -> Result<String> {
-    highlight_named_language("stylus", source, &detected_theme())
-}
-
-pub fn highlight_syslog(source: &str) -> Result<String> {
-    highlight_named_language("syslog", source, &detected_theme())
-}
-
-pub fn highlight_sml(source: &str) -> Result<String> {
-    highlight_named_language("sml", source, &detected_theme())
-}
-
-pub fn highlight_solidity(source: &str) -> Result<String> {
-    highlight_named_language("solidity", source, &detected_theme())
-}
-
-pub fn highlight_varlink(source: &str) -> Result<String> {
-    highlight_named_language("varlink", source, &detected_theme())
-}
-
-pub fn highlight_vyper(source: &str) -> Result<String> {
-    highlight_named_language("vyper", source, &detected_theme())
-}
-
-pub fn highlight_wgsl(source: &str) -> Result<String> {
-    highlight_named_language("wgsl", source, &detected_theme())
-}
-
-pub fn highlight_javascript(source: &str) -> Result<String> {
-    highlight_named_language("javascript", source, &detected_theme())
-}
-
-pub fn highlight_markdown(source: &str) -> Result<String> {
-    highlight_named_language("markdown", source, &detected_theme())
-}
-
-pub fn highlight_ruby(source: &str) -> Result<String> {
-    highlight_named_language("ruby", source, &detected_theme())
-}
-
-pub fn highlight_lua(source: &str) -> Result<String> {
-    highlight_named_language("lua", source, &detected_theme())
-}
-
-pub fn highlight_nix(source: &str) -> Result<String> {
-    highlight_named_language("nix", source, &detected_theme())
-}
-
-pub fn highlight_dotenv(source: &str) -> Result<String> {
-    highlight_named_language("dotenv", source, &detected_theme())
-}
-
-pub fn highlight_ini(source: &str) -> Result<String> {
-    highlight_named_language("ini", source, &detected_theme())
-}
-
-pub fn highlight_xml(source: &str) -> Result<String> {
-    highlight_named_language("xml", source, &detected_theme())
-}
-
-pub fn highlight_make(source: &str) -> Result<String> {
-    highlight_named_language("make", source, &detected_theme())
-}
-
-pub fn highlight_cmake(source: &str) -> Result<String> {
-    highlight_named_language("cmake", source, &detected_theme())
-}
-
-pub fn highlight_ninja(source: &str) -> Result<String> {
-    highlight_named_language("ninja", source, &detected_theme())
-}
-
-pub fn highlight_jinja(source: &str) -> Result<String> {
-    highlight_named_language("jinja", source, &detected_theme())
-}
-
-pub fn highlight_eex(source: &str) -> Result<String> {
-    highlight_named_language("eex", source, &detected_theme())
-}
-
-pub fn highlight_twig(source: &str) -> Result<String> {
-    highlight_named_language("twig", source, &detected_theme())
-}
-
-pub fn highlight_erb(source: &str) -> Result<String> {
-    highlight_named_language("erb", source, &detected_theme())
-}
-
-pub fn highlight_jsp(source: &str) -> Result<String> {
-    highlight_named_language("jsp", source, &detected_theme())
-}
-
-pub fn highlight_asp(source: &str) -> Result<String> {
-    highlight_named_language("asp", source, &detected_theme())
-}
-
-pub fn highlight_adp(source: &str) -> Result<String> {
-    highlight_named_language("adp", source, &detected_theme())
-}
-
-pub fn highlight_vhdl(source: &str) -> Result<String> {
-    highlight_named_language("vhdl", source, &detected_theme())
-}
-
-pub fn highlight_verilog(source: &str) -> Result<String> {
-    highlight_named_language("verilog", source, &detected_theme())
-}
-
-pub fn highlight_systemverilog(source: &str) -> Result<String> {
-    highlight_named_language("systemverilog", source, &detected_theme())
-}
-
-pub fn highlight_vim(source: &str) -> Result<String> {
-    highlight_named_language("vim", source, &detected_theme())
-}
-
-pub fn highlight_vimhelp(source: &str) -> Result<String> {
-    highlight_named_language("vimhelp", source, &detected_theme())
-}
-
-pub fn highlight_nasm(source: &str) -> Result<String> {
-    highlight_named_language("nasm", source, &detected_theme())
+macro_rules! highlight_languages {
+    ($($function:ident => $name:literal),* $(,)?) => {
+        $(pub fn $function(source: &str) -> Result<String> {
+            highlight_named_language($name, source, &detected_theme())
+        })*
+    };
+}
+highlight_languages! {
+    highlight_json => "json",
+    highlight_query => "query",
+    highlight_ignore => "ignore",
+    highlight_git_link => "git_link",
+    highlight_git_mailmap => "git_mailmap",
+    highlight_git_log => "git_log",
+    highlight_git_config => "git_config",
+    highlight_bash => "bash",
+    highlight_batch => "batch",
+    highlight_dockerfile => "dockerfile",
+    highlight_toml => "toml",
+    highlight_fish => "fish",
+    highlight_zsh => "zsh",
+    highlight_powershell => "powershell",
+    highlight_yaml => "yaml",
+    highlight_hcl => "hcl",
+    highlight_rust => "rust",
+    highlight_just => "just",
+    highlight_python => "python",
+    highlight_c => "c",
+    highlight_cpp => "cpp",
+    highlight_java => "java",
+    highlight_kotlin => "kotlin",
+    highlight_csharp => "csharp",
+    highlight_groovy => "groovy",
+    highlight_diff => "diff",
+    highlight_properties => "properties",
+    highlight_php => "php",
+    highlight_scala => "scala",
+    highlight_swift => "swift",
+    highlight_dart => "dart",
+    highlight_elixir => "elixir",
+    highlight_zig => "zig",
+    highlight_ssh_config => "ssh_config",
+    highlight_gitattributes => "gitattributes",
+    highlight_git_commit => "git_commit",
+    highlight_git_rebase => "git_rebase",
+    highlight_requirements => "requirements",
+    highlight_apache => "apache",
+    highlight_scss => "scss",
+    highlight_sass => "sass",
+    highlight_jq => "jq",
+    highlight_less => "less",
+    highlight_dot => "dot",
+    highlight_nginx => "nginx",
+    highlight_typescript => "typescript",
+    highlight_tsx => "tsx",
+    highlight_go => "go",
+    highlight_gomod => "gomod",
+    highlight_gowork => "gowork",
+    highlight_gosum => "gosum",
+    highlight_sql => "sql",
+    highlight_html => "html",
+    highlight_vue => "vue",
+    highlight_svelte => "svelte",
+    highlight_css => "css",
+    highlight_graphql => "graphql",
+    highlight_proto => "proto",
+    highlight_cel => "cel",
+    highlight_textproto => "textproto",
+    highlight_latex => "latex",
+    highlight_tcl => "tcl",
+    highlight_textile => "textile",
+    highlight_csv => "csv",
+    highlight_todotxt => "todotxt",
+    highlight_tsv => "tsv",
+    highlight_typst => "typst",
+    highlight_strace => "strace",
+    highlight_stylus => "stylus",
+    highlight_syslog => "syslog",
+    highlight_sml => "sml",
+    highlight_solidity => "solidity",
+    highlight_varlink => "varlink",
+    highlight_vyper => "vyper",
+    highlight_wgsl => "wgsl",
+    highlight_javascript => "javascript",
+    highlight_markdown => "markdown",
+    highlight_ruby => "ruby",
+    highlight_lua => "lua",
+    highlight_nix => "nix",
+    highlight_dotenv => "dotenv",
+    highlight_ini => "ini",
+    highlight_xml => "xml",
+    highlight_make => "make",
+    highlight_cmake => "cmake",
+    highlight_ninja => "ninja",
+    highlight_jinja => "jinja",
+    highlight_eex => "eex",
+    highlight_twig => "twig",
+    highlight_erb => "erb",
+    highlight_jsp => "jsp",
+    highlight_asp => "asp",
+    highlight_adp => "adp",
+    highlight_vhdl => "vhdl",
+    highlight_verilog => "verilog",
+    highlight_systemverilog => "systemverilog",
+    highlight_vim => "vim",
+    highlight_vimhelp => "vimhelp",
+    highlight_nasm => "nasm",
 }
 
 pub fn debug_named_language_tree(language_name: &str, source: &str) -> Result<String> {

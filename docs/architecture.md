@@ -35,7 +35,7 @@
 ### 运行时模型
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
-- 语言构造函数、query 与一次性初始化槽共同注册，bundle 使用公开的 `LanguageFn` 导出。每个 runtime 按需初始化和缓存；不同 Rust binding 直接提供各自的构造函数。
+- 一份声明式 runtime catalog 同时生成 `RuntimeId` 和 parser/query 资产；`DocumentKind` 持有类型化标识，动态语言名只在入口解析。普通文件名、扩展名和 shebang 按 registry 的声明识别；宿主路径、内容和 profile 的优先级在 detector 中明确表达。语言构造函数、query 与一次性初始化槽共同注册，bundle 使用公开的 `LanguageFn` 导出。每个 runtime 按需初始化和缓存；不同 Rust binding 直接提供各自的构造函数。
 - 每份宿主或投影源码的语义覆盖与注入收集共享同一棵 AST；基础高亮使用上游 `tree-sitter-highlight`，由它独立持有解析树。两次解析的边界来自公开接口，避免依赖上游私有高亮实现。
 - Rust 库与 CLI 共用公开的 `PreparedDocument`：调用方提供 `RenderOptions` 后，可通过 `spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 样式，通过 `background_lines` 获取 kat 布局层计算的嵌套背景，或通过 `render` 获取完整终端输出。CLI 使用终端探测选项；嵌入式查看器提供自身前景、背景色，不触发终端查询。调用方负责将源范围与自身的差异颜色和折行合成。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。

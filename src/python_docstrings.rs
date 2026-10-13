@@ -1,3 +1,4 @@
+use crate::language_runtime::RuntimeId;
 use std::ops::Range;
 
 use anyhow::Result;
@@ -50,7 +51,7 @@ pub(crate) fn resolve_python_docstring_document_kind(
         profile => profile,
     };
 
-    DocumentKind::with_profile("python_docstring", profile)
+    DocumentKind::with_profile(RuntimeId::PythonDocstring, profile)
 }
 
 pub(crate) fn render_python_docstring(

@@ -1,3 +1,4 @@
+use crate::language_runtime::RuntimeId;
 use std::{ops::Range, path::Path};
 
 use tree_sitter::{Node, Parser, Tree};
@@ -19,9 +20,9 @@ pub(crate) fn document_kind(path: Option<&Path>, source: &str) -> DocumentKind {
         .is_some_and(|name| matches!(name, "hk.pkl" | "hk.local.pkl"))
         || hk_schema_source(source)
     {
-        DocumentKind::with_profile("pkl", DocumentProfile::HkConfig)
+        DocumentKind::with_profile(RuntimeId::Pkl, DocumentProfile::HkConfig)
     } else {
-        DocumentKind::plain("pkl")
+        DocumentKind::plain(RuntimeId::Pkl)
     }
 }
 
@@ -146,7 +147,7 @@ fn candidate(
     block: bool,
 ) -> InjectionCandidate {
     InjectionCandidate {
-        document_kind: DocumentKind::plain(language),
+        document_kind: crate::document_kind::plain_document_kind(language),
         ranges,
         projection: InjectionProjection::TemplateSegments(segments),
         is_combined: false,
