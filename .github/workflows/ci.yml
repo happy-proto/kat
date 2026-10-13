@@ -49,8 +49,8 @@ jobs:
         run: |
           set -euo pipefail
           uvx ruff check scripts/*.py
-          uv run --script scripts/check-config.py --self-test
-          git ls-files -z -- '*.toml' '*.yaml' '*.yml' | xargs -0 uv run --script scripts/check-config.py
+          uv run --script scripts/check-config.py self-test
+          git ls-files -z -- '*.toml' '*.yaml' '*.yml' | xargs -0 uv run --script scripts/check-config.py check
 
   clippy:
     name: clippy (ubuntu-latest)
