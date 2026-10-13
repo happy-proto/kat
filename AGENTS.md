@@ -49,7 +49,7 @@
   - 测试样例约定写入 [docs/test-assets.md](docs/test-assets.md)；
 - 仓库只维护根 [README.md](README.md) 这一份中文入口文档，不再维护平行语言版本的 README；
 - 默认不要新增按日期组织的阶段性开发过程文档；如果只是过程记录而非当前有效约定，默认不保留；
-- 如果仓库工作流发生变化，要同步更新 README、`prek.toml` 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`；
+- 如果仓库工作流发生变化，要同步更新 README、`hk.pkl` 与相关任务运行器或配置文件；只有确实涉及 agent 专属行为时，再同步更新 `AGENTS.md`；
 - 创建 PR 时，默认使用中文标题和中文描述；除非用户当次明确要求使用其它语言。
 - 手动创建的 Git commit message 使用英文 Conventional Commits；squash merge 使用 GitHub 根据 PR 生成的默认标题和正文，不手动覆盖合并提交消息。
 - CI、发布、缓存与 `cargo binstall` 相关的具体行为，以仓库里的 workflow、配置文件和 `Cargo.toml` 为准；不要在文档里重复维护易漂移的细节。
@@ -57,5 +57,5 @@
 - 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用仓库级构建缓存，而不是继续把复杂度压回到单次构建路径里。
 - 仓库内需要复用的 GitHub Actions 优先放在 `.github/actions/` 下本地维护；若外部 action 的 runtime 或维护状态不理想，优先内建最小可维护实现；
 - 需要分析 CI 构建瓶颈时，优先保留并利用 Cargo timings 与 linker timing 这类直接观测数据，而不是依赖额外缓存命中率做推断；
-- 一旦仓库存在 `justfile`，就使用 `just test` 作为标准测试入口。
-- 当 Agent 运行 `just test` 且希望减少日志 / Token 开销时，使用 `KAT_AGENT_TEST_LOG_MODE=quiet just test`；默认不设置该环境变量，保留 nextest 的常规进度输出。
+- 使用 `mise run test` 作为标准测试入口。
+- 当 Agent 运行 `mise run test` 且希望减少日志 / Token 开销时，使用 `KAT_AGENT_TEST_LOG_MODE=quiet mise run test`；默认不设置该环境变量，保留 nextest 的常规进度输出。

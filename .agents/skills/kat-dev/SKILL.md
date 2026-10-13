@@ -26,11 +26,11 @@ description: 介绍 kat 当前架构分层，并按层整理调试命令与其�
 
 ## 其他命令
 
-- 跑测试：`just test`
-- 提交前检查：`prek run --all-files`
+- 跑测试：`mise run test`
+- 提交前检查：`mise exec -- hk check --all`
 - 校验 grammar 注册与布局：`cargo run --quiet --locked -p validate-grammar-registry`
-- 跑仓库性能基线：`just perf`
-- 跑单文件性能基线：`just perf-file path/to/file`
+- 跑仓库性能基线：`mise run perf`
+- 跑单文件性能基线：`mise run perf-file path/to/file`
 - 采集真实 PTY / terminal pane 几何：`./.agents/skills/kat-dev/scripts/terminal_geometry.py`；需要原样回传或机器处理时使用 `./.agents/skills/kat-dev/scripts/terminal_geometry.py --json`。应在需要复现问题的同一个 pane 尺寸下运行。
 - 查看版本：`kat --version`
 - 普通 TTY 渲染会进入内建 alternate-screen viewer；调试或脚本场景可通过重定向 stdout 直接拿完整输出。
@@ -45,4 +45,4 @@ description: 介绍 kat 当前架构分层，并按层整理调试命令与其�
 - [architecture.md](../../../docs/architecture.md)
 - [language-coverage.md](../../../docs/language-coverage.md)
 - [test-assets.md](../../../docs/test-assets.md)
-- [justfile](../../../justfile)
+- [mise.toml](../../../mise.toml)
