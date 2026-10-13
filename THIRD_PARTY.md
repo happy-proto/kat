@@ -3,6 +3,7 @@
 This repository now primarily keeps Tree-sitter query and other kat-side integration assets. Parser source files that still need vendored maintenance are externalized to [kat-parsers](https://github.com/happy-proto/kat-parsers), while this repository only retains the local assets required for runtime integration.
 
 Included sources:
+- `testdata/fixtures/armor/message.age` reproduces the ASCII armor example from the official [@age/age-encryption documentation](https://jsr.io/@age/age-encryption). The independently authored label handling in `src/armor_formats.rs` follows the [age v1.1.0 specification](https://c2sp.org/age@v1.1.0); no third-party parser or encryption implementation is copied. This integration highlights the PEM envelope and Base64 source only.
 - `grammars/graph_easy/queries/highlights.scm` is authored for kat. The Graph::Easy parser is independently authored in [kat-parsers](https://github.com/happy-proto/kat-parsers), with syntax references from [y9c/graph-easy-py](https://github.com/y9c/graph-easy-py) at `bff228700eb946d7e64ca5da2cfaceb81f11e666`. No GPL Python/Perl implementation or third-party grammar/query is copied or adapted. Parser revision is locked in `Cargo.lock`; this integration highlights source and does not render diagrams.
 - `grammars/mermaid/queries/highlights.scm`
   Source: [Latias94/merman](https://github.com/Latias94/merman/tree/2029bd547077b1a6800878e125663633d81e6d87/distribution/tree-sitter-mermaid), canonical `queries/portable/highlights.scm` from `tree-sitter-mermaid` 0.3.0.

@@ -9,6 +9,7 @@ use crate::{
 };
 
 const PEM_LABELS: &[&str] = &[
+    "AGE ENCRYPTED FILE",
     "CERTIFICATE",
     "TRUSTED CERTIFICATE",
     "CERTIFICATE REQUEST",
