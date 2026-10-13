@@ -36,7 +36,7 @@
 
 - 高亮运行时基于共享 capture 注册和统一 `HighlightConfiguration` 组装。
 - 一份声明式 runtime catalog 同时生成 `RuntimeId` 和 parser/query 资产；`DocumentKind` 持有类型化标识，动态语言名只在入口解析。普通文件名、扩展名和 shebang 按 registry 的声明识别；宿主路径、内容和 profile 的优先级在 detector 中明确表达。语言构造函数、query 与一次性初始化槽共同注册，bundle 使用公开的 `LanguageFn` 导出。每个 runtime 按需初始化和缓存；不同 Rust binding 直接提供各自的构造函数。
-- 每份宿主或投影源码的语义覆盖与注入收集共享同一棵 AST；基础高亮使用上游 `tree-sitter-highlight`，由它独立持有解析树。两次解析的边界来自公开接口，避免依赖上游私有高亮实现。
+- 每份宿主或投影源码只在已注册的语义覆盖或注入能力需要时额外解析 AST，两者共享该树；没有这些能力的 JSON 等文档只执行基础高亮。宿主 resolver 的选择同时决定是否需要 AST，不另维护一份能力名单。基础高亮使用上游 `tree-sitter-highlight`，由它独立持有解析树。两次解析的边界来自公开接口，避免依赖上游私有高亮实现。
 - Rust 库与 CLI 共用公开的 `PreparedDocument`：调用方提供 `RenderOptions` 后，可通过 `spans` 获取按原始 UTF-8 字节偏移排列的 Dracula 样式，通过 `background_lines` 获取 kat 布局层计算的嵌套背景，或通过 `render` 获取完整终端输出。CLI 使用终端探测选项；嵌入式查看器提供自身前景、背景色，不触发终端查询。调用方负责将源范围与自身的差异颜色和折行合成。
 - 文档检测不再只返回“基础语言名”，而是返回 `document kind`：把底层 grammar/runtime 与文档 profile 分开建模。
 - 嵌套高亮拆成两层：通用的 Tree-sitter query 注入，以及按宿主 / profile 注册的 host resolver。前者继续承接通用 injection 规则，后者负责 `Dockerfile` shell dispatch、GitHub Actions `run` + `shell` / `defaults.run.shell` 分发这类仅靠 query 不够稳定的场景。
@@ -56,6 +56,8 @@
 - `detection` 负责文件、路径和内容检测，`document_kind` 负责 runtime 与 profile 的组合。
 - `analysis` 编排高亮、语义与嵌套分析；`injection` 收集递归区域与宿主视觉策略，`projection` 负责虚拟源码及其原文映射。
 - `render_data` 定义各阶段共享的数据，`span_ops` 合成源范围上的样式，`timing` 记录阶段耗时。各模块从实际所有者导入，不通过根模块共享私有实现。
+
+阶段计时分别记录基础高亮、额外 AST 解析、语义覆盖、递归注入、嵌套样式合成、layout 和编码。注入阶段扣除子文档已记录的阶段后再合并，因此嵌套工作只计入一次；pipeline 是已测量阶段之和，不是独立的墙钟耗时。源码样式区间保持有序且不重叠，语义覆盖使用区间索引查找父样式。
 
 ### 渲染分层
 

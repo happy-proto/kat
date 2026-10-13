@@ -229,3 +229,45 @@ fn display_rows_preserve_zero_width_text_and_real_blank_lines() {
     assert_eq!(rows[1].text, "");
     assert_eq!(rows[1].display_width, 0);
 }
+
+#[test]
+fn nested_analysis_timings_do_not_count_child_work_twice() {
+    let payload = (0..200)
+        .map(|i| format!("{{\"id\":{i},\"text\":\"synthetic\"}}"))
+        .collect::<Vec<_>>()
+        .join(",\n");
+    let mut source = format!("```json\n[{payload}]\n```\n");
+    for width in 4..9 {
+        let fence = "`".repeat(width);
+        source = format!("{fence}markdown\n{source}{fence}\n");
+    }
+    let options = kat::RenderOptions::with_colors((255, 255, 255), (0, 0, 0));
+    kat::PreparedDocument::named_language("markdown", &source, options)
+        .unwrap()
+        .render(None);
+    let started = std::time::Instant::now();
+    let rendered = kat::PreparedDocument::named_language("markdown", &source, options)
+        .unwrap()
+        .render(None);
+    let elapsed = started.elapsed();
+    assert!(
+        rendered.timings.total_render_pipeline() <= elapsed,
+        "pipeline {:?} exceeded wall {:?}",
+        rendered.timings.total_render_pipeline(),
+        elapsed
+    );
+}
+
+#[test]
+fn json_without_analysis_capabilities_does_not_parse_an_extra_tree() {
+    let output = kat::PreparedDocument::named_language(
+        "json",
+        "{\"name\":\"synthetic\"}",
+        kat::RenderOptions::with_colors((255, 255, 255), (0, 0, 0)),
+    )
+    .unwrap()
+    .render(Some(40));
+    assert_eq!(output.timings.analysis_parse, std::time::Duration::ZERO);
+    assert_eq!(output.timings.semantic_overlays, std::time::Duration::ZERO);
+    assert!(output.timings.layout > std::time::Duration::ZERO);
+}

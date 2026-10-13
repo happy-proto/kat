@@ -329,35 +329,51 @@ pub(crate) fn highlight_named_language_render_data_with_depth(
         timings.record_highlight(highlight_started_at);
     }
 
-    let semantic_started_at = Instant::now();
-    // The highlighter owns its tree internally. Share our analysis tree between
-    // semantic overlays and injections rather than parsing each phase again.
-    let tree = parse_language_tree(resolved_runtime_name, source)?;
-    spans = overlay_semantic_captures(resolved_document_kind, source, &tree, spans, theme)?;
-    if log_progress {
-        progress_log(
-            "semantic",
-            format!(
-                "done runtime={} spans={} elapsed={:.3}ms",
-                resolved_runtime_name,
-                spans.len(),
-                semantic_started_at.elapsed().as_secs_f64() * 1_000.0
-            ),
-        );
+    let needs_semantics = crate::semantic_overlays::has_semantic_overlays(
+        resolved_runtime_name,
+        resolved_document_kind.profile(),
+    );
+    let needs_injections = language_runtime.injections_query.is_some()
+        || crate::host_injections::host_resolver(resolved_document_kind).is_some();
+    // The upstream highlighter owns its own tree. Parse an additional shared
+    // tree only when a registered semantic or injection capability consumes it.
+    let parse_started_at = Instant::now();
+    let tree = (needs_semantics || needs_injections)
+        .then(|| parse_language_tree(resolved_runtime_name, source))
+        .transpose()?;
+    if tree.is_some()
+        && let Some(timings) = timings.as_deref_mut()
+    {
+        timings.analysis_parse += parse_started_at.elapsed();
     }
-    if let Some(timings) = timings.as_deref_mut() {
+    let semantic_started_at = Instant::now();
+    if needs_semantics {
+        spans = overlay_semantic_captures(
+            resolved_document_kind,
+            source,
+            tree.as_ref().unwrap(),
+            spans,
+            theme,
+        )?;
+    }
+    if needs_semantics && let Some(timings) = timings.as_deref_mut() {
         timings.record_semantic_overlays(semantic_started_at);
     }
 
     let injections_started_at = Instant::now();
-    let nested_regions = collect_top_level_injection_regions_from_tree(
-        resolved_document_kind,
-        source,
-        &tree,
-        theme,
-        nested_depth,
-        timings.as_deref_mut(),
-    )?;
+    let mut children = RenderTimings::default();
+    let nested_regions = if needs_injections {
+        collect_top_level_injection_regions_from_tree(
+            resolved_document_kind,
+            source,
+            tree.as_ref().unwrap(),
+            theme,
+            nested_depth,
+            timings.as_ref().map(|_| &mut children),
+        )?
+    } else {
+        Vec::new()
+    };
     if log_progress {
         progress_log(
             "injections",
@@ -370,7 +386,7 @@ pub(crate) fn highlight_named_language_render_data_with_depth(
         );
     }
     if let Some(timings) = timings.as_deref_mut() {
-        timings.record_injection_regions(injections_started_at);
+        timings.record_injections(injections_started_at.elapsed(), &children);
     }
 
     let nested_overlay_started_at = Instant::now();
