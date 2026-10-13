@@ -1,11 +1,8 @@
 [[grammar]]
 name = "json"
-library_name = "tree-sitter-json"
-parser_source = "crate"
 extensions = ["json", "jsonc", "jsonl", "ipynb"]
 filenames = ["flake.lock"]
 shebang_substrings = []
-extra_c_flags = ["-Wno-unused-but-set-variable"]
 highlight_names = [
   "boolean",
   "comment",
@@ -20,13 +17,10 @@ highlight_names = [
 
 [[grammar]]
 name = "query"
-library_name = "tree-sitter-query"
-parser_source = "crate"
 extensions = []
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -43,13 +37,10 @@ highlight_names = [
 
 [[grammar]]
 name = "ignore"
-library_name = "tree-sitter-ignore"
-parser_source = "crate"
 extensions = ["gitignore", "dockerignore", "npmignore", "ignore"]
 filenames = [".gitignore", ".dockerignore", ".npmignore", ".ignore"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = ["-Wno-unused-parameter"]
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -63,13 +54,10 @@ highlight_names = [
 
 [[grammar]]
 name = "git_link"
-library_name = "tree-sitter-git-link"
-parser_source = "crate"
 extensions = []
 filenames = [".git"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -79,13 +67,10 @@ highlight_names = [
 
 [[grammar]]
 name = "git_mailmap"
-library_name = "tree-sitter-git-mailmap"
-parser_source = "crate"
 extensions = []
 filenames = [".mailmap", "mailmap"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "function",
@@ -94,13 +79,10 @@ highlight_names = [
 
 [[grammar]]
 name = "git_log"
-library_name = "tree-sitter-git-log"
-parser_source = "crate"
 extensions = ["gitlog"]
 filenames = ["gitlog"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "constant",
   "function",
@@ -115,13 +97,10 @@ highlight_names = [
 
 [[grammar]]
 name = "git_config"
-library_name = "tree-sitter-git-config"
-parser_source = "crate"
 extensions = []
 filenames = [".gitconfig", "gitconfig", ".gitmodules", "config.worktree"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = ["-Wno-unused-variable"]
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -137,13 +116,10 @@ highlight_names = [
 
 [[grammar]]
 name = "dockerfile"
-library_name = "tree-sitter-dockerfile"
-parser_source = "crate"
 extensions = ["dockerfile"]
 filenames = ["Dockerfile", "Containerfile"]
 filename_prefixes = ["Dockerfile.", "Containerfile."]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -164,13 +140,10 @@ highlight_names = [
 
 [[grammar]]
 name = "actionscript"
-library_name = "tree-sitter-actionscript"
-parser_source = "crate"
 extensions = ["as"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -179,13 +152,10 @@ highlight_names = [
 
 [[grammar]]
 name = "ada"
-library_name = "tree-sitter-ada"
-parser_source = "crate"
 extensions = ["adb", "ads", "gpr"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -219,13 +189,10 @@ highlight_names = [
 
 [[grammar]]
 name = "applescript"
-library_name = "tree-sitter-applescript"
-parser_source = "crate"
 extensions = ["applescript"]
 filenames = ["script editor", "Script Editor"]
 filename_prefixes = []
 shebang_substrings = ["osascript"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -252,13 +219,10 @@ highlight_names = [
 
 [[grammar]]
 name = "asm"
-library_name = "tree-sitter-asm"
-parser_source = "crate"
 extensions = ["s", "S"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -277,13 +241,10 @@ highlight_names = [
 
 [[grammar]]
 name = "nasm"
-library_name = "tree-sitter-nasm"
-parser_source = "crate"
 extensions = ["asm", "nasm", "yasm", "inc", "mac"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -308,13 +269,10 @@ highlight_names = [
 
 [[grammar]]
 name = "asciidoc"
-library_name = "tree-sitter-asciidoc"
-parser_source = "crate"
 extensions = ["adoc", "ad", "asciidoc"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "attribute.builtin",
@@ -475,13 +433,10 @@ highlight_names = [
 
 [[grammar]]
 name = "authorized_keys"
-library_name = "tree-sitter-authorized-keys"
-parser_source = "crate"
 extensions = []
 filenames = ["authorized_keys", "authorized_keys2"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -495,24 +450,18 @@ highlight_names = [
 
 [[grammar]]
 name = "ghostty"
-library_name = "tree-sitter-ghostty"
-parser_source = "crate"
 extensions = ["ghostty"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = ["comment", "operator", "property", "string"]
 
 [[grammar]]
 name = "known_hosts"
-library_name = "tree-sitter-known-hosts"
-parser_source = "crate"
 extensions = []
 filenames = ["known_hosts", "ssh_known_hosts"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -525,13 +474,10 @@ highlight_names = [
 
 [[grammar]]
 name = "awk"
-library_name = "tree-sitter-awk"
-parser_source = "crate"
 extensions = ["awk"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = ["awk", "gawk", "mawk", "nawk"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "function",
@@ -548,13 +494,10 @@ highlight_names = [
 
 [[grammar]]
 name = "bibtex"
-library_name = "tree-sitter-bibtex"
-parser_source = "crate"
 extensions = ["bib"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -572,13 +515,10 @@ highlight_names = [
 
 [[grammar]]
 name = "cabal"
-library_name = "tree-sitter-cabal"
-parser_source = "crate"
 extensions = ["cabal"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -591,13 +531,10 @@ highlight_names = [
 
 [[grammar]]
 name = "cfml"
-library_name = "tree-sitter-cfml"
-parser_source = "crate"
 extensions = ["cfml", "cfm", "cfc"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -639,13 +576,10 @@ highlight_names = [
 
 [[grammar]]
 name = "clojure"
-library_name = "tree-sitter-clojure-orchard"
-parser_source = "crate"
 extensions = ["clj", "cljc", "cljs", "edn"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -657,13 +591,10 @@ highlight_names = [
 
 [[grammar]]
 name = "cmakecache"
-library_name = "tree-sitter-cmakecache"
-parser_source = "crate"
 extensions = []
 filenames = ["CMakeCache.txt"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -678,13 +609,10 @@ highlight_names = [
 
 [[grammar]]
 name = "coffeescript"
-library_name = "tree-sitter-coffeescript"
-parser_source = "crate"
 extensions = ["coffee", "cson"]
 filenames = ["Cakefile"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -708,13 +636,10 @@ highlight_names = [
 
 [[grammar]]
 name = "command_help"
-library_name = "tree-sitter-command-help"
-parser_source = "crate"
 extensions = ["cmd-help", "help"]
 filenames = ["help"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "function.builtin",
   "keyword.directive",
@@ -725,13 +650,10 @@ highlight_names = [
 
 [[grammar]]
 name = "cpuinfo"
-library_name = "tree-sitter-cpuinfo"
-parser_source = "crate"
 extensions = ["cpuinfo"]
 filenames = ["cpuinfo"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "number",
   "property",
@@ -741,13 +663,10 @@ highlight_names = [
 
 [[grammar]]
 name = "crontab"
-library_name = "tree-sitter-crontab"
-parser_source = "crate"
 extensions = ["tab"]
 filenames = ["crontab"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -761,13 +680,10 @@ highlight_names = [
 
 [[grammar]]
 name = "crystal"
-library_name = "tree-sitter-crystal"
-parser_source = "crate"
 extensions = ["cr"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -813,13 +729,10 @@ highlight_names = [
 
 [[grammar]]
 name = "d"
-library_name = "tree-sitter-d"
-parser_source = "crate"
 extensions = ["d", "di"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.language",
@@ -847,13 +760,10 @@ highlight_names = [
 
 [[grammar]]
 name = "debsources"
-library_name = "tree-sitter-debsources"
-parser_source = "crate"
 extensions = []
 filenames = ["sources.list"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -868,13 +778,10 @@ highlight_names = [
 
 [[grammar]]
 name = "elm"
-library_name = "tree-sitter-elm"
-parser_source = "crate"
 extensions = ["elm"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "char.elm",
   "character.escape.elm",
@@ -903,13 +810,10 @@ highlight_names = [
 
 [[grammar]]
 name = "email"
-library_name = "tree-sitter-mail"
-parser_source = "crate"
 extensions = ["eml", "msg", "mbx", "mboxz"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "markup.environment",
   "string",
@@ -919,13 +823,10 @@ highlight_names = [
 
 [[grammar]]
 name = "erlang"
-library_name = "tree-sitter-erlang"
-parser_source = "crate"
 extensions = ["erl", "hrl"]
 filenames = ["Emakefile", "emakefile"]
 filename_prefixes = []
 shebang_substrings = ["escript"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "comment.discard",
@@ -948,13 +849,10 @@ highlight_names = [
 
 [[grammar]]
 name = "fortran"
-library_name = "tree-sitter-fortran"
-parser_source = "crate"
 extensions = ["f", "F", "f77", "F77", "for", "FOR", "fpp", "FPP", "f90", "F90", "f95", "F95", "f03", "F03", "f08", "F08"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -982,13 +880,10 @@ highlight_names = [
 
 [[grammar]]
 name = "fortran_namelist"
-library_name = "tree-sitter-fortran-namelist"
-parser_source = "crate"
 extensions = ["namelist"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -1003,13 +898,10 @@ highlight_names = [
 
 [[grammar]]
 name = "fsharp"
-library_name = "tree-sitter-fsharp"
-parser_source = "crate"
 extensions = ["fs", "fsx"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -1061,13 +953,10 @@ highlight_names = [
 
 [[grammar]]
 name = "fsharp_signature"
-library_name = "tree-sitter-fsharp"
-parser_source = "crate"
 extensions = ["fsi"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -1119,13 +1008,10 @@ highlight_names = [
 
 [[grammar]]
 name = "fstab"
-library_name = "tree-sitter-fstab"
-parser_source = "crate"
 extensions = []
 filenames = ["fstab", "crypttab", "mtab"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "number",
@@ -1137,13 +1023,10 @@ highlight_names = [
 
 [[grammar]]
 name = "bash"
-library_name = "tree-sitter-bash"
-parser_source = "crate"
 extensions = ["sh", "bash", "ash", "ksh", "kshrc", "bashrc", "bash_profile", "bash_login", "bash_logout", "ebuild", "eclass"]
 filenames = [".bashrc", ".bash_profile", ".bash_login", ".profile", ".bash_logout", ".bash_aliases", ".bash_functions", ".bash_completions", ".bash_variables", ".textmate_init", ".envrc", "PKGBUILD", "bashrc", "bash_profile", "bash_login", "bash_logout"]
 filename_prefixes = []
 shebang_substrings = ["bash", "sh", "ash", "ksh", "mksh"]
-extra_c_flags = ["-Wno-unused-value"]
 highlight_names = [
   "comment",
   "constant",
@@ -1167,13 +1050,10 @@ highlight_names = [
 
 [[grammar]]
 name = "fish"
-library_name = "tree-sitter-fish"
-parser_source = "crate"
 extensions = ["fish"]
 filenames = ["config.fish", "fishfile", "fish_variables"]
 filename_prefixes = []
 shebang_substrings = ["fish"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -1197,13 +1077,10 @@ highlight_names = [
 
 [[grammar]]
 name = "zsh"
-library_name = "tree-sitter-zsh"
-parser_source = "crate"
 extensions = ["zsh", "zsh-theme", "zshrc", "zprofile", "zlogin", "zlogout", "zshenv"]
 filenames = [".zshrc", ".zprofile", ".zlogin", ".zlogout", ".zshenv", ".zsh_aliases", ".zsh_functions", ".zshrc.local", ".zprofile.local", ".zlogin.local", "zshrc", "zprofile", "zlogin", "zlogout", "zshenv"]
 filename_prefixes = []
 shebang_substrings = ["zsh"]
-extra_c_flags = ["-Wno-unused-value", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-unused-variable"]
 highlight_names = [
   "comment",
   "constant",
@@ -1226,13 +1103,10 @@ highlight_names = [
 
 [[grammar]]
 name = "powershell"
-library_name = "tree-sitter-powershell"
-parser_source = "crate"
 extensions = ["ps1", "psm1", "psd1"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = ["powershell", "pwsh"]
-extra_c_flags = ["-Wno-unused-parameter"]
 highlight_names = [
   "comment",
   "function",
@@ -1248,13 +1122,10 @@ highlight_names = [
 
 [[grammar]]
 name = "batch"
-library_name = "tree-sitter-batch"
-parser_source = "crate"
 extensions = ["bat", "cmd"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -1271,8 +1142,6 @@ highlight_names = [
 
 [[grammar]]
 name = "toml"
-library_name = "tree-sitter-toml"
-parser_source = "crate"
 extensions = ["toml"]
 filenames = [
   "Cargo.toml", "Cargo.lock", "uv.lock",
@@ -1280,7 +1149,6 @@ filenames = [
 ]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -1296,13 +1164,10 @@ highlight_names = [
 
 [[grammar]]
 name = "yaml"
-library_name = "tree-sitter-yaml"
-parser_source = "crate"
 extensions = ["yaml", "yml", "cff"]
 filenames = [".clang-format", "CITATION.cff"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = ["-Wno-unused-but-set-variable"]
 highlight_names = [
   "boolean",
   "comment",
@@ -1321,13 +1186,10 @@ highlight_names = [
 
 [[grammar]]
 name = "hcl"
-library_name = "tree-sitter-hcl"
-parser_source = "crate"
 extensions = ["hcl", "nomad", "tf", "tfvars"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -1351,13 +1213,10 @@ highlight_names = [
 
 [[grammar]]
 name = "rust"
-library_name = "tree-sitter-rust"
-parser_source = "crate"
 extensions = ["rs"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -1391,13 +1250,10 @@ highlight_names = [
 
 [[grammar]]
 name = "python"
-library_name = "tree-sitter-python"
-parser_source = "crate"
 extensions = ["py"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute.builtin",
   "boolean",
@@ -1442,13 +1298,10 @@ highlight_names = [
 
 [[grammar]]
 name = "go"
-library_name = "tree-sitter-go"
-parser_source = "crate"
 extensions = ["go"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -1478,12 +1331,9 @@ highlight_names = [
 
 [[grammar]]
 name = "gomod"
-library_name = "tree-sitter-gomod"
-parser_source = "crate"
 extensions = []
 filenames = ["go.mod"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -1498,12 +1348,9 @@ highlight_names = [
 
 [[grammar]]
 name = "gowork"
-library_name = "tree-sitter-gowork"
-parser_source = "crate"
 extensions = []
 filenames = ["go.work"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -1517,12 +1364,9 @@ highlight_names = [
 
 [[grammar]]
 name = "gosum"
-library_name = "tree-sitter-gosum"
-parser_source = "crate"
 extensions = []
 filenames = ["go.sum"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "keyword",
@@ -1535,12 +1379,9 @@ highlight_names = [
 
 [[grammar]]
 name = "sql"
-library_name = "tree-sitter-sql"
-parser_source = "crate"
 extensions = ["sql", "ddl", "dml", "psql", "pgsql", "postgresql", "mysql", "mariadb", "sqlite", "sqlite3"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -1566,12 +1407,9 @@ highlight_names = [
 
 [[grammar]]
 name = "html"
-library_name = "tree-sitter-html"
-parser_source = "crate"
 extensions = ["html", "htm", "shtml", "xhtml", "htc", "yaws"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -1585,12 +1423,9 @@ highlight_names = [
 
 [[grammar]]
 name = "css"
-library_name = "tree-sitter-css"
-parser_source = "crate"
 extensions = ["css"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = ["-Wno-unused-parameter"]
 highlight_names = [
   "attribute",
   "comment",
@@ -1617,12 +1452,9 @@ highlight_names = [
 
 [[grammar]]
 name = "javascript"
-library_name = "tree-sitter-javascript"
-parser_source = "crate"
 extensions = ["js", "mjs", "cjs", "jsx"]
 filenames = []
 shebang_substrings = ["node", "nodejs", "deno", "bun"]
-extra_c_flags = ["-Wno-unused-parameter"]
 highlight_names = [
   "attribute",
   "attribute.jsx",
@@ -1665,12 +1497,9 @@ highlight_names = [
 
 [[grammar]]
 name = "graphql"
-library_name = "tree-sitter-graphql"
-parser_source = "crate"
 extensions = ["graphql", "gql", "graphqls"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -1691,12 +1520,9 @@ highlight_names = [
 
 [[grammar]]
 name = "cel"
-library_name = "tree-sitter-cel"
-parser_source = "crate"
 extensions = ["cel"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -1714,12 +1540,9 @@ highlight_names = [
 
 [[grammar]]
 name = "proto"
-library_name = "tree-sitter-proto"
-parser_source = "crate"
 extensions = ["proto", "protobuf", "protodevel"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -1737,12 +1560,9 @@ highlight_names = [
 
 [[grammar]]
 name = "textproto"
-library_name = "tree-sitter-textproto"
-parser_source = "crate"
 extensions = ["textproto", "textpb", "pbtxt", "prototxt"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -1754,13 +1574,10 @@ highlight_names = [
 
 [[grammar]]
 name = "latex"
-library_name = "tree-sitter-latex"
-parser_source = "crate"
 extensions = ["tex", "ltx", "sty", "cls"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "function",
@@ -1786,13 +1603,10 @@ highlight_names = [
 
 [[grammar]]
 name = "tcl"
-library_name = "tree-sitter-tcl"
-parser_source = "crate"
 extensions = ["tcl", "tk", "tm"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = ["tclsh", "wish"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "conditional",
@@ -1813,13 +1627,10 @@ highlight_names = [
 
 [[grammar]]
 name = "textile"
-library_name = "tree-sitter-textile"
-parser_source = "crate"
 extensions = ["textile"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "punctuation.list.markdown",
   "punctuation.special",
@@ -1830,13 +1641,10 @@ highlight_names = [
 
 [[grammar]]
 name = "csv"
-library_name = "tree-sitter-csv"
-parser_source = "crate"
 extensions = ["csv"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "float",
@@ -1847,13 +1655,10 @@ highlight_names = [
 
 [[grammar]]
 name = "tsv"
-library_name = "tree-sitter-tsv"
-parser_source = "crate"
 extensions = ["tsv"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "float",
@@ -1864,13 +1669,10 @@ highlight_names = [
 
 [[grammar]]
 name = "typst"
-library_name = "tree-sitter-typst"
-parser_source = "crate"
 extensions = ["typ"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -1905,12 +1707,9 @@ highlight_names = [
 
 [[grammar]]
 name = "regex"
-library_name = "tree-sitter-regex"
-parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "invalid.illegal.regex",
   "keyword.operator.regex",
@@ -1926,12 +1725,9 @@ highlight_names = [
 
 [[grammar]]
 name = "jsdoc"
-library_name = "tree-sitter-jsdoc"
-parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
-extra_c_flags = ["-Wno-unused-parameter"]
 highlight_names = [
   "number",
   "operator",
@@ -1949,12 +1745,9 @@ highlight_names = [
 
 [[grammar]]
 name = "userscript_metadata"
-library_name = "tree-sitter-userscript-metadata"
-parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -1972,12 +1765,9 @@ highlight_names = [
 
 [[grammar]]
 name = "mermaid"
-library_name = "tree-sitter-mermaid"
-parser_source = "crate"
 extensions = ["mmd", "mermaid"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -2006,12 +1796,9 @@ highlight_names = [
 
 [[grammar]]
 name = "markdown"
-library_name = "tree-sitter-markdown"
-parser_source = "crate"
 extensions = ["md", "markdown", "mdown", "markdn", "mkd"]
 filenames = ["README.md"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "none",
   "punctuation.delimiter",
@@ -2031,12 +1818,9 @@ highlight_names = [
 
 [[grammar]]
 name = "markdown_inline"
-library_name = "tree-sitter-markdown-inline"
-parser_source = "crate"
 extensions = []
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "punctuation.delimiter",
   "punctuation.delimiter.markdown",
@@ -2053,12 +1837,9 @@ highlight_names = [
 
 [[grammar]]
 name = "just"
-library_name = "tree-sitter-just"
-parser_source = "crate"
 extensions = ["just"]
 filenames = ["justfile", "Justfile", "JUSTFILE"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -2084,12 +1865,9 @@ highlight_names = [
 
 [[grammar]]
 name = "c"
-library_name = "tree-sitter-c"
-parser_source = "crate"
 extensions = ["c"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2108,12 +1886,9 @@ highlight_names = [
 
 [[grammar]]
 name = "cpp"
-library_name = "tree-sitter-cpp"
-parser_source = "crate"
 extensions = ["cpp", "cc", "cp", "cxx", "c++", "h", "hh", "hpp", "hxx", "h++", "inl", "ipp"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2133,12 +1908,9 @@ highlight_names = [
 
 [[grammar]]
 name = "java"
-library_name = "tree-sitter-java"
-parser_source = "crate"
 extensions = ["java", "bsh"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -2159,13 +1931,10 @@ highlight_names = [
 
 [[grammar]]
 name = "kotlin"
-library_name = "tree-sitter-kotlin"
-parser_source = "crate"
 extensions = ["kt", "kts"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -2184,13 +1953,10 @@ highlight_names = [
 
 [[grammar]]
 name = "csharp"
-library_name = "tree-sitter-c-sharp"
-parser_source = "crate"
 extensions = ["cs", "csx"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -2213,13 +1979,10 @@ highlight_names = [
 
 [[grammar]]
 name = "groovy"
-library_name = "tree-sitter-groovy"
-parser_source = "crate"
 extensions = ["groovy", "gvy", "gradle"]
 filenames = ["Jenkinsfile"]
 filename_prefixes = []
 shebang_substrings = ["groovy"]
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -2245,13 +2008,10 @@ highlight_names = [
 
 [[grammar]]
 name = "diff"
-library_name = "tree-sitter-diff"
-parser_source = "crate"
 extensions = ["diff", "patch", "debdiff"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -2269,13 +2029,10 @@ highlight_names = [
 
 [[grammar]]
 name = "properties"
-library_name = "tree-sitter-properties"
-parser_source = "crate"
 extensions = ["properties"]
 filenames = ["gradle.properties", "local.properties", "project.properties"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2293,13 +2050,10 @@ highlight_names = [
 
 [[grammar]]
 name = "jq"
-library_name = "tree-sitter-jq"
-parser_source = "crate"
 extensions = ["jq"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "function",
@@ -2317,13 +2071,10 @@ highlight_names = [
 
 [[grammar]]
 name = "less"
-library_name = "tree-sitter-less"
-parser_source = "crate"
 extensions = ["less"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "function",
@@ -2337,13 +2088,10 @@ highlight_names = [
 
 [[grammar]]
 name = "stylus"
-library_name = "tree-sitter-stylus"
-parser_source = "crate"
 extensions = ["styl", "stylus"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -2361,13 +2109,10 @@ highlight_names = [
 
 [[grammar]]
 name = "graph_easy"
-library_name = "tree-sitter-graph-easy"
-parser_source = "crate"
 extensions = ["ge"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "error",
@@ -2383,13 +2128,10 @@ highlight_names = [
 
 [[grammar]]
 name = "dot"
-library_name = "tree-sitter-dot"
-parser_source = "crate"
 extensions = ["dot", "DOT", "gv"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2407,13 +2149,10 @@ highlight_names = [
 
 [[grammar]]
 name = "nginx"
-library_name = "tree-sitter-nginx"
-parser_source = "crate"
 extensions = []
 filenames = ["nginx.conf", "mime.types", "fastcgi_params", "scgi_params", "uwsgi_params"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -2434,12 +2173,9 @@ highlight_names = [
 
 [[grammar]]
 name = "typescript"
-library_name = "tree-sitter-typescript"
-parser_source = "crate"
 extensions = ["ts", "mts", "cts"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -2476,12 +2212,9 @@ highlight_names = [
 
 [[grammar]]
 name = "tsx"
-library_name = "tree-sitter-typescript"
-parser_source = "crate"
 extensions = ["tsx"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute.jsx",
   "boolean",
@@ -2521,12 +2254,9 @@ highlight_names = [
 
 [[grammar]]
 name = "vue"
-library_name = "tree-sitter-vue"
-parser_source = "crate"
 extensions = ["vue"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -2540,12 +2270,9 @@ highlight_names = [
 
 [[grammar]]
 name = "svelte"
-library_name = "tree-sitter-svelte"
-parser_source = "crate"
 extensions = ["svelte", "svlt"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -2559,13 +2286,10 @@ highlight_names = [
 
 [[grammar]]
 name = "dotenv"
-library_name = "tree-sitter-dotenv"
-parser_source = "crate"
 extensions = []
 filenames = [".env", "env", ".flaskenv"]
 filename_prefixes = [".env.", "env."]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2577,12 +2301,9 @@ highlight_names = [
 
 [[grammar]]
 name = "ruby"
-library_name = "tree-sitter-ruby"
-parser_source = "crate"
 extensions = ["rb", "cgi", "fcgi", "gemspec", "jbuilder", "podspec", "prawn", "rabl", "rake", "rbx", "rjs", "ruby.rail", "thor"]
 filenames = ["Appfile", "Appraisals", "Berksfile", "Brewfile", "capfile", "Cheffile", "config.ru", "Deliverfile", "Fastfile", "Gemfile", "Guardfile", "irbrc", "Podfile", "Rakefile", "Rantfile", "Scanfile", "simplecov", "Snapfile", "Thorfile", "Vagrantfile"]
 shebang_substrings = ["ruby"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2609,12 +2330,9 @@ highlight_names = [
 
 [[grammar]]
 name = "lua"
-library_name = "tree-sitter-lua"
-parser_source = "crate"
 extensions = ["lua", "nse"]
 filenames = []
 shebang_substrings = ["lua"]
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -2648,12 +2366,9 @@ highlight_names = [
 
 [[grammar]]
 name = "nix"
-library_name = "tree-sitter-nix"
-parser_source = "crate"
 extensions = ["nix"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "embedded",
@@ -2677,12 +2392,9 @@ highlight_names = [
 
 [[grammar]]
 name = "ini"
-library_name = "tree-sitter-ini"
-parser_source = "crate"
 extensions = ["ini", "INI", "inf", "INF", "reg", "REG", "lng", "cfg", "CFG", "desktop", "url", "URL"]
 filenames = [".editorconfig", ".coveragerc", ".pylintrc", ".gitlint", ".hgrc", "hgrc"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "none",
@@ -2695,12 +2407,9 @@ highlight_names = [
 
 [[grammar]]
 name = "xml"
-library_name = "tree-sitter-xml"
-parser_source = "crate"
 extensions = ["xml", "xsd", "xslt", "tld", "dtml", "rng", "rss", "opml", "svg", "xaml", "csproj", "vbproj", "props", "targets"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -2730,12 +2439,9 @@ highlight_names = [
 
 [[grammar]]
 name = "make"
-library_name = "tree-sitter-make"
-parser_source = "crate"
 extensions = ["mak", "mk"]
 filenames = ["make", "GNUmakefile", "makefile", "Makefile", "makefile.am", "Makefile.am", "makefile.in", "Makefile.in", "OCamlMakefile"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "character.special",
   "comment",
@@ -2755,12 +2461,9 @@ highlight_names = [
 
 [[grammar]]
 name = "cmake"
-library_name = "tree-sitter-cmake"
-parser_source = "crate"
 extensions = ["cmake"]
 filenames = ["CMakeLists.txt"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -2790,12 +2493,9 @@ highlight_names = [
 
 [[grammar]]
 name = "ninja"
-library_name = "tree-sitter-ninja"
-parser_source = "crate"
 extensions = ["ninja"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2817,12 +2517,9 @@ highlight_names = [
 
 [[grammar]]
 name = "jinja"
-library_name = "tree-sitter-jinja"
-parser_source = "crate"
 extensions = ["j2", "jinja2", "jinja", "sls"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute.builtin",
   "boolean",
@@ -2851,12 +2548,9 @@ highlight_names = [
 
 [[grammar]]
 name = "eex"
-library_name = "tree-sitter-embedded-template"
-parser_source = "crate"
 extensions = ["eex", "leex"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -2864,12 +2558,9 @@ highlight_names = [
 
 [[grammar]]
 name = "twig"
-library_name = "tree-sitter-twig"
-parser_source = "crate"
 extensions = ["twig"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -2886,12 +2577,9 @@ highlight_names = [
 
 [[grammar]]
 name = "erb"
-library_name = "tree-sitter-embedded-template"
-parser_source = "crate"
 extensions = ["erb", "erbsql"]
 filenames = ["rails", "rhtml"]
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -2899,12 +2587,9 @@ highlight_names = [
 
 [[grammar]]
 name = "jsp"
-library_name = "tree-sitter-embedded-template"
-parser_source = "crate"
 extensions = ["jsp"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -2912,12 +2597,9 @@ highlight_names = [
 
 [[grammar]]
 name = "asp"
-library_name = "tree-sitter-embedded-template"
-parser_source = "crate"
 extensions = ["asp", "asa"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -2925,12 +2607,9 @@ highlight_names = [
 
 [[grammar]]
 name = "adp"
-library_name = "tree-sitter-embedded-template"
-parser_source = "crate"
 extensions = ["adp"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -2938,12 +2617,9 @@ highlight_names = [
 
 [[grammar]]
 name = "php"
-library_name = "tree-sitter-php"
-parser_source = "crate"
 extensions = ["php", "php3", "php4", "php5", "php7", "phps", "phpt", "phtml"]
 filenames = []
 shebang_substrings = ["php"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -2968,12 +2644,9 @@ highlight_names = [
 
 [[grammar]]
 name = "scala"
-library_name = "tree-sitter-scala"
-parser_source = "crate"
 extensions = ["scala", "sbt", "sc", "mill"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "annotation",
   "attribute",
@@ -3000,12 +2673,9 @@ highlight_names = [
 
 [[grammar]]
 name = "swift"
-library_name = "tree-sitter-swift"
-parser_source = "crate"
 extensions = ["swift"]
 filenames = []
 shebang_substrings = ["swift"]
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -3035,12 +2705,9 @@ highlight_names = [
 
 [[grammar]]
 name = "dart"
-library_name = "tree-sitter-dart"
-parser_source = "crate"
 extensions = ["dart"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -3066,12 +2733,9 @@ highlight_names = [
 
 [[grammar]]
 name = "elixir"
-library_name = "tree-sitter-elixir"
-parser_source = "crate"
 extensions = ["ex", "exs"]
 filenames = []
 shebang_substrings = ["elixir", "iex"]
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -3099,12 +2763,9 @@ highlight_names = [
 
 [[grammar]]
 name = "zig"
-library_name = "tree-sitter-zig"
-parser_source = "crate"
 extensions = ["zig", "zon"]
 filenames = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -3130,13 +2791,10 @@ highlight_names = [
 
 [[grammar]]
 name = "ssh_config"
-library_name = "tree-sitter-ssh-config"
-parser_source = "crate"
 extensions = []
 filenames = ["ssh_config", "sshd_config"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -3157,13 +2815,10 @@ highlight_names = [
 
 [[grammar]]
 name = "gitattributes"
-library_name = "tree-sitter-gitattributes"
-parser_source = "crate"
 extensions = []
 filenames = [".gitattributes", "gitattributes"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "comment",
@@ -3184,13 +2839,10 @@ highlight_names = [
 
 [[grammar]]
 name = "git_commit"
-library_name = "tree-sitter-git-commit"
-parser_source = "crate"
 extensions = []
 filenames = ["COMMIT_EDITMSG", "MERGE_MSG", "TAG_EDITMSG"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -3206,13 +2858,10 @@ highlight_names = [
 
 [[grammar]]
 name = "git_rebase"
-library_name = "tree-sitter-git-rebase"
-parser_source = "crate"
 extensions = []
 filenames = ["git-rebase-todo"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant",
@@ -3223,13 +2872,10 @@ highlight_names = [
 
 [[grammar]]
 name = "requirements"
-library_name = "tree-sitter-requirements"
-parser_source = "crate"
 extensions = []
 filenames = ["requirements.txt", "requirements.in", "pip"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -3246,13 +2892,10 @@ highlight_names = [
 
 [[grammar]]
 name = "apache"
-library_name = "tree-sitter-apache"
-parser_source = "crate"
 extensions = []
 filenames = ["envvars", "htaccess", "HTACCESS", "htgroups", "HTGROUPS", "htpasswd", "HTPASSWD", ".htaccess", ".HTACCESS", ".htgroups", ".HTGROUPS", ".htpasswd", ".HTPASSWD", "httpd.conf"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -3265,13 +2908,10 @@ highlight_names = [
 
 [[grammar]]
 name = "scss"
-library_name = "tree-sitter-scss"
-parser_source = "crate"
 extensions = ["scss"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "function",
@@ -3289,13 +2929,10 @@ highlight_names = [
 
 [[grammar]]
 name = "sass"
-library_name = "tree-sitter-sass"
-parser_source = "crate"
 extensions = ["sass"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -3325,13 +2962,10 @@ highlight_names = [
 
 [[grammar]]
 name = "todotxt"
-library_name = "tree-sitter-todotxt"
-parser_source = "crate"
 extensions = []
 filenames = ["todo.txt", "done.txt", "TODO.txt", "DONE.txt"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -3341,13 +2975,10 @@ highlight_names = [
 
 [[grammar]]
 name = "strace"
-library_name = "tree-sitter-strace"
-parser_source = "crate"
 extensions = []
 filenames = ["strace"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.numeric",
@@ -3359,13 +2990,10 @@ highlight_names = [
 
 [[grammar]]
 name = "syslog"
-library_name = "tree-sitter-syslog"
-parser_source = "crate"
 extensions = []
 filenames = ["syslog"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "keyword",
@@ -3378,13 +3006,10 @@ highlight_names = [
 
 [[grammar]]
 name = "vhdl"
-library_name = "tree-sitter-vhdl"
-parser_source = "crate"
 extensions = ["vhd", "vhdl", "vho", "vht", "VHD", "VHDL", "VHO", "VHT"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "attribute.builtin",
@@ -3435,13 +3060,10 @@ highlight_names = [
 
 [[grammar]]
 name = "verilog"
-library_name = "tree-sitter-verilog"
-parser_source = "crate"
 extensions = ["v", "V"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -3482,13 +3104,10 @@ highlight_names = [
 
 [[grammar]]
 name = "systemverilog"
-library_name = "tree-sitter-systemverilog"
-parser_source = "crate"
 extensions = ["sv", "svh", "vh"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "comment",
@@ -3511,13 +3130,10 @@ highlight_names = [
 
 [[grammar]]
 name = "vim"
-library_name = "tree-sitter-vim"
-parser_source = "crate"
 extensions = ["vim"]
 filenames = ["vimrc", "gvimrc", ".vimrc", ".gvimrc", ".exrc", ".nvimrc", "_vimrc", "_gvimrc", "_exrc", "init.vim"]
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "boolean",
   "character.special",
@@ -3556,13 +3172,10 @@ highlight_names = [
 
 [[grammar]]
 name = "vimhelp"
-library_name = "tree-sitter-vimhelp"
-parser_source = "crate"
 extensions = ["vimhelp"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment.error",
   "comment.hint",
@@ -3585,13 +3198,10 @@ highlight_names = [
 
 [[grammar]]
 name = "sml"
-library_name = "tree-sitter-sml"
-parser_source = "crate"
 extensions = ["sml", "cm", "sig"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",
@@ -3610,13 +3220,10 @@ highlight_names = [
 
 [[grammar]]
 name = "solidity"
-library_name = "tree-sitter-solidity"
-parser_source = "crate"
 extensions = ["sol"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "conditional",
@@ -3649,13 +3256,10 @@ highlight_names = [
 
 [[grammar]]
 name = "varlink"
-library_name = "tree-sitter-varlink"
-parser_source = "crate"
 extensions = ["varlink"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "comment",
   "entity.attribute-name",
@@ -3675,13 +3279,10 @@ highlight_names = [
 
 [[grammar]]
 name = "vyper"
-library_name = "tree-sitter-vyper"
-parser_source = "crate"
 extensions = ["vy"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute.builtin",
   "comment",
@@ -3699,13 +3300,10 @@ highlight_names = [
 
 [[grammar]]
 name = "wgsl"
-library_name = "tree-sitter-wgsl"
-parser_source = "crate"
 extensions = ["wgsl"]
 filenames = []
 filename_prefixes = []
 shebang_substrings = []
-extra_c_flags = []
 highlight_names = [
   "attribute",
   "boolean",
@@ -3733,12 +3331,9 @@ highlight_names = [
 
 [[grammar]]
 name = "pkl"
-library_name = "tree-sitter-pkl"
-parser_source = "crate"
 extensions = ["pkl"]
 filenames = ["PklProject"]
 shebang_substrings = ["pkl"]
-extra_c_flags = []
 highlight_names = [
   "comment",
   "constant.builtin",

@@ -18,17 +18,6 @@ use crate::python_docstrings::resolve_python_docstring_document_kind;
 use crate::sql_dialect::resolve_sql_runtime;
 use std::path::Path;
 
-#[cfg(test)]
-pub(crate) use crate::language_runtime::RuntimeId as SupportedLanguage;
-
-#[cfg(test)]
-pub(crate) fn detect_language(
-    source_path: Option<&Path>,
-    source: &str,
-) -> Option<SupportedLanguage> {
-    detect_document_kind(source_path, source).map(DocumentKind::runtime_id)
-}
-
 pub(crate) fn detect_document_kind(
     source_path: Option<&Path>,
     source: &str,
