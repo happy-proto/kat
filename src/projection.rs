@@ -398,24 +398,24 @@ pub(crate) fn decode_backslash_escaped_range(
             break;
         }
 
-        let next = bytes[cursor] as char;
+        let next = slice[cursor..].chars().next().expect("escape character");
         let decoded = match next {
-            '\\' => Some(("\\".to_owned(), 1)),
-            '\'' => Some(("\'".to_owned(), 1)),
-            '"' => Some(("\"".to_owned(), 1)),
-            'n' => Some(("\n".to_owned(), 1)),
-            'r' => Some(("\r".to_owned(), 1)),
-            't' => Some(("\t".to_owned(), 1)),
-            'b' => Some(("\u{0008}".to_owned(), 1)),
-            'f' => Some(("\u{000C}".to_owned(), 1)),
+            '\\' => Some(("\\".to_owned(), cursor + 1)),
+            '\'' => Some(("\'".to_owned(), cursor + 1)),
+            '"' => Some(("\"".to_owned(), cursor + 1)),
+            'n' => Some(("\n".to_owned(), cursor + 1)),
+            'r' => Some(("\r".to_owned(), cursor + 1)),
+            't' => Some(("\t".to_owned(), cursor + 1)),
+            'b' => Some(("\u{0008}".to_owned(), cursor + 1)),
+            'f' => Some(("\u{000C}".to_owned(), cursor + 1)),
             'v' if matches!(
                 flavor,
                 DecodeFlavor::JavaScript | DecodeFlavor::Go | DecodeFlavor::Proto
             ) =>
             {
-                Some(("\u{000B}".to_owned(), 1))
+                Some(("\u{000B}".to_owned(), cursor + 1))
             }
-            '0' => Some(("\0".to_owned(), 1)),
+            '0' => Some(("\0".to_owned(), cursor + 1)),
             'x' => decode_fixed_width_hex(bytes, cursor + 1, 2),
             'u' => match flavor {
                 DecodeFlavor::Rust | DecodeFlavor::JavaScript
@@ -430,25 +430,24 @@ pub(crate) fn decode_backslash_escaped_range(
             },
             'U' if flavor == DecodeFlavor::Python => decode_fixed_width_hex(bytes, cursor + 1, 8),
             '\n' if matches!(flavor, DecodeFlavor::JavaScript | DecodeFlavor::Python) => {
-                Some((String::new(), 1))
+                Some((String::new(), cursor + 1))
             }
             _ => None,
         };
 
-        if let Some((text, consumed_after_marker)) = decoded {
-            let consumed = 1 + consumed_after_marker;
-            let escape_range =
-                (range.start + escape_start)..(range.start + escape_start + consumed);
+        if let Some((text, end)) = decoded {
+            let escape_range = (range.start + escape_start)..(range.start + end);
             append_mapped_text(virtual_source, source_map, escape_range, &text);
-            cursor = escape_start + consumed;
+            cursor = end;
         } else {
+            let end = cursor + next.len_utf8();
             append_raw_range(
                 source,
-                (range.start + escape_start)..(range.start + escape_start + 2),
+                (range.start + escape_start)..(range.start + end),
                 virtual_source,
                 source_map,
             );
-            cursor = escape_start + 2;
+            cursor = end;
         }
 
         plain_start = cursor;
@@ -464,6 +463,7 @@ pub(crate) fn decode_backslash_escaped_range(
     }
 }
 
+/// Return decoded text and the exclusive end offset in the input byte slice.
 pub(crate) fn decode_fixed_width_hex(
     bytes: &[u8],
     start: usize,
@@ -476,9 +476,10 @@ pub(crate) fn decode_fixed_width_hex(
 
     let value = u32::from_str_radix(std::str::from_utf8(digits).ok()?, 16).ok()?;
     let ch = char::from_u32(value)?;
-    Some((ch.to_string(), 1 + width))
+    Some((ch.to_string(), start + width))
 }
 
+/// Braced escapes include the closing delimiter in their end offset.
 pub(crate) fn decode_braced_hex(bytes: &[u8], start: usize) -> Option<(String, usize)> {
     let rest = bytes.get(start..)?;
     let close_offset = rest.iter().position(|byte| *byte == b'}')?;
@@ -489,7 +490,7 @@ pub(crate) fn decode_braced_hex(bytes: &[u8], start: usize) -> Option<(String, u
 
     let value = u32::from_str_radix(std::str::from_utf8(digits).ok()?, 16).ok()?;
     let ch = char::from_u32(value)?;
-    Some((ch.to_string(), close_offset + 2))
+    Some((ch.to_string(), start + close_offset + 1))
 }
 
 pub(crate) fn surrounding_delimiter(source: &str, range: &Range<usize>) -> Option<char> {

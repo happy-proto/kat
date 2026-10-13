@@ -1382,3 +1382,87 @@ fn decoded_unicode_after_raw_text_has_one_source_interval() {
     assert_eq!(mapped.len(), 1);
     assert_eq!(mapped[0].range, 0..source.len());
 }
+
+#[test]
+fn unicode_escape_projection_consumes_delimiters_and_maps_the_full_source() {
+    use crate::host_injections::InjectionDecode;
+    for decode in [
+        InjectionDecode::RustString,
+        InjectionDecode::JavaScriptString,
+    ] {
+        for (source, expected) in [
+            (r"before\u{41}after", "beforeAafter"),
+            (r"before\u{1f7e3}after", "before🟣after"),
+            (r"before\u{01f7e3}after", "before🟣after"),
+            (r"before\u{110000}after", r"before\u{110000}after"),
+            (r"before\u{}after", r"before\u{}after"),
+            (r"before\u{xyz}after", r"before\u{xyz}after"),
+            (r"before\u{1f7e3", r"before\u{1f7e3"),
+        ] {
+            let quoted = format!("\"{source}\"");
+            let range = 1..quoted.len() - 1;
+            let (text, map) = crate::projection::build_virtual_source(
+                &quoted,
+                &std::iter::once(range.clone()).collect::<Vec<_>>(),
+                false,
+                decode,
+            );
+            assert_eq!(text, expected, "{decode:?}: {source}");
+            assert_eq!(
+                map.ranges(0..text.len()),
+                std::iter::once(range).collect::<Vec<_>>()
+            );
+        }
+    }
+    for (decode, source, expected) in [
+        (
+            InjectionDecode::JavaScriptString,
+            r"before\u263aafter",
+            "before☺after",
+        ),
+        (
+            InjectionDecode::PythonString,
+            r"before\U0001F7E3after",
+            "before🟣after",
+        ),
+        (
+            InjectionDecode::RustString,
+            r"before\x41after",
+            "beforeAafter",
+        ),
+        (
+            InjectionDecode::JavaScriptString,
+            "before\\\nafter",
+            "beforeafter",
+        ),
+    ] {
+        let quoted = format!("\"{source}\"");
+        let (text, _) = crate::projection::build_virtual_source(
+            &quoted,
+            &std::iter::once(1..quoted.len() - 1).collect::<Vec<_>>(),
+            false,
+            decode,
+        );
+        assert_eq!(text, expected);
+    }
+}
+
+#[test]
+fn unrecognized_unicode_escape_preserves_utf8_boundaries() {
+    use crate::host_injections::InjectionDecode;
+    for decode in [
+        InjectionDecode::RustString,
+        InjectionDecode::JavaScriptString,
+        InjectionDecode::PythonString,
+    ] {
+        let source = r"before\中after";
+        let quoted = format!("\"{source}\"");
+        let (text, _) = crate::projection::build_virtual_source(
+            &quoted,
+            &std::iter::once(1..quoted.len() - 1).collect::<Vec<_>>(),
+            false,
+            decode,
+        );
+        assert_eq!(text, source);
+    }
+}
