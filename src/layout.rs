@@ -218,6 +218,11 @@ fn build_rows(
             .map(|offset| line_start + offset)
             .unwrap_or(source.len());
         let line_text = &source[line_start..line_end];
+        let line_text = if line_end < source.len() {
+            line_text.strip_suffix('\r').unwrap_or(line_text)
+        } else {
+            line_text
+        };
         let graphemes = grapheme_spans(line_text, line_start, profile);
 
         if graphemes.is_empty() {

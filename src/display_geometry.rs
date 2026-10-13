@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -57,37 +58,51 @@ impl DisplayProfile {
         let mut column = DisplayColumn(0);
 
         for (byte_offset, grapheme) in text.grapheme_indices(true) {
-            let next_column = if grapheme == "\t" {
-                next_tab_stop(column, self.tab_width)
-            } else {
-                column + DisplayColumn(UnicodeWidthStr::width(grapheme))
-            };
-            let rendered_text = if grapheme == "\t" {
-                " ".repeat((next_column - column).as_usize())
-            } else {
-                grapheme.to_owned()
-            };
-
-            spans.push(DisplayTextSpan {
-                byte_start: line_start + byte_offset,
-                byte_end: line_start + byte_offset + grapheme.len(),
-                column_start: column,
-                column_end: next_column,
-                rendered_text,
-            });
-            column = next_column;
+            let rendered_text = self.display_grapheme(grapheme, column);
+            for displayed in rendered_text.graphemes(true) {
+                let next_column = column + DisplayColumn(UnicodeWidthStr::width(displayed));
+                spans.push(DisplayTextSpan {
+                    byte_start: line_start + byte_offset,
+                    byte_end: line_start + byte_offset + grapheme.len(),
+                    column_start: column,
+                    column_end: next_column,
+                    rendered_text: displayed.to_owned(),
+                });
+                column = next_column;
+            }
         }
 
         spans
     }
 
+    fn display_grapheme<'a>(self, grapheme: &'a str, column: DisplayColumn) -> Cow<'a, str> {
+        match grapheme {
+            "\t" => {
+                Cow::Owned(" ".repeat((next_tab_stop(column, self.tab_width) - column).as_usize()))
+            }
+            "\n" | "\r\n" => Cow::Borrowed(""),
+            _ => {
+                let character = grapheme.chars().next().expect("nonempty grapheme");
+                if character.is_control() {
+                    let visible = match character as u32 {
+                        0..=31 => char::from_u32(0x2400 + character as u32).unwrap(),
+                        127 => '\u{2421}',
+                        _ => '\u{fffd}',
+                    };
+                    Cow::Owned(visible.to_string())
+                } else {
+                    Cow::Borrowed(grapheme)
+                }
+            }
+        }
+    }
+
     fn advance_column(self, mut column: DisplayColumn, text: &str) -> DisplayColumn {
         for grapheme in text.graphemes(true) {
-            column = if grapheme == "\t" {
-                next_tab_stop(column, self.tab_width)
-            } else {
-                column + DisplayColumn(UnicodeWidthStr::width(grapheme))
-            };
+            column = column
+                + DisplayColumn(UnicodeWidthStr::width(
+                    self.display_grapheme(grapheme, column).as_ref(),
+                ));
         }
         column
     }
@@ -223,11 +238,17 @@ mod tests {
     fn display_text_spans_expand_tabs_into_spaces() {
         let spans = display_text_spans("\t值\t标签", 0);
 
-        assert_eq!(spans[0].rendered_text, "        ");
-        assert_eq!(spans[1].rendered_text, "值");
-        assert_eq!(spans[2].rendered_text, "      ");
-        assert_eq!(spans[3].rendered_text, "标");
-        assert_eq!(spans[4].rendered_text, "签");
+        let rendered: String = spans
+            .iter()
+            .map(|span| span.rendered_text.as_str())
+            .collect();
+        assert_eq!(rendered, "        值      标签");
+        assert_eq!(spans.last().unwrap().column_end, DisplayColumn(20));
+        for (column, span) in spans[..8].iter().enumerate() {
+            assert_eq!((span.byte_start, span.byte_end), (0, 1));
+            assert_eq!(span.column_start, DisplayColumn(column));
+            assert_eq!(span.column_end, DisplayColumn(column + 1));
+        }
     }
 
     #[test]
