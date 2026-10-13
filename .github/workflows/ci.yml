@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           uvx ruff check scripts/*.py
-          bash scripts/tests/check-config.sh
+          uv run --script scripts/check-config.py --self-test
           git ls-files -z -- '*.toml' '*.yaml' '*.yml' | xargs -0 uv run --script scripts/check-config.py
 
   clippy:
@@ -81,6 +81,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mise tasks validate
           hk validate
           hk check --all --step merge-conflict --step private-key
 

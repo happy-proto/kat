@@ -44,11 +44,11 @@ mise install
 mise exec -- hk install --mise
 ```
 
-从旧配置迁移时，先运行 `prek uninstall` 移除原来的 hook，再安装 hk，避免重复执行检查。工具和 schema 版本分别由 [mise.toml](../mise.toml) 与 [hk.pkl](../hk.pkl) 维护，升级 hk 时保持两者一致。
+普通测试使用 `mise run test`；真实 PTY 与 Ghostty 无头终端模型的端到端测试使用 `mise run ghostty-e2e`。Ghostty 构建遇到明确的 Zig 依赖下载网络错误时会有限退避重试；本地 E2E 与 CI 使用相同入口，编译错误直接返回。重试行为的回归检查包含在 `mise run test` 中。
 
-普通测试使用 `just test`；真实 PTY 与 Ghostty 无头终端模型的端到端测试使用 `just ghostty-e2e`。Ghostty 构建遇到明确的 Zig 依赖下载网络错误时会有限退避重试；本地 E2E 与 CI 使用相同入口，编译错误直接返回。重试行为的回归检查包含在 `just test` 中。
+开发任务集中在 [mise.toml](../mise.toml)，使用 `mise tasks` 查看列表，`mise run <任务> --help` 查看带参数任务的用法。
 
-本地复现 CI 的紧凑 parser 静态发布构建使用 `just compact-release`，需预先安装 `uv` 和 C 编译器。该命令在独立临时 Cargo home 中提取并压缩 parser 表，生成的二进制在首次使用某语言时按需解压其表。
+本地复现 CI 的紧凑 parser 静态发布构建使用 `mise run compact-release`，需预先安装 `uv` 和 C 编译器。该命令在独立临时 Cargo home 中提取并压缩 parser 表，生成的二进制在首次使用某语言时按需解压其表。
 
 从仓库源码安装：
 
@@ -56,14 +56,14 @@ mise exec -- hk install --mise
 cargo install --git https://github.com/happy-proto/kat --locked kat
 ```
 
-在本地 checkout 中使用 `just install`。源码安装统一使用仓库的 `Cargo.lock`。
+在本地 checkout 中使用 `mise run install`。源码安装统一使用仓库的 `Cargo.lock`。
 
 ## 提交前检查
 
 - 本地提交前检查统一收敛到根目录的 [hk.pkl](../hk.pkl)，手动完整检查使用 `mise exec -- hk check --all`。
 - 提交时保存未暂存改动，只检查暂存版本，不自动修复或暂存；完成后恢复未暂存改动。
-- TOML / YAML 语法检查由 [check-config.py](../scripts/check-config.py) 承载，使用 `uv` 管理脚本依赖；其它检查优先复用 hk 工具和现有命令。
-- 全项目 Rust 检查始终执行，顺序为格式、Clippy、`just test`，避免 Cargo 构建争用；测试入口同时覆盖 Zig 下载重试回归。
+- TOML / YAML 语法检查由 [check-config.py](../scripts/check-config.py) 承载，使用 `uv` 管理脚本依赖；内建回归测试通过 `--self-test` 执行，并接入标准测试入口。其它检查优先复用 hk 工具和现有命令。
+- 全项目 Rust 检查始终执行，顺序为格式、Clippy、`mise run test`，避免 Cargo 构建争用；测试入口同时覆盖 Zig 下载重试回归。
 - 调整检查范围时先修改 [hk.pkl](../hk.pkl)，再按需同步文档、任务入口和 CI，检查项不在文档里重复维护。
 
 ## Release 与分发

@@ -24,7 +24,7 @@ steps {
   }
   ["test"] {
     depends = "clippy"
-    check = "just test"
+    check = "mise run test"
   }
 }
 

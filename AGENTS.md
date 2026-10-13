@@ -57,5 +57,5 @@
 - 对 `build.rs` 内部生成流程（例如 tree-sitter grammar 产物）优先复用仓库级构建缓存，而不是继续把复杂度压回到单次构建路径里。
 - 仓库内需要复用的 GitHub Actions 优先放在 `.github/actions/` 下本地维护；若外部 action 的 runtime 或维护状态不理想，优先内建最小可维护实现；
 - 需要分析 CI 构建瓶颈时，优先保留并利用 Cargo timings 与 linker timing 这类直接观测数据，而不是依赖额外缓存命中率做推断；
-- 一旦仓库存在 `justfile`，就使用 `just test` 作为标准测试入口。
-- 当 Agent 运行 `just test` 且希望减少日志 / Token 开销时，使用 `KAT_AGENT_TEST_LOG_MODE=quiet just test`；默认不设置该环境变量，保留 nextest 的常规进度输出。
+- 使用 `mise run test` 作为标准测试入口。
+- 当 Agent 运行 `mise run test` 且希望减少日志 / Token 开销时，使用 `KAT_AGENT_TEST_LOG_MODE=quiet mise run test`；默认不设置该环境变量，保留 nextest 的常规进度输出。
