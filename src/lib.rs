@@ -33,7 +33,9 @@ mod timing;
 mod visual;
 
 pub use api::*;
-pub use document::{PreparedDocument, RenderOptions, RenderedDocument, RenderedRowAnchor};
+pub use document::{
+    DisplayRow, PreparedDocument, RenderOptions, RenderedDocument, RenderedRowAnchor,
+};
 pub use source_highlight::{HighlightBackgroundRun, HighlightSpan, HighlightStyle};
 pub use timing::{RenderOutput, RenderTimings};
 

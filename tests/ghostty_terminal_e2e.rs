@@ -1361,3 +1361,98 @@ fn temp_plain_fixture(name: &str, source: &str) -> Result<PathBuf, Box<dyn std::
     fs::write(&path, source)?;
     Ok(path)
 }
+
+#[test]
+fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> TestResult {
+    // Entirely synthetic: no model configuration or private prompt content.
+    let payload = (0..240).map(|i| format!("item{i:04} ")).collect::<String>();
+    let source = format!("{{\"instructions_template\":\"{payload}\"}}\n\n");
+    let fixture = std::env::temp_dir().join(format!(
+        "kat-viewer-long-string-{}.json",
+        std::process::id()
+    ));
+    fs::write(&fixture, &source)?;
+    for cols in [39_u16, 40, 41] {
+        let expected = |width: u16| {
+            source
+                .split_terminator('\n')
+                .flat_map(|line| {
+                    if line.is_empty() {
+                        return vec![String::new()];
+                    }
+                    line.as_bytes()
+                        .chunks(usize::from(width))
+                        .map(|chunk| String::from_utf8(chunk.to_vec()).unwrap())
+                        .collect()
+                })
+                .collect::<Vec<_>>()
+        };
+        let check =
+            |session: &mut KatPtySession, width: u16, height: u16, top: usize| -> TestResult {
+                let rows = expected(width);
+                let body = usize::from(height) - 1;
+                let status = format!("kat {}/{} ", (top + body).min(rows.len()), rows.len());
+                let rendered = session.wait_for_screen(width, height, |frame| {
+                    frame
+                        .screen
+                        .last()
+                        .is_some_and(|line| line.starts_with(&status))
+                        && (0..body).all(|i| {
+                            frame.screen[i].trim_end()
+                                == rows
+                                    .get(top + i)
+                                    .map(String::as_str)
+                                    .unwrap_or("")
+                                    .trim_end()
+                        })
+                })?;
+                for i in 0..body {
+                    assert_eq!(
+                        rendered.screen[i].trim_end(),
+                        rows.get(top + i)
+                            .map(String::as_str)
+                            .unwrap_or("")
+                            .trim_end(),
+                        "display row {}",
+                        top + i
+                    );
+                }
+                assert!(
+                    rendered
+                        .raw_output
+                        .windows(b"\x1b[38;2".len())
+                        .any(|w| w == b"\x1b[38;2")
+                );
+                Ok(())
+            };
+        let mut session = KatPtySession::spawn(
+            &["--hyperlinks=never", fixture.to_str().unwrap()],
+            cols,
+            17,
+            &[
+                ("KAT_COLOR_MODE", "truecolor"),
+                ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+            ],
+        )?;
+        check(&mut session, cols, 17, 0)?;
+        let end = expected(cols).len() - 16;
+        session.write_input(b"G")?;
+        check(&mut session, cols, 17, end)?;
+        let top = end - 18;
+        session.write_input(&b"k".repeat(18))?;
+        check(&mut session, cols, 17, top)?;
+        session.resize(cols, 9)?;
+        check(&mut session, cols, 9, top)?;
+        let wider = cols + 7;
+        let new_top = top * usize::from(cols) / usize::from(wider);
+        session.resize(wider, 13)?;
+        check(&mut session, wider, 13, new_top)?;
+        session.write_input(b"/item0020\r")?;
+        let match_row = source.find("item0020").unwrap() / usize::from(wider);
+        check(&mut session, wider, 13, match_row)?;
+        session.write_input(b"q")?;
+        session.wait_success()?;
+    }
+    fs::remove_file(fixture)?;
+    Ok(())
+}

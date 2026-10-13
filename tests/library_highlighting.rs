@@ -219,3 +219,13 @@ fn nested_markdown_rust_uses_the_same_syntax_style() {
 fn unknown_file_has_no_syntax_spans() {
     assert!(document("mystery.unknown", "hello\n").spans().is_empty());
 }
+
+#[test]
+fn display_rows_preserve_zero_width_text_and_real_blank_lines() {
+    let rows = kat::PreparedDocument::plain("\u{200b}\n\n").display_rows(40);
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].text, "\u{200b}");
+    assert_eq!(rows[0].display_width, 0);
+    assert_eq!(rows[1].text, "");
+    assert_eq!(rows[1].display_width, 0);
+}

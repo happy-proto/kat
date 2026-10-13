@@ -30,10 +30,39 @@ impl RenderPlan {
         Self { ops: builder.ops }
     }
 
+    pub(crate) fn compile_row(row: &crate::layout::LayoutRow, theme: Theme) -> Self {
+        let mut builder = RenderPlanBuilder::new(theme);
+        compile_row(&mut builder, row);
+        builder.reset_hyperlink();
+        builder.reset_style();
+        Self { ops: builder.ops }
+    }
+
+    pub(crate) fn text(&self) -> String {
+        self.ops
+            .iter()
+            .filter_map(|op| match op {
+                RenderOp::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect()
+    }
+
     pub(crate) fn encode(&self, theme: Theme, hyperlinks_enabled: bool) -> String {
+        self.encode_marked(theme, hyperlinks_enabled, &[], None)
+    }
+
+    pub(crate) fn encode_marked(
+        &self,
+        theme: Theme,
+        hyperlinks_enabled: bool,
+        matches: &[std::ops::Range<usize>],
+        current: Option<&std::ops::Range<usize>>,
+    ) -> String {
         let mut rendered = String::new();
         let mut active_style = None;
         let mut active_hyperlink = false;
+        let mut text_offset = 0;
 
         for op in &self.ops {
             match op {
@@ -61,7 +90,28 @@ impl RenderPlan {
                         rendered.push_str("\x1b[0m");
                     }
                 }
-                RenderOp::Text { text } => rendered.push_str(text),
+                RenderOp::Text { text } => {
+                    let end = text_offset + text.len();
+                    let mut cursor = text_offset;
+                    for range in matches
+                        .iter()
+                        .filter(|range| range.start < end && range.end > text_offset)
+                    {
+                        let start = range.start.max(text_offset);
+                        let stop = range.end.min(end);
+                        rendered.push_str(&text[cursor - text_offset..start - text_offset]);
+                        let selected = current == Some(range);
+                        rendered.push_str(if selected { "\x1b[7;4m" } else { "\x1b[7m" });
+                        rendered.push_str(&text[start - text_offset..stop - text_offset]);
+                        rendered.push_str(if selected { "\x1b[24;27m" } else { "\x1b[27m" });
+                        if selected && active_style.is_some_and(|style| style.is_underlined()) {
+                            rendered.push_str("\x1b[4m");
+                        }
+                        cursor = stop;
+                    }
+                    rendered.push_str(&text[cursor - text_offset..]);
+                    text_offset = end;
+                }
                 RenderOp::Newline => rendered.push('\n'),
             }
         }
@@ -201,7 +251,7 @@ fn compile_row(builder: &mut RenderPlanBuilder, row: &crate::layout::LayoutRow) 
     let mut cell_index = 0usize;
     let mut column = 0usize;
 
-    while column < row.display_width {
+    while cell_index < row.cells.len() || column < row.display_width {
         if row
             .cells
             .get(cell_index)
@@ -210,7 +260,7 @@ fn compile_row(builder: &mut RenderPlanBuilder, row: &crate::layout::LayoutRow) 
             let cell = &row.cells[cell_index];
             let style = merged_style(cell.style, background_style_at(row, cell.column));
             builder.push_text(&cell.text, style, cell.hyperlink.as_deref());
-            column += cell.width.max(1);
+            column += cell.width;
             cell_index += 1;
             continue;
         }

@@ -313,12 +313,13 @@ impl ViewerDocument {
         let mut builder = pager::PagerSourceBuilder::default();
         for (source_id, segment) in self.segments.iter().enumerate() {
             match segment {
-                ViewerSegment::Plain(output) => builder.append_plain(source_id, output),
+                ViewerSegment::Plain(output) => {
+                    builder.append_plain(source_id, output, terminal_width)
+                }
                 ViewerSegment::Prepared {
                     document: prepared, ..
                 } => {
-                    let rendered = prepared.render(Some(terminal_width));
-                    builder.append(source_id, &rendered.output, &rendered.row_anchors);
+                    builder.append(source_id, prepared, terminal_width);
                 }
             }
         }
