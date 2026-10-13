@@ -25,6 +25,7 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         "cpp" | "cxx" | "cc" | "c++" | "cplusplus" => "cpp",
         "diff" | "patch" => "diff",
         "dot" | "graphviz" | "gv" => "dot",
+        "graph-easy" | "ge" => "graph_easy",
         "dart" => "dart",
         "elixir" | "iex" => "elixir",
         "git-link" | "gitlink" => "git_link",

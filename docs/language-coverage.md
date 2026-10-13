@@ -58,6 +58,12 @@
 
 ## 当前结论
 
+### Graph::Easy
+
+- `.ge` 使用独立的 `graph_easy` runtime，与 Graphviz DOT 分开识别；显式语言和 Markdown fence 接受 `graph_easy`、`graph-easy`、`ge`。
+- 支持方括号节点、裸节点、链式连接、节点列表、方向箭头和常见线型、边标签、属性块、默认类属性、分组、转义及注释的源码高亮。
+- 这是面向源码阅读的基础支持，不执行图布局或属性语义校验，也不承诺覆盖 Perl Graph::Easy 的全部扩展语法。parser 由 `kat-parsers` 独立维护，行为参考 Python `graph-easy` 的常见 DSL。
+
 ### F# 签名文件
 
 - `.fsi` 使用独立的 `fsharp_signature` runtime，highlights 和 locals query 与当前 signature grammar 配套，覆盖模块、类型、成员和值签名。不能直接复用 `.fs` 的表达式与隐藏 supertype 查询；全量 runtime 加载检查覆盖这项兼容性。

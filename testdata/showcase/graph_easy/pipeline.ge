@@ -1,0 +1,15 @@
+# Graph::Easy 源码高亮：带缓存与重试的处理链
+graph { flow: east; }
+node { shape: box; }
+node.warning { color: red; }
+
+( Pipeline
+  [ 输入 ] { label: "读取数据"; } -- request-v2 --> [ Worker ]
+  [ Worker ] -- 处理完成 --> [ 输出 ]
+)
+
+[ Worker ] <--> [ Cache ]
+[ Cache ] ..> [ Store ] ==> [ Backup ]
+[ Worker ] -- { label: retry; color: red; } --> [ Worker ]
+[ Worker ] ##> [ 监控 ]
+[ 输入 ], [ Cache ] -> [ 审计 ]
