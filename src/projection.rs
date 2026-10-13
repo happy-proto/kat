@@ -7,6 +7,7 @@ use crate::render_data::NestedRegion;
 use crate::render_data::RegionSegment;
 use crate::render_data::StyledSpan;
 use crate::render_data::VisualRegion;
+use crate::source_map::SourceMap;
 use crate::span_ops::push_span;
 use std::ops::Range;
 
@@ -15,9 +16,9 @@ pub(crate) fn build_virtual_source(
     ranges: &[Range<usize>],
     strip_shared_indent: bool,
     decode: InjectionDecode,
-) -> (String, Vec<Range<usize>>) {
+) -> (String, SourceMap) {
     let mut virtual_source = String::new();
-    let mut source_map = Vec::new();
+    let mut source_map = SourceMap::default();
     let shared_indent = if strip_shared_indent {
         shared_leading_indent(source, ranges)
     } else {
@@ -27,7 +28,7 @@ pub(crate) fn build_virtual_source(
     for (index, range) in ranges.iter().enumerate() {
         if index > 0 && !virtual_source.ends_with('\n') {
             virtual_source.push('\n');
-            source_map.push(0..0);
+            source_map.synthetic(1);
         }
 
         let source_slice = &source[range.clone()];
@@ -54,7 +55,7 @@ pub(crate) fn build_virtual_source(
 pub(crate) fn build_candidate_virtual_source(
     source: &str,
     candidate: &InjectionCandidate,
-) -> (String, Vec<Range<usize>>) {
+) -> (String, SourceMap) {
     match &candidate.projection {
         InjectionProjection::RawRanges => build_virtual_source(
             source,
@@ -76,14 +77,14 @@ pub(crate) fn build_projected_virtual_source(
     ranges: &[Range<usize>],
     segments: &[InjectionProjectionSegment],
     strip_shared_indent: bool,
-) -> (String, Vec<Range<usize>>) {
+) -> (String, SourceMap) {
     let shared_indent = if strip_shared_indent {
         shared_leading_indent(source, ranges)
     } else {
         0
     };
     let mut virtual_source = String::new();
-    let mut source_map = Vec::new();
+    let mut source_map = SourceMap::default();
     let mut at_line_start = true;
     let mut trim_remaining = shared_indent;
 
@@ -124,7 +125,7 @@ pub(crate) fn append_projected_source_range(
     range: &Range<usize>,
     shared_indent: usize,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
     at_line_start: &mut bool,
     trim_remaining: &mut usize,
 ) {
@@ -156,13 +157,13 @@ pub(crate) fn append_projected_source_range(
 pub(crate) fn append_projected_synthetic_text(
     text: &str,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
     at_line_start: &mut bool,
     trim_remaining: &mut usize,
     shared_indent: usize,
 ) {
     virtual_source.push_str(text);
-    source_map.extend(std::iter::repeat_n(0..0, text.len()));
+    source_map.synthetic(text.len());
 
     if let Some(last_newline) = text.rfind('\n') {
         *at_line_start = true;
@@ -183,7 +184,7 @@ pub(crate) fn append_injection_content(
     range: Range<usize>,
     decode: InjectionDecode,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     match decode {
         InjectionDecode::None => append_raw_range(source, range, virtual_source, source_map),
@@ -219,32 +220,28 @@ pub(crate) fn append_raw_range(
     source: &str,
     range: Range<usize>,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     let slice = &source[range.clone()];
     virtual_source.push_str(slice);
-    for offset in 0..slice.len() {
-        source_map.push((range.start + offset)..(range.start + offset + 1));
-    }
+    source_map.identity(range);
 }
 
 pub(crate) fn append_mapped_text(
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
     source_range: Range<usize>,
     text: &str,
 ) {
     virtual_source.push_str(text);
-    for _ in 0..text.len() {
-        source_map.push(source_range.clone());
-    }
+    source_map.decoded(text.len(), source_range);
 }
 
 pub(crate) fn decode_javascript_string_content(
     source: &str,
     range: Range<usize>,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     match surrounding_delimiter(source, &range) {
         Some('\'') | Some('"') => decode_backslash_escaped_range(
@@ -262,7 +259,7 @@ pub(crate) fn decode_javascript_string_literal(
     source: &str,
     range: Range<usize>,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     let slice = &source[range.clone()];
     if slice.len() >= 2
@@ -284,7 +281,7 @@ pub(crate) fn decode_python_string_content(
     source: &str,
     range: Range<usize>,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     if python_string_is_raw(source, &range) {
         append_raw_range(source, range, virtual_source, source_map);
@@ -303,7 +300,7 @@ pub(crate) fn decode_python_string_literal(
     source: &str,
     range: Range<usize>,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     let slice = &source[range.clone()];
     let Some((content_start, content_end)) = python_string_literal_content_bounds(slice) else {
@@ -319,7 +316,7 @@ pub(crate) fn decode_rust_string_content(
     source: &str,
     range: Range<usize>,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     if rust_string_is_raw(source, &range) {
         append_raw_range(source, range, virtual_source, source_map);
@@ -338,7 +335,7 @@ pub(crate) fn decode_go_string_content(
     source: &str,
     range: Range<usize>,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     match surrounding_delimiter(source, &range) {
         Some('`') => append_raw_range(source, range, virtual_source, source_map),
@@ -367,7 +364,7 @@ pub(crate) fn decode_backslash_escaped_range(
     range: Range<usize>,
     flavor: DecodeFlavor,
     virtual_source: &mut String,
-    source_map: &mut Vec<Range<usize>>,
+    source_map: &mut SourceMap,
 ) {
     let slice = &source[range.clone()];
     let bytes = slice.as_bytes();
@@ -568,36 +565,12 @@ pub(crate) fn shared_leading_indent(source: &str, ranges: &[Range<usize>]) -> us
 
 pub(crate) fn map_virtual_spans_to_source(
     virtual_spans: &[StyledSpan],
-    source_map: &[Range<usize>],
+    source_map: &SourceMap,
 ) -> Vec<StyledSpan> {
     let mut mapped = Vec::new();
 
     for span in virtual_spans {
-        let mut active_range: Option<Range<usize>> = None;
-
-        for index in span.range.clone() {
-            let mapped_range = source_map.get(index).cloned().unwrap_or(0..0);
-            if mapped_range.start == mapped_range.end {
-                if let Some(range) = active_range.take() {
-                    push_span(&mut mapped, range, span.style, span.hyperlink.clone());
-                }
-                continue;
-            }
-
-            match &mut active_range {
-                Some(current) if *current == mapped_range || current.end == mapped_range.start => {
-                    current.end = mapped_range.end;
-                }
-                Some(current) => {
-                    let finished = current.clone();
-                    *current = mapped_range;
-                    push_span(&mut mapped, finished, span.style, span.hyperlink.clone());
-                }
-                None => active_range = Some(mapped_range),
-            }
-        }
-
-        if let Some(range) = active_range {
+        for range in source_map.ranges(span.range.clone()) {
             push_span(&mut mapped, range, span.style, span.hyperlink.clone());
         }
     }
@@ -608,32 +581,12 @@ pub(crate) fn map_virtual_spans_to_source(
 pub(crate) fn map_virtual_regions_to_source(
     source: &str,
     virtual_regions: &[VisualRegion],
-    source_map: &[Range<usize>],
+    source_map: &SourceMap,
 ) -> Vec<VisualRegion> {
     let mut mapped = Vec::new();
 
     for region in virtual_regions {
-        let mut segments = Vec::with_capacity(region.segments.len());
-        for segment in &region.segments {
-            let mapped_left = source_map
-                .get(segment.left)
-                .map(|range| range.start)
-                .unwrap_or(0);
-            let mapped_text_end = if segment.left < segment.text_end {
-                source_map
-                    .get(segment.text_end.saturating_sub(1))
-                    .map(|range| range.end)
-                    .unwrap_or(mapped_left)
-            } else {
-                mapped_left
-            };
-            segments.push(RegionSegment {
-                line_start: line_start_offset(source, mapped_left),
-                left: mapped_left,
-                text_end: mapped_text_end,
-                left_column_override: segment.left_column_override,
-            });
-        }
+        let segments = map_virtual_region_segments_to_source(source, &region.segments, source_map);
         mapped.push(VisualRegion {
             visual_kind: region.visual_kind,
             visual_level: region.visual_level,
@@ -654,7 +607,7 @@ pub(crate) fn map_virtual_regions_to_source(
 pub(crate) fn map_virtual_nested_regions_to_source(
     source: &str,
     virtual_regions: &[NestedRegion],
-    source_map: &[Range<usize>],
+    source_map: &SourceMap,
 ) -> Vec<NestedRegion> {
     let mut mapped = Vec::with_capacity(virtual_regions.len());
 
@@ -692,30 +645,27 @@ pub(crate) fn map_virtual_nested_regions_to_source(
 pub(crate) fn map_virtual_region_segments_to_source(
     source: &str,
     virtual_segments: &[RegionSegment],
-    source_map: &[Range<usize>],
+    source_map: &SourceMap,
 ) -> Vec<RegionSegment> {
-    let mut segments = Vec::with_capacity(virtual_segments.len());
-
+    let mut segments = Vec::new();
     for segment in virtual_segments {
-        let mapped_left = source_map
-            .get(segment.left)
-            .map(|range| range.start)
-            .unwrap_or(0);
-        let mapped_text_end = if segment.left < segment.text_end {
-            source_map
-                .get(segment.text_end.saturating_sub(1))
-                .map(|range| range.end)
-                .unwrap_or(mapped_left)
+        let ranges = if segment.left < segment.text_end {
+            source_map.ranges(segment.left..segment.text_end)
         } else {
-            mapped_left
+            source_map
+                .anchor(segment.left)
+                .into_iter()
+                .map(|point| point..point)
+                .collect()
         };
-        segments.push(RegionSegment {
-            line_start: line_start_offset(source, mapped_left),
-            left: mapped_left,
-            text_end: mapped_text_end,
-            left_column_override: segment.left_column_override,
-        });
+        for range in ranges {
+            segments.push(RegionSegment {
+                line_start: line_start_offset(source, range.start),
+                left: range.start,
+                text_end: range.end,
+                left_column_override: segment.left_column_override,
+            });
+        }
     }
-
     segments
 }

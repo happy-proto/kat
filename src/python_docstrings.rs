@@ -1,4 +1,5 @@
 use crate::language_runtime::RuntimeId;
+use crate::source_map::SourceMap;
 use std::ops::Range;
 
 use anyhow::Result;
@@ -511,23 +512,18 @@ fn doctest_code_range(line: DocstringLine<'_>) -> Option<Range<usize>> {
     None
 }
 
-fn build_doctest_virtual_source(
-    source: &str,
-    session: &DoctestSession,
-) -> (String, Vec<Range<usize>>) {
+fn build_doctest_virtual_source(source: &str, session: &DoctestSession) -> (String, SourceMap) {
     let mut virtual_source = String::new();
-    let mut source_map = Vec::new();
+    let mut source_map = SourceMap::default();
 
     for (index, range) in session.code_ranges.iter().enumerate() {
         let slice = &source[range.clone()];
         virtual_source.push_str(slice);
-        for offset in 0..slice.len() {
-            source_map.push((range.start + offset)..(range.start + offset + 1));
-        }
+        source_map.identity(range.clone());
 
         if index + 1 < session.code_ranges.len() {
             virtual_source.push('\n');
-            source_map.push(0..0);
+            source_map.synthetic(1);
         }
     }
 
