@@ -68,7 +68,7 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 
 ## GitHub Actions 依赖
 
-Workflow 的外部 action 使用可读的版本标签，实际执行的 commit 与来源仓库身份由 [actions.lock](../.github/workflows/actions.lock) 固定。Rust action 使用 `@v1`，通过 `toolchain: stable` 选择编译器；锁文件只固定 action 代码，不固定它下载的 Rust、工具或系统软件包。同仓库 action 使用 `$/…`，始终解析到当前运行的 commit。
+Workflow 的外部 action 优先使用上游提供的主版本标签（例如 `@v7`），实际执行的 commit 与来源仓库身份由 [actions.lock](../.github/workflows/actions.lock) 固定。`sccache-action` 上游未提供主版本标签，保留其完整版本引用。Rust action 使用 `@v1`，通过 `toolchain: stable` 选择编译器；锁文件只固定 action 代码，不固定它下载的 Rust、工具或系统软件包。同仓库 action 使用 `$/…`，始终解析到当前运行的 commit。
 
 [官方锁文件工具](https://github.com/github/gh-actions-lock) 作为 GitHub CLI 扩展按需安装，直接使用官方命令生成和校验。生成与在线校验需要 GitHub CLI 的登录凭据，或通过 `GH_TOKEN` / `GITHUB_TOKEN` 提供令牌：
 
@@ -83,6 +83,14 @@ gh actions-lock --verify
 普通生成保留已有锁定。需要主动更新 `@v1` 等可移动引用时，先审查上游变化，再运行 `gh actions-lock --relock --no-narrow`。审查锁文件时关注 commit 变化；来源仓库的 `owner_id` / `repo_id` 变化需要确认仓库身份。
 
 修改 workflow / action 或锁文件时，hk 提交前检查通过 `gh actions-lock --verify-local` 离线验证依赖覆盖，需要先安装扩展；CI 通过 `gh actions-lock --verify` 在线验证锁定 commit、引用与仓库身份。此功能仍处于 GitHub 公开预览；仓库级 Require lockfile 策略是额外的平台设置，当前接入依赖已登记 workflow 的原生执行约束与 CI 校验。
+
+[jactionlint](https://github.com/jdx/jactionlint) 与 ShellCheck 由 mise 安装，hk 和 CI 使用相同的离线检查入口，覆盖 workflow、同仓库 composite action、Dependabot 配置及 lockfile：
+
+```bash
+mise exec -- hk check --all --step jactionlint
+```
+
+检查配置见 [jactionlint.yaml](../.github/jactionlint.yaml)。使用默认规则集，仅关闭发布冷却期要求，保留项目现有的 Dependabot 更新节奏；检查不联网，锁文件的上游身份与 commit 在线校验继续使用 GitHub 官方工具。
 
 ## Release 与分发
 

@@ -31,7 +31,7 @@ kat path/to/image.png
 
 ## 继续了解
 
-- [GitHub Actions 依赖锁定与更新](docs/maintenance.md#github-actions-依赖)
+- [GitHub Actions 依赖锁定与检查](docs/maintenance.md#github-actions-依赖)
 - [使用指南](docs/usage.md)：viewer 操作、图片选项和 shell 补全
 - [语言支持](docs/language-coverage.md)：支持范围与检测边界
 - [开发与维护](docs/maintenance.md)：mise 工具与任务、检查和源码安装

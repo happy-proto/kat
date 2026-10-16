@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jdx/jactionlint/main/schema/jactionlint-config.json
+profile: default
+
+rules:
+  # 保持项目现有的依赖更新节奏，不额外引入发布冷却期。
+  dependabot-cooldown: off

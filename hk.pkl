@@ -17,6 +17,10 @@ steps {
     glob = List(".github/workflows/*.yml", ".github/workflows/*.yaml", ".github/workflows/actions.lock", "**/action.yml", "**/action.yaml")
     check = "gh actions-lock --verify-local"
   }
+  ["jactionlint"] {
+    glob = List(".github/workflows/*.yml", ".github/workflows/*.yaml", ".github/workflows/actions.lock", ".github/dependabot.yml", ".github/dependabot.yaml", ".github/jactionlint.yaml", "**/action.yml", "**/action.yaml", "mise.toml")
+    check = "jactionlint --no-online --shellcheck shellcheck"
+  }
   ["script-lint"] {
     glob = "scripts/*.py"
     check = "uvx ruff check {{files}}"
