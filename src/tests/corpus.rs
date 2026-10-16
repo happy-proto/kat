@@ -1262,6 +1262,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         expected_fragments: &["layout", "theme", "dracula", "panel", "Preview"],
     },
     FixtureCase {
+        relative_path: "xml/theme.tmTheme",
+        expect_highlight: true,
+        expected_fragments: &["DOCTYPE", "plist", "Kat &amp; Code", "#F8F8F2", "fontStyle"],
+    },
+    FixtureCase {
         relative_path: "make/Makefile",
         expect_highlight: true,
         expected_fragments: &["build", "cargo", "install", "/usr/local/bin/kat"],

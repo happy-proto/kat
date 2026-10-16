@@ -3,6 +3,40 @@ use std::path::Path;
 use kat::{HighlightStyle, PreparedDocument, RenderOptions};
 
 #[test]
+fn tmtheme_files_detect_and_highlight_as_xml() {
+    let source = include_str!("../testdata/fixtures/xml/theme.tmTheme");
+    for path in ["theme.tmTheme", ".codex/themes/custom.tmTheme"] {
+        assert_eq!(
+            kat::detected_language_name(Some(Path::new(path)), source),
+            Some("xml"),
+            "{path}"
+        );
+        assert_eq!(
+            document(path, source).spans(),
+            document("theme.xml", source).spans()
+        );
+    }
+    for (needle, offset, expected) in [
+        ("<plist", 1, (255, 121, 198)),
+        ("<key>", 1, (255, 121, 198)),
+        ("<plist version", 7, (248, 248, 242)),
+        ("version=\"1.0\">", 9, (241, 250, 140)),
+        ("Default colors", 0, (98, 114, 164)),
+        ("&amp;", 0, (189, 147, 249)),
+    ] {
+        assert_eq!(
+            style_at(source, needle, offset, "theme.tmTheme").foreground,
+            expected,
+            "{needle}"
+        );
+    }
+    assert_ne!(
+        kat::detected_language_name(Some(Path::new("theme.tmTheme.bak")), source),
+        Some("xml")
+    );
+}
+
+#[test]
 fn public_key_trailing_comment_has_one_comment_style() {
     let source = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample dcjanusmacbook-pro tailnet\n";
     assert_eq!(
