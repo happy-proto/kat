@@ -74,13 +74,13 @@ Workflow 的外部 action 使用可读的版本标签，实际执行的 commit �
 
 ```bash
 gh extension install github/gh-actions-lock
-gh actions-lock
+gh actions-lock --no-narrow
 gh actions-lock --verify
 ```
 
-添加、删除或修改 workflow / action 的 `uses` 后，运行生成命令并一起提交 workflow 与锁文件；不要手工编辑锁文件。已有 GitHub Actions Dependabot 配置会在版本更新 PR 中同步维护锁文件，但不会自动接入新 workflow。
+添加、删除或修改 workflow / action 的 `uses` 后，运行生成命令并一起提交 workflow 与锁文件；不要手工编辑锁文件。使用 `--no-narrow` 保留声明的版本范围，例如 checkout 的 `@v7`，避免工具自动收窄到完整版本标签。已有 GitHub Actions Dependabot 配置会在版本更新 PR 中同步维护锁文件，但不会自动接入新 workflow。
 
-普通生成保留已有锁定。需要主动更新 `@v1` 等可移动引用时，先审查上游变化，再运行 `gh actions-lock --relock`。审查锁文件时关注 commit 变化；来源仓库的 `owner_id` / `repo_id` 变化需要确认仓库身份。
+普通生成保留已有锁定。需要主动更新 `@v1` 等可移动引用时，先审查上游变化，再运行 `gh actions-lock --relock --no-narrow`。审查锁文件时关注 commit 变化；来源仓库的 `owner_id` / `repo_id` 变化需要确认仓库身份。
 
 修改 workflow / action 或锁文件时，hk 提交前检查通过 `gh actions-lock --verify-local` 离线验证依赖覆盖，需要先安装扩展；CI 通过 `gh actions-lock --verify` 在线验证锁定 commit、引用与仓库身份。此功能仍处于 GitHub 公开预览；仓库级 Require lockfile 策略是额外的平台设置，当前接入依赖已登记 workflow 的原生执行约束与 CI 校验。
 
