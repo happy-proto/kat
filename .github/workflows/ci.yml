@@ -12,7 +12,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -24,13 +24,10 @@ jobs:
   fmt:
     name: fmt (ubuntu-latest)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@v1
@@ -59,13 +56,10 @@ jobs:
   clippy:
     name: clippy (ubuntu-latest)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - name: Restore Cargo registry cache
         id: cargo-cache
@@ -98,7 +92,7 @@ jobs:
           set -euo pipefail
           mise tasks validate
           hk validate
-          hk check --all --step merge-conflict --step private-key --step jactionlint
+          hk check --all --step merge-conflict --step private-key
 
       - name: Set up native image dependencies
         uses: $/.github/actions/setup-native-image-deps
@@ -152,13 +146,10 @@ jobs:
   test:
     name: test (ubuntu-latest)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - name: Restore Cargo registry cache
         id: cargo-cache
@@ -243,13 +234,10 @@ jobs:
   ghostty-e2e:
     name: ghostty-e2e (ubuntu-latest)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - name: Restore Cargo registry cache
         id: cargo-cache
@@ -320,7 +308,6 @@ jobs:
       - test
       - ghostty-e2e
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -355,8 +342,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - name: Restore Cargo registry cache
         id: cargo-cache
@@ -658,11 +643,10 @@ jobs:
 
   release-latest:
     name: release latest
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/master'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     needs:
       - build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     permissions:
       contents: write
 

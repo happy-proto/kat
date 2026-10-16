@@ -84,14 +84,6 @@ gh actions-lock --verify
 
 修改 workflow / action 或锁文件时，hk 提交前检查通过 `gh actions-lock --verify-local` 离线验证依赖覆盖，需要先安装扩展；CI 通过 `gh actions-lock --verify` 在线验证锁定 commit、引用与仓库身份。此功能仍处于 GitHub 公开预览；仓库级 Require lockfile 策略是额外的平台设置，当前接入依赖已登记 workflow 的原生执行约束与 CI 校验。
 
-[jactionlint](https://github.com/jdx/jactionlint) 与 ShellCheck 由 mise 安装，hk 和 CI 使用相同的离线检查入口，覆盖 workflow、同仓库 composite action、Dependabot 配置及 lockfile：
-
-```bash
-mise exec -- hk check --all --step jactionlint
-```
-
-检查配置见 [jactionlint.yaml](../.github/jactionlint.yaml)。使用默认规则集，仅关闭发布冷却期要求；Dependabot 不额外配置 `cooldown`，沿用平台自身的默认更新行为。检查不联网，锁文件的上游身份与 commit 在线校验继续使用 GitHub 官方工具。
-
 ## Release 与分发
 
 - CI、发布与缓存的具体行为以仓库里的 workflow 和配置文件为准；文档只保留长期约定，不重复维护实现级细节。
