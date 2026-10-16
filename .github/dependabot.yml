@@ -7,6 +7,8 @@ updates:
       interval: daily
       time: "09:00"
       timezone: Asia/Shanghai
+    cooldown:
+      default-days: 7
     groups:
       patch-updates:
         applies-to: version-updates
@@ -25,6 +27,8 @@ updates:
       day: monday
       time: "09:30"
       timezone: Asia/Shanghai
+    cooldown:
+      default-days: 7
     groups:
       non-major-updates:
         applies-to: version-updates
