@@ -2407,7 +2407,7 @@ highlight_names = [
 
 [[grammar]]
 name = "xml"
-extensions = ["xml", "xsd", "xslt", "tld", "dtml", "rng", "rss", "opml", "svg", "xaml", "csproj", "vbproj", "props", "targets"]
+extensions = ["xml", "xsd", "xslt", "tld", "dtml", "rng", "rss", "opml", "svg", "xaml", "csproj", "vbproj", "props", "targets", "tmTheme"]
 filenames = []
 shebang_substrings = []
 highlight_names = [

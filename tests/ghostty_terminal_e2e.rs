@@ -28,6 +28,32 @@ const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn kat_renders_tmtheme_as_xml() -> TestResult {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/xml/theme.tmTheme");
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        120,
+        32,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(120, 32, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+    assert!(rendered.screen_text().contains("#F8F8F2"));
+    for (text, expected, italic) in [
+        ("DOCTYPE", (255, 121, 198), false),
+        ("<key>", (255, 121, 198), false),
+        ("Default colors", (98, 114, 164), true),
+        ("&amp;", (189, 147, 249), false),
+    ] {
+        rendered.assert_text_style(text, expected, italic)?;
+    }
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
 fn kat_renders_pkl_and_hk_commands_with_host_and_shell_styles() -> TestResult {
     for (file, styles) in [
         (

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>name</key>
+  <string>Kat &amp; Code</string>
+  <key>settings</key>
+  <array>
+    <!-- Default colors -->
+    <dict>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key><string>#F8F8F2</string>
+        <key>background</key><string>#282A36</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key><string>comment, punctuation.definition.comment</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key><string>#6272A4</string>
+        <key>fontStyle</key><string>italic</string>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>
