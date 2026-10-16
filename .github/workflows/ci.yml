@@ -27,11 +27,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
         with:
+          toolchain: stable
           components: rustfmt
 
       - name: Run rustfmt check
@@ -42,7 +43,7 @@ jobs:
           bash scripts/tests/zig-download-retry.sh
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v7.6.0
 
       - name: Check hook scripts and file syntax
         shell: bash
@@ -58,11 +59,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -70,12 +71,20 @@ jobs:
           key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
         with:
+          toolchain: stable
           components: clippy
 
       - name: Set up mise toolchain
-        uses: jdx/mise-action@v4
+        uses: jdx/mise-action@v4.3.0
+
+      - name: Verify workflow dependency lockfile
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh extension install github/gh-actions-lock --pin v0.2.0
+          gh actions-lock --verify
 
       - name: Validate hook configuration and basic checks
         shell: bash
@@ -86,7 +95,7 @@ jobs:
           hk check --all --step merge-conflict --step private-key
 
       - name: Set up native image dependencies
-        uses: ./.github/actions/setup-native-image-deps
+        uses: $/.github/actions/setup-native-image-deps
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.11
@@ -111,7 +120,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -120,7 +129,7 @@ jobs:
 
       - name: Collect clippy observability artifacts
         if: always()
-        uses: ./.github/actions/observability
+        uses: $/.github/actions/observability
         with:
           artifact-name: kat-clippy-observability-ubuntu-latest
           summary-title: Clippy observability
@@ -128,7 +137,7 @@ jobs:
 
       - name: Upload clippy observability artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: kat-clippy-observability-ubuntu-latest
           path: ${{ runner.temp }}/kat-clippy-observability
@@ -140,11 +149,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -152,10 +161,12 @@ jobs:
           key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
 
       - name: Set up native image dependencies
-        uses: ./.github/actions/setup-native-image-deps
+        uses: $/.github/actions/setup-native-image-deps
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.11
@@ -196,7 +207,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -205,7 +216,7 @@ jobs:
 
       - name: Collect test observability artifacts
         if: always()
-        uses: ./.github/actions/observability
+        uses: $/.github/actions/observability
         with:
           artifact-name: kat-test-observability-ubuntu-latest
           summary-title: Test observability
@@ -214,7 +225,7 @@ jobs:
 
       - name: Upload test observability artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: kat-test-observability-ubuntu-latest
           path: ${{ runner.temp }}/kat-test-observability
@@ -226,11 +237,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -238,13 +249,15 @@ jobs:
           key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
 
       - name: Set up mise toolchain
-        uses: jdx/mise-action@v4
+        uses: jdx/mise-action@v4.3.0
 
       - name: Set up native image dependencies
-        uses: ./.github/actions/setup-native-image-deps
+        uses: $/.github/actions/setup-native-image-deps
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.11
@@ -278,7 +291,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -328,11 +341,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Restore Cargo registry cache
         id: cargo-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -340,21 +353,22 @@ jobs:
           key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
         with:
+          toolchain: stable
           targets: ${{ matrix.target }}
 
       - name: Set up native image dependencies
-        uses: ./.github/actions/setup-native-image-deps
+        uses: $/.github/actions/setup-native-image-deps
         with:
           target: ${{ matrix.target }}
 
       - name: Set up uv for parser table packing
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v7.6.0
 
       - name: Set up MSVC for parser table extraction
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@v1.13.0
         with:
           arch: ${{ matrix.target == 'aarch64-pc-windows-msvc' && 'amd64_arm64' || 'amd64' }}
 
@@ -559,7 +573,7 @@ jobs:
 
       - name: Save Cargo registry cache
         if: always() && (github.ref_name == 'master' || steps.cargo-cache.outputs.cache-hit != 'true')
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@v6.1.0
         with:
           path: |
             ~/.cargo/registry/cache
@@ -569,7 +583,7 @@ jobs:
       - name: Collect build observability artifacts
         if: always()
         id: build-observability
-        uses: ./.github/actions/observability
+        uses: $/.github/actions/observability
         with:
           artifact-name: kat-build-observability-${{ matrix.target }}
           summary-title: Build observability
@@ -613,7 +627,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: kat-release-package-${{ matrix.target }}
           path: ${{ env.PACKAGE_PATH }}
@@ -621,7 +635,7 @@ jobs:
 
       - name: Upload build observability artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: kat-build-observability-${{ matrix.target }}
           path: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
@@ -638,12 +652,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
       - name: Download latest release packages
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v8.0.2
         with:
           pattern: kat-release-package-*
           path: ${{ runner.temp }}/latest-release-assets

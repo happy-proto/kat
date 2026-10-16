@@ -66,6 +66,24 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 - 全项目 Rust 检查始终执行，顺序为格式、Clippy、`mise run test`，避免 Cargo 构建争用；测试入口同时覆盖 Zig 下载重试回归。
 - 调整检查范围时先修改 [hk.pkl](../hk.pkl)，再按需同步文档、任务入口和 CI，检查项不在文档里重复维护。
 
+## GitHub Actions 依赖
+
+Workflow 的外部 action 使用可读的版本标签，实际执行的 commit 与来源仓库身份由 [actions.lock](../.github/workflows/actions.lock) 固定。Rust action 使用 `@v1`，通过 `toolchain: stable` 选择编译器；锁文件只固定 action 代码，不固定它下载的 Rust、工具或系统软件包。同仓库 action 使用 `$/…`，始终解析到当前运行的 commit。
+
+[官方锁文件工具](https://github.com/github/gh-actions-lock) 作为 GitHub CLI 扩展按需安装，直接使用官方命令生成和校验。生成与在线校验需要 GitHub CLI 的登录凭据，或通过 `GH_TOKEN` / `GITHUB_TOKEN` 提供令牌：
+
+```bash
+gh extension install github/gh-actions-lock
+gh actions-lock
+gh actions-lock --verify
+```
+
+添加、删除或修改 workflow / action 的 `uses` 后，运行生成命令并一起提交 workflow 与锁文件；不要手工编辑锁文件。已有 GitHub Actions Dependabot 配置会在版本更新 PR 中同步维护锁文件，但不会自动接入新 workflow。
+
+普通生成保留已有锁定。需要主动更新 `@v1` 等可移动引用时，先审查上游变化，再运行 `gh actions-lock --relock`。审查锁文件时关注 commit 变化；来源仓库的 `owner_id` / `repo_id` 变化需要确认仓库身份。
+
+修改 workflow / action 或锁文件时，hk 提交前检查通过 `gh actions-lock --verify-local` 离线验证依赖覆盖，需要先安装扩展；CI 通过 `gh actions-lock --verify` 在线验证锁定 commit、引用与仓库身份。此功能仍处于 GitHub 公开预览；仓库级 Require lockfile 策略是额外的平台设置，当前接入依赖已登记 workflow 的原生执行约束与 CI 校验。
+
 ## Release 与分发
 
 - CI、发布与缓存的具体行为以仓库里的 workflow 和配置文件为准；文档只保留长期约定，不重复维护实现级细节。
