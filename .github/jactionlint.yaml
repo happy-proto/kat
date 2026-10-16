@@ -1,2 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/jdx/jactionlint/main/schema/jactionlint-config.json
 profile: default
+
+rules:
+  # 不额外配置发布冷却期，沿用 Dependabot 自身的默认更新行为。
+  dependabot-cooldown: off

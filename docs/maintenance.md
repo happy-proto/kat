@@ -90,7 +90,7 @@ gh actions-lock --verify
 mise exec -- hk check --all --step jactionlint
 ```
 
-检查配置见 [jactionlint.yaml](../.github/jactionlint.yaml)。使用完整的默认规则集，不单独关闭规则；检查不联网，锁文件的上游身份与 commit 在线校验继续使用 GitHub 官方工具。Dependabot 保留已有检查频率，并为 Cargo 与 Actions 的版本更新设置 7 天发布冷却期，避免新版本刚发布就提升级 PR。
+检查配置见 [jactionlint.yaml](../.github/jactionlint.yaml)。使用默认规则集，仅关闭发布冷却期要求；Dependabot 不额外配置 `cooldown`，沿用平台自身的默认更新行为。检查不联网，锁文件的上游身份与 commit 在线校验继续使用 GitHub 官方工具。
 
 ## Release 与分发
 
