@@ -262,6 +262,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         expected_fragments: &["title", "Dracula", "true", "theme"],
     },
     FixtureCase {
+        relative_path: "yaml/actions.lock",
+        expect_highlight: true,
+        expected_fragments: &["workflows", "dependencies", "example/build@v1", "12345"],
+    },
+    FixtureCase {
         relative_path: "yaml/actions.yaml",
         expect_highlight: true,
         expected_fragments: &[

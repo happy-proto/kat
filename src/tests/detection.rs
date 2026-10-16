@@ -1140,6 +1140,34 @@ fn fish_variables_profile_detects_and_highlights_persistent_record_syntax() {
 }
 
 #[test]
+fn actions_lock_is_detected_as_plain_yaml_by_exact_filename() {
+    let fixture = fixture_path("yaml/actions.lock");
+    let source = read_file(&fixture);
+
+    for path in [
+        Path::new("actions.lock"),
+        Path::new(".github/workflows/actions.lock"),
+        fixture.as_path(),
+        Path::new("/example/project/.github/workflows/actions.lock"),
+    ] {
+        assert_eq!(
+            detect_document_kind(Some(path), &source),
+            Some(DocumentKind::plain(RuntimeId::Yaml)),
+            "{path:?}"
+        );
+    }
+
+    for path in [
+        Some(Path::new(".github/workflows/other.lock")),
+        Some(Path::new("actions.lock.bak")),
+        Some(Path::new("my-actions.lock")),
+        None,
+    ] {
+        assert_eq!(detect_document_kind(path, &source), None, "{path:?}");
+    }
+}
+
+#[test]
 fn cargo_lock_is_detected_as_toml() {
     let theme = Theme::for_mode(ColorMode::TrueColor);
     let path = fixture_path("toml/Cargo.lock");

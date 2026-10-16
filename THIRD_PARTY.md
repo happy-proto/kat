@@ -467,7 +467,7 @@ Upstream projects:
   Source: [tree-sitter-grammars/tree-sitter-yaml](https://github.com/tree-sitter-grammars/tree-sitter-yaml)
   Revision: `4463985dfccc640f3d6991e3396a2047610cf5f8`
   License: MIT
-  Notes: repository-local copy of the upstream YAML highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-yaml](https://crates.io/crates/tree-sitter-yaml).
+  Notes: repository-local copy of the upstream YAML highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-yaml](https://crates.io/crates/tree-sitter-yaml). GitHub Actions `actions.lock` files reuse this YAML integration without grammar or query changes; the synthetic lockfile fixture is repository-authored.
 
 - `grammars/hcl/queries/highlights.scm`
   Sources:
