@@ -1165,7 +1165,7 @@ highlight_names = [
 [[grammar]]
 name = "yaml"
 extensions = ["yaml", "yml", "cff"]
-filenames = [".clang-format", "CITATION.cff"]
+filenames = [".clang-format", "CITATION.cff", "actions.lock"]
 filename_prefixes = []
 shebang_substrings = []
 highlight_names = [

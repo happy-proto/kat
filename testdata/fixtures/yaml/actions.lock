@@ -1,0 +1,11 @@
+# Synthetic GitHub Actions dependency lockfile.
+version: 'v0.0.3'
+workflows:
+  '.github/workflows/ci.yml':
+    - 'example/build@v1'
+dependencies:
+  'example/build@v1':
+    ref: 'v1'
+    commit: 'sha1-1111111111111111111111111111111111111111'
+    owner_id: 12345
+    repo_id: 67890

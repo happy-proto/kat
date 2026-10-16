@@ -224,6 +224,7 @@ mise 配置已通过 TOML 的 `mise_config` profile 支持任务脚本嵌套高�
 | --- | --- | --- | --- |
 | `Cargo.toml` | 🟩 已支持 | `zed` 语言系统里也把 manifest 作为 Rust / TOML 生态的一部分使用。 | 已达标。 |
 | `Cargo.lock` / `uv.lock` | 🟩 已支持 | `zed` 设置系统可按语言自定义文件名映射。 | TOML 侧这类高频 lockfile 的检测缺口已经补上。 |
+| GitHub Actions `actions.lock` | 🟩 已支持 | 按精确文件名识别 `.github/workflows/actions.lock` 及其它目录中同名的副本，复用普通 YAML runtime 高亮注释、键、字符串和数字；不启用 workflow / action metadata profile，也不泛化匹配 `.lock` 或猜测 stdin 内容。 | 格式由 [GitHub Actions lockfile schema](https://github.com/github/actions-lockfile#schema) 定义，基础支持复用 YAML grammar。 | fixture 覆盖合成的 `v0.0.3` 锁文件；当前不对 action 引用或 commit 摘要做额外语义着色。 |
 | `go.mod` | 🟩 已支持 | 现已按文件名直接进入独立 `gomod` runtime，而不是复用 Go source runtime；`module` / `require` / `replace` / `exclude` / `retract` / `toolchain` 及 module path / version / local path 都有专门高亮。 | `zed` 一类成熟语言系统通常会把生态内关键文件名纳入识别范围。 | 这类 manifest 文件现在已经有了明确而稳定的专用处理路径。 |
 | `go.work` | 🟩 已支持 | 现已按文件名直接进入独立 `gowork` runtime；workspace path、`use` / `replace` directive 与版本字段都按 workspace 语义高亮。 | 参考成熟语言系统时，这类 workspace 文件通常也会与语言生态一并处理。 | 这类文件不再需要在 Go source 与 manifest 风格之间妥协。 |
 | `go.sum` | 🟩 已支持 | 现已按文件名直接进入独立 `gosum` runtime；module path、module version、pseudo-version、`go.mod` suffix、`h1:` 与 checksum value 都有专门 capture。 | `zed` 侧即便未必单独强调，也可视作 Go 生态常见文件名识别的一部分。 | `go.sum` 现在也不再只是“能认出来”，而是有自己合适的高亮语义。 |
@@ -314,7 +315,7 @@ mise 配置已通过 TOML 的 `mise_config` profile 支持任务脚本嵌套高�
 - `SQL`：`kat` 已覆盖 `sql`、`ddl`、`dml`
 - `Terraform`：`kat` 已覆盖 `hcl`、`tf`、`tfvars`
 - `TOML`：`kat` 已覆盖 `toml`、`Cargo.lock`、`uv.lock`；仍缺 `tml`、`Gopkg.lock`、`Pipfile`、`pdm.lock`、`poetry.lock`
-- `YAML`：`kat` 已覆盖 `yaml`、`yml`、`CITATION.cff`、`.clang-format`；仍缺 `sublime-syntax`、`fish_history`
+- `YAML`：`kat` 已覆盖 `yaml`、`yml`、`CITATION.cff`、`.clang-format`、`actions.lock`；仍缺 `sublime-syntax`、`fish_history`
 
 ## 后续细化优先级
 
