@@ -68,7 +68,7 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 
 ## CI 合并门槛
 
-分支规则只要求汇总检查 `CI required`；验证任务及依赖关系以 [ci.yml](../.github/workflows/ci.yml) 为准。汇总检查无论依赖成功或失败都执行，只有所有依赖均成功才通过；失败、取消或跳过都会阻止合并。PR 与 merge queue 均运行完整验证及构建，合并后的发布任务不纳入合并门槛。
+分支规则只要求汇总检查 `CI required`；验证任务及依赖关系以 [ci.yml](../.github/workflows/ci.yml) 为准。汇总检查无论依赖成功或失败都执行，只有所有依赖均成功才通过；失败、取消或跳过都会阻止合并。PR 与 merge queue 均运行完整验证及构建。发布由独立的 [release.yml](../.github/workflows/release.yml) 跟随默认分支的 CI 成功运行触发，不纳入合并门槛，也不在 PR 的 CI 中生成 skipped 发布检查。
 
 新增验证任务时，将其加入汇总检查的直接依赖。本地检查仍由 [hk.pkl](../hk.pkl) 管理，CI 汇总任务只检查结果，不重复执行本地检查命令。迁移 required check 时，先让新检查在 PR 中运行并验证，再切换分支规则，避免等待尚不存在的检查。
 

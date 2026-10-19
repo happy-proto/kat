@@ -6,7 +6,6 @@ workflows:
     '.github/workflows/ci.yml':
         - 'actions/cache@v6'
         - 'actions/checkout@v7'
-        - 'actions/download-artifact@v8'
         - 'actions/upload-artifact@v7'
         - 'astral-sh/setup-uv@v7'
         - 'dtolnay/rust-toolchain@v1'
@@ -14,6 +13,9 @@ workflows:
         - 'jdx/mise-action@v4'
         - 'mozilla-actions/sccache-action@v0.0.11'
         - 'taiki-e/install-action@v2'
+    '.github/workflows/release.yml':
+        - 'actions/checkout@v7'
+        - 'actions/download-artifact@v8'
 dependencies:
     'actions/cache@v6':
         ref: 'v6'
