@@ -301,7 +301,7 @@ jobs:
   build:
     name: >-
       build (${{ matrix.runner }} / ${{ matrix.target }})
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.ref == 'refs/heads/master'
     needs:
       - fmt
       - clippy
@@ -640,6 +640,24 @@ jobs:
           name: kat-build-observability-${{ matrix.target }}
           path: ${{ runner.temp }}/kat-build-observability-${{ matrix.target }}
           if-no-files-found: warn
+
+  ci-required:
+    name: CI required
+    if: always()
+    needs:
+      - fmt
+      - clippy
+      - test
+      - ghostty-e2e
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all validation jobs to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          printf '%s\n' "$NEEDS_JSON" | jq .
+          printf '%s\n' "$NEEDS_JSON" | jq -e 'all(.[]; .result == "success")'
 
   release-latest:
     name: release latest

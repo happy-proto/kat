@@ -66,6 +66,12 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 - 全项目 Rust 检查始终执行，顺序为格式、Clippy、`mise run test`，避免 Cargo 构建争用；测试入口同时覆盖 Zig 下载重试回归。
 - 调整检查范围时先修改 [hk.pkl](../hk.pkl)，再按需同步文档、任务入口和 CI，检查项不在文档里重复维护。
 
+## CI 合并门槛
+
+分支规则只要求汇总检查 `CI required`；验证任务及依赖关系以 [ci.yml](../.github/workflows/ci.yml) 为准。汇总检查无论依赖成功或失败都执行，只有所有依赖均成功才通过；失败、取消或跳过都会阻止合并。PR 与 merge queue 均运行完整验证及构建，合并后的发布任务不纳入合并门槛。
+
+新增验证任务时，将其加入汇总检查的直接依赖。本地检查仍由 [hk.pkl](../hk.pkl) 管理，CI 汇总任务只检查结果，不重复执行本地检查命令。迁移 required check 时，先让新检查在 PR 中运行并验证，再切换分支规则，避免等待尚不存在的检查。
+
 ## GitHub Actions 依赖
 
 Workflow 的外部 action 优先使用上游提供的主版本标签（例如 `@v7`），实际执行的 commit 与来源仓库身份由 [actions.lock](../.github/workflows/actions.lock) 固定。`sccache-action` 上游未提供主版本标签，保留其完整版本引用。Rust action 使用 `@v1`，通过 `toolchain: stable` 选择编译器；锁文件只固定 action 代码，不固定它下载的 Rust、工具或系统软件包。同仓库 action 使用 `$/…`，始终解析到当前运行的 commit。
