@@ -32,7 +32,7 @@ kat path/to/image.png
 ## 继续了解
 
 - [GitHub Actions 依赖锁定](docs/maintenance.md#github-actions-依赖)
-- [CI 合并门槛](docs/maintenance.md#ci-合并门槛)
+- [CI 合并门槛](docs/maintenance.md#ci-合并门槛)：PR 验证汇总为一个 required check，完整发布构建在默认分支执行
 - [本地提交检查](docs/maintenance.md#提交前检查)：格式、Clippy 与基础检查；完整测试使用 `mise run test`
 - [使用指南](docs/usage.md)：viewer 操作、图片选项和 shell 补全
 - [语言支持](docs/language-coverage.md)：支持范围与检测边界
