@@ -384,54 +384,9 @@ jobs:
           path: ${{ runner.temp }}/latest-release-assets
           merge-multiple: true
 
-      - name: Move latest tag to current commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch --tags origin
-          git tag -f latest "${RELEASE_SHA}"
-          git push --force origin refs/tags/latest
-
       - name: Publish latest release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ASSET_DIR: ${{ runner.temp }}/latest-release-assets
-        run: |
-          set -euo pipefail
-
-          notes_file="${RUNNER_TEMP}/latest-release-notes.md"
-
-          cat > "${notes_file}" <<EOF
-          latest channel for the current master tip.
-
-          - Branch: \`master\`
-          - Commit: \`${RELEASE_SHA}\`
-          - Commit URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${RELEASE_SHA}
-          EOF
-
-          if gh release view latest >/dev/null 2>&1; then
-            gh release edit latest \
-              --title "latest" \
-              --notes-file "${notes_file}" \
-              --prerelease
-          else
-            gh release create latest \
-              --title "latest" \
-              --notes-file "${notes_file}" \
-              --prerelease \
-              --latest=false \
-              --target "${RELEASE_SHA}"
-          fi
-
-          gh release upload latest "${RELEASE_ASSET_DIR}"/* --clobber
-
-          # Keep latest assets aligned with the current build matrix and archive format.
-          gh release view latest --json assets \
-            --jq '.assets[].name | select(startswith("kat-"))' \
-            > "${RUNNER_TEMP}/latest-release-package-names.txt"
-          while IFS= read -r asset; do
-            if [[ ! -f "${RELEASE_ASSET_DIR}/${asset}" ]]; then
-              gh release delete-asset latest "${asset}" --yes
-            fi
-          done < "${RUNNER_TEMP}/latest-release-package-names.txt"
+        run: bash scripts/publish-latest.sh

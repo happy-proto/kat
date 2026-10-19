@@ -41,6 +41,7 @@ jobs:
           set -euo pipefail
           cargo fmt --check
           bash scripts/tests/zig-download-retry.sh
+          bash scripts/tests/publish-latest.sh
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
