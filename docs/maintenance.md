@@ -58,6 +58,10 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 
 在本地 checkout 中使用 `mise run install`。源码安装统一使用仓库的 `Cargo.lock`。
 
+## 依赖管理
+
+`Cargo.toml` 中的 Git 依赖（例如 `tree-sitter-kat-parsers`）声明仓库来源，不用 `rev` 固定具体提交。具体提交只由纳入版本控制的 `Cargo.lock` 锁定，依赖更新通过 Cargo 完成。
+
 ## 提交前检查
 
 - 本地提交前检查统一收敛到根目录的 [hk.pkl](../hk.pkl)，手动运行全部提交检查使用 `mise exec -- hk check --all`。
