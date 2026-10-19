@@ -60,11 +60,17 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 
 ## 提交前检查
 
-- 本地提交前检查统一收敛到根目录的 [hk.pkl](../hk.pkl)，手动完整检查使用 `mise exec -- hk check --all`。
+- 本地提交前检查统一收敛到根目录的 [hk.pkl](../hk.pkl)，手动运行全部提交检查使用 `mise exec -- hk check --all`。
 - 提交时保存未暂存改动，只检查暂存版本，不自动修复或暂存；完成后恢复未暂存改动。
 - TOML / YAML 语法检查由 [check-config.py](../scripts/check-config.py) 承载，使用 `uv` 管理脚本依赖。`check <文件...>` 校验文件，`self-test` 运行内建回归测试，并接入标准测试入口；命令行契约由 Typer 声明，语法测试直接调用文件解析函数。其它检查优先复用 hk 工具和现有命令。
-- 全项目 Rust 检查始终执行，顺序为格式、Clippy、`mise run test`，避免 Cargo 构建争用；测试入口同时覆盖 Zig 下载重试回归。
+- 提交前始终执行全项目格式检查和 Clippy，按顺序运行以避免 Cargo 构建争用。完整测试涉及 workspace 编译与执行，不挂在提交 hook 中；按改动风险手动执行 `mise run test`，并由 CI 作为合并门槛验证。测试入口同时覆盖 Zig 下载重试回归。
 - 调整检查范围时先修改 [hk.pkl](../hk.pkl)，再按需同步文档、任务入口和 CI，检查项不在文档里重复维护。
+
+## CI 合并门槛
+
+分支规则只要求汇总检查 `CI required`；验证任务及依赖关系以 [ci.yml](../.github/workflows/ci.yml) 为准。汇总检查无论依赖成功或失败都执行，只有所有依赖均成功才通过；失败、取消或跳过都会阻止合并。PR 与 merge queue 运行验证，不执行完整发布构建。完整发布构建与发布由独立的 [release.yml](../.github/workflows/release.yml) 跟随默认分支的 CI 成功运行触发，使用已验证的提交，不纳入合并门槛，也不在 PR 的 CI 中生成 skipped 构建或发布检查。
+
+新增验证任务时，将其加入汇总检查的直接依赖。本地检查仍由 [hk.pkl](../hk.pkl) 管理，CI 汇总任务只检查结果，不重复执行本地检查命令。迁移 required check 时，先让新检查在 PR 中运行并验证，再切换分支规则，避免等待尚不存在的检查。
 
 ## GitHub Actions 依赖
 
