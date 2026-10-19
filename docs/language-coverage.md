@@ -64,6 +64,7 @@
 
 - `.jam`、`Jamfile`、`Jamfile.v2`、`Jamroot`、`Jambase` 及其小写文件名使用独立 `jam` runtime；显式语言和 Markdown fence 接受 `jam`、`bjam`、`boost-build`。不根据无扩展名文件内容猜测。
 - 覆盖规则定义与调用、列表参数、赋值、嵌套变量展开、引号字符串、B2 属性、条件、循环、switch、module/class、include、目标作用域及 `@(...)` 文件生成语法。parser 按 B2 官方语法在 `kat-parsers` 独立维护，与同名 Jam 编程语言无关。
+- 按 B2 默认的空白分词方式保留嵌入标点、带引号或变量后缀的单词、字面量 `$`、转义换行、switch glob 与带括号的变量内容；支持计算得到的变量名和带类型的规则参数。parser 测试保留原始 B2 核心语言语料及正反例，高亮测试另行锁定引号中的 `#` 和参数类型样式。
 - 这是基础源码高亮，不执行 B2 构建或语义校验；actions 正文保留为原始命令文本，不假设其平台或 shell。
 
 ### Graph::Easy

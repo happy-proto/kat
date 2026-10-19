@@ -1,0 +1,12 @@
+# Minimized B2 lexical and language regressions
+rule report ( [path] file )
+{
+    local [ variable-names ] = pre$(file)suffix ;
+    local header = "#include <demo.h>" ;
+    local fallback = $(file:E=(none)) ;
+    local record = [$(file:G=:J=",")"] " ;
+    ECHO ^(.*)$ $ $$(file) ;
+    switch $(file) { case *[a-z]* : return $(fallback) ; }
+}
+local multiline = "first\
+second" ;

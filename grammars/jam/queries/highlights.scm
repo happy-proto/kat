@@ -9,6 +9,7 @@
 (local_statement (word) @variable)
 (for_statement variable: (word) @variable)
 (parameters (word) @variable.parameter)
+(parameter_type) @type
 (rule_definition name: (word) @function)
 (actions_definition name: (word) @function)
 (call_statement name: (word) @function.call)

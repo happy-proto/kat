@@ -1922,3 +1922,37 @@ fn markdown_jam_aliases_use_jam_runtime() {
         3
     );
 }
+
+#[test]
+fn jam_upstream_regressions_preserve_syntax_text_and_styles() {
+    let theme = Theme::for_mode(ColorMode::TrueColor);
+    let path = fixture_path("jam/upstream-regressions.jam");
+    let source = read_file(&path);
+    let mut parser = Parser::new();
+    parser
+        .set_language(&runtime("jam").unwrap().language)
+        .unwrap();
+    let parsed = parser.parse(&source, None).unwrap();
+    assert!(
+        !parsed.root_node().has_error(),
+        "{}",
+        parsed.root_node().to_sexp()
+    );
+    let rendered = render_with_theme(Some(&path), &source, &theme).unwrap();
+    assert_eq!(strip_ansi(&rendered), source);
+    let analysis = analysis_snapshot_for_path(&path, &source, &theme);
+    for (text, capture) in [("#include <demo.h>", "string"), ("[path]", "type")] {
+        let offset = source.find(text).unwrap();
+        let expected = theme
+            .token_style_for(capture, text)
+            .unwrap()
+            .snapshot(ColorMode::TrueColor);
+        assert!(
+            analysis.spans.iter().any(|span| span.start <= offset
+                && offset < span.end
+                && span.style.as_ref() == Some(&expected)),
+            "wrong style for {text}: {:?}",
+            analysis.spans
+        );
+    }
+}

@@ -1278,6 +1278,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         expected_fragments: &["rule", "linking", "$(properties)", "ws2_32", "generate"],
     },
     FixtureCase {
+        relative_path: "jam/upstream-regressions.jam",
+        expect_highlight: true,
+        expected_fragments: &["[path]", "#include", "$(file:E=(none))", "*[a-z]*"],
+    },
+    FixtureCase {
         relative_path: "jam/fences.md",
         expect_highlight: true,
         expected_fragments: &["greet", "example", "import"],
