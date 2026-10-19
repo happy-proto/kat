@@ -367,6 +367,7 @@ highlight_languages! {
     highlight_dotenv => "dotenv",
     highlight_ini => "ini",
     highlight_xml => "xml",
+    highlight_jam => "jam",
     highlight_make => "make",
     highlight_cmake => "cmake",
     highlight_ninja => "ninja",

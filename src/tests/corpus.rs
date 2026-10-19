@@ -145,6 +145,7 @@ const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
     "dot",
     "nginx",
     "nix",
+    "jam",
     "make",
     "cmake",
     "ninja",
@@ -1270,6 +1271,21 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         relative_path: "xml/theme.tmTheme",
         expect_highlight: true,
         expected_fragments: &["DOCTYPE", "plist", "Kat &amp; Code", "#F8F8F2", "fontStyle"],
+    },
+    FixtureCase {
+        relative_path: "jam/Jamfile",
+        expect_highlight: true,
+        expected_fragments: &["rule", "linking", "$(properties)", "ws2_32", "generate"],
+    },
+    FixtureCase {
+        relative_path: "jam/upstream-regressions.jam",
+        expect_highlight: true,
+        expected_fragments: &["[path]", "#include", "$(file:E=(none))", "*[a-z]*"],
+    },
+    FixtureCase {
+        relative_path: "jam/fences.md",
+        expect_highlight: true,
+        expected_fragments: &["greet", "example", "import"],
     },
     FixtureCase {
         relative_path: "make/Makefile",

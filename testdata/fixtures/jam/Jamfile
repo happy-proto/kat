@@ -1,0 +1,20 @@
+# Portable B2 library
+import feature : feature ;
+ROOT ?= /opt/sdk ;
+rule linking ( properties * )
+{
+    local result ;
+    if <target-os>windows in $(properties)
+    { result += <library>ws2_32 ; }
+    else { result += <variant>release:<define>NDEBUG ; }
+    return $(result) ;
+}
+local sources = [ glob *.cpp ] ;
+lib example : $(sources) : <include>$(ROOT)/include <conditional>@linking ;
+ECHO "building $(sources[1])" ;
+local regex = "^lib(.*)\\.a$" ;
+local config = @("example.pc":E=$(ROOT)) ;
+actions quietly generate
+{
+    echo "$(>)" > "$(<)"
+}

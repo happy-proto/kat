@@ -289,6 +289,7 @@ pub(crate) fn detect_document_kind(
             RuntimeId::Dotenv,
             RuntimeId::Ini,
             RuntimeId::Xml,
+            RuntimeId::Jam,
             RuntimeId::Make,
             RuntimeId::Cmake,
             RuntimeId::Ninja,

@@ -1571,3 +1571,28 @@ fn detect_language_uses_extensionless_sql_and_graphql_heuristics() {
         Some(RuntimeId::Graphql)
     ));
 }
+
+#[test]
+fn jam_build_files_detect_by_name_and_extension() {
+    for name in [
+        "Jamfile",
+        "Jamfile.v2",
+        "Jamroot",
+        "Jambase",
+        "jamfile",
+        "jamfile.v2",
+        "jamroot",
+        "jambase",
+        "build/settings.jam",
+    ] {
+        assert_eq!(
+            detected_runtime(Some(Path::new(name)), "ECHO hello ;\n"),
+            Some(RuntimeId::Jam),
+            "{name}"
+        );
+    }
+    assert_ne!(
+        detected_runtime(Some(Path::new("build.txt")), "ECHO hello ;\n"),
+        Some(RuntimeId::Jam)
+    );
+}

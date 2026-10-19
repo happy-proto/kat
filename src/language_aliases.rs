@@ -87,6 +87,7 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         "dotenv" | "env" => "dotenv",
         "ini" => "ini",
         "xml" => "xml",
+        "jam" | "bjam" | "boost-build" => "jam",
         "makefile" | "make" => "make",
         "cmake" => "cmake",
         "ninja" => "ninja",
