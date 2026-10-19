@@ -26,10 +26,6 @@ steps {
     depends = "fmt"
     check = "cargo clippy --workspace --locked --all-targets -- -D warnings"
   }
-  ["test"] {
-    depends = "clippy"
-    check = "mise run test"
-  }
 }
 
 hooks {

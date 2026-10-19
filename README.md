@@ -33,6 +33,7 @@ kat path/to/image.png
 
 - [GitHub Actions 依赖锁定](docs/maintenance.md#github-actions-依赖)
 - [CI 合并门槛](docs/maintenance.md#ci-合并门槛)
+- [本地提交检查](docs/maintenance.md#提交前检查)：格式、Clippy 与基础检查；完整测试使用 `mise run test`
 - [使用指南](docs/usage.md)：viewer 操作、图片选项和 shell 补全
 - [语言支持](docs/language-coverage.md)：支持范围与检测边界
 - [开发与维护](docs/maintenance.md)：mise 工具与任务、检查和源码安装
