@@ -283,7 +283,7 @@ const JSP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jsp/queries/highlig
 const ASP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/asp/queries/highlights.scm");
 const ADP_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/adp/queries/highlights.scm");
 
-const JSON_LANGUAGE: LanguageFn = tree_sitter_json::LANGUAGE;
+const JSON_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::JSON_LANGUAGE;
 const QUERY_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::QUERY_LANGUAGE;
 const IGNORE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::IGNORE_LANGUAGE;
 const GIT_LINK_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GIT_LINK_LANGUAGE;
@@ -292,57 +292,57 @@ const GIT_LOG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GIT_LOG_LANGUAGE;
 const GIT_CONFIG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GIT_CONFIG_LANGUAGE;
 const DOCKERFILE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::DOCKERFILE_LANGUAGE;
 const ACTIONSCRIPT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ACTIONSCRIPT_LANGUAGE;
-const ADA_LANGUAGE: LanguageFn = tree_sitter_ada::LANGUAGE;
+const ADA_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ADA_LANGUAGE;
 const APPLESCRIPT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::APPLESCRIPT_LANGUAGE;
 const ASM_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ASM_LANGUAGE;
 const NASM_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::NASM_LANGUAGE;
 const ASCIIDOC_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ASCIIDOC_LANGUAGE;
 const AUTHORIZED_KEYS_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::AUTHORIZED_KEYS_LANGUAGE;
 const AWK_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::AWK_LANGUAGE;
-const BASH_LANGUAGE: LanguageFn = tree_sitter_bash::LANGUAGE;
+const BASH_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::BASH_LANGUAGE;
 const BIBTEX_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::BIBTEX_LANGUAGE;
 const CABAL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CABAL_LANGUAGE;
-const CFML_LANGUAGE: LanguageFn = tree_sitter_cfml::LANGUAGE_CFML;
-const CLOJURE_LANGUAGE: LanguageFn = tree_sitter_clojure_orchard::LANGUAGE;
+const CFML_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CFML_LANGUAGE;
+const CLOJURE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CLOJURE_LANGUAGE;
 const CMAKECACHE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CMAKECACHE_LANGUAGE;
 const COFFEESCRIPT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::COFFEESCRIPT_LANGUAGE;
 const COMMAND_HELP_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::COMMAND_HELP_LANGUAGE;
 const CPUINFO_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CPUINFO_LANGUAGE;
 const CRONTAB_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CRONTAB_LANGUAGE;
 const CRYSTAL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CRYSTAL_LANGUAGE;
-const D_LANGUAGE: LanguageFn = tree_sitter_d::LANGUAGE;
+const D_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::D_LANGUAGE;
 const DEBSOURCES_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::DEBSOURCES_LANGUAGE;
-const ELM_LANGUAGE: LanguageFn = tree_sitter_elm::LANGUAGE;
+const ELM_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ELM_LANGUAGE;
 const EMAIL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::EMAIL_LANGUAGE;
-const ERLANG_LANGUAGE: LanguageFn = tree_sitter_erlang::LANGUAGE;
+const ERLANG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ERLANG_LANGUAGE;
 const FISH_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FISH_LANGUAGE;
-const FORTRAN_LANGUAGE: LanguageFn = tree_sitter_fortran::LANGUAGE;
+const FORTRAN_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FORTRAN_LANGUAGE;
 const FORTRAN_NAMELIST_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FORTRAN_NAMELIST_LANGUAGE;
-const FSHARP_LANGUAGE: LanguageFn = tree_sitter_fsharp::LANGUAGE_FSHARP;
-const FSHARP_SIGNATURE_LANGUAGE: LanguageFn = tree_sitter_fsharp::LANGUAGE_SIGNATURE;
+const FSHARP_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FSHARP_LANGUAGE;
+const FSHARP_SIGNATURE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FSHARP_SIGNATURE_LANGUAGE;
 const FSTAB_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FSTAB_LANGUAGE;
-const ZSH_LANGUAGE: LanguageFn = tree_sitter_zsh::LANGUAGE;
-const POWERSHELL_LANGUAGE: LanguageFn = tree_sitter_powershell::LANGUAGE;
-const BATCH_LANGUAGE: LanguageFn = tree_sitter_batch::LANGUAGE;
-const TOML_LANGUAGE: LanguageFn = tree_sitter_toml_ng::LANGUAGE;
-const YAML_LANGUAGE: LanguageFn = tree_sitter_yaml::LANGUAGE;
+const ZSH_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ZSH_LANGUAGE;
+const POWERSHELL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::POWERSHELL_LANGUAGE;
+const BATCH_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::BATCH_LANGUAGE;
+const TOML_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::TOML_LANGUAGE;
+const YAML_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::YAML_LANGUAGE;
 const HCL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::HCL_LANGUAGE;
-const RUST_LANGUAGE: LanguageFn = tree_sitter_rust::LANGUAGE;
-const PYTHON_LANGUAGE: LanguageFn = tree_sitter_python::LANGUAGE;
-const C_LANGUAGE: LanguageFn = tree_sitter_c::LANGUAGE;
-const CPP_LANGUAGE: LanguageFn = tree_sitter_cpp::LANGUAGE;
-const JAVA_LANGUAGE: LanguageFn = tree_sitter_java::LANGUAGE;
-const KOTLIN_LANGUAGE: LanguageFn = tree_sitter_kotlin_ng::LANGUAGE;
-const CSHARP_LANGUAGE: LanguageFn = tree_sitter_c_sharp::LANGUAGE;
-const GROOVY_LANGUAGE: LanguageFn = tree_sitter_groovy::LANGUAGE;
-const DIFF_LANGUAGE: LanguageFn = tree_sitter_diff::LANGUAGE;
-const PROPERTIES_LANGUAGE: LanguageFn = tree_sitter_properties::LANGUAGE;
-const PHP_LANGUAGE: LanguageFn = tree_sitter_php::LANGUAGE_PHP;
-const SCALA_LANGUAGE: LanguageFn = tree_sitter_scala::LANGUAGE;
-const SWIFT_LANGUAGE: LanguageFn = tree_sitter_swift::LANGUAGE;
-const DART_LANGUAGE: LanguageFn = tree_sitter_dart::LANGUAGE;
-const ELIXIR_LANGUAGE: LanguageFn = tree_sitter_elixir::LANGUAGE;
-const ZIG_LANGUAGE: LanguageFn = tree_sitter_zig::LANGUAGE;
+const RUST_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::RUST_LANGUAGE;
+const PYTHON_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::PYTHON_LANGUAGE;
+const C_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::C_LANGUAGE;
+const CPP_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CPP_LANGUAGE;
+const JAVA_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::JAVA_LANGUAGE;
+const KOTLIN_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::KOTLIN_LANGUAGE;
+const CSHARP_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::C_SHARP_LANGUAGE;
+const GROOVY_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GROOVY_LANGUAGE;
+const DIFF_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::DIFF_LANGUAGE;
+const PROPERTIES_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::PROPERTIES_LANGUAGE;
+const PHP_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::PHP_LANGUAGE;
+const SCALA_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SCALA_LANGUAGE;
+const SWIFT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SWIFT_LANGUAGE;
+const DART_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::DART_LANGUAGE;
+const ELIXIR_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ELIXIR_LANGUAGE;
+const ZIG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ZIG_LANGUAGE;
 const SCSS_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SCSS_LANGUAGE;
 const SSH_CONFIG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SSH_CONFIG_LANGUAGE;
 const GITATTRIBUTES_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GITATTRIBUTES_LANGUAGE;
@@ -352,26 +352,26 @@ const REQUIREMENTS_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::REQUIREMENTS_
 const APACHE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::APACHE_LANGUAGE;
 const SASS_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SASS_LANGUAGE;
 const TODOTXT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::TODOTXT_LANGUAGE;
-const VHDL_LANGUAGE: LanguageFn = tree_sitter_vhdl::LANGUAGE;
+const VHDL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::VHDL_LANGUAGE;
 const JQ_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::JQ_LANGUAGE;
 const LESS_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::LESS_LANGUAGE;
 const DOT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::DOT_LANGUAGE;
-const NGINX_LANGUAGE: LanguageFn = tree_sitter_nginx::LANGUAGE;
-const TYPESCRIPT_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TYPESCRIPT;
-const TSX_LANGUAGE: LanguageFn = tree_sitter_typescript::LANGUAGE_TSX;
-const GO_LANGUAGE: LanguageFn = tree_sitter_go::LANGUAGE;
+const NGINX_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::NGINX_LANGUAGE;
+const TYPESCRIPT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::TYPESCRIPT_LANGUAGE;
+const TSX_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::TSX_LANGUAGE;
+const GO_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GO_LANGUAGE;
 const GOMOD_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GOMOD_LANGUAGE;
 const GOWORK_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GOWORK_LANGUAGE;
 const GOSUM_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GOSUM_LANGUAGE;
-const SQL_LANGUAGE: LanguageFn = tree_sitter_sequel::LANGUAGE;
-const HTML_LANGUAGE: LanguageFn = tree_sitter_html::LANGUAGE;
+const SQL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SQL_LANGUAGE;
+const HTML_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::HTML_LANGUAGE;
 const VUE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::VUE_LANGUAGE;
 const SVELTE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SVELTE_LANGUAGE;
-const CSS_LANGUAGE: LanguageFn = tree_sitter_css::LANGUAGE;
-const JAVASCRIPT_LANGUAGE: LanguageFn = tree_sitter_javascript::LANGUAGE;
+const CSS_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CSS_LANGUAGE;
+const JAVASCRIPT_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::JAVASCRIPT_LANGUAGE;
 const GRAPHQL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::GRAPHQL_LANGUAGE;
 const PROTO_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::PROTO_LANGUAGE;
-const CEL_LANGUAGE: LanguageFn = tree_sitter_cel::LANGUAGE;
+const CEL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CEL_LANGUAGE;
 const TEXTPROTO_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::TEXTPROTO_LANGUAGE;
 const LATEX_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::LATEX_LANGUAGE;
 const TCL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::TCL_LANGUAGE;
@@ -383,32 +383,32 @@ const STRACE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::STRACE_LANGUAGE;
 const STYLUS_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::STYLUS_LANGUAGE;
 const SYSLOG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SYSLOG_LANGUAGE;
 const SML_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SML_LANGUAGE;
-const SOLIDITY_LANGUAGE: LanguageFn = tree_sitter_solidity::LANGUAGE;
-const SYSTEMVERILOG_LANGUAGE: LanguageFn = tree_sitter_systemverilog::LANGUAGE;
-const VARLINK_LANGUAGE: LanguageFn = tree_sitter_varlink::LANGUAGE;
-const VERILOG_LANGUAGE: LanguageFn = tree_sitter_verilog::LANGUAGE;
+const SOLIDITY_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SOLIDITY_LANGUAGE;
+const SYSTEMVERILOG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::SYSTEMVERILOG_LANGUAGE;
+const VARLINK_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::VARLINK_LANGUAGE;
+const VERILOG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::VERILOG_LANGUAGE;
 const VIMHELP_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::VIMHELP_LANGUAGE;
 const VYPER_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::VYPER_LANGUAGE;
 const WGSL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::WGSL_LANGUAGE;
-const REGEX_LANGUAGE: LanguageFn = tree_sitter_regex::LANGUAGE;
-const JSDOC_LANGUAGE: LanguageFn = tree_sitter_jsdoc::LANGUAGE;
+const REGEX_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::REGEX_LANGUAGE;
+const JSDOC_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::JSDOC_LANGUAGE;
 const USERSCRIPT_METADATA_LANGUAGE: LanguageFn =
     tree_sitter_kat_parsers::USERSCRIPT_METADATA_LANGUAGE;
 const MARKDOWN_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::MARKDOWN_LANGUAGE;
 const MARKDOWN_INLINE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::MARKDOWN_INLINE_LANGUAGE;
 const JUST_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::JUST_LANGUAGE;
-const RUBY_LANGUAGE: LanguageFn = tree_sitter_ruby::LANGUAGE;
-const LUA_LANGUAGE: LanguageFn = tree_sitter_lua::LANGUAGE;
-const NIX_LANGUAGE: LanguageFn = tree_sitter_nix::LANGUAGE;
+const RUBY_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::RUBY_LANGUAGE;
+const LUA_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::LUA_LANGUAGE;
+const NIX_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::NIX_LANGUAGE;
 const DOTENV_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::DOTENV_LANGUAGE;
-const INI_LANGUAGE: LanguageFn = tree_sitter_ini::LANGUAGE;
-const XML_LANGUAGE: LanguageFn = tree_sitter_xml::LANGUAGE_XML;
-const MAKE_LANGUAGE: LanguageFn = tree_sitter_make::LANGUAGE;
-const CMAKE_LANGUAGE: LanguageFn = tree_sitter_cmake::LANGUAGE;
+const INI_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::INI_LANGUAGE;
+const XML_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::XML_LANGUAGE;
+const MAKE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::MAKE_LANGUAGE;
+const CMAKE_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::CMAKE_LANGUAGE;
 const NINJA_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::NINJA_LANGUAGE;
 const JINJA_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::JINJA_LANGUAGE;
 const TWIG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::TWIG_LANGUAGE;
-const ERB_LANGUAGE: LanguageFn = tree_sitter_embedded_template::LANGUAGE;
+const ERB_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::EMBEDDED_TEMPLATE_LANGUAGE;
 
 #[derive(Clone, Copy)]
 struct StaticLanguageAsset {
@@ -449,7 +449,7 @@ macro_rules! language_catalog {
 }
 
 language_catalog! {
-    Pkl = "pkl" => (|| Language::from(tree_sitter_pkl::LANGUAGE), PKL_HIGHLIGHTS_QUERY, "", PKL_LOCALS_QUERY),
+    Pkl = "pkl" => (|| Language::from(tree_sitter_kat_parsers::PKL_LANGUAGE), PKL_HIGHLIGHTS_QUERY, "", PKL_LOCALS_QUERY),
     Json = "json" => (|| Language::from(JSON_LANGUAGE), JSON_HIGHLIGHTS_QUERY, "", ""),
     Query = "query" => (|| Language::from(QUERY_LANGUAGE), QUERY_HIGHLIGHTS_QUERY, "", ""),
     Ignore = "ignore" => (|| Language::from(IGNORE_LANGUAGE), IGNORE_HIGHLIGHTS_QUERY, "", ""),
@@ -524,7 +524,7 @@ language_catalog! {
     Vhdl = "vhdl" => (|| Language::from(VHDL_LANGUAGE), VHDL_HIGHLIGHTS_QUERY, "", ""),
     Verilog = "verilog" => (|| Language::from(VERILOG_LANGUAGE), VERILOG_HIGHLIGHTS_QUERY, "", ""),
     SystemVerilog = "systemverilog" => (|| Language::from(SYSTEMVERILOG_LANGUAGE), SYSTEMVERILOG_HIGHLIGHTS_QUERY, "", ""),
-    Vim = "vim" => (tree_sitter_vim::language, VIM_HIGHLIGHTS_QUERY, VIM_INJECTIONS_QUERY, ""),
+    Vim = "vim" => (|| Language::from(tree_sitter_kat_parsers::VIM_LANGUAGE), VIM_HIGHLIGHTS_QUERY, VIM_INJECTIONS_QUERY, ""),
     VimHelp = "vimhelp" => (|| Language::from(VIMHELP_LANGUAGE), VIMHELP_HIGHLIGHTS_QUERY, VIMHELP_INJECTIONS_QUERY, ""),
     Jq = "jq" => (|| Language::from(JQ_LANGUAGE), JQ_HIGHLIGHTS_QUERY, "", ""),
     Less = "less" => (|| Language::from(LESS_LANGUAGE), LESS_HIGHLIGHTS_QUERY, "", ""),

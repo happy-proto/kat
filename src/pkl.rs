@@ -30,7 +30,7 @@ fn hk_schema_source(source: &str) -> bool {
     // Only inspect the module header. Import strings and comments are not schemas.
     let mut parser = Parser::new();
     if parser
-        .set_language(&tree_sitter_pkl::LANGUAGE.into())
+        .set_language(&tree_sitter_kat_parsers::PKL_LANGUAGE.into())
         .is_err()
     {
         return false;
@@ -441,7 +441,7 @@ mod tests {
     fn parse(source: &str) -> Tree {
         let mut parser = Parser::new();
         parser
-            .set_language(&tree_sitter_pkl::LANGUAGE.into())
+            .set_language(&tree_sitter_kat_parsers::PKL_LANGUAGE.into())
             .unwrap();
         parser.parse(source, None).unwrap()
     }

@@ -24,19 +24,14 @@ cargo nextest run --workspace --config-file .config/nextest.toml --cargo-quiet -
 description = "运行真实 PTY 与 Ghostty 端到端测试"
 run = "scripts/with-zig-download-retry.sh cargo nextest run --workspace --features ghostty-e2e --test ghostty_terminal_e2e --config-file .config/nextest.toml"
 
-[tasks.compact-release]
-description = "构建紧凑 parser 静态发布二进制"
+[tasks.release]
+description = "构建静态发布二进制"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
-compact_cargo_home=$(mktemp -d)
-trap 'rm -rf "$compact_cargo_home"' EXIT
-export CARGO_HOME="$compact_cargo_home"
 export SYSTEM_DEPS_DAV1D_LINK=static
 export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=always
-cargo fetch --locked
-uv run --script scripts/compact_parser_tables.py --manifest-path Cargo.toml --cargo-home "$CARGO_HOME"
-cargo build --release --locked --features compact-parser-tables
+cargo build --release --locked
 '''
 
 [tasks.perf]

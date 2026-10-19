@@ -1,6 +1,8 @@
 # Third-Party Sources
 
-This repository now primarily keeps Tree-sitter query and other kat-side integration assets. Parser source files that still need vendored maintenance are externalized to [kat-parsers](https://github.com/happy-proto/kat-parsers), while this repository only retains the local assets required for runtime integration.
+当前全部 runtime parser 由 [kat-parsers](https://github.com/happy-proto/kat-parsers) 的独立语言 crate 统一提供。上游 grammar、scanner、许可证、精确 revision、同步映射与本地补丁维护在该仓库；kat 这里只保留 query 等集成资产。下文的上游仓库与版本记录仍描述 query 的原始来源，不表示继续直接链接旧的第三方 parser crate。
+
+This repository keeps Tree-sitter queries and other kat-side integration assets. All parser sources, generated tables and shared decoding are maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers).
 
 Included sources:
 - `testdata/fixtures/armor/message.age` reproduces the ASCII armor example from the official [@age/age-encryption documentation](https://jsr.io/@age/age-encryption). The independently authored label handling in `src/armor_formats.rs` follows the [age v1.1.0 specification](https://c2sp.org/age@v1.1.0); no third-party parser or encryption implementation is copied. This integration highlights the PEM envelope and Base64 source only.
@@ -375,7 +377,7 @@ Upstream projects:
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. JSON parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-json](https://crates.io/crates/tree-sitter-json).
+  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. JSON parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-json 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/query/queries/highlights.scm`
   Source: local integration query built around [nvim-treesitter/tree-sitter-query](https://github.com/nvim-treesitter/tree-sitter-query)
@@ -415,7 +417,7 @@ Upstream projects:
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model. Bash parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-bash](https://crates.io/crates/tree-sitter-bash).
+  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model. Bash parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-bash 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/bash/queries/injections.scm`
   Source: local integration logic initially built around [tree-sitter/tree-sitter-bash](https://github.com/tree-sitter/tree-sitter-bash)
@@ -433,7 +435,7 @@ Upstream projects:
   Source: [georgeharker/tree-sitter-zsh](https://github.com/georgeharker/tree-sitter-zsh)
   Revision: `7a593401efb5418ffdedbe3c0e4c61c6d240166d`
   License: MIT
-  Notes: repository-local adapted highlights query. Zsh parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-zsh](https://crates.io/crates/tree-sitter-zsh).
+  Notes: repository-local adapted highlights query. Zsh parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-zsh 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/zsh/queries/injections.scm`
   Sources:
@@ -447,13 +449,13 @@ Upstream projects:
   Source: [airbus-cert/tree-sitter-powershell](https://github.com/airbus-cert/tree-sitter-powershell)
   Revision: `d398441825243b00e317e87e1829b9d6a3e54ce0`
   License: MIT
-  Notes: repository-local copy of the upstream PowerShell highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-powershell](https://crates.io/crates/tree-sitter-powershell).
+  Notes: repository-local copy of the upstream PowerShell highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-powershell 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/batch/queries/highlights.scm`
   Source: [wharflab/tree-sitter-batch](https://github.com/wharflab/tree-sitter-batch)
   Revision: `8694fbc701ff6e35e3711bf39225860d13079906`
   License: MIT
-  Notes: repository-local copy of the upstream Windows Batch / CMD highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-batch](https://crates.io/crates/tree-sitter-batch).
+  Notes: repository-local copy of the upstream Windows Batch / CMD highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-batch 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/toml/queries/highlights.scm`
   Sources:
@@ -461,13 +463,13 @@ Upstream projects:
   - [tree-sitter-grammars/tree-sitter-toml](https://github.com/tree-sitter-grammars/tree-sitter-toml)
   Revisions: query starting point not fully audited
   Licenses: MPL-2.0 and MIT
-  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model. TOML parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-toml-ng](https://crates.io/crates/tree-sitter-toml-ng).
+  Notes: repository-local adapted highlights query for kat's terminal renderer and capture model. TOML parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-toml-ng 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/yaml/queries/highlights.scm`
   Source: [tree-sitter-grammars/tree-sitter-yaml](https://github.com/tree-sitter-grammars/tree-sitter-yaml)
   Revision: `4463985dfccc640f3d6991e3396a2047610cf5f8`
   License: MIT
-  Notes: repository-local copy of the upstream YAML highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-yaml](https://crates.io/crates/tree-sitter-yaml). GitHub Actions `actions.lock` files reuse this YAML integration without grammar or query changes; the synthetic lockfile fixture is repository-authored.
+  Notes: repository-local copy of the upstream YAML highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-yaml 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers). GitHub Actions `actions.lock` files reuse this YAML integration without grammar or query changes; the synthetic lockfile fixture is repository-authored.
 
 - `grammars/hcl/queries/highlights.scm`
   Sources:
@@ -482,20 +484,20 @@ Upstream projects:
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. Rust parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-rust](https://crates.io/crates/tree-sitter-rust).
+  Notes: repository-local adapted highlights query for kat's terminal renderer and Dracula-oriented capture model. Rust parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-rust 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/python/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-python](https://github.com/tree-sitter/tree-sitter-python)
   Revision: `62827156d01c74dc1538266344e788da74536b8a`
   License: MIT
-  Notes: repository-local copy of the upstream Python highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-python](https://crates.io/crates/tree-sitter-python).
+  Notes: repository-local copy of the upstream Python highlights query. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-python 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/go/queries/highlights.scm`
 - `grammars/go/queries/injections.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copies of Zed's Go query assets, further tuned for kat's runtime reuse and terminal rendering. Go parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-go](https://crates.io/crates/tree-sitter-go).
+  Notes: repository-local adapted copies of Zed's Go query assets, further tuned for kat's runtime reuse and terminal rendering. Go parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-go 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/gomod/queries/highlights.scm`
   Source: [camdencheek/tree-sitter-go-mod](https://github.com/camdencheek/tree-sitter-go-mod)
@@ -582,7 +584,7 @@ Upstream projects:
   Source: [JoranHonig/tree-sitter-solidity](https://github.com/JoranHonig/tree-sitter-solidity)
   Revision: `048fe686cb1fde267243739b8bdbec8fc3a55272`
   License: MIT
-  Notes: repository-local adapted highlights query, including syntax compatibility fixes for the current Tree-sitter query parser. The Solidity parser is provided by the Rust crate [tree-sitter-solidity](https://crates.io/crates/tree-sitter-solidity).
+  Notes: repository-local adapted highlights query, including syntax compatibility fixes for the current Tree-sitter query parser. The Solidity parser is provided by the Rust crate [tree-sitter-solidity 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/strace/*`
   Source: [sigmaSd/tree-sitter-strace](https://github.com/sigmaSd/tree-sitter-strace)
@@ -594,13 +596,13 @@ Upstream projects:
   Source: [gmlarumbe/tree-sitter-systemverilog](https://github.com/gmlarumbe/tree-sitter-systemverilog)
   Revision: `293928578cb27fbd0005fcc5f09c09a1e8628c89`
   License: MIT
-  Notes: repository-local adapted highlights query. The SystemVerilog parser is provided by the Rust crate [tree-sitter-systemverilog](https://crates.io/crates/tree-sitter-systemverilog).
+  Notes: repository-local adapted highlights query. The SystemVerilog parser is provided by [tree-sitter-systemverilog 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/varlink/queries/highlights.scm`
   Source: [M0ppers/tree-sitter-varlink](https://github.com/M0ppers/tree-sitter-varlink)
   Revision: `52976e66d3f4529045a14201841e4dc289de8107`
   License: MIT
-  Notes: repository-local adapted highlights query. The Varlink parser is provided by the Rust crate [tree-sitter-varlink](https://crates.io/crates/tree-sitter-varlink).
+  Notes: repository-local adapted highlights query. The Varlink parser is provided by the Rust crate [tree-sitter-varlink 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/vimhelp/*`
   Source: [neovim/tree-sitter-vimdoc](https://github.com/neovim/tree-sitter-vimdoc)
@@ -615,20 +617,20 @@ Upstream projects:
   Source: [nervenes/tree-sitter-sql](https://github.com/nervenes/tree-sitter-sql)
   Revision: `6dfca8b6dcb196d943c10e9cabab25e60232d332`
   License: MIT
-  Notes: repository-local adapted highlight queries. SQL parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-sequel](https://crates.io/crates/tree-sitter-sequel).
+  Notes: repository-local adapted highlight queries. SQL parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-sequel 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/html/queries/highlights.scm`
 - `grammars/html/queries/injections.scm`
   Source: [tree-sitter/tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html)
   Revision: not recorded during the initial import
   License: MIT
-  Notes: repository-local adapted query assets for kat's terminal renderer and nested-runtime model. HTML parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-html](https://crates.io/crates/tree-sitter-html).
+  Notes: repository-local adapted query assets for kat's terminal renderer and nested-runtime model. HTML parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-html 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/css/queries/highlights.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted CSS highlights query. Parser code is linked from the Rust crate [tree-sitter-css](https://crates.io/crates/tree-sitter-css).
+  Notes: repository-local adapted CSS highlights query. Parser code is linked from the Rust crate [tree-sitter-css 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/javascript/queries/locals.scm`
   Source: [tree-sitter/tree-sitter-javascript](https://github.com/tree-sitter/tree-sitter-javascript)
@@ -640,7 +642,7 @@ Upstream projects:
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copy of Zed's JavaScript highlights query, further adjusted for kat's terminal renderer. JavaScript parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-javascript](https://crates.io/crates/tree-sitter-javascript).
+  Notes: repository-local adapted copy of Zed's JavaScript highlights query, further adjusted for kat's terminal renderer. JavaScript parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-javascript 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/regex/queries/highlights.scm`
 - `grammars/regex/queries/highlights-javascript.scm`
@@ -653,13 +655,13 @@ Upstream projects:
   - [zed-industries/zed](https://github.com/zed-industries/zed)
   Revisions: not recorded during the initial import
   Licenses: MIT and Apache-2.0
-  Notes: repository-local highlight queries and host-aware overlay queries, adapted for kat's shared parser plus runtime-family model. These files include local integration changes and invalid-construct overlays for different regex hosts. Regex parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-regex](https://crates.io/crates/tree-sitter-regex). The exact upstream commits used as the starting point still need a later audit.
+  Notes: repository-local highlight queries and host-aware overlay queries, adapted for kat's shared parser plus runtime-family model. These files include local integration changes and invalid-construct overlays for different regex hosts. Regex parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-regex 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers). The exact upstream commits used as the starting point still need a later audit.
 
 - `grammars/jsdoc/queries/highlights.scm`
   Source: [zed-industries/zed](https://github.com/zed-industries/zed)
   Revision: not recorded during the initial import
   License: Apache-2.0
-  Notes: repository-local adapted copy of Zed's JSDoc highlights query. JSDoc parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-jsdoc](https://crates.io/crates/tree-sitter-jsdoc).
+  Notes: repository-local adapted copy of Zed's JSDoc highlights query. JSDoc parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-jsdoc 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/markdown/*`, `grammars/markdown_inline/*`
   Source: [tree-sitter-grammars/tree-sitter-markdown](https://github.com/tree-sitter-grammars/tree-sitter-markdown)
@@ -710,7 +712,7 @@ Upstream projects:
   Source: [tree-sitter/tree-sitter-typescript](https://github.com/tree-sitter/tree-sitter-typescript)
   Revision: `75b3874edb2dc714fb1fd77a32013d0f8699989f`
   License: MIT
-  Notes: repository-local copies of the upstream locals query shared by the TypeScript and TSX runtimes. Parser code is linked from the Rust crate `tree-sitter-typescript`.
+  Notes: repository-local copies of the upstream locals query shared by the TypeScript and TSX runtimes. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/vue/*`
   Source: [ikatyang/tree-sitter-vue](https://github.com/ikatyang/tree-sitter-vue)
@@ -734,25 +736,25 @@ Upstream projects:
   Source: [justinmk/tree-sitter-ini](https://github.com/justinmk/tree-sitter-ini)
   Revision: `e4018b5176132b4f3c5d6e61cea383f42288d0f5`
   License: Apache-2.0
-  Notes: repository-local copy of the upstream highlights query. Parser code is linked from the Rust crate `tree-sitter-ini`.
+  Notes: repository-local copy of the upstream highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/xml/queries/highlights.scm`
   Source: [tree-sitter-grammars/tree-sitter-xml](https://github.com/tree-sitter-grammars/tree-sitter-xml)
   Revision: `5000ae8f22d11fbe93939b05c1e37cf21117162d`
   License: MIT
-  Notes: repository-local copy of the upstream XML highlights query. Parser code is linked from the Rust crate `tree-sitter-xml`. TextMate `.tmTheme` files reuse this XML integration without grammar or query changes; the theme fixture is repository-authored.
+  Notes: repository-local copy of the upstream XML highlights query. Parser code is supplied by `tree-sitter-kat-parsers`. TextMate `.tmTheme` files reuse this XML integration without grammar or query changes; the theme fixture is repository-authored.
 
 - `grammars/make/queries/highlights.scm`
   Source: [tree-sitter-grammars/tree-sitter-make](https://github.com/tree-sitter-grammars/tree-sitter-make)
   Revision: `70613f3d812cbabbd7f38d104d60a409c4008b43`
   License: MIT
-  Notes: repository-local copy of the upstream Makefile highlights query. Parser code is linked from the Rust crate `tree-sitter-make`.
+  Notes: repository-local copy of the upstream Makefile highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/cmake/queries/highlights.scm`
   Source: [uyha/tree-sitter-cmake](https://github.com/uyha/tree-sitter-cmake)
   Revision: `c7b2a71e7f8ecb167fad4c97227c838439280175`
   License: MIT
-  Notes: repository-local copy of the upstream CMake highlights query. Parser code is linked from the Rust crate `tree-sitter-cmake`.
+  Notes: repository-local copy of the upstream CMake highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/ninja/*`
   Source: [alemuller/tree-sitter-ninja](https://github.com/alemuller/tree-sitter-ninja)
@@ -789,14 +791,14 @@ Upstream projects:
   Revision: `3f2465c217d0a966d41e584b42d75522f2a3149e`
   Parser revision: `58d5643086ae60e93a3746cca648363ee97c8761` (`tree-sitter-php` 0.25.1); the query revision above remains the local asset baseline.
   License: MIT
-  Notes: repository-local copies of the upstream PHP query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-php](https://crates.io/crates/tree-sitter-php).
+  Notes: repository-local copies of the upstream PHP query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-php 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/scala/queries/highlights.scm`
 - `grammars/scala/queries/locals.scm`
   Source: [tree-sitter/tree-sitter-scala](https://github.com/tree-sitter/tree-sitter-scala)
   Revision: `b931fcc338390925eb893d70ad070033f5856ccf`
   License: MIT
-  Notes: repository-local copies of the upstream Scala query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-scala](https://crates.io/crates/tree-sitter-scala).
+  Notes: repository-local copies of the upstream Scala query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-scala 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/swift/queries/highlights.scm`
 - `grammars/swift/queries/injections.scm`
@@ -805,21 +807,21 @@ Upstream projects:
   Revision: `78521a22771afcc0ed007e79aa94ad788027c91a`
   Parser revision: `tree-sitter-swift` 0.7.4, published from a dirty working tree based on `171fa3bc343233fe07f5e17205aaada33d778825` according to the crate's `.cargo_vcs_info.json`; the query revision above remains the local asset baseline.
   License: MIT
-  Notes: repository-local copies of the upstream Swift query assets, with the nil capture adapted to the parser's named `nil_literal` node. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-swift](https://crates.io/crates/tree-sitter-swift).
+  Notes: repository-local copies of the upstream Swift query assets, with the nil capture adapted to the parser's named `nil_literal` node. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-swift 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/dart/queries/highlights.scm`
 - `grammars/dart/queries/locals.scm`
   Source: [nielsenko/tree-sitter-dart](https://github.com/nielsenko/tree-sitter-dart)
   Revision: `b57d734c84f510bbd524097902cab671e4dbfca9`
   License: MIT
-  Notes: repository-local adapted copies of the upstream Dart query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-dart](https://crates.io/crates/tree-sitter-dart).
+  Notes: repository-local adapted copies of the upstream Dart query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-dart 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/elixir/queries/highlights.scm`
 - `grammars/elixir/queries/injections.scm`
   Source: [elixir-lang/tree-sitter-elixir](https://github.com/elixir-lang/tree-sitter-elixir)
   Revision: `7937d3b4d65fa574163cfa59394515d3c1cf16f4`
   License: Apache-2.0
-  Notes: repository-local copies of the upstream Elixir query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-elixir](https://crates.io/crates/tree-sitter-elixir).
+  Notes: repository-local copies of the upstream Elixir query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-elixir 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/zig/queries/highlights.scm`
 - `grammars/zig/queries/injections.scm`
@@ -827,7 +829,7 @@ Upstream projects:
   Source: [tree-sitter-grammars/tree-sitter-zig](https://github.com/tree-sitter-grammars/tree-sitter-zig)
   Revision: `6479aa13f32f701c383083d8b28360ebd682fb7d`
   License: MIT
-  Notes: repository-local copies of the upstream Zig query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from the Rust crate [tree-sitter-zig](https://crates.io/crates/tree-sitter-zig).
+  Notes: repository-local copies of the upstream Zig query assets. Parser sources are no longer vendored in this repository; the runtime parser now comes from [tree-sitter-zig 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers).
 
 - `grammars/ssh_config/*`
   Source: [tree-sitter-grammars/tree-sitter-ssh-config](https://github.com/tree-sitter-grammars/tree-sitter-ssh-config)
@@ -937,13 +939,13 @@ Upstream projects:
   Revision: `6b4a43943c191950ee2c77f7b94cec5e903318a4`
   Parser revision: `ffdd4d763b037a1ecbc1635ee1b5510a9f3425df` (`tree-sitter-cfml` 0.26.43); the query revision above remains the local asset baseline.
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-cfml](https://crates.io/crates/tree-sitter-cfml); the repository only keeps repository-local adapted highlights and injections queries as integration assets.
+  Notes: parser now comes from [tree-sitter-cfml 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers); the repository only keeps repository-local adapted highlights and injections queries as integration assets.
 
 - `grammars/clojure/queries/highlights.scm`
   Source: [grammar-orchard/tree-sitter-clojure-orchard](https://codeberg.org/grammar-orchard/tree-sitter-clojure-orchard)
   Revision: `40dc14c61c46e48d39166b3cc60cdb16256e3384`
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-clojure-orchard](https://crates.io/crates/tree-sitter-clojure-orchard); the repository only keeps the bundled highlights query.
+  Notes: parser now comes from [tree-sitter-clojure-orchard 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers); the repository only keeps the bundled highlights query.
 
 - `grammars/cmakecache/*`
   Source: repository-local
@@ -987,7 +989,7 @@ Upstream projects:
   Source: [gdamore/tree-sitter-d](https://github.com/gdamore/tree-sitter-d)
   Revision: `fb028c8f14f4188286c2eef143f105def6fbf24f`
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-d](https://crates.io/crates/tree-sitter-d); the repository only keeps the upstream highlights and injections queries as integration assets.
+  Notes: parser now comes from [tree-sitter-d 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers); the repository only keeps the upstream highlights and injections queries as integration assets.
 
 - `grammars/debsources/*`
   Source: repository-local
@@ -999,7 +1001,7 @@ Upstream projects:
   Source: [elm-tooling/tree-sitter-elm](https://github.com/elm-tooling/tree-sitter-elm)
   Revision: `6d9511c28181db66daee4e883f811f6251220943`
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-elm](https://crates.io/crates/tree-sitter-elm); the repository only keeps the upstream highlights, injections and locals queries as integration assets.
+  Notes: parser now comes from [tree-sitter-elm 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers); the repository only keeps the upstream highlights, injections and locals queries as integration assets.
 
 - `grammars/email/*`
   Source: [stevenxxiu/tree-sitter-mail](https://github.com/stevenxxiu/tree-sitter-mail)
@@ -1012,13 +1014,13 @@ Upstream projects:
   Revision: `e446ec60022a7cafe157805742b41c04b499cc5d`
   Parser revision: `0386a11c835950f5e1ebfbcbf49863d8495de4e0` (`tree-sitter-erlang` 0.21.0); the query revision above remains the local asset baseline.
   License: Apache-2.0
-  Notes: parser now comes from the Rust crate [tree-sitter-erlang](https://crates.io/crates/tree-sitter-erlang); the repository only keeps the upstream highlights query as an integration asset.
+  Notes: parser now comes from [tree-sitter-erlang 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers); the repository only keeps the upstream highlights query as an integration asset.
 
 - `grammars/fortran/queries/highlights.scm`
   Source: [stadelmanma/tree-sitter-fortran](https://github.com/stadelmanma/tree-sitter-fortran)
   Revision: `48593829df8a929bfe58528eedcf405171921005`
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-fortran](https://crates.io/crates/tree-sitter-fortran); the repository only keeps a repository-local adapted highlights query as an integration asset.
+  Notes: parser now comes from [tree-sitter-fortran 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers); the repository only keeps a repository-local adapted highlights query as an integration asset.
 
 - `grammars/fortran_namelist/*`
   Source: repository-local
@@ -1030,7 +1032,7 @@ Upstream projects:
   Source: [ionide/tree-sitter-fsharp](https://github.com/ionide/tree-sitter-fsharp)
   Revision: `594c500ecace8618db32dd1144307897277db067`
   License: MIT
-  Notes: parser now comes from the Rust crate [tree-sitter-fsharp](https://crates.io/crates/tree-sitter-fsharp); the repository only keeps the upstream highlights, injections and locals queries as integration assets for the source runtime.
+  Notes: parser now comes from [tree-sitter-fsharp 对应的 kat-parsers 预生成 parser](https://github.com/happy-proto/kat-parsers); the repository only keeps the upstream highlights, injections and locals queries as integration assets for the source runtime.
 
 - `grammars/fsharp_signature/queries/highlights.scm`
 - `grammars/fsharp_signature/queries/locals.scm`
@@ -1073,38 +1075,38 @@ Upstream projects:
   Source: [jpt13653903/tree-sitter-vhdl](https://github.com/jpt13653903/tree-sitter-vhdl)
   Revision: `9df4e7a9543699e10e08aa1232a9ec8076b948cf`
   License: MIT
-  Notes: repository-local copy of the upstream Neovim-oriented VHDL highlights query. Parser code is linked from the Rust crate `tree-sitter-vhdl`.
+  Notes: repository-local copy of the upstream Neovim-oriented VHDL highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/vim/queries/highlights.scm`
 - `grammars/vim/queries/injections.scm`
   Source: [tree-sitter-grammars/tree-sitter-vim](https://github.com/tree-sitter-grammars/tree-sitter-vim)
   Revision: crate release `0.4.0`
   License: MIT
-  Notes: repository-local copies of the upstream Vim highlights and injections queries. Parser code is linked from the Rust crate `tree-sitter-vim`.
+  Notes: repository-local copies of the upstream Vim highlights and injections queries. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/csharp/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-c-sharp](https://github.com/tree-sitter/tree-sitter-c-sharp)
   Revision: `88366631d598ce6595ec655ce1591b315cffb14c`
   License: MIT
-  Notes: repository-local copy of the upstream C# highlights query. Parser code is linked from the Rust crate `tree-sitter-c-sharp`.
+  Notes: repository-local copy of the upstream C# highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/groovy/queries/highlights.scm`
   Source: [Decodetalkers/tree-sitter-groovy](https://github.com/Decodetalkers/tree-sitter-groovy)
   Revision: `70efb0b9b50f95bcbd89dcfd42b275e0304e10cf`
   License: MIT
-  Notes: repository-local Groovy highlights query derived from the upstream grammar's available node set and adapted for kat's theme model. Parser code is linked from the Rust crate `tree-sitter-groovy`.
+  Notes: repository-local Groovy highlights query derived from the upstream grammar's available node set and adapted for kat's theme model. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/diff/queries/highlights.scm`
   Source: [the-mikedavis/tree-sitter-diff](https://github.com/the-mikedavis/tree-sitter-diff)
   Revision: `2520c3f934b3179bb540d23e0ef45f75304b5fed`
   License: MIT
-  Notes: repository-local copy of the upstream diff highlights query. Parser code is linked from the Rust crate `tree-sitter-diff`.
+  Notes: repository-local copy of the upstream diff highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/properties/queries/highlights.scm`
   Source: [ObserverOfTime/tree-sitter-properties](https://github.com/ObserverOfTime/tree-sitter-properties)
   Revision: `6310671b24d4e04b803577b1c675d765cbd5773b`
   License: MIT
-  Notes: repository-local copy of the upstream Java properties highlights query. Parser code is linked from the Rust crate `tree-sitter-properties`.
+  Notes: repository-local copy of the upstream Java properties highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/jq/queries/highlights.scm`
   Source: kat local integration
@@ -1129,39 +1131,39 @@ Upstream projects:
   Source: [ngalaiko/tree-sitter-nginx](https://github.com/ngalaiko/tree-sitter-nginx)
   Revision: `47ade644d754cce57974aac44d2c9450e823d4f4`
   License: MIT
-  Notes: repository-local copies of the upstream nginx highlights / injections queries. Parser code is linked from the Rust crate `tree-sitter-nginx`.
+  Notes: repository-local copies of the upstream nginx highlights / injections queries. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/c/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-c](https://github.com/tree-sitter/tree-sitter-c)
   Revision: crate release `0.24.2`
   License: MIT
-  Notes: repository-local copy of the upstream C highlights query. Parser code is linked from the Rust crate `tree-sitter-c`.
+  Notes: repository-local copy of the upstream C highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/cpp/queries/highlights.scm`
 - `grammars/cpp/queries/injections.scm`
   Source: [tree-sitter/tree-sitter-cpp](https://github.com/tree-sitter/tree-sitter-cpp)
   Revision: crate release `0.23.4`
   License: MIT
-  Notes: repository-local copies of the upstream C++-specific highlights and raw-string injection queries. The `cpp` runtime combines the vendored C query with these C++ additions while linking parser code from the Rust crate `tree-sitter-cpp`.
+  Notes: repository-local copies of the upstream C++-specific highlights and raw-string injection queries. The `cpp` runtime combines the vendored C query with these C++ additions while using the parser supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/java/queries/highlights.scm`
   Source: [tree-sitter/tree-sitter-java](https://github.com/tree-sitter/tree-sitter-java)
   Revision: crate release `0.23.5`
   License: MIT
-  Notes: repository-local copy of the upstream Java highlights query. Parser code is linked from the Rust crate `tree-sitter-java`.
+  Notes: repository-local copy of the upstream Java highlights query. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/kotlin/queries/highlights.scm`
   Source: kat local integration
   Revision: n/a
   License: project-local
-  Notes: repository-local Kotlin highlights query written for kat because the upstream grammar crate currently does not ship query assets. Parser code is linked from the Rust crate `tree-sitter-kotlin-ng`.
+  Notes: repository-local Kotlin highlights query written for kat because the upstream grammar crate currently does not ship query assets. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/ruby/queries/highlights.scm`
 - `grammars/ruby/queries/locals.scm`
   Source: [tree-sitter/tree-sitter-ruby](https://github.com/tree-sitter/tree-sitter-ruby)
   Revision: crate release `0.23.1`
   License: MIT
-  Notes: repository-local copies of the upstream Ruby highlights and locals queries. Parser code is linked from the Rust crate `tree-sitter-ruby`.
+  Notes: repository-local copies of the upstream Ruby highlights and locals queries. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/lua/queries/highlights.scm`
 - `grammars/lua/queries/injections.scm`
@@ -1169,14 +1171,14 @@ Upstream projects:
   Source: [tree-sitter-grammars/tree-sitter-lua](https://github.com/tree-sitter-grammars/tree-sitter-lua)
   Revision: crate release `0.5.0`
   License: MIT
-  Notes: repository-local copies of the upstream Lua highlights, injections and locals queries. Parser code is linked from the Rust crate `tree-sitter-lua`.
+  Notes: repository-local copies of the upstream Lua highlights, injections and locals queries. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 - `grammars/nix/queries/highlights.scm`
 - `grammars/nix/queries/injections.scm`
   Source: [nix-community/tree-sitter-nix](https://github.com/nix-community/tree-sitter-nix)
   Revision: crate release `0.3.0`
   License: MIT
-  Notes: repository-local copies of the upstream Nix highlights and injections queries. Parser code is linked from the Rust crate `tree-sitter-nix`.
+  Notes: repository-local copies of the upstream Nix highlights and injections queries. Parser code is supplied by `tree-sitter-kat-parsers`.
 
 These files may be modified locally as needed for integration into `kat`.
 
@@ -1184,7 +1186,7 @@ These files may be modified locally as needed for integration into `kat`.
   Source: [apple/tree-sitter-pkl](https://github.com/apple/tree-sitter-pkl)
   Revision: `c837eff683d62f3cb5e6309b44c257640f202d4b` (upstream package version 0.21.0)
   License: Apache-2.0; license and notice are retained in `grammars/pkl/LICENSE` and `grammars/pkl/NOTICE`.
-  Notes: the parser and scanner are consumed directly from the revision-pinned upstream Rust crate. The highlights query is adapted for kat capture priority, configuration keys, structural type/call roles, string interpolation, escapes, and all custom string delimiters. The locals query is unchanged. Markdown documentation, decoded Regex literals, and hk step commands are dispatched by kat's AST-based host resolver; no generated parser assets are copied into this repository.
+  Notes: the parser and scanner are provided by `tree-sitter-kat-parsers`, whose revision is pinned in `Cargo.lock`. The highlights query is adapted for kat capture priority, configuration keys, structural type/call roles, string interpolation, escapes, and all custom string delimiters. The locals query is unchanged. Markdown documentation, decoded Regex literals, and hk step commands are dispatched by kat's AST-based host resolver; no generated parser assets are copied into this repository.
 
 ## Jam build language
 

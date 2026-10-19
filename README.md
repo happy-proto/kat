@@ -20,6 +20,8 @@ cargo binstall --git https://github.com/happy-proto/kat kat
 
 也可以[从源码安装](docs/maintenance.md#开发环境)。macOS 仅支持 Apple Silicon。
 
+源码构建与预编译包统一使用 kat-parsers 的预生成压缩语法表，无需额外启用压缩 feature 或预处理依赖源码。
+
 ## 使用
 
 ```bash

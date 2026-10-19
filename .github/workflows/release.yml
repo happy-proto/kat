@@ -147,20 +147,7 @@ jobs:
             export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=always
           fi
 
-          export CARGO_HOME="${RUNNER_TEMP}/kat-compact-cargo-home"
-          mkdir -p "${CARGO_HOME}/registry"
-          if [[ -d "${HOME}/.cargo/registry/cache" ]]; then
-            cp -R "${HOME}/.cargo/registry/cache" "${CARGO_HOME}/registry/cache"
-          fi
-          if [[ -d "${HOME}/.cargo/registry/index" ]]; then
-            cp -R "${HOME}/.cargo/registry/index" "${CARGO_HOME}/registry/index"
-          fi
-          cargo fetch --locked --target "${TARGET}"
-          uv run --script scripts/compact_parser_tables.py \
-            --manifest-path Cargo.toml \
-            --cargo-home "${CARGO_HOME}"
-
-          cargo build --timings --release --locked --features compact-parser-tables --target "${TARGET}"
+          cargo build --timings --release --locked --target "${TARGET}"
           build_end=$(date +%s)
 
           total_end=$(date +%s)
