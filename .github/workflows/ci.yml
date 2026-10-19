@@ -301,7 +301,6 @@ jobs:
   build:
     name: >-
       build (${{ matrix.runner }} / ${{ matrix.target }})
-    if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.ref == 'refs/heads/master'
     needs:
       - fmt
       - clippy
