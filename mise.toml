@@ -12,6 +12,7 @@ run = '''
 set -euo pipefail
 uv run --script scripts/check-config.py self-test
 bash scripts/tests/zig-download-retry.sh
+bash scripts/tests/publish-latest.sh
 extra_args=()
 if [ "${KAT_AGENT_TEST_LOG_MODE:-}" = "quiet" ]; then
   extra_args=(--status-level fail --final-status-level fail --success-output never --show-progress none)
