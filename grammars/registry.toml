@@ -3356,3 +3356,15 @@ highlight_names = [
   "variable.builtin",
   "variable.parameter",
 ]
+
+[[grammar]]
+name = "jam"
+extensions = ["jam"]
+filenames = ["Jamfile", "jamfile", "Jamfile.v2", "jamfile.v2", "Jamroot", "jamroot", "Jambase", "jambase"]
+shebang_substrings = []
+highlight_names = [
+  "comment", "function", "function.call", "keyword", "keyword.conditional",
+  "keyword.import", "keyword.modifier", "keyword.repeat", "keyword.return",
+  "operator", "punctuation.bracket", "punctuation.delimiter", "string",
+  "string.escape", "variable", "variable.parameter",
+]

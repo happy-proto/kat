@@ -1878,3 +1878,47 @@ fn coffeescript_analysis_styles_class_and_method_names() {
         analysis.spans
     );
 }
+
+#[test]
+fn jam_build_language_highlights_rules_variables_and_comments() {
+    let theme = Theme::for_mode(ColorMode::TrueColor);
+    let source = read_file(&fixture_path("jam/Jamfile"));
+    let mut parser = Parser::new();
+    parser
+        .set_language(&runtime("jam").unwrap().language)
+        .unwrap();
+    let tree = parser.parse(&source, None).unwrap();
+    assert!(
+        !tree.root_node().has_error(),
+        "{}",
+        tree.root_node().to_sexp()
+    );
+    for alias in ["jam", "bjam", "boost-build"] {
+        let rendered = highlight_named_language(alias, &source, &theme).unwrap();
+        assert_eq!(strip_ansi(&rendered), source);
+        assert!(
+            rendered.contains("\x1b[38;2;255;121;198mrule"),
+            "missing rule keyword styling: {alias}"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;80;250;123mlinking"),
+            "missing rule name styling: {alias}"
+        );
+        assert!(rendered.contains("\x1b[3m\x1b[38;2;98;114;164m# Portable B2 library"));
+    }
+}
+
+#[test]
+fn markdown_jam_aliases_use_jam_runtime() {
+    let path = fixture_path("jam/fences.md");
+    let source = read_file(&path);
+    let snapshot =
+        analysis_snapshot_for_path(&path, &source, &Theme::for_mode(ColorMode::TrueColor));
+    assert_eq!(
+        nested_runtime_names(&snapshot)
+            .into_iter()
+            .filter(|name| *name == "jam")
+            .count(),
+        3
+    );
+}

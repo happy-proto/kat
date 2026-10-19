@@ -1185,3 +1185,7 @@ These files may be modified locally as needed for integration into `kat`.
   Revision: `c837eff683d62f3cb5e6309b44c257640f202d4b` (upstream package version 0.21.0)
   License: Apache-2.0; license and notice are retained in `grammars/pkl/LICENSE` and `grammars/pkl/NOTICE`.
   Notes: the parser and scanner are consumed directly from the revision-pinned upstream Rust crate. The highlights query is adapted for kat capture priority, configuration keys, structural type/call roles, string interpolation, escapes, and all custom string delimiters. The locals query is unchanged. Markdown documentation, decoded Regex literals, and hk step commands are dispatched by kat's AST-based host resolver; no generated parser assets are copied into this repository.
+
+## Jam build language
+
+`grammars/jam/queries/highlights.scm` is authored for kat. Its MIT parser is independently maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers), using the B2 language reference and `bfgroup/b2` revision `4ca043f11b3b6de25bb268d5d874d714344074d9` (`src/engine/jamgram.y`, `src/engine/scan.cpp`) as behavioral references. No third-party grammar, query or engine source is copied or adapted. The parser revision is locked in `Cargo.lock`. This supports the Jam build language, not the unrelated Jam programming language; actions remain raw command text.
