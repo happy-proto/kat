@@ -62,6 +62,8 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 
 `Cargo.toml` 中的 Git 依赖（例如 `tree-sitter-kat-parsers`）声明仓库来源，不用 `rev` 固定具体提交。具体提交只由纳入版本控制的 `Cargo.lock` 锁定，依赖更新通过 Cargo 完成。
 
+库自身的 `Cargo.lock` 不会被下游应用继承。直接与间接 Git 依赖统一由 [kat-parsers 的可复用工作流](https://github.com/happy-proto/kat-parsers/blob/ed250ac26790ab7d041e1edacd17adce5ce4cb96/docs/git-dependencies.md) 批量更新；本仓库只维护调用入口，不复制同步脚本。工作流推送更新分支并调度 CI；组织禁止 Actions 创建 PR，审阅入口位于执行摘要。
+
 ## 提交前检查
 
 - 本地提交前检查统一收敛到根目录的 [hk.pkl](../hk.pkl)，手动运行全部提交检查使用 `mise exec -- hk check --all`。
