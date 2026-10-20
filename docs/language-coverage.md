@@ -34,6 +34,8 @@
 
 普通文件名、扩展名和 shebang 的识别以 `grammars/registry.toml` 为准；宿主路径、内容与 profile 的覆盖优先级由 detector 显式表达。F# 实现与签名文件保留各自的 runtime 身份。
 
+CLI 文件输入在检测前会按当前工作目录补全相对路径，因此在 `.ssh`、`.git` 或 `ghostty` 目录中执行 `kat config`，与传入对应的绝对路径使用相同的检测上下文。补全不解析文件软链接，仍按用户指定的路径识别；普通目录中的 `config` 不会因此被识别为这些配置。stdin 不附加路径，显式 `--language` 优先。库 API 继续使用调用方提供的路径，不隐式读取当前工作目录。
+
 ## 评估口径
 
 为了避免把 IDE 能力和终端高亮混在一起，本文档把比较口径拆成两层：
@@ -209,6 +211,12 @@
 其中 `JSDoc` 当前最值得继续观察的是：是否要升级 grammar revision、补独立 injections，或者接受它维持在“tags / types 已经够用”的层级。`GraphQL` 则已经接通 runtime，但 query 还明显浅于样板语言；`SQL` / `Regex` 的剩余工作更多集中在共享 grammar 的表达上限。
 
 ## 特殊文件与检测场景
+
+### SSH 配置片段
+
+除 `ssh_config`、`sshd_config` 与 `.ssh/config` 外，直接位于 `.ssh/conf.d/` 下的 `*.conf` 也按 `ssh_config` 高亮；在该目录内执行 `kat example.conf` 同样支持。其它目录的 `.conf`、备份文件和无扩展名文件不会因这条规则进入 SSH runtime。
+
+这是 kat 的路径识别约定，不代表 OpenSSH 会自动加载该目录。[OpenSSH 的 `Include` 指令](https://man.openbsd.org/ssh_config.5#Include) 用于引入额外配置，例如在 `~/.ssh/config` 中写 `Include ~/.ssh/conf.d/*.conf`；目录名本身没有默认加载语义。kat 不读取或执行 `Include`，也不检查片段是否实际被引用。
 
 ### SSH 主机公钥记录（known_hosts）
 
