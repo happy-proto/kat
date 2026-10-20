@@ -1,0 +1,15 @@
+name: Sync Git dependencies
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    permissions:
+      contents: write
+      actions: write
+    uses: happy-proto/kat-parsers/.github/workflows/sync-git-dependencies.yml@bec51e20519976597dae0e7702c93a267a3eed37
+    with:
+      ci_workflow: ci.yml

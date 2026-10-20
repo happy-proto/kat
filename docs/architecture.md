@@ -9,7 +9,7 @@
 当前技术方向已经收敛为：
 
 - 基于 Tree-sitter 做语法识别和高亮；
-- 默认优先使用 crate-backed parser；只有当上游 crate 不可用、许可证不合适，或仓库确实需要本地 grammar/scanner 改造时，才保留 vendored grammar 资产；
+- 统一使用 kat-parsers 提供的 crate-backed parser，由该仓库管理上游快照、批量同步与压缩产物；
 - 用统一 runtime 和 injection 基础设施承接嵌套高亮、方言分发和宿主感知子语言；
 - 让 grammar、query、detector 和 build 行为都由仓库内约定直接描述。
 
@@ -20,16 +20,15 @@
 - `grammars/<name>/` 只保留 query 等 kat 集成资产；grammar 和 scanner 源码由 parser 提供方维护。
 - 不提交生成出来的 parser 产物，例如 `parser.c`、`grammar.json`、`node-types.json`。
 - `grammars/registry.toml` 是 grammar 注册、parser 来源、构建参数和运行时识别规则的单一事实来源。
-- 所有 grammar 均为 crate-backed，底层 parser 由对应 Rust crate 或 `kat-parsers` 提供。
+- 所有 grammar 均为 crate-backed，底层 parser 统一由 `kat-parsers` 提供。
 
 ### 构建模型
 
-- `kat` 直接链接公开 grammar crate 或 `kat-parsers` 提供的预生成 parser。Tree-sitter 生成 CLI 和 JavaScript runtime 属于 bundle 的生成环境，主仓库构建和运行均不调用它们。parser 来源与归属约定见 [maintenance.md](maintenance.md)。
+- `kat` 直接链接 `kat-parsers` 提供的预生成 parser。Tree-sitter 生成 CLI 和 JavaScript runtime 属于 bundle 的生成环境，主仓库构建和运行均不调用它们。parser 来源与归属约定见 [maintenance.md](maintenance.md)。
 - bundle 使用 ABI 15，其它 grammar crate 使用当前 Tree-sitter runtime 支持的 ABI 范围；全量 runtime 加载测试验证每个注册语言的 parser 与 highlights/locals/injections query 兼容性。
 - 预编译发布产物不应要求目标系统额外安装 dav1d 动态库；当前 release build 会在 Linux、macOS 和 Windows 上静态链接 dav1d，并在打包前检查平台原生二进制依赖表。
-- CI 发布构建在独立 Cargo home 中把所有 Tree-sitter parser 的大状态表转换为原生紧凑表结构，再以 Zstd level 19 分语言压缩并静态链接解码器。每种语言首次使用时只解压自己的表；并发初始化只执行一次。构建期改写的是依赖包生成的 C 数据，仓库不保存生成的 parser。普通本地构建不启用该 feature；`mise run compact-release` 可复现发布路径。体积与性能实验见 [binary-size-experiment.md](binary-size-experiment.md)。
+- parser 表的原生紧凑化与 Zstd level 19 压缩统一在 `kat-parsers` 的维护生成阶段完成。消费方直接编译已提交产物，普通构建与发布构建均自动生效，不改写 Cargo 缓存。每种语言通过共享解压模块按需初始化，Rust `OnceLock` 保证并发只初始化一次；解压后仍使用上游 Tree-sitter 的表结构与查表实现，表保留到进程结束。体积与性能取舍见 [binary-size-experiment.md](binary-size-experiment.md)。
 - 终端图片依赖由默认启用的 `terminal-images` feature 管理；只消费 `kat` 高亮库接口的项目可关闭默认 feature，避免编译图片解码、SVG 和 Sixel 栈。`kat` 二进制要求该 feature，以保持 CLI 图片行为完整。
-- parser 表导出和压缩使用有界并行；每个任务独占编译目录、压缩器和目标文件，避免不同 parser 混用头文件或压缩状态。日志仍按固定顺序输出；`--jobs 1` 可用于顺序复核，默认上限控制编译器与 Zstd 的峰值内存。
 - 构建缓存与 CI cache 的具体策略以 workflow 和相关配置为准；这里不重复展开实现级细节。
 
 ### 运行时模型

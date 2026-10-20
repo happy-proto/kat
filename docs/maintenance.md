@@ -18,12 +18,12 @@
 
 ## Grammar 与 Query 维护
 
-主仓库所有 grammar 都使用 crate-backed parser，`grammars/<name>/` 只保存 query 等 kat 集成资产。parser 来源优先选择兼容且许可证合适的公开 crate；需要特化 grammar、scanner 或许可证隔离时，由 [kat-parsers](https://github.com/happy-proto/kat-parsers) 维护源码和预生成产物。来源选择依据由该仓库的 [grammar 维护理由](https://github.com/happy-proto/kat-parsers/blob/master/docs/vendor-grammar-reasons.md) 记录。来源变更通过 Cargo 依赖和 `THIRD_PARTY.md` 跟踪；registry 维护文件识别与 capture 声明，不保存不起作用的 C 编译参数或本地 parser 生成模式。
+主仓库所有 grammar 都使用 [kat-parsers](https://github.com/happy-proto/kat-parsers) 提供的 crate-backed parser，`grammars/<name>/` 只保存 query 等 kat 集成资产。上游 grammar、scanner、许可证、同步补丁和预生成压缩产物统一在 kat-parsers 维护；该仓库负责批量检查与同步上游，并通过生成与解析回归验证更新。主仓库只更新 Cargo 依赖，不再维护独立的 parser 压缩流程。来源变更通过 Cargo 依赖和 `THIRD_PARTY.md` 跟踪；registry 维护文件识别与 capture 声明，不保存不起作用的 C 编译参数或本地 parser 生成模式。
 
 - `queries/*.scm` 默认按仓库内集成资产管理，可以独立于 grammar revision 演进。
 - `grammars/registry.toml` 中的每个 grammar 都必须对应一个 `grammars/<name>/` 目录，并保留自己的 `queries/highlights.scm` 集成资产，供仓库级校验和构建流程使用。
 - 仓库级 grammar 布局校验默认通过 workspace 内的独立 test crate `validate-grammar-registry` 覆盖；不要再把这类轻量校验重新挂回主 crate，否则 CI 会为了跑校验而额外触发 `kat` 的 `build.rs`。
-- 升级 parser 时，通过 Cargo 更新对应依赖；需要改造 grammar 或 scanner 的语言先在 `kat-parsers` 完成源码与生成产物的同步，再更新主仓库依赖。
+- 升级 parser 时，先在 `kat-parsers` 批量同步源码与生成产物并通过检查，再用 Cargo 更新统一 parser 依赖。
 - 调整 query 时，优先服务当前仓库的 capture 语义、nested runtime 和 detector 设计，而不是机械贴近某个上游仓库。
 - 如果只是为了高亮效果或 injection 行为调整 query，默认不要顺手升级 grammar；只有当 query 目标明确受 upstream AST 或 grammar 变化驱动时，才一起升级 grammar。
 
@@ -48,7 +48,7 @@ mise exec -- hk install --mise
 
 开发任务集中在 [mise.toml](../mise.toml)，使用 `mise tasks` 查看列表，`mise run <任务> --help` 查看带参数任务的用法。
 
-本地复现 CI 的紧凑 parser 静态发布构建使用 `mise run compact-release`，需预先安装 `uv` 和 C 编译器。该命令在独立临时 Cargo home 中提取并压缩 parser 表，生成的二进制在首次使用某语言时按需解压其表。
+本地复现 CI 的静态发布构建使用 `mise run release`。parser 压缩产物已经包含在依赖中，普通构建与发布构建都会自动使用；无需额外 feature、临时 Cargo home 或依赖源码预处理。每种语言首次使用时按需解压其表。
 
 从仓库源码安装：
 
@@ -61,6 +61,8 @@ cargo install --git https://github.com/happy-proto/kat --locked kat
 ## 依赖管理
 
 `Cargo.toml` 中的 Git 依赖（例如 `tree-sitter-kat-parsers`）声明仓库来源，不用 `rev` 固定具体提交。具体提交只由纳入版本控制的 `Cargo.lock` 锁定，依赖更新通过 Cargo 完成。
+
+库自身的 `Cargo.lock` 不会被下游应用继承。直接与间接 Git 依赖统一由 [kat-parsers 的可复用工作流](https://github.com/happy-proto/kat-parsers/blob/bec51e20519976597dae0e7702c93a267a3eed37/docs/git-dependencies.md) 批量更新；本仓库只维护调用入口，不复制同步脚本。工作流推送更新分支并调度 CI；组织禁止 Actions 创建 PR，审阅入口位于执行摘要。
 
 ## 提交前检查
 
