@@ -1253,8 +1253,12 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
         }
 
         let source = String::from_utf8_lossy(&bytes).into_owned();
+        // Include the working directory in detection and retain that context for
+        // viewer reloads, without resolving symlinks or changing display labels.
+        let detection_path = std::path::absolute(path)
+            .with_context(|| format!("failed to make path '{}' absolute", path.display()))?;
         let mut rendered =
-            render_output_with_timing(options, Some(path.as_path()), &source, timings.as_mut())?;
+            render_output_with_timing(options, Some(&detection_path), &source, timings.as_mut())?;
         if let Some(ViewerSegment::Prepared { fingerprint, .. }) = rendered.viewer_segment.as_mut()
         {
             *fingerprint = content_fingerprint(&bytes);
