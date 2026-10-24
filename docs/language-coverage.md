@@ -62,6 +62,12 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 ## 当前结论
 
+### C shell / tcsh
+
+- `.csh`、`.tcsh`、`.cshrc`、`.tcshrc`、`.login`、`.logout` 与系统 `csh.cshrc` / `csh.login` / `csh.logout` 使用独立的 `csh` runtime；显式语言、Markdown fence 与 shebang 接受 `csh` / `tcsh`。无扩展名且无 shebang 的脚本不根据内容猜测。
+- 覆盖常用命令与内建命令、alias、单双引号、变量检查/计数/数组下标/路径修饰符、反引号命令替换、列表、重定向、if/else、foreach/while 与 switch 结构；包括虚拟环境激活脚本中的 `$?prompt`、`$PATH:q`、`$VIRTUAL_ENV:t:q` 与 alias 引号中的 `\!:*`。
+- 这是基础源码高亮，使用 kat-parsers 依据 tcsh 官方手册独立维护的 grammar，不复用 Bash。反引号内保留命令文本和变量/转义，不递归解释命令结构；here-document 正文、交互 history 展开与 tcsh 扩展补全语法暂未结构化解析，不承担运行时求值或完整语法校验。
+
 ### Jam / B2
 
 - `.jam`、`Jamfile`、`Jamfile.v2`、`Jamroot`、`Jambase` 及其小写文件名使用独立 `jam` runtime；显式语言和 Markdown fence 接受 `jam`、`bjam`、`boost-build`。不根据无扩展名文件内容猜测。

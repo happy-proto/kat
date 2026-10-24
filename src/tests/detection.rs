@@ -1596,3 +1596,43 @@ fn jam_build_files_detect_by_name_and_extension() {
         Some(RuntimeId::Jam)
     );
 }
+
+#[test]
+fn csh_files_and_interpreters_use_their_own_runtime() {
+    for name in [
+        "activate.csh",
+        "build.tcsh",
+        ".cshrc",
+        ".tcshrc",
+        ".login",
+        ".logout",
+        "/etc/csh.cshrc",
+        "/etc/csh.login",
+        "/etc/csh.logout",
+    ] {
+        assert_eq!(
+            detected_runtime(Some(Path::new(name)), "setenv NAME example\n"),
+            Some(RuntimeId::Csh),
+            "{name}"
+        );
+    }
+    for shebang in [
+        "#!/bin/csh",
+        "#!/bin/tcsh -f",
+        "#!/usr/bin/env tcsh",
+        "#!/usr/bin/env -S csh -f",
+    ] {
+        assert_eq!(
+            detected_runtime(
+                Some(Path::new("script")),
+                &format!("{shebang}\necho hello\n")
+            ),
+            Some(RuntimeId::Csh),
+            "{shebang}"
+        );
+    }
+    assert_ne!(
+        detected_runtime(Some(Path::new("activate")), "setenv NAME example\n"),
+        Some(RuntimeId::Csh)
+    );
+}
