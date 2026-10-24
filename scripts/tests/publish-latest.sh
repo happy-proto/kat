@@ -4,8 +4,9 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/bin" "$tmp/assets"
-touch "$tmp/assets/kat-test.tar.xz"
+mkdir -p "$tmp/bin" "$tmp/assets" "$tmp/package/kat-x86_64-unknown-linux-gnu"
+printf 'release binary\n' > "$tmp/package/kat-x86_64-unknown-linux-gnu/kat"
+tar -cJf "$tmp/assets/kat-x86_64-unknown-linux-gnu.tar.xz" -C "$tmp/package" kat-x86_64-unknown-linux-gnu
 export KAT_RELEASE_TEST_DIR="$tmp"
 cat > "$tmp/bin/git" <<'MOCK'
 #!/usr/bin/env bash
@@ -22,7 +23,7 @@ if [[ "$1" == api ]]; then
 fi
 if [[ "$1 $2" == 'release view' ]]; then
   if [[ "$*" == *'--json assets'* ]]; then
-    printf 'kat-test.tar.xz\n'
+    printf 'kat-x86_64-unknown-linux-gnu.tar.xz\n'
   fi
 else
   printf 'gh %s\n' "$*" >> "$KAT_RELEASE_TEST_DIR/mutations"
@@ -50,8 +51,15 @@ run_case "$RELEASE_SHA" 0 0
 grep -Fq "git tag -f latest $RELEASE_SHA" "$tmp/mutations"
 grep -Fq 'git push --force origin refs/tags/latest' "$tmp/mutations"
 grep -Fq 'gh release upload latest' "$tmp/mutations"
+grep -Fq '<summary>二进制体积</summary>' "$tmp/latest-release-notes.md"
+grep -Fq '| Linux（GNU） | x86_64 | 0.00 MiB |' "$tmp/latest-release-notes.md"
+grep -Fq -- "--notes-file $tmp/latest-release-notes.md" "$tmp/mutations"
+
+printf 'invalid archive\n' > "$tmp/assets/kat-x86_64-unknown-linux-gnu.tar.xz"
+run_case "$RELEASE_SHA" 0 1
+[[ ! -s "$tmp/mutations" ]] || { echo 'Invalid archive changed tags or releases'; exit 1; }
 
 run_case "$RELEASE_SHA" 42 42
 [[ ! -s "$tmp/mutations" ]] || { echo 'Release changed tags or assets after a failed freshness lookup'; exit 1; }
 
-echo 'Latest release freshness tests passed'
+echo 'Latest release freshness and binary size tests passed'

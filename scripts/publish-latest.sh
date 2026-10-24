@@ -6,10 +6,6 @@ if [[ "$current_default_sha" != "$RELEASE_SHA" ]]; then
   exit 0
 fi
 
-git fetch --tags origin
-git tag -f latest "${RELEASE_SHA}"
-git push --force origin refs/tags/latest
-
 notes_file="${RUNNER_TEMP}/latest-release-notes.md"
 
 cat > "${notes_file}" <<EOF
@@ -19,6 +15,12 @@ latest channel for the current master tip.
 - Commit: \`${RELEASE_SHA}\`
 - Commit URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${RELEASE_SHA}
 EOF
+echo >> "${notes_file}"
+uv run --script "$(dirname "$0")/release-binary-sizes.py" report "${RELEASE_ASSET_DIR}" >> "${notes_file}"
+
+git fetch --tags origin
+git tag -f latest "${RELEASE_SHA}"
+git push --force origin refs/tags/latest
 
 if gh release view latest >/dev/null 2>&1; then
   gh release edit latest \

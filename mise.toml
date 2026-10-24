@@ -11,6 +11,7 @@ run = '''
 #!/usr/bin/env bash
 set -euo pipefail
 uv run --script scripts/check-config.py self-test
+uv run --script scripts/release-binary-sizes.py self-test
 bash scripts/tests/zig-download-retry.sh
 bash scripts/tests/publish-latest.sh
 extra_args=()

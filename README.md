@@ -22,6 +22,8 @@ cargo binstall --git https://github.com/happy-proto/kat kat
 
 源码构建与预编译包统一使用 kat-parsers 的预生成压缩语法表，无需额外启用压缩 feature 或预处理依赖源码。
 
+`latest` 发布说明按平台和架构展示安装后的二进制体积，单位为 MiB，方便比较各发布包内可执行文件的大小。
+
 ## 使用
 
 ```bash

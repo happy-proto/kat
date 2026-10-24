@@ -41,7 +41,6 @@ jobs:
           set -euo pipefail
           cargo fmt --check
           bash scripts/tests/zig-download-retry.sh
-          bash scripts/tests/publish-latest.sh
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -52,6 +51,8 @@ jobs:
           set -euo pipefail
           uvx ruff check scripts/*.py
           uv run --script scripts/check-config.py self-test
+          uv run --script scripts/release-binary-sizes.py self-test
+          bash scripts/tests/publish-latest.sh
           git ls-files -z -- '*.toml' '*.yaml' '*.yml' | xargs -0 uv run --script scripts/check-config.py check
 
   clippy:
