@@ -69,19 +69,6 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
             if is_interrupt(&event) {
                 return Ok(());
             }
-            // Confirming a filename query also opens its current result using
-            // the same navigation path as Enter outside the filter editor.
-            if browser.filter.editing
-                && matches!(
-                    &event,
-                    InputEvent::Key(KeyEvent {
-                        key: KeyCode::Enter,
-                        ..
-                    })
-                )
-            {
-                browser.filter.editing = false;
-            }
             if let Some(active) = reader.as_mut() {
                 match active.view.handle(event, size) {
                     PagerInputOutcome::Quit => {
@@ -347,6 +334,10 @@ impl Browser {
                 .query
                 .extend(text.chars().filter(|c| !c.is_control())),
             InputEvent::Key(key) => match key.key {
+                KeyCode::Enter => {
+                    self.filter.editing = false;
+                    return;
+                }
                 KeyCode::Escape => {
                     self.filter.editing = false;
                     self.filter.query.clear();
@@ -604,7 +595,7 @@ impl Browser {
             }
             let status = if self.filter.editing {
                 format!(
-                    "/{}  [{}/{}]  Enter:open  Esc:clear",
+                    "/{}  [{}/{}]  Enter:confirm  Esc:clear",
                     self.filter.query,
                     self.filter.matches.len(),
                     self.entries.len()

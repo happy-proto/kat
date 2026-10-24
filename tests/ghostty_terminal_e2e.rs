@@ -259,7 +259,13 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
     session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("> abc.txt"))?;
     session.write_input(b"\r")?;
     session.wait_for_screen(100, 12, |frame| {
-        frame.screen[1].starts_with("best match preview") && frame.screen[11].contains("q:back")
+        frame.screen[11].contains("hjkl/arrows") && frame.screen[11].contains("/abc [3/5]")
+    })?;
+    session.write_input(b"jj")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[3].starts_with("> a_b_c.txt"))?;
+    session.write_input(b"\r")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("sparse match preview") && frame.screen[11].contains("q:back")
     })?;
     session.write_input(b"h")?;
     session.wait_for_screen(100, 12, |frame| {
@@ -278,7 +284,7 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
     })?;
-    session.write_input(b"/abc\rh")?;
+    session.write_input(b"/abc\r")?;
     session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("/abc [4/6]"))?;
     session.write_input(b"/\x15zzzz")?;
     session.wait_for_screen(100, 12, |frame| {
@@ -308,6 +314,10 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
         frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
     })?;
     session.write_input(b"/dir\r")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("> dir-abc/") && frame.screen[11].contains("/dir [1/6]")
+    })?;
+    session.write_input(b"\r")?;
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[1].starts_with("> inside.txt") && !frame.screen[11].contains("/dir")
     })?;
