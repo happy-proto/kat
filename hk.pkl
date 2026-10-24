@@ -22,6 +22,10 @@ steps {
     check = "uvx ruff check {{files}}"
   }
   ["fmt"] { check = "cargo fmt --check" }
+  ["release-notes"] {
+    glob = List("scripts/release-binary-sizes.py", "scripts/publish-latest.sh", "scripts/tests/publish-latest.sh")
+    check = "uv run --script scripts/release-binary-sizes.py self-test && bash scripts/tests/publish-latest.sh"
+  }
   ["clippy"] {
     depends = "fmt"
     check = "cargo clippy --workspace --locked --all-targets -- -D warnings"

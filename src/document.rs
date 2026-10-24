@@ -85,6 +85,11 @@ pub struct RenderOptions {
 }
 
 impl RenderOptions {
+    /// Color capability selected for this document and its surrounding UI.
+    pub fn color_mode(&self) -> ColorMode {
+        self.theme.color_mode()
+    }
+
     /// Probe the terminal palette for the kat CLI's rendering behavior.
     pub fn terminal(hyperlinks_enabled: bool) -> Self {
         Self {

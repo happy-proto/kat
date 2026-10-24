@@ -384,7 +384,9 @@ impl TokenStyle {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum DraculaColor {
+/// Shared Dracula palette for document and terminal UI rendering.
+pub enum DraculaColor {
+    CurrentLine,
     Comment,
     Foreground,
     Red,
@@ -399,7 +401,7 @@ enum DraculaColor {
 impl DraculaColor {
     const fn priority(self) -> u8 {
         match self {
-            Self::Foreground | Self::Comment => 0,
+            Self::Foreground | Self::Comment | Self::CurrentLine => 0,
             Self::Red
             | Self::Orange
             | Self::Yellow
@@ -410,7 +412,7 @@ impl DraculaColor {
         }
     }
 
-    fn to_color(self, color_mode: ColorMode) -> Color {
+    pub fn to_color(self, color_mode: ColorMode) -> Color {
         match color_mode {
             ColorMode::NoColor => unreachable!("NoColor never requests a concrete style"),
             ColorMode::Ansi => Color::Ansi(self.to_ansi_color()),
@@ -420,6 +422,7 @@ impl DraculaColor {
 
     const fn name(self) -> &'static str {
         match self {
+            Self::CurrentLine => "current_line",
             Self::Comment => "comment",
             Self::Foreground => "foreground",
             Self::Red => "red",
@@ -434,6 +437,7 @@ impl DraculaColor {
 
     fn to_ansi_color(self) -> AnsiColor {
         match self {
+            Self::CurrentLine => AnsiColor::BrightBlack,
             Self::Comment => AnsiColor::BrightBlack,
             Self::Foreground => AnsiColor::White,
             Self::Red => AnsiColor::Red,
@@ -448,6 +452,7 @@ impl DraculaColor {
 
     const fn to_ansi_name(self) -> &'static str {
         match self {
+            Self::CurrentLine => "bright_black",
             Self::Comment => "bright_black",
             Self::Foreground => "white",
             Self::Red => "red",
@@ -460,8 +465,9 @@ impl DraculaColor {
         }
     }
 
-    fn to_rgb_color(self) -> RgbColor {
+    pub fn to_rgb_color(self) -> RgbColor {
         match self {
+            Self::CurrentLine => RgbColor(68, 71, 90),
             Self::Comment => RgbColor(98, 114, 164),
             Self::Foreground => RgbColor(248, 248, 242),
             Self::Red => RgbColor(255, 85, 85),

@@ -27,6 +27,766 @@ const BACKGROUND_RESPONSE: &[u8] = b"\x1b]11;rgb:2828/2a2a/3636\x1b\\";
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+struct BrowserFixture(PathBuf);
+
+impl BrowserFixture {
+    fn new(name: &str) -> Self {
+        let root = std::env::temp_dir().join(format!("kat-browser-{name}-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        Self(root)
+    }
+
+    fn write(&self, name: &str, contents: impl AsRef<[u8]>) -> PathBuf {
+        let path = self.0.join(name);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, contents).unwrap();
+        path
+    }
+
+    fn spawn(
+        &self,
+        args: &[&str],
+        cols: u16,
+        rows: u16,
+    ) -> Result<KatPtySession, Box<dyn std::error::Error>> {
+        KatPtySession::spawn_in(
+            args,
+            cols,
+            rows,
+            &[
+                ("KAT_COLOR_MODE", "truecolor"),
+                ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+                ("KAT_IMAGE_PROTOCOL", "none"),
+            ],
+            Some(&self.0),
+        )
+    }
+}
+
+impl Drop for BrowserFixture {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+#[test]
+fn browser_open_and_back_keys_share_fullscreen_dracula_chrome() -> TestResult {
+    let fixture = BrowserFixture::new("open-and-back");
+    fixture.write("file.txt", "first line\nhere is the search target\n");
+    fixture.write("other.txt", "other preview\n");
+    for (open, back) in [
+        (b"l".as_slice(), b"h".as_slice()),
+        (b"\x1b[C", b"q"),
+        (b"l", b"\x1b[D"),
+        (b"\r", b"h"),
+    ] {
+        let mut session = fixture.spawn(&["."], 100, 12)?;
+        session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+        // o must leave us in the browser so j selects the next file.
+        session.write_input(b"oj")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen_text().contains("hjkl/arrows")
+                && frame.screen[2].starts_with("> ")
+                && frame.screen[2].contains("other.txt")
+        })?;
+        session.write_input(b"k")?;
+        session.write_input(open)?;
+        let frame =
+            session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("q:back"))?;
+        assert!(frame.screen[0].contains("file.txt"));
+        assert_eq!(frame.screen[1].trim_end(), "first line");
+        for y in [0, 11] {
+            let style = frame
+                .terminal
+                .grid_ref(Point::Active(PointCoordinate { x: 0, y }))?
+                .style()?;
+            let StyleColor::Rgb(bg) = style.bg_color else {
+                panic!("expected unified surface")
+            };
+            assert_eq!((bg.r, bg.g, bg.b), (68, 71, 90));
+        }
+        session.write_input(b"/h")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen.last().unwrap().starts_with("/h")
+        })?;
+        session.write_input(b"\x1b")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen.last().unwrap().contains("q:back")
+        })?;
+        session.write_input(back)?;
+        let frame = session
+            .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+        assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("file.txt"));
+        session.write_input(b"q")?;
+        session.wait_success()?;
+    }
+    Ok(())
+}
+
+#[test]
+fn explicit_stdin_reads_terminal_input_instead_of_browsing_cwd() -> TestResult {
+    let fixture = BrowserFixture::new("explicit-stdin");
+    let mut session = fixture.spawn(&["--stdin"], 100, 12)?;
+    session.write_input(b"stream from terminal\n\x04")?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("q:quit") && frame.screen[1].starts_with("stream from terminal")
+    })?;
+    assert!(frame.screen[0].contains("stdin"));
+    assert!(!frame.screen[11].contains("hjkl/arrows"));
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn shell_wrappers_change_directory_only_when_o_opens_a_directory() -> TestResult {
+    let fixture = BrowserFixture::new("shell-cd");
+    fixture.write("workers with spaces/read.txt", "inside workers\n");
+    fixture.write("z.txt", "last file\n");
+    let temporary = fixture.0.join("z-temp");
+    fs::create_dir_all(&temporary)?;
+    let binary_dir = Path::new(env!("CARGO_BIN_EXE_kat")).parent().unwrap();
+    let path = format!("{}:{}", binary_dir.display(), std::env::var("PATH")?);
+    for shell in ["bash", "zsh", "fish"] {
+        if !std::process::Command::new(shell)
+            .arg("--version")
+            .output()
+            .is_ok_and(|result| result.status.success())
+        {
+            assert_ne!(
+                shell, "bash",
+                "bash is required for shell integration tests"
+            );
+            continue;
+        }
+        for key in [b"o".as_slice(), b"O", b"lO", b"GO", b"/missing\rO", b"q"] {
+            let mut command = CommandBuilder::new(shell);
+            let script = if shell == "fish" {
+                "source $argv[1]; kat $argv[2]; set -l kat_result $status; printf '\\nKAT_CWD=%s\\n' \"$PWD\"; exit $kat_result"
+            } else {
+                "source \"$1\"; kat \"$2\"; kat_result=$?; printf '\\nKAT_CWD=%s\\n' \"$PWD\"; exit \"$kat_result\""
+            };
+            if shell == "fish" {
+                command.arg("--no-config");
+            } else if shell == "bash" {
+                command.args(["--noprofile", "--norc"]);
+            } else {
+                command.arg("-f");
+            }
+            command.args(["-c", script]);
+            if shell != "fish" {
+                command.arg("kat-shell-test");
+            }
+            command.arg(
+                Path::new(env!("CARGO_MANIFEST_DIR")).join(if shell == "fish" {
+                    "shell/kat.fish"
+                } else {
+                    "shell/kat.sh"
+                }),
+            );
+            command.arg(&fixture.0);
+            let mut session = KatPtySession::spawn_command(
+                command,
+                100,
+                12,
+                &[
+                    ("PATH", &path),
+                    ("TMPDIR", temporary.to_str().unwrap()),
+                    ("KAT_COLOR_MODE", "truecolor"),
+                    ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+                ],
+                Some(&fixture.0),
+            )?;
+            session
+                .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+            session.write_input(key)?;
+            let output = session.wait_success()?;
+            let expected = if key == b"o" || key == b"lO" {
+                fixture.0.join("workers with spaces")
+            } else {
+                fixture.0.clone()
+            };
+            let transcript = String::from_utf8_lossy(&output);
+            let reported = transcript
+                .lines()
+                .find_map(|line| line.strip_prefix("KAT_CWD="))
+                .unwrap_or_else(|| panic!("{shell}: {transcript}"));
+            assert_eq!(
+                fs::canonicalize(reported.trim_end_matches('\r'))?,
+                fs::canonicalize(expected)?,
+                "{shell}: {transcript}"
+            );
+            assert_eq!(
+                fs::read_dir(&temporary)?.count(),
+                0,
+                "{shell} must clean up its cwd file"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestResult {
+    let fixture = BrowserFixture::new("filename-filter");
+    fixture.write("abc.txt", "best match preview\n");
+    fixture.write("a_b_c.txt", "sparse match preview\n");
+    fixture.write("other.txt", "other preview\n");
+    fixture.write("dir-abc/inside.txt", "inside directory\n");
+    fixture.write("报告🦀.md", "unicode preview\n");
+    let mut session = fixture.spawn(&["--icons=never", "."], 100, 12)?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    session.write_input(b"/abc")?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].starts_with("/abc") && frame.screen[11].contains("[3/5]")
+    })?;
+    assert!(
+        frame.screen[1].starts_with("> abc.txt"),
+        "best match must rank first: {}",
+        frame.screen_text()
+    );
+    assert!(!frame.screen_text().contains("other.txt"));
+    let sparse_row = frame
+        .screen
+        .iter()
+        .position(|line| line.contains("a_b_c.txt"))
+        .unwrap() as u32;
+    for (y, offsets) in [(1, [0, 1, 2]), (sparse_row, [0, 2, 4])] {
+        for offset in offsets {
+            assert_filename_match(&frame, 2 + offset, y)?;
+        }
+    }
+    let style = frame
+        .terminal
+        .grid_ref(Point::Active(PointCoordinate { x: 5, y: 1 }))?
+        .style()?;
+    assert_eq!(
+        style.underline,
+        Underline::None,
+        "unmatched extension must keep its normal style"
+    );
+    session.write_input(b"\x1b[B")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[2].starts_with("> dir-abc/") && frame.screen[11].starts_with("/abc")
+    })?;
+    session.write_input(b"\x1b[A")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("> abc.txt"))?;
+    session.write_input(b"\r")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("hjkl/arrows") && frame.screen[11].contains("/abc [3/5]")
+    })?;
+    session.write_input(b"jj")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[3].starts_with("> a_b_c.txt"))?;
+    session.write_input(b"\r")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("sparse match preview") && frame.screen[11].contains("q:back")
+    })?;
+    session.write_input(b"h")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("hjkl/arrows") && frame.screen[11].contains("/abc")
+    })?;
+    session.resize(60, 12)?;
+    session.wait_for_screen(60, 12, |frame| {
+        frame.screen[11].starts_with("kat ") && frame.screen[11].contains("/abc [3/5]")
+    })?;
+    session.resize(100, 12)?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("/abc [3/5]"))?;
+    fixture.write("abc-new.txt", "new matching file\n");
+    session.write_input(b"R")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("[4/6]"))?;
+    session.write_input(b"\x1b")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
+    })?;
+    session.write_input(b"/abc\r")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("/abc [4/6]"))?;
+    session.write_input(b"/\x15zzzz")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].starts_with("/zzzz") && frame.screen_text().contains("No matches")
+    })?;
+    session.write_input(b"\x7f\x7f\x7f\x7f")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("[6/6]"))?;
+    session.write_input("报告🦀".as_bytes())?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11]
+            .split_whitespace()
+            .collect::<String>()
+            .starts_with("/报告🦀[1/6]")
+    })?;
+    for x in [2, 4, 6] {
+        assert_filename_match(&frame, x, 1)?;
+    }
+    session.write_input(b"\x7f")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11]
+            .split_whitespace()
+            .collect::<String>()
+            .starts_with("/报告[1/6]")
+    })?;
+    session.write_input(b"\x1b")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
+    })?;
+    session.write_input(b"/dir\r")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("> dir-abc/") && frame.screen[11].contains("/dir [1/6]")
+    })?;
+    session.write_input(b"\r")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("> inside.txt") && !frame.screen[11].contains("/dir")
+    })?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+fn assert_filename_match(frame: &RenderedTerminal, x: u16, y: u32) -> TestResult {
+    let style = frame
+        .terminal
+        .grid_ref(Point::Active(PointCoordinate { x, y }))?
+        .style()?;
+    let StyleColor::Rgb(color) = style.fg_color else {
+        panic!("expected colored filename match: {style:?}")
+    };
+    assert_eq!((color.r, color.g, color.b), (241, 250, 140));
+    assert_eq!(style.underline, Underline::Single);
+    Ok(())
+}
+
+#[test]
+fn browser_list_width_fits_names_and_preserves_preview_space() -> TestResult {
+    let fixture = BrowserFixture::new("adaptive-width");
+    fixture.write("a.txt", "short preview\n");
+    let mut session = fixture.spawn(&["."], 120, 12)?;
+    let frame =
+        session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    assert_eq!(frame.divider_column(1)?, 16);
+    let long_name = "x".repeat(160);
+    let long_file = fixture.write(&long_name, "long preview\n");
+    session.write_input(b"R")?;
+    session.wait_for_screen(120, 12, |frame| frame.divider_column(1).ok() == Some(40))?;
+    session.resize(240, 12)?;
+    session.wait_for_screen(240, 12, |frame| {
+        frame.divider_column(1).ok() == Some(40) && frame.screen_text().contains("short preview")
+    })?;
+    session.resize(60, 12)?;
+    session.wait_for_screen(60, 12, |frame| frame.divider_column(1).ok() == Some(20))?;
+    session.resize(120, 12)?;
+    session.wait_for_screen(120, 12, |frame| frame.divider_column(1).ok() == Some(40))?;
+    fs::remove_file(long_file)?;
+    session.write_input(b"R")?;
+    session.wait_for_screen(120, 12, |frame| frame.divider_column(1).ok() == Some(16))?;
+    session.write_input(b"l")?;
+    let frame = session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("q:back"))?;
+    assert_eq!(frame.screen[1].trim_end(), "short preview");
+    session.write_input(b"q")?;
+    let frame =
+        session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    assert_eq!(frame.divider_column(1)?, 16);
+    assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("a.txt"));
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    // A direct file invocation has no browser to return to.
+    let mut session = fixture.spawn(&["a.txt"], 120, 12)?;
+    session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("q:quit"))?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_uses_dracula_chrome_and_matching_icons_in_both_panes() -> TestResult {
+    let fixture = BrowserFixture::new("dracula");
+    fixture.write("nested/deeper/doc.txt", "preview\n");
+    fixture.write("nested/code.rs", "fn main() {}\n");
+    fixture.write("Cargo.toml", "[package]\n");
+    fixture.write("Dockerfile", "FROM scratch\n");
+    fixture.write("unknown.kat-unknown", "plain\n");
+    let mut session = fixture.spawn(&["."], 100, 12)?;
+    let frame =
+        session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    frame.assert_text_style("nested/", (189, 147, 249), false)?;
+    frame.assert_text_style("deeper/", (189, 147, 249), false)?;
+    frame.assert_text_style("Cargo.toml", (248, 248, 242), false)?;
+    frame.assert_text_style("hjkl/arrows", (139, 233, 253), false)?;
+    let left = frame.divider_column(1)?;
+    for (x, y, glyph) in [
+        (2, 1, '\u{f07b}'),
+        (left + 1, 1, '\u{f07b}'),
+        (2, 2, ''),
+        (left + 1, 2, ''),
+        (2, 3, '󰡨'),
+        (2, 4, '\u{f15b}'),
+    ] {
+        let cell = frame
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x, y }))?;
+        assert_eq!(
+            cell.cell()?.codepoint()?,
+            glyph as u32,
+            "{x},{y}: {}",
+            frame.screen_text()
+        );
+    }
+    for (x, y) in [(0, 0), (0, 11), (0, 1), (left - 1, 1)] {
+        let style = frame
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x, y }))?
+            .style()?;
+        let StyleColor::Rgb(bg) = style.bg_color else {
+            panic!("expected Dracula surface: {style:?}")
+        };
+        assert_eq!((bg.r, bg.g, bg.b), (68, 71, 90));
+        assert!(
+            !style.inverse,
+            "selected items should use a colored surface"
+        );
+    }
+    let divider = frame
+        .terminal
+        .grid_ref(Point::Active(PointCoordinate { x: left, y: 1 }))?
+        .style()?;
+    let StyleColor::Rgb(fg) = divider.fg_color else {
+        panic!("expected divider color")
+    };
+    assert_eq!((fg.r, fg.g, fg.b), (98, 114, 164));
+    session.write_input(b"l")?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("> ") && frame.screen[1].contains("deeper/")
+    })?;
+    frame.assert_text_style("deeper/", (189, 147, 249), false)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_icons_can_be_disabled_without_disabling_directory_colors() -> TestResult {
+    let fixture = BrowserFixture::new("icons-disabled");
+    fixture.write("nested/subdir/read.txt", "plain\n");
+    let mut session = fixture.spawn(&["--icons=never", "."], 100, 12)?;
+    let frame =
+        session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    assert!(frame.screen[1].starts_with("> nested/"));
+    assert!(frame.screen[1].contains("│subdir/"));
+    assert!(!frame.screen_text().contains('\u{f07b}'));
+    frame.assert_text_style("nested/", (189, 147, 249), false)?;
+    frame.assert_text_style("subdir/", (189, 147, 249), false)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_theme_respects_no_color_and_ansi_modes() -> TestResult {
+    let fixture = BrowserFixture::new("color-modes");
+    fixture.write("nested/file.txt", "plain\n");
+    for mode in ["none", "ansi"] {
+        let mut session = KatPtySession::spawn_in(
+            &["."],
+            100,
+            12,
+            &[
+                ("KAT_COLOR_MODE", mode),
+                ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+            ],
+            Some(&fixture.0),
+        )?;
+        let frame = session
+            .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+        let left = frame.divider_column(1)?;
+        for (x, y) in [(0, 0), (5, 1), (left, 1), (0, 11)] {
+            let style = frame
+                .terminal
+                .grid_ref(Point::Active(PointCoordinate { x, y }))?
+                .style()?;
+            assert!(!matches!(style.fg_color, StyleColor::Rgb(_)));
+            assert!(!matches!(style.bg_color, StyleColor::Rgb(_)));
+            if mode == "none" {
+                assert!(matches!(style.fg_color, StyleColor::None));
+                assert!(matches!(style.bg_color, StyleColor::None));
+            }
+        }
+        assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/"));
+        session.write_input(b"q")?;
+        session.wait_success()?;
+    }
+    Ok(())
+}
+
+#[test]
+fn browser_defaults_to_cwd_and_navigates_directories_with_both_key_sets() -> TestResult {
+    let fixture = BrowserFixture::new("navigation");
+    fixture.write("nested/inside.txt", "nested preview\n");
+    fixture.write("a.rs", "fn main() {}\n");
+    fixture.write("z.txt", "last preview\n");
+    for args in [vec![], vec!["."]] {
+        let mut session = fixture.spawn(&args, 100, 12)?;
+        let frame = session
+            .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+        assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/"));
+        assert!(frame.screen[1].contains("inside.txt"));
+
+        session.write_input(b"\r")?;
+        session.wait_for_screen(100, 12, |frame| frame.screen[1].contains("nested preview"))?;
+        session.write_input(b"h")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/")
+        })?;
+        // A split escape sequence must not be mistaken for Escape/quit.
+        session.write_input(b"\x1b[")?;
+        session.write_input(b"B")?;
+        let frame =
+            session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("fn main()"))?;
+        assert!(frame.screen[2].starts_with("> ") && frame.screen[2].contains("a.rs"));
+        frame.assert_text_style("fn", (255, 121, 198), false)?;
+        session.write_input(b"j")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen_text().contains("last preview")
+        })?;
+        session.write_input(b"k\x1b[Ak\x1b[C")?;
+        session.wait_for_screen(100, 12, |frame| frame.screen[1].contains("nested preview"))?;
+        session.write_input(b"\x1b[D")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/")
+        })?;
+        session.write_input(b"q")?;
+        let output = session.wait_success()?;
+        assert_eq!(
+            output
+                .windows(8)
+                .filter(|bytes| *bytes == b"\x1b[?1049h")
+                .count(),
+            1
+        );
+        assert_eq!(
+            output
+                .windows(8)
+                .filter(|bytes| *bytes == b"\x1b[?1049l")
+                .count(),
+            1
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn browser_reader_searches_reloads_resizes_and_returns_without_losing_keys() -> TestResult {
+    let fixture = BrowserFixture::new("reader");
+    let source = (0..40)
+        .map(|i| format!("line-{i:03}\n"))
+        .collect::<String>();
+    let file = fixture.write("read.txt", &source);
+    let mut session = fixture.spawn(&["."], 100, 12)?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    session.write_input(b"l/line-035\r")?;
+    let frame =
+        session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("line-035"))?;
+    assert!(frame.screen_text().contains("q:back"));
+    session.resize(60, 10)?;
+    session.wait_for_screen(60, 10, |frame| frame.screen[1].starts_with("line-035"))?;
+    fs::write(&file, source.replace("line-035", "changed-035"))?;
+    session.write_input(b"R")?;
+    session.wait_for_screen(60, 10, |frame| {
+        frame.screen_text().contains("Reloaded: changed")
+    })?;
+    session.write_input(b"q")?;
+    let frame = session.wait_for_screen(60, 10, |frame| {
+        frame.screen.last().unwrap().contains("hjkl/arrows")
+    })?;
+    assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("read.txt"));
+    // All three keys may arrive in one read: open reader, return, exit browser.
+    session.write_input(b"lqq")?;
+    let output = session.wait_success()?;
+    assert_eq!(
+        output
+            .windows(8)
+            .filter(|bytes| *bytes == b"\x1b[?1049h")
+            .count(),
+        1
+    );
+    Ok(())
+}
+
+#[test]
+fn browser_preview_preserves_two_panes_with_wide_names_and_resize() -> TestResult {
+    let fixture = BrowserFixture::new("geometry");
+    fixture.write(
+        "中文文件😀.md",
+        "---\ntitle: 中文\n---\n\n```rust\nfn main() {}\n```\n",
+    );
+    let mut session = fixture.spawn(&["."], 90, 12)?;
+    session.wait_for_screen(90, 12, |frame| frame.screen_text().contains("fn main()"))?;
+    for (width, left) in [(42, 14), (90, 20)] {
+        session.resize(width, 12)?;
+        let frame = session.wait_for_screen(width, 12, |frame| {
+            frame.screen[1].contains('│')
+                && frame.screen_text().contains("title:")
+                && frame
+                    .terminal
+                    .grid_ref(Point::Active(PointCoordinate { x: left, y: 1 }))
+                    .and_then(|cell| cell.cell())
+                    .and_then(|cell| cell.codepoint())
+                    .ok()
+                    == Some('│' as u32)
+        })?;
+        for y in 1..11 {
+            let cell = frame
+                .terminal
+                .grid_ref(Point::Active(PointCoordinate { x: left, y }))?;
+            // Query Ghostty's physical cell at the divider, rather than counting
+            // Unicode scalar values in a line containing wide glyphs.
+            assert_eq!(
+                cell.cell()?.codepoint()?,
+                '│' as u32,
+                "{}",
+                frame.screen_text()
+            );
+        }
+    }
+    session.resize(10, 2)?;
+    session.wait_for_screen(10, 2, |frame| frame.screen_text().contains("Terminal"))?;
+    session.resize(90, 12)?;
+    session.wait_for_screen(90, 12, |frame| frame.screen_text().contains("fn main()"))?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_handles_empty_binary_missing_large_and_special_entries() -> TestResult {
+    let fixture = BrowserFixture::new("edge-cases");
+    fs::create_dir_all(fixture.0.join("empty"))?;
+    let binary = fixture.write("a.bin", b"hello\0world");
+    let text = fixture.write("b.txt", "before reload\n");
+    let large = fs::File::create(fixture.0.join("c.txt"))?;
+    large.set_len(9 * 1024 * 1024)?;
+    let mut session = fixture.spawn(&["."], 100, 12)?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen_text().contains("Empty directory")
+    })?;
+    session.write_input(b"l")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("(empty)"))?;
+    session.write_input(b"hj")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("Binary file"))?;
+    fs::remove_file(binary)?;
+    session.write_input(b"R")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen_text().contains("before reload")
+    })?;
+    fs::remove_file(text)?;
+    session.write_input(b"l")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen_text().contains("Cannot preview")
+    })?;
+    session.write_input(b"j")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("Large file"))?;
+    #[cfg(unix)]
+    {
+        let socket = std::os::unix::net::UnixListener::bind(fixture.0.join("d.sock"))?;
+        session.write_input(b"RG")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen_text().contains("Special file")
+        })?;
+        drop(socket);
+    }
+    session.write_input(b"\x03")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_images_fall_back_to_information_and_return_from_fullscreen() -> TestResult {
+    let fixture = BrowserFixture::new("image");
+    // A tiny self-contained SVG exercises image detection without adding assets.
+    fixture.write("a.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"8\" height=\"4\"><rect width=\"8\" height=\"4\" fill=\"red\"/></svg>");
+    fixture.write("b.txt", "after image\n");
+    let mut session = fixture.spawn(&["."], 100, 12)?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen_text().contains("image protocol")
+    })?;
+    session.write_input(b"oj")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[2].starts_with("> ") && frame.screen[2].contains("b.txt")
+    })?;
+    session.write_input(b"k\r")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("q:back"))?;
+    session.write_input(b"qj")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("after image"))?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_kitty_images_are_positioned_in_the_preview_and_cleaned_up() -> TestResult {
+    let fixture = BrowserFixture::new("kitty");
+    fixture.write("a.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"8\" height=\"4\"><rect width=\"8\" height=\"4\" fill=\"red\"/></svg>");
+    fixture.write("b.txt", "after kitty image\n");
+    let mut session = KatPtySession::spawn_in(
+        &["."],
+        100,
+        12,
+        &[
+            ("KAT_COLOR_MODE", "truecolor"),
+            ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+            ("KAT_IMAGE_PROTOCOL", "kitty"),
+        ],
+        Some(&fixture.0),
+    )?;
+    let frame =
+        session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    let raw = String::from_utf8_lossy(&frame.raw_output);
+    assert!(
+        raw.contains(&format!(
+            "\x1b[2;{}H\x1b_Ga=T,",
+            frame.divider_column(1)? + 2
+        )),
+        "{raw}"
+    );
+    assert!(raw.contains(",i=4931924,"), "{raw}");
+    session.write_input(b"j")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen_text().contains("after kitty image")
+    })?;
+    session.write_input(b"q")?;
+    let raw = session.wait_success()?;
+    assert!(raw.ends_with(b"\x1b[0m\x1b[?25h\x1b[?1049l"));
+    assert!(String::from_utf8_lossy(&raw).contains("a=d,d=I,i=4931924"));
+    Ok(())
+}
+
+#[test]
+fn browser_scrolls_the_list_and_keeps_its_position_after_reading() -> TestResult {
+    let fixture = BrowserFixture::new("scroll");
+    for i in 0..30 {
+        fixture.write(&format!("{i:02}.txt"), format!("content-{i:02}\n"));
+    }
+    let mut session = fixture.spawn(&["."], 100, 8)?;
+    session.wait_for_screen(100, 8, |frame| frame.screen_text().contains("content-00"))?;
+    session.write_input(b"\x1b[6~")?;
+    session.wait_for_screen(100, 8, |frame| frame.screen_text().contains("content-06"))?;
+    session.write_input(b"G")?;
+    let frame =
+        session.wait_for_screen(100, 8, |frame| frame.screen_text().contains("content-29"))?;
+    assert!(frame.screen[6].starts_with("> ") && frame.screen[6].contains("29.txt"));
+    session.write_input(b"lq")?;
+    let frame = session.wait_for_screen(100, 8, |frame| {
+        frame.screen_text().contains("hjkl/arrows")
+            && frame.screen[6].starts_with("> ")
+            && frame.screen[6].contains("29.txt")
+    })?;
+    assert!(frame.screen[1].starts_with("  ") && frame.screen[1].contains("24.txt"));
+    session.write_input(b"\x1b[5~g")?;
+    session.wait_for_screen(100, 8, |frame| {
+        frame.screen[1].starts_with("> ") && frame.screen[1].contains("00.txt")
+    })?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
 #[test]
 fn kat_renders_tmtheme_as_xml() -> TestResult {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/xml/theme.tmTheme");
@@ -556,7 +1316,7 @@ fn kat_builtin_pager_handles_burst_and_split_cursor_input() -> TestResult {
 
     session.write_input(&b"\x1b[B".repeat(10))?;
     let screen = session.wait_for_screen(COLS, ROWS, |screen| {
-        screen.screen_text().lines().next().map(str::trim_end) == Some("SCROLL-LINE-011")
+        screen.screen_text().lines().nth(1).map(str::trim_end) == Some("SCROLL-LINE-011")
     })?;
     screen.assert_active_screen(Screen::Alternate)?;
 
@@ -566,7 +1326,7 @@ fn kat_builtin_pager_handles_burst_and_split_cursor_input() -> TestResult {
     thread::sleep(Duration::from_millis(30));
     session.write_input(b"B")?;
     let screen = session.wait_for_screen(COLS, ROWS, |screen| {
-        screen.screen_text().lines().next().map(str::trim_end) == Some("SCROLL-LINE-012")
+        screen.screen_text().lines().nth(1).map(str::trim_end) == Some("SCROLL-LINE-012")
     })?;
     screen.assert_active_screen(Screen::Alternate)?;
 
@@ -577,7 +1337,7 @@ fn kat_builtin_pager_handles_burst_and_split_cursor_input() -> TestResult {
     session.write_input(&b"\x1b[B".repeat(100))?;
     session.write_input(b"g")?;
     let screen = session.wait_for_screen(COLS, ROWS, |screen| {
-        screen.screen_text().lines().next().map(str::trim_end) == Some("SCROLL-LINE-001")
+        screen.screen_text().lines().nth(1).map(str::trim_end) == Some("SCROLL-LINE-001")
     })?;
     screen.assert_active_screen(Screen::Alternate)?;
     session.write_input(b"q")?;
@@ -606,7 +1366,7 @@ fn kat_builtin_pager_supports_less_style_half_page_navigation() -> TestResult {
     session.wait_for_screen(COLS, ROWS, |rendered| {
         rendered
             .screen
-            .first()
+            .get(1)
             .is_some_and(|line| line.trim_end() == "HALF-PAGE-LINE-01")
     })?;
 
@@ -614,19 +1374,19 @@ fn kat_builtin_pager_supports_less_style_half_page_navigation() -> TestResult {
     let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
         rendered
             .screen
-            .first()
-            .is_some_and(|line| line.trim_end() == "HALF-PAGE-LINE-07")
+            .get(1)
+            .is_some_and(|line| line.trim_end() == "HALF-PAGE-LINE-06")
     })?;
-    assert_eq!(rendered.screen[0].trim_end(), "HALF-PAGE-LINE-07");
+    assert_eq!(rendered.screen[1].trim_end(), "HALF-PAGE-LINE-06");
 
     session.write_input(b"\x15")?;
     let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
         rendered
             .screen
-            .first()
+            .get(1)
             .is_some_and(|line| line.trim_end() == "HALF-PAGE-LINE-01")
     })?;
-    assert_eq!(rendered.screen[0].trim_end(), "HALF-PAGE-LINE-01");
+    assert_eq!(rendered.screen[1].trim_end(), "HALF-PAGE-LINE-01");
 
     session.write_input(b"q")?;
     session.wait_success()?;
@@ -696,7 +1456,7 @@ fn kat_builtin_pager_preserves_display_row_anchor_on_resize() -> TestResult {
     let rendered = session.wait_for_screen(28, 8, |rendered| {
         rendered
             .screen
-            .first()
+            .get(1)
             .is_some_and(|line| line.contains("ANCHOR-LINE-03"))
     })?;
     rendered.assert_screen_contains("ANCHOR-LINE-03 alpha");
@@ -705,7 +1465,7 @@ fn kat_builtin_pager_preserves_display_row_anchor_on_resize() -> TestResult {
     let rendered = session.wait_for_screen(56, 8, |rendered| {
         rendered
             .screen
-            .first()
+            .get(1)
             .is_some_and(|line| line.contains("ANCHOR-LINE-03"))
     })?;
     rendered.assert_screen_contains("ANCHOR-LINE-03 alpha beta");
@@ -803,6 +1563,18 @@ struct RenderedTerminal {
 }
 
 impl RenderedTerminal {
+    fn divider_column(&self, y: u32) -> Result<u16, Box<dyn std::error::Error>> {
+        for x in 0..self.terminal.cols()? {
+            let cell = self
+                .terminal
+                .grid_ref(Point::Active(PointCoordinate { x, y }))?;
+            if cell.cell()?.codepoint()? == '│' as u32 {
+                return Ok(x);
+            }
+        }
+        Err("missing browser pane divider".into())
+    }
+
     fn screen_text(&self) -> String {
         self.screen.join("\n")
     }
@@ -1195,6 +1967,28 @@ impl KatPtySession {
         rows: u16,
         envs: &[(&str, &str)],
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::spawn_in(args, cols, rows, envs, None)
+    }
+
+    fn spawn_in(
+        args: &[&str],
+        cols: u16,
+        rows: u16,
+        envs: &[(&str, &str)],
+        cwd: Option<&Path>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_kat"));
+        command.args(args);
+        Self::spawn_command(command, cols, rows, envs, cwd)
+    }
+
+    fn spawn_command(
+        mut command: CommandBuilder,
+        cols: u16,
+        rows: u16,
+        envs: &[(&str, &str)],
+        cwd: Option<&Path>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let pty_system = native_pty_system();
         let pair = pty_system.openpty(PtySize {
             rows,
@@ -1205,8 +1999,9 @@ impl KatPtySession {
         let mut reader = pair.master.try_clone_reader()?;
         let writer = pair.master.take_writer()?;
 
-        let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_kat"));
-        command.args(args);
+        if let Some(cwd) = cwd {
+            command.cwd(cwd);
+        }
         command.env("TERM", "xterm-256color");
         command.env_remove("COLORTERM");
         command.env_remove("KAT_HYPERLINKS");
@@ -1324,7 +2119,10 @@ impl KatPtySession {
     fn wait_success(mut self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let status = self.child.wait()?;
         drop(self.writer);
-        while let Ok(chunk) = self.chunks.recv_timeout(Duration::from_millis(25)) {
+        // The child has exited, but its final PTY bytes may still be in transit.
+        // Drain until the reader closes the channel rather than treating a
+        // short scheduling pause as end-of-output.
+        while let Ok(chunk) = self.chunks.recv() {
             self.output.extend(chunk);
         }
         if let Some(reader_thread) = self.reader_thread.take() {
@@ -1416,7 +2214,7 @@ fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> 
         let check =
             |session: &mut KatPtySession, width: u16, height: u16, top: usize| -> TestResult {
                 let rows = expected(width);
-                let body = usize::from(height) - 1;
+                let body = usize::from(height) - 2;
                 let status = format!("kat {}/{} ", (top + body).min(rows.len()), rows.len());
                 let rendered = session.wait_for_screen(width, height, |frame| {
                     frame
@@ -1424,7 +2222,7 @@ fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> 
                         .last()
                         .is_some_and(|line| line.starts_with(&status))
                         && (0..body).all(|i| {
-                            frame.screen[i].trim_end()
+                            frame.screen[i + 1].trim_end()
                                 == rows
                                     .get(top + i)
                                     .map(String::as_str)
@@ -1434,7 +2232,7 @@ fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> 
                 })?;
                 for i in 0..body {
                     assert_eq!(
-                        rendered.screen[i].trim_end(),
+                        rendered.screen[i + 1].trim_end(),
                         rows.get(top + i)
                             .map(String::as_str)
                             .unwrap_or("")
@@ -1461,7 +2259,7 @@ fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> 
             ],
         )?;
         check(&mut session, cols, 17, 0)?;
-        let end = expected(cols).len() - 16;
+        let end = expected(cols).len() - 15;
         session.write_input(b"G")?;
         check(&mut session, cols, 17, end)?;
         let top = end - 18;
@@ -1509,12 +2307,12 @@ fn wide_search_status_does_not_wrap_or_scroll_the_body() -> TestResult {
         frame.screen.last().is_some_and(|line| line.contains("中"))
     })?;
     assert_eq!(
-        rendered.screen[0].trim_end(),
+        rendered.screen[1].trim_end(),
         "line-000",
         "{}",
         rendered.screen_text()
     );
-    assert_eq!(rendered.screen[15].trim_end(), "line-015");
+    assert_eq!(rendered.screen[15].trim_end(), "line-014");
     assert_eq!(
         rendered.screen[16].replace(' ', ""),
         format!("/{}", "中".repeat(19))
@@ -1544,9 +2342,9 @@ fn source_control_characters_cannot_reposition_viewer_rows() -> TestResult {
             .last()
             .is_some_and(|line| line.starts_with("kat "))
     })?;
-    assert_eq!(rendered.screen[0].trim_end(), "safe ␛[2Jcontrol");
-    assert_eq!(rendered.screen[1].trim_end(), "left␍right");
-    assert_eq!(rendered.screen[2].trim_end(), "last");
+    assert_eq!(rendered.screen[1].trim_end(), "safe ␛[2Jcontrol");
+    assert_eq!(rendered.screen[2].trim_end(), "left␍right");
+    assert_eq!(rendered.screen[3].trim_end(), "last");
     session.write_input(b"q")?;
     session.wait_success()?;
     fs::remove_file(fixture)?;
@@ -1568,7 +2366,7 @@ fn expanded_tabs_fill_narrow_viewer_rows() -> TestResult {
     let rendered = session.wait_for_screen(3, 8, |frame| {
         frame.screen.last().is_some_and(|line| line == "kat")
     })?;
-    assert_eq!(&rendered.screen[..4], &["abc", "d  ", "  0", "12 "]);
+    assert_eq!(&rendered.screen[1..5], &["abc", "d  ", "  0", "12 "]);
     session.write_input(b"q")?;
     session.wait_success()?;
     fs::remove_file(fixture)?;

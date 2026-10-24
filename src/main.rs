@@ -17,8 +17,11 @@ use miette::{Report, miette};
 use shadow_rs::shadow;
 use terminal_size::{Height, Width, terminal_size};
 
+mod browser;
 mod pager;
+mod shell_integration;
 mod terminal_image;
+mod ui_theme;
 
 shadow!(build);
 
@@ -121,6 +124,14 @@ fn try_main() -> Result<()> {
         print!("{}", install_completion(shell)?);
         return Ok(());
     }
+    if let Some(shell) = options.install_shell_integration {
+        print!("{}", shell_integration::install(shell)?);
+        return Ok(());
+    }
+
+    if let Some(directory) = browser_directory(&options, io::stdin().is_terminal())? {
+        return browser::run(&directory, &options);
+    }
 
     let total_started_at = Instant::now();
     let mut built_output = build_output(&options)?;
@@ -134,6 +145,22 @@ fn try_main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn browser_directory(options: &CliOptions, stdin_is_terminal: bool) -> Result<Option<PathBuf>> {
+    if options.stdin || options.mode != OutputMode::Render {
+        return Ok(None);
+    }
+    if options.paths.is_empty() && stdin_is_terminal {
+        return Ok(Some(PathBuf::from(".")));
+    }
+    if options.paths.iter().any(|path| path.is_dir()) {
+        if options.paths.len() != 1 {
+            bail!("directory browsing takes a single directory; open files separately");
+        }
+        return Ok(Some(options.paths[0].clone()));
+    }
+    Ok(None)
 }
 
 #[derive(Debug)]
@@ -234,6 +261,13 @@ enum HyperlinkMode {
     Never,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, ValueEnum)]
+enum IconMode {
+    #[default]
+    Always,
+    Never,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 struct CliOptions {
     mode: OutputMode,
@@ -243,8 +277,12 @@ struct CliOptions {
     image_fit: ImageFitArg,
     image_background: ImageBackgroundArg,
     hyperlinks: HyperlinkMode,
+    icons: IconMode,
     language: Option<String>,
     install_completion: Option<CompletionShell>,
+    install_shell_integration: Option<CompletionShell>,
+    cwd_file: Option<PathBuf>,
+    stdin: bool,
     paths: Vec<PathBuf>,
 }
 
@@ -313,6 +351,39 @@ struct ViewerDocument {
 }
 
 impl ViewerDocument {
+    fn chrome(&self, exit: pager::ViewerExit) -> pager::ViewerChrome {
+        let paths = self
+            .segments
+            .iter()
+            .filter_map(|segment| match segment {
+                ViewerSegment::Prepared {
+                    path: Some(path), ..
+                } => Some(path.to_string_lossy()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let mode = self
+            .segments
+            .iter()
+            .find_map(|segment| match segment {
+                ViewerSegment::Prepared { render_options, .. } => Some(render_options.color_mode()),
+                _ => None,
+            })
+            .unwrap_or(kat::ColorMode::NoColor);
+        pager::ViewerChrome {
+            title: format!(
+                "kat  {}",
+                if paths.is_empty() {
+                    "stdin".to_owned()
+                } else {
+                    paths.join("  ")
+                }
+            ),
+            theme: ui_theme::UiTheme::new(mode),
+            exit,
+        }
+    }
+
     fn render(&self, terminal_width: usize) -> pager::PagerSource {
         let mut builder = pager::PagerSourceBuilder::default();
         for (source_id, segment) in self.segments.iter().enumerate() {
@@ -523,12 +594,35 @@ struct CliArgs {
         value_name = "SHELL"
     )]
     install_completion: Option<CompletionShell>,
+    #[arg(
+        long,
+        value_enum,
+        group = "mode",
+        value_name = "SHELL",
+        help = "Install the shell wrapper for changing directory with o"
+    )]
+    install_shell_integration: Option<CompletionShell>,
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Write the chosen directory for the shell wrapper"
+    )]
+    cwd_file: Option<PathBuf>,
     #[arg(long)]
     language: Option<String>,
     #[arg(long, value_enum)]
     hyperlinks: Option<HyperlinkMode>,
+    #[arg(long, value_enum, default_value_t = IconMode::Always, help = "Show Nerd Font icons in directory lists")]
+    icons: IconMode,
     #[arg(
-        value_name = "PATH|-",
+        long,
+        conflicts_with_all = ["paths", "install_completion", "install_shell_integration"],
+        help = "Read standard input instead of browsing the current directory"
+    )]
+    stdin: bool,
+    #[arg(
+        value_name = "PATH",
+        help = "File or directory; defaults to the current directory in a terminal, or stdin in a pipe",
         add = ArgValueCompleter::new(complete_input_paths)
     )]
     paths: Vec<PathBuf>,
@@ -580,6 +674,7 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
         for arg_id in [
             "help",
             "version",
+            "stdin",
             "language",
             "image_width",
             "image_height",
@@ -745,7 +840,12 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         &mut cli_command()
             .try_get_matches_from_mut(std::iter::once(OsString::from("kat")).chain(args))?,
     )?;
-    if cli.install_completion.is_some() {
+    if cli.install_completion.is_some() || cli.install_shell_integration.is_some() {
+        let option_name = if cli.install_completion.is_some() {
+            "--install-completion"
+        } else {
+            "--install-shell-integration"
+        };
         if cli.language.is_some()
             || cli.debug_timing
             || cli.image_width.is_some()
@@ -754,11 +854,11 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
             || cli.image_background != ImageBackgroundArg::Terminal
         {
             bail!(
-                "--install-completion cannot be combined with --language, --debug-timing, or image display options"
+                "{option_name} cannot be combined with --language, --debug-timing, or image display options"
             );
         }
         if !cli.paths.is_empty() {
-            bail!("--install-completion does not take input paths");
+            bail!("{option_name} does not take input paths");
         }
     }
     let language = cli
@@ -805,8 +905,12 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         image_fit: cli.image_fit,
         image_background: cli.image_background,
         hyperlinks: resolve_hyperlink_mode(cli.hyperlinks)?,
+        icons: cli.icons,
         language,
         install_completion: cli.install_completion,
+        install_shell_integration: cli.install_shell_integration,
+        cwd_file: cli.cwd_file,
+        stdin: cli.stdin,
         paths: cli.paths,
     })
 }
@@ -1194,24 +1298,6 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
     let mut contains_terminal_image = false;
 
     for (index, path) in options.paths.iter().enumerate() {
-        if path.as_os_str() == OsStr::new("-") {
-            let stdin = read_stdin().context("failed to read stdin")?;
-            if let Some(timings) = timings.as_mut() {
-                timings.files += 1;
-                timings.input_bytes += stdin.len();
-            }
-            if multiple_paths {
-                let mut header = String::new();
-                push_header(&mut header, "-", index > 0);
-                output.push_str(&header);
-                viewer_segments.push(ViewerSegment::Plain(header));
-            }
-            let rendered = render_output_with_timing(options, None, &stdin, timings.as_mut())?;
-            output.push_str(&rendered.output);
-            viewer_segments.extend(rendered.viewer_segment);
-            continue;
-        }
-
         let read_started_at = Instant::now();
         let bytes = read_bytes_from_path(path)?;
         if let Some(timings) = timings.as_mut() {
@@ -1289,10 +1375,13 @@ fn write_output(built_output: &mut BuiltOutput, options: &CliOptions) -> Result<
         && io::stdout().is_terminal()
         && let Some(viewer_document) = built_output.viewer_document.as_mut()
     {
-        pager::run(|terminal_width, reload| {
-            let changed = reload && viewer_document.reload(options)?;
-            Ok((viewer_document.render(terminal_width), changed))
-        })
+        pager::run(
+            viewer_document.chrome(pager::ViewerExit::Quit),
+            |terminal_width, reload| {
+                let changed = reload && viewer_document.reload(options)?;
+                Ok((viewer_document.render(terminal_width), changed))
+            },
+        )
     } else {
         write_output_direct(&built_output.output)
     }
@@ -1452,7 +1541,7 @@ mod tests {
     use clap_complete::engine::complete;
 
     use super::{
-        CliOptions, CompletionShell, DebugTimingStats, HyperlinkMode, ImageBackgroundArg,
+        CliOptions, CompletionShell, DebugTimingStats, HyperlinkMode, IconMode, ImageBackgroundArg,
         ImageFitArg, OutputMode, cli_command, completion_command_for,
         completion_install_path_from_env, completion_registration_script, format_cli_error,
         install_completion_script, parse_cli_args, read_source_from_path, render_output,
@@ -1535,8 +1624,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("fish".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
             }
         );
@@ -1561,8 +1654,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("regex".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("pattern.re")],
             }
         );
@@ -1586,8 +1683,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("docs/architecture.md")],
             }
         );
@@ -1613,8 +1714,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("markdown".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1636,8 +1741,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1661,8 +1770,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1686,8 +1799,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1738,8 +1855,12 @@ mod tests {
                 image_fit: ImageFitArg::Original,
                 image_background: ImageBackgroundArg::Checker,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("image.tiff")],
             }
         );
@@ -1760,8 +1881,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![],
             }
         );
@@ -1785,8 +1910,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: Some(CompletionShell::Bash),
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![],
             }
         );
@@ -1841,8 +1970,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("src/main.rs")],
             }
         );
@@ -1874,8 +2007,12 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("python".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
+                stdin: false,
                 paths: vec![],
             }
         );
@@ -2314,6 +2451,7 @@ mod tests {
                 value != "--help"
                     && value != "--version"
                     && value != "--language"
+                    && value != "--stdin"
                     && value != "--debug-ast"
                     && value != "--debug-semantics"
                     && value != "--debug-shell-semantics"
@@ -2334,7 +2472,9 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(
-            values.iter().any(|value| value == "-h") && values.iter().any(|value| value == "-V"),
+            values.iter().any(|value| value == "-h")
+                && values.iter().any(|value| value == "-V")
+                && values.iter().any(|value| value == "--stdin"),
             "expected dash-prefixed completion to include options, got {values:?}"
         );
         assert!(

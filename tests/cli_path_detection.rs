@@ -46,6 +46,116 @@ fn command(cwd: &Path) -> Command {
     command
 }
 
+#[test]
+fn fish_shell_integration_installation_is_repeatable_and_preserves_custom_functions() {
+    let fixture = Fixture::new();
+    for _ in 0..2 {
+        let output = command(&fixture.0)
+            .env("XDG_CONFIG_HOME", &fixture.0)
+            .args(["--install-shell-integration", "fish"])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    let function = fixture.0.join("fish/functions/kat.fish");
+    assert!(
+        fs::read_to_string(&function)
+            .unwrap()
+            .contains("command kat --cwd-file")
+    );
+    fs::write(&function, "function kat\n    echo custom\nend\n").unwrap();
+    let output = command(&fixture.0)
+        .env("XDG_CONFIG_HOME", &fixture.0)
+        .args(["--install-shell-integration", "fish"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        fs::read_to_string(function)
+            .unwrap()
+            .contains("echo custom")
+    );
+}
+
+#[test]
+fn directory_browsing_requires_a_terminal_and_a_single_directory() {
+    let fixture = Fixture::new();
+    fixture.write("file.txt", "file contents\n");
+    for args in [vec!["."], vec![".", "file.txt"]] {
+        let output = command(&fixture.0).args(&args).output().unwrap();
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        let error = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            error.contains(if args.len() == 1 {
+                "directory browsing requires a terminal"
+            } else {
+                "directory browsing takes a single directory"
+            }),
+            "{error}"
+        );
+    }
+}
+
+#[test]
+fn no_path_with_piped_stdin_still_reads_the_stream() {
+    let fixture = Fixture::new();
+    for args in [vec![], vec!["--stdin"]] {
+        let mut child = command(&fixture.0)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"stream contents\n")
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"stream contents\n");
+    }
+}
+
+#[test]
+fn dash_is_a_regular_file_path() {
+    let fixture = Fixture::new();
+    fixture.write("-", "literal dash file\n");
+    let output = command(&fixture.0)
+        .arg("-")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.stdout, b"literal dash file\n");
+}
+
+#[test]
+fn explicit_stdin_cannot_be_combined_with_file_paths() {
+    let fixture = Fixture::new();
+    fixture.write("file.txt", "file contents\n");
+    let output = command(&fixture.0)
+        .args(["--stdin", "file.txt"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        error.contains("--stdin") && error.contains("cannot be used with"),
+        "{error}"
+    );
+}
+
 fn analysis(cwd: &Path, args: &[&str]) -> serde_json::Value {
     let output = command(cwd)
         .arg("--debug-analysis")
@@ -89,7 +199,7 @@ fn generic_config_and_stdin_do_not_inherit_a_language() {
 
     let ssh_config = fixture.write(".ssh/config", "Host example\n");
     let mut child = command(ssh_config.parent().unwrap())
-        .args(["--debug-analysis", "-"])
+        .args(["--debug-analysis", "--stdin"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()

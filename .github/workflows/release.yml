@@ -372,6 +372,9 @@ jobs:
           path: ${{ runner.temp }}/latest-release-assets
           merge-multiple: true
 
+      - name: Set up uv for release notes
+        uses: astral-sh/setup-uv@v7
+
       - name: Publish latest release
         shell: bash
         env:

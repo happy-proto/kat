@@ -98,6 +98,8 @@ gh actions-lock --verify
 
 ## Release 与分发
 
+- `scripts/release-binary-sizes.py report <归档目录>` 从发布包元数据读取可执行文件的未压缩大小，生成按平台和架构展示的折叠 Markdown 表格，追加到 `latest` 发布说明。统计或归档校验失败时不会更新发布标签；不解压或执行归档内容。
+- 体积统计自测与发布脚本回归由 hk 的 `release-notes` 检查、`mise run test` 和 CI 覆盖；发布 job 使用 uv 运行该脚本。
 - CI、发布与缓存的具体行为以仓库里的 workflow 和配置文件为准；文档只保留长期约定，不重复维护实现级细节。
 - 发布前确认已验证的提交仍是默认分支当前提交；过期构建直接结束，不移动 `latest` 或覆盖发布资产。发布脚本的回归检查接入 CI 和 `mise run test`。
 - CI 中的构建观测数据（例如 cargo timings、link timing）默认优先写入 step summary 与 artifact；不要把原始明细长期直接刷到 stdout 里。
