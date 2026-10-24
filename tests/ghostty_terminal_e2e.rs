@@ -123,6 +123,21 @@ fn browser_open_and_back_keys_share_fullscreen_dracula_chrome() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn explicit_stdin_reads_terminal_input_instead_of_browsing_cwd() -> TestResult {
+    let fixture = BrowserFixture::new("explicit-stdin");
+    let mut session = fixture.spawn(&["--stdin"], 100, 12)?;
+    session.write_input(b"stream from terminal\n\x04")?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("q:quit") && frame.screen[1].starts_with("stream from terminal")
+    })?;
+    assert!(frame.screen[0].contains("stdin"));
+    assert!(!frame.screen[11].contains("hjkl/arrows"));
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn shell_wrappers_change_directory_only_when_o_opens_a_directory() -> TestResult {

@@ -104,7 +104,7 @@ fn directory_browsing_requires_a_terminal_and_a_single_directory() {
 #[test]
 fn no_path_with_piped_stdin_still_reads_the_stream() {
     let fixture = Fixture::new();
-    for args in [vec![], vec!["-"]] {
+    for args in [vec![], vec!["--stdin"]] {
         let mut child = command(&fixture.0)
             .args(args)
             .stdin(Stdio::piped())
@@ -121,6 +121,39 @@ fn no_path_with_piped_stdin_still_reads_the_stream() {
         assert!(output.status.success());
         assert_eq!(output.stdout, b"stream contents\n");
     }
+}
+
+#[test]
+fn dash_is_a_regular_file_path() {
+    let fixture = Fixture::new();
+    fixture.write("-", "literal dash file\n");
+    let output = command(&fixture.0)
+        .arg("-")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.stdout, b"literal dash file\n");
+}
+
+#[test]
+fn explicit_stdin_cannot_be_combined_with_file_paths() {
+    let fixture = Fixture::new();
+    fixture.write("file.txt", "file contents\n");
+    let output = command(&fixture.0)
+        .args(["--stdin", "file.txt"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        error.contains("--stdin") && error.contains("cannot be used with"),
+        "{error}"
+    );
 }
 
 fn analysis(cwd: &Path, args: &[&str]) -> serde_json::Value {
@@ -166,7 +199,7 @@ fn generic_config_and_stdin_do_not_inherit_a_language() {
 
     let ssh_config = fixture.write(".ssh/config", "Host example\n");
     let mut child = command(ssh_config.parent().unwrap())
-        .args(["--debug-analysis", "-"])
+        .args(["--debug-analysis", "--stdin"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()

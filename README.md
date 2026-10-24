@@ -29,9 +29,10 @@ kat
 kat path/to/directory
 kat path/to/file
 kat path/to/image.png
+kat --stdin
 ```
 
-在终端中直接执行 `kat` 等同于 `kat .`：左侧浏览文件，右侧预览内容；用 `hjkl` 或方向键导航，`Enter` 或 `l/→` 打开全文，退出阅读后回到目录。按 `/` 使用 fzf 算法筛选文件名并高亮命中字符，首次 Enter 提交筛选词，再次 Enter 打开选中项。指定文本文件会直接进入内建 viewer，支持滚动、搜索和刷新；`q` 退出。管道输入仍读取 stdin，文件内容通过管道或重定向输出时保持完整输出。
+在终端中直接执行 `kat` 等同于 `kat .`：左侧浏览文件，右侧预览内容；用 `hjkl` 或方向键导航，`Enter` 或 `l/→` 打开全文，退出阅读后回到目录。按 `/` 使用 fzf 算法筛选文件名并高亮命中字符，首次 Enter 提交筛选词，再次 Enter 打开选中项。指定文本文件会直接进入内建 viewer，支持滚动、搜索和刷新；`q` 退出。显式读取标准输入使用 `kat --stdin`，管道输入仍自动读取 stdin，文件内容通过管道或重定向输出时保持完整输出。
 
 目录浏览使用 Dracula 配色，默认显示 Nerd Font 文件图标；终端需支持对应字体，也可用 `--icons=never` 关闭图标。详见[目录浏览](docs/usage.md#目录浏览)。
 

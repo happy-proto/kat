@@ -148,7 +148,7 @@ fn try_main() -> Result<()> {
 }
 
 fn browser_directory(options: &CliOptions, stdin_is_terminal: bool) -> Result<Option<PathBuf>> {
-    if options.mode != OutputMode::Render {
+    if options.stdin || options.mode != OutputMode::Render {
         return Ok(None);
     }
     if options.paths.is_empty() && stdin_is_terminal {
@@ -282,6 +282,7 @@ struct CliOptions {
     install_completion: Option<CompletionShell>,
     install_shell_integration: Option<CompletionShell>,
     cwd_file: Option<PathBuf>,
+    stdin: bool,
     paths: Vec<PathBuf>,
 }
 
@@ -614,7 +615,13 @@ struct CliArgs {
     #[arg(long, value_enum, default_value_t = IconMode::Always, help = "Show Nerd Font icons in directory lists")]
     icons: IconMode,
     #[arg(
-        value_name = "PATH|-",
+        long,
+        conflicts_with_all = ["paths", "install_completion", "install_shell_integration"],
+        help = "Read standard input instead of browsing the current directory"
+    )]
+    stdin: bool,
+    #[arg(
+        value_name = "PATH",
         help = "File or directory; defaults to the current directory in a terminal, or stdin in a pipe",
         add = ArgValueCompleter::new(complete_input_paths)
     )]
@@ -667,6 +674,7 @@ fn completion_command_for(args: &[OsString]) -> clap::Command {
         for arg_id in [
             "help",
             "version",
+            "stdin",
             "language",
             "image_width",
             "image_height",
@@ -902,6 +910,7 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         install_completion: cli.install_completion,
         install_shell_integration: cli.install_shell_integration,
         cwd_file: cli.cwd_file,
+        stdin: cli.stdin,
         paths: cli.paths,
     })
 }
@@ -1289,24 +1298,6 @@ fn build_output(options: &CliOptions) -> Result<BuiltOutput> {
     let mut contains_terminal_image = false;
 
     for (index, path) in options.paths.iter().enumerate() {
-        if path.as_os_str() == OsStr::new("-") {
-            let stdin = read_stdin().context("failed to read stdin")?;
-            if let Some(timings) = timings.as_mut() {
-                timings.files += 1;
-                timings.input_bytes += stdin.len();
-            }
-            if multiple_paths {
-                let mut header = String::new();
-                push_header(&mut header, "-", index > 0);
-                output.push_str(&header);
-                viewer_segments.push(ViewerSegment::Plain(header));
-            }
-            let rendered = render_output_with_timing(options, None, &stdin, timings.as_mut())?;
-            output.push_str(&rendered.output);
-            viewer_segments.extend(rendered.viewer_segment);
-            continue;
-        }
-
         let read_started_at = Instant::now();
         let bytes = read_bytes_from_path(path)?;
         if let Some(timings) = timings.as_mut() {
@@ -1638,6 +1629,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
             }
         );
@@ -1667,6 +1659,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("pattern.re")],
             }
         );
@@ -1695,6 +1688,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("docs/architecture.md")],
             }
         );
@@ -1725,6 +1719,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1751,6 +1746,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1779,6 +1775,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1807,6 +1804,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1862,6 +1860,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("image.tiff")],
             }
         );
@@ -1887,6 +1886,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![],
             }
         );
@@ -1915,6 +1915,7 @@ mod tests {
                 install_completion: Some(CompletionShell::Bash),
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![],
             }
         );
@@ -1974,6 +1975,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![PathBuf::from("src/main.rs")],
             }
         );
@@ -2010,6 +2012,7 @@ mod tests {
                 install_completion: None,
                 install_shell_integration: None,
                 cwd_file: None,
+                stdin: false,
                 paths: vec![],
             }
         );
@@ -2448,6 +2451,7 @@ mod tests {
                 value != "--help"
                     && value != "--version"
                     && value != "--language"
+                    && value != "--stdin"
                     && value != "--debug-ast"
                     && value != "--debug-semantics"
                     && value != "--debug-shell-semantics"
@@ -2468,7 +2472,9 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(
-            values.iter().any(|value| value == "-h") && values.iter().any(|value| value == "-V"),
+            values.iter().any(|value| value == "-h")
+                && values.iter().any(|value| value == "-V")
+                && values.iter().any(|value| value == "--stdin"),
             "expected dash-prefixed completion to include options, got {values:?}"
         );
         assert!(
