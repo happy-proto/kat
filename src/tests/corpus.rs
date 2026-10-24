@@ -1554,10 +1554,10 @@ const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
 ];
 
 const SHOWCASE_SHELL_AND_TOOLING_FAMILIES: &[&str] = &[
-    "csh",
     "bash",
     "dockerfile",
     "fish",
+    "csh",
     "git_config",
     "git_link",
     "git_mailmap",
