@@ -64,6 +64,7 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
         "nix" => "nix",
         "zig" => "zig",
         "powershell" | "pwsh" => "powershell",
+        "nu" | "nushell" => "nushell",
         "cmd" | "bat" | "batch" => "batch",
         "sql:postgres" | "sql-postgres" | "sql_postgres" => "sql_postgres",
         "postgres" | "postgresql" | "pgsql" | "psql" => "sql_postgres",

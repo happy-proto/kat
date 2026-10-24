@@ -1102,6 +1102,40 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "nushell"
+extensions = ["nu"]
+filenames = []
+filename_prefixes = []
+shebang_substrings = ["nu"]
+highlight_names = [
+  "attribute",
+  "boolean",
+  "comment",
+  "comment.documentation",
+  "constant",
+  "constant.builtin",
+  "function",
+  "function.builtin",
+  "keyword",
+  "keyword.control",
+  "keyword.directive",
+  "module",
+  "number",
+  "operator",
+  "property",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "punctuation.special",
+  "string",
+  "string.escape",
+  "string.regex",
+  "type",
+  "variable",
+  "variable.parameter",
+  "variable.special",
+]
+
+[[grammar]]
 name = "powershell"
 extensions = ["ps1", "psm1", "psd1"]
 filenames = []

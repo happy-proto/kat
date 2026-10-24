@@ -1191,3 +1191,9 @@ These files may be modified locally as needed for integration into `kat`.
 ## Jam build language
 
 `grammars/jam/queries/highlights.scm` is authored for kat. Its MIT parser is independently maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers), using the B2 language reference and `bfgroup/b2` revision `4ca043f11b3b6de25bb268d5d874d714344074d9` (`src/engine/jamgram.y`, `src/engine/scan.cpp`) as behavioral references. No third-party grammar, query or engine source is copied or adapted. The parser revision is locked in `Cargo.lock`. This supports the Jam build language, not the unrelated Jam programming language; actions remain raw command text.
+
+## Nushell
+
+- Parser: `tree-sitter-kat-parsers::NU_LANGUAGE`, sourced from [nushell/tree-sitter-nu](https://github.com/nushell/tree-sitter-nu), revision `4f577aaa735154f934594b598a69ed7b1b707cf6`, MIT.
+- `grammars/nushell/queries/highlights.scm` adapts the upstream `queries/nu/highlights.scm` at that revision to Kat capture names and adds function definitions, modules, booleans and special variables. The upstream license is retained in `grammars/nushell/LICENSE`.
+- Grammar, scanner and generated parser assets are maintained in kat-parsers; Kat does not copy parser sources.

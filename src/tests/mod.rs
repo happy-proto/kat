@@ -3,6 +3,7 @@ mod detection;
 mod highlighting;
 mod injections;
 mod layout;
+mod nushell;
 mod pipeline;
 mod semantics;
 
