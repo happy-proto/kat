@@ -48,6 +48,7 @@ const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
     "pkl",
     "bash",
     "fish",
+    "nushell",
     "zsh",
     "powershell",
     "batch",
@@ -247,6 +248,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
             "string",
             "render_theme",
         ],
+    },
+    FixtureCase {
+        relative_path: "nushell/activation.nu",
+        expect_highlight: true,
+        expected_fragments: &["export-env", "VIRTUAL_ENV", "overlay hide activate"],
     },
     FixtureCase {
         relative_path: "zsh/rich.zsh",
@@ -1554,6 +1560,7 @@ const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
 ];
 
 const SHOWCASE_SHELL_AND_TOOLING_FAMILIES: &[&str] = &[
+    "nushell",
     "bash",
     "dockerfile",
     "fish",

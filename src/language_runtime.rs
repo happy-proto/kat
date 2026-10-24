@@ -98,6 +98,7 @@ const FSHARP_SIGNATURE_LOCALS_QUERY: &str =
     include_str!("../grammars/fsharp_signature/queries/locals.scm");
 const FSTAB_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fstab/queries/highlights.scm");
 const FISH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/fish/queries/highlights.scm");
+const NUSHELL_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/nushell/queries/highlights.scm");
 const ZSH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/zsh/queries/highlights.scm");
 const ZSH_INJECTIONS_QUERY: &str = include_str!("../grammars/zsh/queries/injections.scm");
 const POWERSHELL_HIGHLIGHTS_QUERY: &str =
@@ -317,6 +318,7 @@ const ELM_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ELM_LANGUAGE;
 const EMAIL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::EMAIL_LANGUAGE;
 const ERLANG_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::ERLANG_LANGUAGE;
 const FISH_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FISH_LANGUAGE;
+const NUSHELL_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::NU_LANGUAGE;
 const FORTRAN_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FORTRAN_LANGUAGE;
 const FORTRAN_NAMELIST_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FORTRAN_NAMELIST_LANGUAGE;
 const FSHARP_LANGUAGE: LanguageFn = tree_sitter_kat_parsers::FSHARP_LANGUAGE;
@@ -486,6 +488,7 @@ language_catalog! {
     Email = "email" => (|| Language::from(EMAIL_LANGUAGE), EMAIL_HIGHLIGHTS_QUERY, "", ""),
     Erlang = "erlang" => (|| Language::from(ERLANG_LANGUAGE), ERLANG_HIGHLIGHTS_QUERY, "", ""),
     Fish = "fish" => (|| Language::from(FISH_LANGUAGE), FISH_HIGHLIGHTS_QUERY, "", ""),
+    Nushell = "nushell" => (|| Language::from(NUSHELL_LANGUAGE), NUSHELL_HIGHLIGHTS_QUERY, "", ""),
     Fortran = "fortran" => (|| Language::from(FORTRAN_LANGUAGE), FORTRAN_HIGHLIGHTS_QUERY, "", ""),
     FortranNamelist = "fortran_namelist" => (|| Language::from(FORTRAN_NAMELIST_LANGUAGE), FORTRAN_NAMELIST_HIGHLIGHTS_QUERY, "", ""),
     Fsharp = "fsharp" => (|| Language::from(FSHARP_LANGUAGE), FSHARP_HIGHLIGHTS_QUERY, FSHARP_INJECTIONS_QUERY, FSHARP_LOCALS_QUERY),

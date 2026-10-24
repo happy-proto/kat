@@ -281,6 +281,7 @@ pub(crate) fn detect_document_kind(
         &[
             RuntimeId::Csh,
             RuntimeId::Zsh,
+            RuntimeId::Nushell,
             RuntimeId::Powershell,
             RuntimeId::Batch,
             RuntimeId::Markdown,
