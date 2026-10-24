@@ -70,6 +70,47 @@ impl Drop for BrowserFixture {
 }
 
 #[test]
+fn browser_list_width_fits_names_and_preserves_preview_space() -> TestResult {
+    let fixture = BrowserFixture::new("adaptive-width");
+    fixture.write("a.txt", "short preview\n");
+    let mut session = fixture.spawn(&["."], 120, 12)?;
+    let frame =
+        session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    assert_eq!(frame.divider_column(1)?, 16);
+    let long_name = "x".repeat(160);
+    let long_file = fixture.write(&long_name, "long preview\n");
+    session.write_input(b"R")?;
+    session.wait_for_screen(120, 12, |frame| frame.divider_column(1).ok() == Some(40))?;
+    session.resize(240, 12)?;
+    session.wait_for_screen(240, 12, |frame| {
+        frame.divider_column(1).ok() == Some(40) && frame.screen_text().contains("short preview")
+    })?;
+    session.resize(60, 12)?;
+    session.wait_for_screen(60, 12, |frame| frame.divider_column(1).ok() == Some(20))?;
+    session.resize(120, 12)?;
+    session.wait_for_screen(120, 12, |frame| frame.divider_column(1).ok() == Some(40))?;
+    fs::remove_file(long_file)?;
+    session.write_input(b"R")?;
+    session.wait_for_screen(120, 12, |frame| frame.divider_column(1).ok() == Some(16))?;
+    session.write_input(b"\r")?;
+    let frame = session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("q:back"))?;
+    assert_eq!(frame.screen[0].trim_end(), "short preview");
+    session.write_input(b"q")?;
+    let frame =
+        session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    assert_eq!(frame.divider_column(1)?, 16);
+    assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("a.txt"));
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    // A direct file invocation has no browser to return to.
+    let mut session = fixture.spawn(&["a.txt"], 120, 12)?;
+    session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("q:quit"))?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
 fn browser_uses_dracula_chrome_and_matching_icons_in_both_panes() -> TestResult {
     let fixture = BrowserFixture::new("dracula");
     fixture.write("nested/deeper/doc.txt", "preview\n");
@@ -84,11 +125,12 @@ fn browser_uses_dracula_chrome_and_matching_icons_in_both_panes() -> TestResult 
     frame.assert_text_style("deeper/", (189, 147, 249), false)?;
     frame.assert_text_style("Cargo.toml", (248, 248, 242), false)?;
     frame.assert_text_style("hjkl/arrows", (139, 233, 253), false)?;
+    let left = frame.divider_column(1)?;
     for (x, y, glyph) in [
         (2, 1, '\u{f07b}'),
-        (34, 1, '\u{f07b}'),
+        (left + 1, 1, '\u{f07b}'),
         (2, 2, ''),
-        (34, 2, ''),
+        (left + 1, 2, ''),
         (2, 3, '󰡨'),
         (2, 4, '\u{f15b}'),
     ] {
@@ -102,7 +144,7 @@ fn browser_uses_dracula_chrome_and_matching_icons_in_both_panes() -> TestResult 
             frame.screen_text()
         );
     }
-    for (x, y) in [(0, 0), (0, 11), (0, 1), (32, 1)] {
+    for (x, y) in [(0, 0), (0, 11), (0, 1), (left - 1, 1)] {
         let style = frame
             .terminal
             .grid_ref(Point::Active(PointCoordinate { x, y }))?
@@ -118,7 +160,7 @@ fn browser_uses_dracula_chrome_and_matching_icons_in_both_panes() -> TestResult 
     }
     let divider = frame
         .terminal
-        .grid_ref(Point::Active(PointCoordinate { x: 33, y: 1 }))?
+        .grid_ref(Point::Active(PointCoordinate { x: left, y: 1 }))?
         .style()?;
     let StyleColor::Rgb(fg) = divider.fg_color else {
         panic!("expected divider color")
@@ -168,7 +210,8 @@ fn browser_theme_respects_no_color_and_ansi_modes() -> TestResult {
         )?;
         let frame = session
             .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
-        for (x, y) in [(0, 0), (5, 1), (33, 1), (0, 11)] {
+        let left = frame.divider_column(1)?;
+        for (x, y) in [(0, 0), (5, 1), (left, 1), (0, 11)] {
             let style = frame
                 .terminal
                 .grid_ref(Point::Active(PointCoordinate { x, y }))?
@@ -290,14 +333,14 @@ fn browser_preview_preserves_two_panes_with_wide_names_and_resize() -> TestResul
     );
     let mut session = fixture.spawn(&["."], 90, 12)?;
     session.wait_for_screen(90, 12, |frame| frame.screen_text().contains("fn main()"))?;
-    for width in [42, 90] {
+    for (width, left) in [(42, 14), (90, 20)] {
         session.resize(width, 12)?;
         let frame = session.wait_for_screen(width, 12, |frame| {
             frame.screen[1].contains('│')
                 && frame.screen_text().contains("title:")
                 && frame
                     .terminal
-                    .grid_ref(Point::Active(PointCoordinate { x: width / 3, y: 1 }))
+                    .grid_ref(Point::Active(PointCoordinate { x: left, y: 1 }))
                     .and_then(|cell| cell.cell())
                     .and_then(|cell| cell.codepoint())
                     .ok()
@@ -306,7 +349,7 @@ fn browser_preview_preserves_two_panes_with_wide_names_and_resize() -> TestResul
         for y in 1..11 {
             let cell = frame
                 .terminal
-                .grid_ref(Point::Active(PointCoordinate { x: width / 3, y }))?;
+                .grid_ref(Point::Active(PointCoordinate { x: left, y }))?;
             // Query Ghostty's physical cell at the divider, rather than counting
             // Unicode scalar values in a line containing wide glyphs.
             assert_eq!(
@@ -406,7 +449,13 @@ fn browser_kitty_images_are_positioned_in_the_preview_and_cleaned_up() -> TestRe
     let frame =
         session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
     let raw = String::from_utf8_lossy(&frame.raw_output);
-    assert!(raw.contains("\x1b[2;35H\x1b_Ga=T,"), "{raw}");
+    assert!(
+        raw.contains(&format!(
+            "\x1b[2;{}H\x1b_Ga=T,",
+            frame.divider_column(1)? + 2
+        )),
+        "{raw}"
+    );
     assert!(raw.contains(",i=4931924,"), "{raw}");
     session.write_input(b"j")?;
     session.wait_for_screen(100, 12, |frame| {
@@ -1225,6 +1274,18 @@ struct RenderedTerminal {
 }
 
 impl RenderedTerminal {
+    fn divider_column(&self, y: u32) -> Result<u16, Box<dyn std::error::Error>> {
+        for x in 0..self.terminal.cols()? {
+            let cell = self
+                .terminal
+                .grid_ref(Point::Active(PointCoordinate { x, y }))?;
+            if cell.cell()?.codepoint()? == '│' as u32 {
+                return Ok(x);
+            }
+        }
+        Err("missing browser pane divider".into())
+    }
+
     fn screen_text(&self) -> String {
         self.screen.join("\n")
     }
@@ -1759,7 +1820,10 @@ impl KatPtySession {
     fn wait_success(mut self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let status = self.child.wait()?;
         drop(self.writer);
-        while let Ok(chunk) = self.chunks.recv_timeout(Duration::from_millis(25)) {
+        // The child has exited, but its final PTY bytes may still be in transit.
+        // Drain until the reader closes the channel rather than treating a
+        // short scheduling pause as end-of-output.
+        while let Ok(chunk) = self.chunks.recv() {
             self.output.extend(chunk);
         }
         if let Some(reader_thread) = self.reader_thread.take() {

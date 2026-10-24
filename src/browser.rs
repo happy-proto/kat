@@ -24,7 +24,7 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
         bail!("directory browsing requires a terminal on stdin and stdout");
     }
-    let mut browser = Browser::new(path)?;
+    let mut browser = Browser::new(path, options.icons)?;
     // Probe before raw mode, once for the entire browsing session.
     let render_options = kat::RenderOptions::terminal(crate::render_hyperlinks_enabled(options));
     browser.theme = BrowserTheme::new(render_options.color_mode(), options.icons);
@@ -224,12 +224,15 @@ struct Browser {
     preview_loaded: bool,
     message: Option<String>,
     theme: BrowserTheme,
+    preferred_list_width: usize,
 }
 
 impl Browser {
-    fn new(path: &Path) -> Result<Self> {
+    fn new(path: &Path, icons: crate::IconMode) -> Result<Self> {
         let directory = std::path::absolute(path)?;
         let entries = read_entries(&directory)?;
+        let theme = BrowserTheme::new(kat::ColorMode::NoColor, icons);
+        let preferred_list_width = theme.preferred_list_width(&entries);
         Ok(Self {
             directory,
             entries,
@@ -238,7 +241,8 @@ impl Browser {
             preview: Preview::Empty,
             preview_loaded: false,
             message: None,
-            theme: BrowserTheme::new(kat::ColorMode::NoColor, crate::IconMode::Never),
+            theme,
+            preferred_list_width,
         })
     }
 
@@ -257,6 +261,7 @@ impl Browser {
     fn change_directory(&mut self, path: &Path, select: Option<&Path>) {
         match read_entries(path) {
             Ok(entries) => {
+                self.preferred_list_width = self.theme.preferred_list_width(&entries);
                 self.selected = select
                     .and_then(|path| entries.iter().position(|entry| entry.path == path))
                     .unwrap_or(0);
@@ -334,7 +339,7 @@ impl Browser {
                 self.theme.text_style(kat::DraculaColor::Comment),
             )?;
         } else {
-            let left = (size.cols / 3).max(1);
+            let left = self.preferred_list_width.min((size.cols / 3).max(1));
             let right = size.cols - left - 1;
             let body = size.rows - 2;
             self.theme.write_bar(

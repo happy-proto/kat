@@ -96,6 +96,47 @@ impl BrowserTheme {
         self.style(color, false, false)
     }
 
+    pub(super) fn preferred_list_width(&self, entries: &[Entry]) -> usize {
+        // Fit the names when possible, while reserving most of the terminal for
+        // preview. A long filename cannot expand the list beyond 40 columns.
+        let maximum = 40;
+        entries
+            .iter()
+            .map(|entry| {
+                let (text, _, _) = self.entry_text(entry, Some(false));
+                PreparedDocument::plain(&text)
+                    .display_rows(maximum)
+                    .first()
+                    .map_or(0, |row| row.display_width())
+                    .saturating_add(2)
+            })
+            .max()
+            .unwrap_or(0)
+            .clamp(16, maximum)
+    }
+
+    fn entry_text(&self, entry: &Entry, selection: Option<bool>) -> (String, usize, usize) {
+        let marker = match selection {
+            Some(true) => "> ",
+            Some(false) => "  ",
+            None => "",
+        };
+        let mut text = marker.to_owned();
+        let icon_start = text.len();
+        if self.icons == IconMode::Always {
+            let glyph = entry.icon.glyph.to_string();
+            // Layout owns glyph widths. Reserve two cells for a Nerd Font
+            // symbol and one separating cell, including on terminals that
+            // enlarge a symbol into the following blank cell.
+            let width = PreparedDocument::plain(&glyph).display_rows(4)[0].display_width();
+            text.push_str(&glyph);
+            text.push_str(&" ".repeat(3_usize.saturating_sub(width)));
+        }
+        let name_start = text.len();
+        text.push_str(&entry.label());
+        (text, icon_start, name_start)
+    }
+
     pub(super) fn write_bar(
         &self,
         stdout: &mut impl Write,
@@ -131,24 +172,7 @@ impl BrowserTheme {
         selection: Option<bool>,
     ) -> Result<()> {
         let selected = selection == Some(true);
-        let marker = match selection {
-            Some(true) => "> ",
-            Some(false) => "  ",
-            None => "",
-        };
-        let mut text = marker.to_owned();
-        let icon_start = text.len();
-        if self.icons == IconMode::Always {
-            let glyph = entry.icon.glyph.to_string();
-            // Layout owns glyph widths. Reserve two cells for a Nerd Font
-            // symbol and one separating cell, including on terminals that
-            // enlarge a symbol into the following blank cell.
-            let width = PreparedDocument::plain(&glyph).display_rows(4)[0].display_width();
-            text.push_str(&glyph);
-            text.push_str(&" ".repeat(3_usize.saturating_sub(width)));
-        }
-        let name_start = text.len();
-        text.push_str(&entry.label());
+        let (text, icon_start, name_start) = self.entry_text(entry, selection);
         let document = PreparedDocument::plain(&text);
         if let Some(row) = document.display_rows(cols).first() {
             let text = row.text();
