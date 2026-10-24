@@ -92,6 +92,8 @@
 
 ### 视觉与终端约定
 
+- 目录浏览的 UI 样式集中在 `browser/style.rs`，与源码高亮共享 `DraculaColor` 色板和会话初始化时选定的 `ColorMode`。路径栏、状态栏、选中行使用 Current Line 底色；目录名、图标、分隔线与提示按角色着色。目录预览持有结构化 entry，复用左栏的图标与名称绘制，不把 ANSI 拼进纯文本。图标由 `devicons` 依赖提供并在读取目录时解析、缓存，预留两格图标位置和一格间距；裁切与补齐均使用 layout 的 display width。`--icons=never` 关闭两栏图标，颜色能力不足时沿用 ANSI / 无彩色降级。
+
 - 注入区域的视觉策略默认由 runtime 统一推导；块级区域和行内片段走不同的默认视觉模型。
 - 与终端显示列宽相关的逻辑统一收口到 `display_geometry` 模块；显示宽度、前缀列位置、ANSI 剥离以及后续 tab stop 策略都必须通过这层抽象处理，不允许在 visual / render / test 里直接用 `len()`、字节差值或 `chars().count()` 近似显示宽度。
 - `display_geometry` 内部显式区分 `ByteOffset` 与 `DisplayColumn`：前者只代表源码 UTF-8 偏移，后者只代表终端显示列。新的几何逻辑应优先沿用这两个类型，而不是继续把裸 `usize` 当作双重语义容器。

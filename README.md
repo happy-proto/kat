@@ -33,6 +33,8 @@ kat path/to/image.png
 
 在终端中直接执行 `kat` 等同于 `kat .`：左侧浏览文件，右侧预览内容；用 `hjkl` 或方向键导航，`Enter` 打开全文，退出阅读后回到目录。指定文本文件会直接进入内建 viewer，支持滚动、搜索和刷新；`q` 退出。管道输入仍读取 stdin，文件内容通过管道或重定向输出时保持完整输出。
 
+目录浏览使用 Dracula 配色，默认显示 Nerd Font 文件图标；终端需支持对应字体，也可用 `--icons=never` 关闭图标。详见[目录浏览](docs/usage.md#目录浏览)。
+
 ## 继续了解
 
 - [GitHub Actions 依赖锁定](docs/maintenance.md#github-actions-依赖)

@@ -509,6 +509,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5729f5117e208430e437df2f4843f5e5952997175992d1414f94c57d61e270b4"
 
 [[package]]
+name = "devicons"
+version = "0.6.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "777b2f88eb5418ba48f117570ecd0320404da0bdc39c66edf23d4d23550354b7"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1090,6 +1099,7 @@ dependencies = [
  "base64 0.23.1",
  "clap",
  "clap_complete",
+ "devicons",
  "icy_sixel",
  "image",
  "libghostty-vt",

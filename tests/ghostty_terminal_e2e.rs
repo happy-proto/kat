@@ -70,6 +70,124 @@ impl Drop for BrowserFixture {
 }
 
 #[test]
+fn browser_uses_dracula_chrome_and_matching_icons_in_both_panes() -> TestResult {
+    let fixture = BrowserFixture::new("dracula");
+    fixture.write("nested/deeper/doc.txt", "preview\n");
+    fixture.write("nested/code.rs", "fn main() {}\n");
+    fixture.write("Cargo.toml", "[package]\n");
+    fixture.write("Dockerfile", "FROM scratch\n");
+    fixture.write("unknown.kat-unknown", "plain\n");
+    let mut session = fixture.spawn(&["."], 100, 12)?;
+    let frame =
+        session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    frame.assert_text_style("nested/", (189, 147, 249), false)?;
+    frame.assert_text_style("deeper/", (189, 147, 249), false)?;
+    frame.assert_text_style("Cargo.toml", (248, 248, 242), false)?;
+    frame.assert_text_style("hjkl/arrows", (139, 233, 253), false)?;
+    for (x, y, glyph) in [
+        (2, 1, '\u{f07b}'),
+        (34, 1, '\u{f07b}'),
+        (2, 2, ''),
+        (34, 2, ''),
+        (2, 3, '󰡨'),
+        (2, 4, '\u{f15b}'),
+    ] {
+        let cell = frame
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x, y }))?;
+        assert_eq!(
+            cell.cell()?.codepoint()?,
+            glyph as u32,
+            "{x},{y}: {}",
+            frame.screen_text()
+        );
+    }
+    for (x, y) in [(0, 0), (0, 11), (0, 1), (32, 1)] {
+        let style = frame
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x, y }))?
+            .style()?;
+        let StyleColor::Rgb(bg) = style.bg_color else {
+            panic!("expected Dracula surface: {style:?}")
+        };
+        assert_eq!((bg.r, bg.g, bg.b), (68, 71, 90));
+        assert!(
+            !style.inverse,
+            "selected items should use a colored surface"
+        );
+    }
+    let divider = frame
+        .terminal
+        .grid_ref(Point::Active(PointCoordinate { x: 33, y: 1 }))?
+        .style()?;
+    let StyleColor::Rgb(fg) = divider.fg_color else {
+        panic!("expected divider color")
+    };
+    assert_eq!((fg.r, fg.g, fg.b), (98, 114, 164));
+    session.write_input(b"l")?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("> ") && frame.screen[1].contains("deeper/")
+    })?;
+    frame.assert_text_style("deeper/", (189, 147, 249), false)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_icons_can_be_disabled_without_disabling_directory_colors() -> TestResult {
+    let fixture = BrowserFixture::new("icons-disabled");
+    fixture.write("nested/subdir/read.txt", "plain\n");
+    let mut session = fixture.spawn(&["--icons=never", "."], 100, 12)?;
+    let frame =
+        session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    assert!(frame.screen[1].starts_with("> nested/"));
+    assert!(frame.screen[1].contains("│subdir/"));
+    assert!(!frame.screen_text().contains('\u{f07b}'));
+    frame.assert_text_style("nested/", (189, 147, 249), false)?;
+    frame.assert_text_style("subdir/", (189, 147, 249), false)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn browser_theme_respects_no_color_and_ansi_modes() -> TestResult {
+    let fixture = BrowserFixture::new("color-modes");
+    fixture.write("nested/file.txt", "plain\n");
+    for mode in ["none", "ansi"] {
+        let mut session = KatPtySession::spawn_in(
+            &["."],
+            100,
+            12,
+            &[
+                ("KAT_COLOR_MODE", mode),
+                ("KAT_DISABLE_TERMINAL_QUERIES", "1"),
+            ],
+            Some(&fixture.0),
+        )?;
+        let frame = session
+            .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+        for (x, y) in [(0, 0), (5, 1), (33, 1), (0, 11)] {
+            let style = frame
+                .terminal
+                .grid_ref(Point::Active(PointCoordinate { x, y }))?
+                .style()?;
+            assert!(!matches!(style.fg_color, StyleColor::Rgb(_)));
+            assert!(!matches!(style.bg_color, StyleColor::Rgb(_)));
+            if mode == "none" {
+                assert!(matches!(style.fg_color, StyleColor::None));
+                assert!(matches!(style.bg_color, StyleColor::None));
+            }
+        }
+        assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/"));
+        session.write_input(b"q")?;
+        session.wait_success()?;
+    }
+    Ok(())
+}
+
+#[test]
 fn browser_defaults_to_cwd_and_navigates_directories_with_both_key_sets() -> TestResult {
     let fixture = BrowserFixture::new("navigation");
     fixture.write("nested/inside.txt", "nested preview\n");
@@ -79,19 +197,21 @@ fn browser_defaults_to_cwd_and_navigates_directories_with_both_key_sets() -> Tes
         let mut session = fixture.spawn(&args, 100, 12)?;
         let frame = session
             .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
-        assert!(frame.screen[1].starts_with("> nested/"));
+        assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/"));
         assert!(frame.screen[1].contains("inside.txt"));
 
         session.write_input(b"l")?;
         session.wait_for_screen(100, 12, |frame| frame.screen[1].contains("nested preview"))?;
         session.write_input(b"h")?;
-        session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("> nested/"))?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/")
+        })?;
         // A split escape sequence must not be mistaken for Escape/quit.
         session.write_input(b"\x1b[")?;
         session.write_input(b"B")?;
         let frame =
             session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("fn main()"))?;
-        assert!(frame.screen[2].starts_with("> a.rs"));
+        assert!(frame.screen[2].starts_with("> ") && frame.screen[2].contains("a.rs"));
         frame.assert_text_style("fn", (255, 121, 198), false)?;
         session.write_input(b"j")?;
         session.wait_for_screen(100, 12, |frame| {
@@ -100,7 +220,9 @@ fn browser_defaults_to_cwd_and_navigates_directories_with_both_key_sets() -> Tes
         session.write_input(b"k\x1b[Ak\x1b[C")?;
         session.wait_for_screen(100, 12, |frame| frame.screen[1].contains("nested preview"))?;
         session.write_input(b"\x1b[D")?;
-        session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("> nested/"))?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/")
+        })?;
         session.write_input(b"q")?;
         let output = session.wait_success()?;
         assert_eq!(
@@ -145,7 +267,7 @@ fn browser_reader_searches_reloads_resizes_and_returns_without_losing_keys() -> 
     let frame = session.wait_for_screen(60, 10, |frame| {
         frame.screen.last().unwrap().contains("hjkl/arrows")
     })?;
-    assert!(frame.screen[1].starts_with("> read.txt"));
+    assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("read.txt"));
     // All three keys may arrive in one read: open reader, return, exit browser.
     session.write_input(b"\rqq")?;
     let output = session.wait_success()?;
@@ -310,14 +432,18 @@ fn browser_scrolls_the_list_and_keeps_its_position_after_reading() -> TestResult
     session.write_input(b"G")?;
     let frame =
         session.wait_for_screen(100, 8, |frame| frame.screen_text().contains("content-29"))?;
-    assert!(frame.screen[6].starts_with("> 29.txt"));
+    assert!(frame.screen[6].starts_with("> ") && frame.screen[6].contains("29.txt"));
     session.write_input(b"\rq")?;
     let frame = session.wait_for_screen(100, 8, |frame| {
-        frame.screen_text().contains("hjkl/arrows") && frame.screen[6].starts_with("> 29.txt")
+        frame.screen_text().contains("hjkl/arrows")
+            && frame.screen[6].starts_with("> ")
+            && frame.screen[6].contains("29.txt")
     })?;
-    assert!(frame.screen[1].starts_with("  24.txt"));
+    assert!(frame.screen[1].starts_with("  ") && frame.screen[1].contains("24.txt"));
     session.write_input(b"\x1b[5~g")?;
-    session.wait_for_screen(100, 8, |frame| frame.screen[1].starts_with("> 00.txt"))?;
+    session.wait_for_screen(100, 8, |frame| {
+        frame.screen[1].starts_with("> ") && frame.screen[1].contains("00.txt")
+    })?;
     session.write_input(b"q")?;
     session.wait_success()?;
     Ok(())

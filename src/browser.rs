@@ -13,6 +13,9 @@ use crate::{
     terminal_image,
 };
 
+mod style;
+use style::BrowserTheme;
+
 // Automatic previews must not read arbitrarily large files. Enter explicitly
 // opens the complete file; special files are never read as documents.
 const PREVIEW_BYTES: u64 = 8 * 1024 * 1024;
@@ -24,6 +27,7 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
     let mut browser = Browser::new(path)?;
     // Probe before raw mode, once for the entire browsing session.
     let render_options = kat::RenderOptions::terminal(crate::render_hyperlinks_enabled(options));
+    browser.theme = BrowserTheme::new(render_options.color_mode(), options.icons);
     let terminal = TerminalSession::enter()?;
     let _image = ImagePlacement;
     let mut parser = InputParser::default();
@@ -167,6 +171,7 @@ impl Drop for ImagePlacement {
 struct Entry {
     path: PathBuf,
     directory: bool,
+    icon: style::EntryIcon,
 }
 
 impl Entry {
@@ -186,8 +191,10 @@ fn read_entries(path: &Path) -> Result<Vec<Entry>> {
         .map(|item| {
             let item = item?;
             let path = item.path();
+            let directory = path.is_dir();
             Ok(Entry {
-                directory: path.is_dir(),
+                icon: style::EntryIcon::for_path(&path, directory),
+                directory,
                 path,
             })
         })
@@ -202,6 +209,7 @@ fn read_entries(path: &Path) -> Result<Vec<Entry>> {
 
 enum Preview {
     Empty,
+    Directory(Vec<Entry>),
     Text(ViewerDocument),
     Image { path: PathBuf, bytes: Vec<u8> },
     Message(String),
@@ -215,6 +223,7 @@ struct Browser {
     preview: Preview,
     preview_loaded: bool,
     message: Option<String>,
+    theme: BrowserTheme,
 }
 
 impl Browser {
@@ -229,6 +238,7 @@ impl Browser {
             preview: Preview::Empty,
             preview_loaded: false,
             message: None,
+            theme: BrowserTheme::new(kat::ColorMode::NoColor, crate::IconMode::Never),
         })
     }
 
@@ -307,27 +317,32 @@ impl Browser {
                 1,
                 options,
             )?;
-            write_plain(
+            self.theme.write_bar(
                 &mut stdout,
                 size.rows,
-                1,
                 "q:back  Enter:back",
                 size.cols,
-                true,
+                kat::DraculaColor::Cyan,
             )?;
         } else if size.cols < 20 || size.rows < 3 {
-            write_plain(&mut stdout, 1, 1, "Terminal too small", size.cols, false)?;
+            write_plain(
+                &mut stdout,
+                1,
+                1,
+                "Terminal too small",
+                size.cols,
+                self.theme.text_style(kat::DraculaColor::Comment),
+            )?;
         } else {
             let left = (size.cols / 3).max(1);
             let right = size.cols - left - 1;
             let body = size.rows - 2;
-            write_plain(
+            self.theme.write_bar(
                 &mut stdout,
                 1,
-                1,
-                &self.directory.to_string_lossy(),
+                &format!("kat  {}", self.directory.to_string_lossy()),
                 size.cols,
-                true,
+                kat::DraculaColor::Purple,
             )?;
             if self.selected < self.top {
                 self.top = self.selected;
@@ -336,17 +351,40 @@ impl Browser {
                 self.top = self.selected + 1 - body;
             }
             if self.entries.is_empty() {
-                write_plain(&mut stdout, 2, 1, "(empty)", left, false)?;
+                write_plain(
+                    &mut stdout,
+                    2,
+                    1,
+                    "(empty)",
+                    left,
+                    self.theme.text_style(kat::DraculaColor::Comment),
+                )?;
             }
             for (row, entry) in self.entries.iter().skip(self.top).take(body).enumerate() {
                 let selected = self.top + row == self.selected;
-                let label = format!("{}{}", if selected { "> " } else { "  " }, entry.label());
-                write_plain(&mut stdout, row + 2, 1, &label, left, selected)?;
+                self.theme
+                    .write_entry(&mut stdout, entry, (row + 2, 1), left, Some(selected))?;
             }
             for row in 2..size.rows {
-                write!(stdout, "\x1b[{row};{}H\x1b[0m│", left + 1)?;
+                write!(
+                    stdout,
+                    "\x1b[{row};{}H{}│\x1b[0m",
+                    left + 1,
+                    self.theme.text_style(kat::DraculaColor::Comment)
+                )?;
             }
             match &self.preview {
+                Preview::Directory(entries) => {
+                    for (row, entry) in entries.iter().take(body).enumerate() {
+                        self.theme.write_entry(
+                            &mut stdout,
+                            entry,
+                            (row + 2, left + 2),
+                            right,
+                            None,
+                        )?;
+                    }
+                }
                 Preview::Text(document) => {
                     // Use layout's display rows directly; never crop ANSI or
                     // wrap the highlighted output a second time.
@@ -363,7 +401,19 @@ impl Browser {
                         .take(body)
                         .enumerate()
                     {
-                        write!(stdout, "\x1b[{};{}H{}", row + 2, left + 2, line.text())?;
+                        let color = if message.starts_with("Cannot preview") {
+                            kat::DraculaColor::Red
+                        } else {
+                            kat::DraculaColor::Comment
+                        };
+                        write!(
+                            stdout,
+                            "\x1b[{};{}H{}{}\x1b[0m",
+                            row + 2,
+                            left + 2,
+                            self.theme.text_style(color),
+                            line.text()
+                        )?;
                     }
                 }
                 Preview::Image { .. } => {
@@ -382,7 +432,17 @@ impl Browser {
                     self.entries.len()
                 )
             });
-            write_plain(&mut stdout, size.rows, 1, &status, size.cols, true)?;
+            self.theme.write_bar(
+                &mut stdout,
+                size.rows,
+                &status,
+                size.cols,
+                if self.message.is_some() {
+                    kat::DraculaColor::Red
+                } else {
+                    kat::DraculaColor::Cyan
+                },
+            )?;
         }
         stdout.flush()?;
         Ok(())
@@ -427,7 +487,13 @@ impl Browser {
                         .take(rows)
                         .enumerate()
                     {
-                        write!(stdout, "\x1b[{};{x}H{}", y + offset, line.text())?;
+                        write!(
+                            stdout,
+                            "\x1b[{};{x}H{}{}\x1b[0m",
+                            y + offset,
+                            self.theme.text_style(kat::DraculaColor::Comment),
+                            line.text()
+                        )?;
                     }
                 }
             }
@@ -444,15 +510,11 @@ fn prepare_preview(
 ) -> Result<Preview> {
     if entry.directory {
         let entries = read_entries(&entry.path)?;
-        return Ok(Preview::Message(if entries.is_empty() {
-            "Empty directory".to_owned()
+        return Ok(if entries.is_empty() {
+            Preview::Message("Empty directory".to_owned())
         } else {
-            entries
-                .iter()
-                .map(Entry::label)
-                .collect::<Vec<_>>()
-                .join("\n")
-        }));
+            Preview::Directory(entries)
+        });
     }
     let metadata = fs::metadata(&entry.path)?;
     if !metadata.is_file() {
@@ -513,13 +575,11 @@ fn write_plain(
     x: usize,
     text: &str,
     cols: usize,
-    selected: bool,
+    style: anstyle::Style,
 ) -> Result<()> {
     let document = kat::PreparedDocument::plain(&visible_text(text));
     write!(stdout, "\x1b[{y};{x}H\x1b[0m")?;
-    if selected {
-        stdout.write_all(b"\x1b[7m")?;
-    }
+    write!(stdout, "{style}")?;
     if let Some(row) = document.display_rows(cols).first() {
         stdout.write_all(row.text().as_bytes())?;
     }

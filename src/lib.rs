@@ -36,6 +36,7 @@ pub use document::{
     DisplayRow, PreparedDocument, RenderOptions, RenderedDocument, RenderedRowAnchor,
 };
 pub use source_highlight::{HighlightBackgroundRun, HighlightSpan, HighlightStyle};
+pub use theme::{ColorMode, DraculaColor};
 pub use timing::{RenderOutput, RenderTimings};
 
 #[cfg(test)]

@@ -255,6 +255,13 @@ enum HyperlinkMode {
     Never,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, ValueEnum)]
+enum IconMode {
+    #[default]
+    Always,
+    Never,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 struct CliOptions {
     mode: OutputMode,
@@ -264,6 +271,7 @@ struct CliOptions {
     image_fit: ImageFitArg,
     image_background: ImageBackgroundArg,
     hyperlinks: HyperlinkMode,
+    icons: IconMode,
     language: Option<String>,
     install_completion: Option<CompletionShell>,
     paths: Vec<PathBuf>,
@@ -548,6 +556,8 @@ struct CliArgs {
     language: Option<String>,
     #[arg(long, value_enum)]
     hyperlinks: Option<HyperlinkMode>,
+    #[arg(long, value_enum, default_value_t = IconMode::Always, help = "Show Nerd Font icons in directory lists")]
+    icons: IconMode,
     #[arg(
         value_name = "PATH|-",
         help = "File or directory; defaults to the current directory in a terminal, or stdin in a pipe",
@@ -827,6 +837,7 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         image_fit: cli.image_fit,
         image_background: cli.image_background,
         hyperlinks: resolve_hyperlink_mode(cli.hyperlinks)?,
+        icons: cli.icons,
         language,
         install_completion: cli.install_completion,
         paths: cli.paths,
@@ -1474,7 +1485,7 @@ mod tests {
     use clap_complete::engine::complete;
 
     use super::{
-        CliOptions, CompletionShell, DebugTimingStats, HyperlinkMode, ImageBackgroundArg,
+        CliOptions, CompletionShell, DebugTimingStats, HyperlinkMode, IconMode, ImageBackgroundArg,
         ImageFitArg, OutputMode, cli_command, completion_command_for,
         completion_install_path_from_env, completion_registration_script, format_cli_error,
         install_completion_script, parse_cli_args, read_source_from_path, render_output,
@@ -1557,6 +1568,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("fish".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
@@ -1583,6 +1595,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("regex".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("pattern.re")],
@@ -1608,6 +1621,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("docs/architecture.md")],
@@ -1635,6 +1649,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("markdown".to_owned()),
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1658,6 +1673,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1683,6 +1699,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1708,6 +1725,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("notes.md")],
@@ -1760,6 +1778,7 @@ mod tests {
                 image_fit: ImageFitArg::Original,
                 image_background: ImageBackgroundArg::Checker,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("image.tiff")],
@@ -1782,6 +1801,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
                 paths: vec![],
@@ -1807,6 +1827,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: Some(CompletionShell::Bash),
                 paths: vec![],
@@ -1863,6 +1884,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: None,
                 install_completion: None,
                 paths: vec![PathBuf::from("src/main.rs")],
@@ -1896,6 +1918,7 @@ mod tests {
                 image_fit: ImageFitArg::Contain,
                 image_background: ImageBackgroundArg::Terminal,
                 hyperlinks: HyperlinkMode::Auto,
+                icons: IconMode::Always,
                 language: Some("python".to_owned()),
                 install_completion: None,
                 paths: vec![],
