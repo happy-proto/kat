@@ -255,6 +255,29 @@ pub(crate) fn render_inline_image(
     stdout_is_terminal: bool,
     options: ImageRenderOptions,
 ) -> Result<TerminalImageOutput> {
+    render_image(path, bytes, stdout_is_terminal, options, None)
+}
+
+// A stable image id lets the browser remove its placement on selection changes
+// without deleting images owned by other terminal applications.
+const BROWSER_IMAGE_ID: u32 = 0x4b4154;
+pub(crate) const CLEAR_BROWSER_IMAGE: &str = "\x1b_Ga=d,d=I,i=4931924,q=2;\x1b\\";
+
+pub(crate) fn render_browser_image(
+    path: &Path,
+    bytes: Vec<u8>,
+    options: ImageRenderOptions,
+) -> Result<TerminalImageOutput> {
+    render_image(path, bytes, true, options, Some(BROWSER_IMAGE_ID))
+}
+
+fn render_image(
+    path: &Path,
+    bytes: Vec<u8>,
+    stdout_is_terminal: bool,
+    options: ImageRenderOptions,
+    image_id: Option<u32>,
+) -> Result<TerminalImageOutput> {
     let name = path
         .file_name()
         .map(|name| name.to_string_lossy().into_owned());
@@ -273,7 +296,7 @@ pub(crate) fn render_inline_image(
             contains_terminal_image: true,
         }),
         Some(ImageProtocol::Kitty) => Ok(TerminalImageOutput {
-            output: encode_kitty_image(&analysis)?,
+            output: encode_kitty_image(&analysis, image_id)?,
             contains_terminal_image: true,
         }),
         Some(ImageProtocol::Sixel) => Ok(TerminalImageOutput {
@@ -897,7 +920,7 @@ fn apply_background(image: DynamicImage, background: ImageBackground) -> Result<
     )?))
 }
 
-fn encode_kitty_image(analysis: &ImageAnalysis) -> Result<String> {
+fn encode_kitty_image(analysis: &ImageAnalysis, image_id: Option<u32>) -> Result<String> {
     if analysis.format == ImageFormat::Png
         && analysis.orientation == Orientation::NoTransforms
         && analysis.options.background == ImageBackground::Terminal
@@ -907,7 +930,7 @@ fn encode_kitty_image(analysis: &ImageAnalysis) -> Result<String> {
             analysis.cell_size,
             analysis.options.background,
         )?)?;
-        return Ok(encode_kitty_png_image(&raw, analysis.cell_size));
+        return Ok(encode_kitty_png_image(&raw, analysis.cell_size, image_id));
     }
 
     let image = decode_rgba_image(
@@ -915,25 +938,48 @@ fn encode_kitty_image(analysis: &ImageAnalysis) -> Result<String> {
         analysis.cell_size,
         analysis.options.background,
     )?;
-    Ok(encode_kitty_rgba_image(&image, analysis.cell_size))
+    Ok(encode_kitty_rgba_image(
+        &image,
+        analysis.cell_size,
+        image_id,
+    ))
 }
 
-fn encode_kitty_png_image(data: &[u8], cell_size: Option<ImageCellSize>) -> String {
-    encode_kitty_payload(&kitty_control_prefix("a=T,f=100,q=2", cell_size), data)
+fn encode_kitty_png_image(
+    data: &[u8],
+    cell_size: Option<ImageCellSize>,
+    image_id: Option<u32>,
+) -> String {
+    encode_kitty_payload(
+        &kitty_control_prefix("a=T,f=100,q=2", cell_size, image_id),
+        data,
+    )
 }
 
-fn encode_kitty_rgba_image(image: &DecodedRgbaImage, cell_size: Option<ImageCellSize>) -> String {
+fn encode_kitty_rgba_image(
+    image: &DecodedRgbaImage,
+    cell_size: Option<ImageCellSize>,
+    image_id: Option<u32>,
+) -> String {
     encode_kitty_payload(
         &kitty_control_prefix(
             &format!("a=T,f=32,s={},v={},q=2", image.width, image.height),
             cell_size,
+            image_id,
         ),
         &image.pixels,
     )
 }
 
-fn kitty_control_prefix(base: &str, cell_size: Option<ImageCellSize>) -> String {
+fn kitty_control_prefix(
+    base: &str,
+    cell_size: Option<ImageCellSize>,
+    image_id: Option<u32>,
+) -> String {
     let mut control = base.to_owned();
+    if let Some(id) = image_id {
+        control.push_str(&format!(",i={id}"));
+    }
     if let Some(size) = cell_size {
         control.push_str(&format!(",c={},r={}", size.columns, size.rows));
     }
@@ -1142,14 +1188,14 @@ mod tests {
 
     #[test]
     fn encodes_kitty_png_image_apc() {
-        let encoded = encode_kitty_png_image(b"png", None);
+        let encoded = encode_kitty_png_image(b"png", None, None);
 
         assert_eq!(encoded, "\x1b_Ga=T,f=100,q=2,m=0;cG5n\x1b\\\n");
     }
 
     #[test]
     fn encodes_kitty_png_image_in_chunks() {
-        let encoded = encode_kitty_png_image(&vec![b'a'; super::KITTY_CHUNK_BYTES + 1], None);
+        let encoded = encode_kitty_png_image(&vec![b'a'; super::KITTY_CHUNK_BYTES + 1], None, None);
 
         assert!(encoded.starts_with("\x1b_Ga=T,f=100,q=2,m=1;"));
         assert!(encoded.contains("\x1b\\\x1b_Gm=0;"));
@@ -1163,7 +1209,7 @@ mod tests {
             width: 1,
             height: 1,
         };
-        let encoded = encode_kitty_rgba_image(&image, None);
+        let encoded = encode_kitty_rgba_image(&image, None, None);
 
         assert!(encoded.starts_with("\x1b_Ga=T,f=32,s=1,v=1,q=2,m=0;"));
         assert!(encoded.ends_with("\x1b\\\n"));
@@ -1452,6 +1498,7 @@ mod tests {
                 columns: 12,
                 rows: 5,
             }),
+            None,
         );
 
         assert!(encoded.starts_with("\x1b_Ga=T,f=100,q=2,c=12,r=5,m=0;"));

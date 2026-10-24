@@ -34,63 +34,113 @@ pub(crate) fn run(
         );
     }
 
-    let _terminal = TerminalSession::enter()?;
-    let resize_requested = Arc::new(AtomicBool::new(false));
-    register_resize_signal(resize_requested.clone())?;
-
+    let terminal = TerminalSession::enter()?;
     let mut size = terminal_size();
-    let mut document = PagerDocument::from_source(render_source(size.cols, false)?.0);
-    let mut state = PagerState::default();
-    let mut mode = PagerMode::Normal;
-    let mut stdin = io::stdin().lock();
-    let mut viewport = PagerViewport::build(&document, size.cols);
-    state.restore_anchor(&viewport);
-    render(&document, &viewport, &state, &mode, size)?;
+    let mut view = PagerView::new(render_source(size.cols, false)?.0, size, "quit");
+    let mut input_parser = InputParser::default();
+    view.render(size)?;
 
     loop {
-        if resize_requested.swap(false, Ordering::Relaxed) {
+        if terminal.resized() {
             let new_size = terminal_size();
             if new_size.cols != size.cols {
-                document = PagerDocument::from_source(render_source(new_size.cols, false)?.0);
-                viewport = PagerViewport::build(&document, new_size.cols);
-                state.restore_anchor(&viewport);
-                state.rebuild_search(&document);
+                view.replace_source(render_source(new_size.cols, false)?.0, new_size);
             }
             size = new_size;
-            render(&document, &viewport, &state, &mode, size)?;
+            view.render(size)?;
         }
 
-        let mut buf = [0_u8; 16];
-        let len = stdin.read(&mut buf).context("failed to read pager input")?;
-        let events = state.input_parser.parse_as_vec(&buf[..len], len != 0);
-        if state.expire_message(Instant::now()) {
-            render(&document, &viewport, &state, &mode, size)?;
+        let events = terminal.read_events(&mut input_parser)?;
+        if view.expire_message() {
+            view.render(size)?;
         }
         if events.is_empty() {
             continue;
         }
 
         for event in events {
-            let outcome = handle_events([event], &document, &viewport, &mut state, &mut mode, size);
+            let outcome = view.handle(event, size);
             match outcome {
                 PagerInputOutcome::Quit => return Ok(()),
-                PagerInputOutcome::Reload => match render_source(size.cols, true) {
-                    Ok((source, changed)) => {
-                        document = PagerDocument::from_source(source);
-                        viewport = PagerViewport::build(&document, size.cols);
-                        state.restore_anchor(&viewport);
-                        state.rebuild_search(&document);
-                        state.show_message(format!(
-                            "Reloaded: {}  R:reload  q:quit",
-                            if changed { "changed" } else { "unchanged" }
-                        ));
-                    }
-                    Err(error) => state.show_message(format!("Reload failed: {error:#}")),
-                },
+                PagerInputOutcome::Reload => {
+                    view.finish_reload(render_source(size.cols, true), size)
+                }
                 PagerInputOutcome::Continue => {}
             }
         }
-        render(&document, &viewport, &state, &mode, size)?;
+        view.render(size)?;
+    }
+}
+
+/// A reader embedded in either the standalone viewer or the directory browser.
+/// The owner keeps the terminal and parser alive while changing views.
+pub(crate) struct PagerView {
+    document: PagerDocument,
+    viewport: PagerViewport,
+    state: PagerState,
+    mode: PagerMode,
+    exit_label: &'static str,
+}
+
+impl PagerView {
+    pub(crate) fn new(source: PagerSource, size: PagerSize, exit_label: &'static str) -> Self {
+        let document = PagerDocument::from_source(source);
+        let viewport = PagerViewport::build(&document, size.cols);
+        let mut state = PagerState::default();
+        state.restore_anchor(&viewport);
+        Self {
+            document,
+            viewport,
+            state,
+            mode: PagerMode::Normal,
+            exit_label,
+        }
+    }
+
+    pub(crate) fn replace_source(&mut self, source: PagerSource, size: PagerSize) {
+        self.document = PagerDocument::from_source(source);
+        self.viewport = PagerViewport::build(&self.document, size.cols);
+        self.state.restore_anchor(&self.viewport);
+        self.state.rebuild_search(&self.document);
+    }
+
+    pub(crate) fn finish_reload(&mut self, result: Result<(PagerSource, bool)>, size: PagerSize) {
+        match result {
+            Ok((source, changed)) => {
+                self.replace_source(source, size);
+                self.state.show_message(format!(
+                    "Reloaded: {}  R:reload  q:{}",
+                    if changed { "changed" } else { "unchanged" },
+                    self.exit_label
+                ));
+            }
+            Err(error) => self.state.show_message(format!("Reload failed: {error:#}")),
+        }
+    }
+
+    pub(crate) fn handle(&mut self, event: InputEvent, size: PagerSize) -> PagerInputOutcome {
+        handle_events(
+            [event],
+            &self.document,
+            &self.viewport,
+            &mut self.state,
+            &mut self.mode,
+            size,
+        )
+    }
+
+    pub(crate) fn expire_message(&mut self) -> bool {
+        self.state.expire_message(Instant::now())
+    }
+
+    pub(crate) fn render(&self, size: PagerSize) -> Result<()> {
+        render(
+            &self.viewport,
+            &self.state,
+            &self.mode,
+            size,
+            self.exit_label,
+        )
     }
 }
 
@@ -104,6 +154,12 @@ pub(crate) struct PagerRowAnchor {
 #[derive(Debug)]
 pub(crate) struct PagerSource {
     rows: Vec<DisplayRow>,
+}
+
+impl PagerSource {
+    pub(crate) fn encoded_rows(&self) -> impl Iterator<Item = String> + '_ {
+        self.rows.iter().map(|row| row.rendered.encode(&[], None))
+    }
 }
 
 #[derive(Debug, Default)]
@@ -150,17 +206,6 @@ impl PagerSourceBuilder {
     pub(crate) fn finish(self) -> PagerSource {
         PagerSource { rows: self.rows }
     }
-}
-
-#[cfg(unix)]
-fn register_resize_signal(resize_requested: Arc<AtomicBool>) -> Result<()> {
-    flag::register(SIGWINCH, resize_requested).context("failed to register SIGWINCH")?;
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn register_resize_signal(_: Arc<AtomicBool>) -> Result<()> {
-    Ok(())
 }
 
 fn write_direct(output: &str) -> Result<()> {
@@ -222,6 +267,7 @@ impl PagerDocument {
 
 #[derive(Default)]
 struct PagerState {
+    #[cfg(test)]
     input_parser: InputParser,
     top_row: usize,
     anchor: RowAnchor,
@@ -492,7 +538,7 @@ enum PagerMode {
     Search { query: String },
 }
 
-enum PagerInputOutcome {
+pub(crate) enum PagerInputOutcome {
     Continue,
     Quit,
     Reload,
@@ -641,12 +687,12 @@ struct SearchInputOutcome {
 }
 
 #[derive(Clone, Copy)]
-struct PagerSize {
-    cols: usize,
-    rows: usize,
+pub(crate) struct PagerSize {
+    pub(crate) cols: usize,
+    pub(crate) rows: usize,
 }
 
-fn terminal_size() -> PagerSize {
+pub(crate) fn terminal_size() -> PagerSize {
     terminal_size::terminal_size()
         .map(
             |(terminal_size::Width(cols), terminal_size::Height(rows))| PagerSize {
@@ -740,11 +786,11 @@ impl DisplayRow {
 }
 
 fn render(
-    _document: &PagerDocument,
     viewport: &PagerViewport,
     state: &PagerState,
     mode: &PagerMode,
     size: PagerSize,
+    exit_label: &str,
 ) -> Result<()> {
     let body_rows = size.rows.saturating_sub(1);
     let mut stdout = io::stdout().lock();
@@ -769,7 +815,7 @@ fn render(
     let end_line = (state.top_row + body_rows).min(viewport.row_count());
     let status = match mode {
         PagerMode::Normal => state.message.as_ref().map(|message| message.text.clone()).unwrap_or_else(|| format!(
-            "kat {}/{}  q:quit  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
+            "kat {}/{}  q:{exit_label}  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
             end_line,
             viewport.row_count()
         )),
@@ -826,28 +872,55 @@ fn write_row(mut stdout: impl Write, row: &DisplayRow, state: &PagerState) -> Re
     Ok(())
 }
 
-struct TerminalSession {
+pub(crate) struct TerminalSession {
     _raw_mode: RawTerminalMode,
+    resize_requested: Arc<AtomicBool>,
+    #[cfg(unix)]
+    resize_registration: signal_hook::SigId,
 }
 
 impl TerminalSession {
-    fn enter() -> Result<Self> {
+    pub(crate) fn enter() -> Result<Self> {
         let raw_mode = RawTerminalMode::enable().context("failed to enter pager raw mode")?;
+        let resize_requested = Arc::new(AtomicBool::new(false));
+        #[cfg(unix)]
+        let resize_registration = flag::register(SIGWINCH, resize_requested.clone())
+            .context("failed to register SIGWINCH")?;
         let mut stdout = io::stdout().lock();
         stdout
             .write_all(ENTER_ALTERNATE_SCREEN)
             .context("failed to enter alternate screen")?;
+        stdout.write_all(b"\x1b[?25l")?;
         stdout.flush().context("failed to flush stdout")?;
         Ok(Self {
             _raw_mode: raw_mode,
+            resize_requested,
+            #[cfg(unix)]
+            resize_registration,
         })
+    }
+
+    pub(crate) fn resized(&self) -> bool {
+        self.resize_requested.swap(false, Ordering::Relaxed)
+    }
+
+    pub(crate) fn read_events(&self, parser: &mut InputParser) -> Result<Vec<InputEvent>> {
+        let mut buf = [0_u8; 64];
+        let len = io::stdin()
+            .lock()
+            .read(&mut buf)
+            .context("failed to read viewer input")?;
+        Ok(parser.parse_as_vec(&buf[..len], len != 0))
     }
 }
 
 impl Drop for TerminalSession {
     fn drop(&mut self) {
+        #[cfg(unix)]
+        signal_hook::low_level::unregister(self.resize_registration);
         let mut stdout = io::stdout().lock();
         let _ = stdout.write_all(RESET_STYLE);
+        let _ = stdout.write_all(b"\x1b[?25h");
         let _ = stdout.write_all(LEAVE_ALTERNATE_SCREEN);
         let _ = stdout.flush();
     }

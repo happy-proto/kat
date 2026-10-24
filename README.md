@@ -4,7 +4,7 @@
 [![dependency status](https://deps.rs/repo/github/happy-proto/kat/status.svg)](https://deps.rs/repo/github/happy-proto/kat)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/happy-proto/kat/blob/master/LICENSE)
 
-`kat` 是一个基于 Tree-sitter 的高亮版 `cat`，让终端里的源码更容易读。
+`kat` 是一个基于 Tree-sitter 的终端文件查看工具，支持高亮阅读和两栏目录浏览。
 
 它最在意的是嵌套语言：Rust 文档注释里的 Markdown、Markdown 代码块里的 Mermaid、Justfile 和 mise / hk 配置里的脚本，都能按各自的语言高亮。也支持直接查看图片。
 
@@ -25,11 +25,13 @@ cargo binstall --git https://github.com/happy-proto/kat kat
 ## 使用
 
 ```bash
+kat
+kat path/to/directory
 kat path/to/file
 kat path/to/image.png
 ```
 
-在终端中打开文本会进入内建 viewer，支持滚动、搜索和刷新；`q` 退出。通过管道或重定向则输出完整内容。
+在终端中直接执行 `kat` 等同于 `kat .`：左侧浏览文件，右侧预览内容；用 `hjkl` 或方向键导航，`Enter` 打开全文，退出阅读后回到目录。指定文本文件会直接进入内建 viewer，支持滚动、搜索和刷新；`q` 退出。管道输入仍读取 stdin，文件内容通过管道或重定向输出时保持完整输出。
 
 ## 继续了解
 

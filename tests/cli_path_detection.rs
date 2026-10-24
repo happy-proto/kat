@@ -46,6 +46,48 @@ fn command(cwd: &Path) -> Command {
     command
 }
 
+#[test]
+fn directory_browsing_requires_a_terminal_and_a_single_directory() {
+    let fixture = Fixture::new();
+    fixture.write("file.txt", "file contents\n");
+    for args in [vec!["."], vec![".", "file.txt"]] {
+        let output = command(&fixture.0).args(&args).output().unwrap();
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        let error = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            error.contains(if args.len() == 1 {
+                "directory browsing requires a terminal"
+            } else {
+                "directory browsing takes a single directory"
+            }),
+            "{error}"
+        );
+    }
+}
+
+#[test]
+fn no_path_with_piped_stdin_still_reads_the_stream() {
+    let fixture = Fixture::new();
+    for args in [vec![], vec!["-"]] {
+        let mut child = command(&fixture.0)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"stream contents\n")
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"stream contents\n");
+    }
+}
+
 fn analysis(cwd: &Path, args: &[&str]) -> serde_json::Value {
     let output = command(cwd)
         .arg("--debug-analysis")

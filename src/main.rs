@@ -17,6 +17,7 @@ use miette::{Report, miette};
 use shadow_rs::shadow;
 use terminal_size::{Height, Width, terminal_size};
 
+mod browser;
 mod pager;
 mod terminal_image;
 
@@ -122,6 +123,10 @@ fn try_main() -> Result<()> {
         return Ok(());
     }
 
+    if let Some(directory) = browser_directory(&options, io::stdin().is_terminal())? {
+        return browser::run(&directory, &options);
+    }
+
     let total_started_at = Instant::now();
     let mut built_output = build_output(&options)?;
     let write_started_at = Instant::now();
@@ -134,6 +139,22 @@ fn try_main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn browser_directory(options: &CliOptions, stdin_is_terminal: bool) -> Result<Option<PathBuf>> {
+    if options.mode != OutputMode::Render {
+        return Ok(None);
+    }
+    if options.paths.is_empty() && stdin_is_terminal {
+        return Ok(Some(PathBuf::from(".")));
+    }
+    if options.paths.iter().any(|path| path.is_dir()) {
+        if options.paths.len() != 1 {
+            bail!("directory browsing takes a single directory; open files separately");
+        }
+        return Ok(Some(options.paths[0].clone()));
+    }
+    Ok(None)
 }
 
 #[derive(Debug)]
@@ -529,6 +550,7 @@ struct CliArgs {
     hyperlinks: Option<HyperlinkMode>,
     #[arg(
         value_name = "PATH|-",
+        help = "File or directory; defaults to the current directory in a terminal, or stdin in a pipe",
         add = ArgValueCompleter::new(complete_input_paths)
     )]
     paths: Vec<PathBuf>,
