@@ -69,6 +69,19 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
             if is_interrupt(&event) {
                 return Ok(());
             }
+            // Confirming a filename query also opens its current result using
+            // the same navigation path as Enter outside the filter editor.
+            if browser.filter.editing
+                && matches!(
+                    &event,
+                    InputEvent::Key(KeyEvent {
+                        key: KeyCode::Enter,
+                        ..
+                    })
+                )
+            {
+                browser.filter.editing = false;
+            }
             if let Some(active) = reader.as_mut() {
                 match active.view.handle(event, size) {
                     PagerInputOutcome::Quit => {
@@ -135,7 +148,7 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
                         }
                     }
                     Action::Filter => browser.filter.editing = true,
-                    Action::OpenDirectory | Action::EnterDirectory | Action::Navigate => {
+                    Action::OpenDirectory | Action::Navigate => {
                         if let Some(entry) = browser.current() {
                             if entry.directory {
                                 let path = entry.path.clone();
@@ -338,10 +351,6 @@ impl Browser {
                     self.filter.editing = false;
                     self.filter.query.clear();
                     self.refilter(true);
-                    return;
-                }
-                KeyCode::Enter => {
-                    self.filter.editing = false;
                     return;
                 }
                 KeyCode::DownArrow | KeyCode::ApplicationDownArrow => {
@@ -595,7 +604,7 @@ impl Browser {
             }
             let status = if self.filter.editing {
                 format!(
-                    "/{}  [{}/{}]  Enter:confirm  Esc:clear",
+                    "/{}  [{}/{}]  Enter:open  Esc:clear",
                     self.filter.query,
                     self.filter.matches.len(),
                     self.entries.len()
@@ -717,7 +726,7 @@ fn prepare_preview(
         .read_to_end(&mut bytes)?;
     if limit.is_some_and(|limit| bytes.len() as u64 > limit) {
         return Ok(Preview::Message(format!(
-            "Large file ({} bytes). Press l or Right to open.",
+            "Large file ({} bytes). Press Enter, l or Right to open.",
             metadata.len()
         )));
     }
@@ -787,7 +796,6 @@ enum Action {
     Up,
     Parent,
     Navigate,
-    EnterDirectory,
     OpenDirectory,
     OpenCurrentDirectory,
     Filter,
@@ -811,7 +819,7 @@ impl Action {
             KeyCode::Char('l') | KeyCode::RightArrow | KeyCode::ApplicationRightArrow => {
                 Self::Navigate
             }
-            KeyCode::Enter => Self::EnterDirectory,
+            KeyCode::Enter => Self::Navigate,
             KeyCode::Char('o') => Self::OpenDirectory,
             KeyCode::Char('O') => Self::OpenCurrentDirectory,
             KeyCode::Char('/') => Self::Filter,

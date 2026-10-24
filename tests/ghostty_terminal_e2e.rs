@@ -78,11 +78,12 @@ fn browser_open_and_back_keys_share_fullscreen_dracula_chrome() -> TestResult {
         (b"l".as_slice(), b"h".as_slice()),
         (b"\x1b[C", b"q"),
         (b"l", b"\x1b[D"),
+        (b"\r", b"h"),
     ] {
         let mut session = fixture.spawn(&["."], 100, 12)?;
         session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
-        // Ignored open keys must leave us in the browser so j selects the next file.
-        session.write_input(b"o\rj")?;
+        // o must leave us in the browser so j selects the next file.
+        session.write_input(b"oj")?;
         session.wait_for_screen(100, 12, |frame| {
             frame.screen_text().contains("hjkl/arrows")
                 && frame.screen[2].starts_with("> ")
@@ -256,7 +257,7 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
     })?;
     session.write_input(b"\x1b[A")?;
     session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("> abc.txt"))?;
-    session.write_input(b"\rl")?;
+    session.write_input(b"\r")?;
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[1].starts_with("best match preview") && frame.screen[11].contains("q:back")
     })?;
@@ -277,7 +278,7 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
     })?;
-    session.write_input(b"/abc\r")?;
+    session.write_input(b"/abc\rh")?;
     session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("/abc [4/6]"))?;
     session.write_input(b"/\x15zzzz")?;
     session.wait_for_screen(100, 12, |frame| {
@@ -306,7 +307,7 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
     })?;
-    session.write_input(b"/dir\rl")?;
+    session.write_input(b"/dir\r")?;
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[1].starts_with("> inside.txt") && !frame.screen[11].contains("/dir")
     })?;
@@ -680,11 +681,11 @@ fn browser_images_fall_back_to_information_and_return_from_fullscreen() -> TestR
     session.wait_for_screen(100, 12, |frame| {
         frame.screen_text().contains("image protocol")
     })?;
-    session.write_input(b"o\rj")?;
+    session.write_input(b"oj")?;
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[2].starts_with("> ") && frame.screen[2].contains("b.txt")
     })?;
-    session.write_input(b"kl")?;
+    session.write_input(b"k\r")?;
     session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("q:back"))?;
     session.write_input(b"qj")?;
     session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("after image"))?;
