@@ -79,6 +79,12 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 - `.fsi` 使用独立的 `fsharp_signature` runtime，highlights 和 locals query 与当前 signature grammar 配套，覆盖模块、类型、成员和值签名。不能直接复用 `.fs` 的表达式与隐藏 supertype 查询；全量 runtime 加载检查覆盖这项兼容性。
 
+### Nushell
+
+- `.nu` 文件使用独立 `nushell` runtime；显式 `--language`、Markdown fence 和 shebang 接受 `nu` / `nushell`，不猜测无扩展名内容。
+- 采用 Nushell 官方 `tree-sitter-nu` grammar，经 `kat-parsers` 提供 parser。高亮覆盖声明与函数定义、模块和环境 overlay、结构化管道、记录和列表、类型和参数、变量与 cell path、字符串插值与 raw string、数值和单位、条件与循环、运算符和注释。
+- 基础源码高亮不执行 Nushell，也不检查内建命令是否存在；不承诺覆盖全部版本的 Nushell 语法。最小虚拟环境 overlay、完整管道展示样例和 Markdown fence 均有自动化覆盖。
+
 ### Mermaid
 
 - 支持 `.mmd` / `.mermaid` 文件和 `--language mermaid`；Markdown 中的 `mermaid` 代码块复用同一 runtime，包括反引号、波浪线围栏和引用/列表内围栏，Rustdoc 等递归 Markdown 宿主也沿用通用分发。围栏分发按 AST 排除 `block_continuation` 宿主前缀，保留代码中的 `>`、换行及原始 UTF-8 位置映射；其它围栏语言同样适用。
