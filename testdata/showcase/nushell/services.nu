@@ -11,5 +11,5 @@ def summarize [minimum: filesize = 1kb, --enabled(-e)] {
     | each {|service| $"服务：($service.name)" }
 }
 
-let raw_path = r#'/opt/example\data'#
+let raw_path = r#'/opt/example\data#archive'#
 summarize 4kb --enabled | str join ', '

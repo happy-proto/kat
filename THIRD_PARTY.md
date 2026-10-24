@@ -1196,4 +1196,4 @@ These files may be modified locally as needed for integration into `kat`.
 
 - Parser: `tree-sitter-kat-parsers::NU_LANGUAGE`, sourced from [nushell/tree-sitter-nu](https://github.com/nushell/tree-sitter-nu), revision `4f577aaa735154f934594b598a69ed7b1b707cf6`, MIT.
 - `grammars/nushell/queries/highlights.scm` adapts the upstream `queries/nu/highlights.scm` at that revision to Kat capture names and adds function definitions, modules, booleans and special variables. The upstream license is retained in `grammars/nushell/LICENSE`.
-- Grammar, scanner and generated parser assets are maintained in kat-parsers; Kat does not copy parser sources.
+- Grammar, scanner and generated parser assets are maintained in kat-parsers, including replayable fixes for the scanner's error-sentinel declaration and raw-string closing delimiters; Kat does not copy parser sources.
