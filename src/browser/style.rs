@@ -4,8 +4,8 @@ use anstyle::Style;
 use anyhow::Result;
 use kat::{ColorMode, DraculaColor, PreparedDocument};
 
-use super::{Entry, visible_text};
-use crate::IconMode;
+use super::Entry;
+use crate::{IconMode, ui_theme::UiTheme};
 
 #[derive(Clone, Copy)]
 pub(super) struct EntryIcon {
@@ -65,35 +65,33 @@ fn dracula_accent(hex: &str) -> DraculaColor {
 }
 
 pub(super) struct BrowserTheme {
-    mode: ColorMode,
+    pub(super) ui: UiTheme,
     icons: IconMode,
 }
 
 impl BrowserTheme {
+    pub(super) fn write_header(
+        &self,
+        stdout: &mut impl Write,
+        title: &str,
+        cols: usize,
+    ) -> Result<()> {
+        self.ui.write_header(stdout, title, cols)
+    }
+
     pub(super) fn new(mode: ColorMode, icons: IconMode) -> Self {
-        Self { mode, icons }
+        Self {
+            ui: UiTheme::new(mode),
+            icons,
+        }
     }
 
     fn style(&self, color: DraculaColor, surface: bool, bold: bool) -> Style {
-        if self.mode == ColorMode::NoColor {
-            return if surface {
-                Style::new().invert()
-            } else {
-                Style::new()
-            };
-        }
-        let mut style = Style::new().fg_color(Some(color.to_color(self.mode)));
-        if surface {
-            style = style.bg_color(Some(DraculaColor::CurrentLine.to_color(self.mode)));
-        }
-        if bold {
-            style = style.bold();
-        }
-        style
+        self.ui.style(color, surface, bold)
     }
 
     pub(super) fn text_style(&self, color: DraculaColor) -> Style {
-        self.style(color, false, false)
+        self.ui.text_style(color)
     }
 
     pub(super) fn preferred_list_width(&self, entries: &[Entry]) -> usize {
@@ -145,22 +143,7 @@ impl BrowserTheme {
         cols: usize,
         color: DraculaColor,
     ) -> Result<()> {
-        let document = PreparedDocument::plain(&visible_text(text).replace('\n', "\\n"));
-        write!(
-            stdout,
-            "\x1b[{y};1H\x1b[0m{}",
-            self.style(color, true, y == 1)
-        )?;
-        if let Some(row) = document.display_rows(cols).first() {
-            write!(
-                stdout,
-                "{}{}",
-                row.text(),
-                " ".repeat(cols.saturating_sub(row.display_width()))
-            )?;
-        }
-        write!(stdout, "\x1b[0m")?;
-        Ok(())
+        self.ui.write_bar(stdout, y, text, cols, color)
     }
 
     pub(super) fn write_entry(

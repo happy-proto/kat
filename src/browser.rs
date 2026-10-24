@@ -11,6 +11,7 @@ use crate::{
     CliOptions, ViewerDocument, ViewerSegment, content_fingerprint, pager,
     pager::{PagerInputOutcome, PagerSize, PagerView, TerminalSession},
     terminal_image,
+    ui_theme::visible_text,
 };
 
 mod style;
@@ -80,13 +81,15 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
                     PagerInputOutcome::Continue => {}
                 }
             } else if full_image {
-                if matches!(
-                    event,
-                    InputEvent::Key(KeyEvent {
-                        key: KeyCode::Char('q') | KeyCode::Escape | KeyCode::Enter,
-                        ..
-                    })
-                ) {
+                if is_parent_key(&event)
+                    || matches!(
+                        event,
+                        InputEvent::Key(KeyEvent {
+                            key: KeyCode::Char('q') | KeyCode::Escape | KeyCode::Enter,
+                            ..
+                        })
+                    )
+                {
                     full_image = false;
                 }
             } else if let InputEvent::Key(key) = event {
@@ -111,19 +114,30 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
                             .saturating_sub(size.rows.saturating_sub(2).max(1)),
                     ),
                     Action::Parent => browser.parent(),
-                    Action::EnterDirectory | Action::Open => {
+                    Action::Open | Action::Enter => {
                         if let Some(entry) = browser.current() {
                             if entry.directory {
                                 let path = entry.path.clone();
-                                browser.change_directory(&path, None);
-                            } else if matches!(action, Action::Open) {
+                                if matches!(action, Action::Open) {
+                                    match options.cwd_file.as_ref() {
+                                        Some(output) => match fs::write(output, path.as_os_str().as_encoded_bytes()) {
+                                            Ok(()) => return Ok(()),
+                                            Err(error) => browser.message = Some(format!("Cannot open directory: {error}")),
+                                        },
+                                        None => browser.message = Some("Enable shell integration: kat --install-shell-integration <shell>".to_owned()),
+                                    }
+                                } else {
+                                    browser.change_directory(&path, None);
+                                }
+                            } else {
                                 browser.load_preview(options, render_options, None);
                                 match std::mem::replace(&mut browser.preview, Preview::Empty) {
                                     Preview::Text(document) => {
+                                        let chrome = document.chrome(pager::ViewerExit::Back);
                                         let view = PagerView::new(
                                             document.render(size.cols),
                                             size,
-                                            "back",
+                                            chrome,
                                         );
                                         reader = Some(Reader { document, view });
                                     }
@@ -314,18 +328,23 @@ impl Browser {
         stdout.write_all(terminal_image::CLEAR_BROWSER_IMAGE.as_bytes())?;
         stdout.write_all(b"\x1b[0m\x1b[H\x1b[2J")?;
         if full_image {
+            let title = match &self.preview {
+                Preview::Image { path, .. } => format!("kat  {}", path.display()),
+                _ => "kat".to_owned(),
+            };
+            self.theme.write_header(&mut stdout, &title, size.cols)?;
             self.render_image(
                 &mut stdout,
                 size.cols,
-                size.rows.saturating_sub(1),
-                1,
+                size.rows.saturating_sub(2),
+                2,
                 1,
                 options,
             )?;
             self.theme.write_bar(
                 &mut stdout,
                 size.rows,
-                "q:back  Enter:back",
+                "q:back  h/←:back  Enter:back",
                 size.cols,
                 kat::DraculaColor::Cyan,
             )?;
@@ -342,12 +361,10 @@ impl Browser {
             let left = self.preferred_list_width.min((size.cols / 3).max(1));
             let right = size.cols - left - 1;
             let body = size.rows - 2;
-            self.theme.write_bar(
+            self.theme.write_header(
                 &mut stdout,
-                1,
                 &format!("kat  {}", self.directory.to_string_lossy()),
                 size.cols,
-                kat::DraculaColor::Purple,
             )?;
             if self.selected < self.top {
                 self.top = self.selected;
@@ -428,7 +445,7 @@ impl Browser {
             }
             let status = self.message.clone().unwrap_or_else(|| {
                 format!(
-                    "kat {}/{}  q:quit  hjkl/arrows:move  Enter:open  R:reload",
+                    "kat {}/{}  q:quit  hjkl/arrows:move  o:open  Enter:view  R:reload",
                     if self.entries.is_empty() {
                         0
                     } else {
@@ -562,18 +579,6 @@ fn prepare_preview(
     }))
 }
 
-fn visible_text(text: &str) -> String {
-    text.chars()
-        .flat_map(|c| {
-            if c.is_control() && c != '\n' {
-                c.escape_default().collect::<Vec<_>>()
-            } else {
-                vec![c]
-            }
-        })
-        .collect()
-}
-
 fn write_plain(
     stdout: &mut impl Write,
     y: usize,
@@ -602,13 +607,17 @@ fn is_interrupt(event: &InputEvent) -> bool {
     ) || matches!(event, InputEvent::Key(KeyEvent { key: KeyCode::Char('c' | 'C'), modifiers, .. }) if modifiers.contains(Modifiers::CTRL))
 }
 
+fn is_parent_key(event: &InputEvent) -> bool {
+    matches!(event, InputEvent::Key(key) if matches!(Action::parse(key), Some(Action::Parent)))
+}
+
 #[derive(Clone, Copy)]
 enum Action {
     Quit,
     Down,
     Up,
     Parent,
-    EnterDirectory,
+    Enter,
     Open,
     First,
     Last,
@@ -628,9 +637,10 @@ impl Action {
             KeyCode::Char('k') | KeyCode::UpArrow | KeyCode::ApplicationUpArrow => Self::Up,
             KeyCode::Char('h') | KeyCode::LeftArrow | KeyCode::ApplicationLeftArrow => Self::Parent,
             KeyCode::Char('l') | KeyCode::RightArrow | KeyCode::ApplicationRightArrow => {
-                Self::EnterDirectory
+                Self::Enter
             }
-            KeyCode::Enter => Self::Open,
+            KeyCode::Enter => Self::Enter,
+            KeyCode::Char('o') => Self::Open,
             KeyCode::Char('g') | KeyCode::Home => Self::First,
             KeyCode::Char('G') | KeyCode::End => Self::Last,
             KeyCode::PageDown => Self::PageDown,

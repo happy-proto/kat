@@ -7,6 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::ui_theme::UiTheme;
 use anyhow::{Context, Result};
 #[cfg(unix)]
 use signal_hook::{consts::signal::SIGWINCH, flag};
@@ -15,11 +16,11 @@ use termwiz::input::{InputEvent, InputParser, KeyCode, KeyEvent, Modifiers};
 const ENTER_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049h";
 const LEAVE_ALTERNATE_SCREEN: &[u8] = b"\x1b[?1049l";
 const CLEAR_SCREEN: &[u8] = b"\x1b[H\x1b[2J";
-const CLEAR_LINE: &[u8] = b"\x1b[2K";
 const RESET_STYLE: &[u8] = b"\x1b[0m";
 const MESSAGE_DURATION: Duration = Duration::from_secs(3);
 
 pub(crate) fn run(
+    chrome: ViewerChrome,
     mut render_source: impl FnMut(usize, bool) -> Result<(PagerSource, bool)>,
 ) -> Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
@@ -36,7 +37,7 @@ pub(crate) fn run(
 
     let terminal = TerminalSession::enter()?;
     let mut size = terminal_size();
-    let mut view = PagerView::new(render_source(size.cols, false)?.0, size, "quit");
+    let mut view = PagerView::new(render_source(size.cols, false)?.0, size, chrome);
     let mut input_parser = InputParser::default();
     view.render(size)?;
 
@@ -74,16 +75,37 @@ pub(crate) fn run(
 
 /// A reader embedded in either the standalone viewer or the directory browser.
 /// The owner keeps the terminal and parser alive while changing views.
+pub(crate) struct ViewerChrome {
+    pub(crate) title: String,
+    pub(crate) theme: UiTheme,
+    pub(crate) exit: ViewerExit,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(crate) enum ViewerExit {
+    Quit,
+    Back,
+}
+
+impl ViewerExit {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Quit => "quit",
+            Self::Back => "back",
+        }
+    }
+}
+
 pub(crate) struct PagerView {
     document: PagerDocument,
     viewport: PagerViewport,
     state: PagerState,
     mode: PagerMode,
-    exit_label: &'static str,
+    chrome: ViewerChrome,
 }
 
 impl PagerView {
-    pub(crate) fn new(source: PagerSource, size: PagerSize, exit_label: &'static str) -> Self {
+    pub(crate) fn new(source: PagerSource, size: PagerSize, chrome: ViewerChrome) -> Self {
         let document = PagerDocument::from_source(source);
         let viewport = PagerViewport::build(&document, size.cols);
         let mut state = PagerState::default();
@@ -93,7 +115,7 @@ impl PagerView {
             viewport,
             state,
             mode: PagerMode::Normal,
-            exit_label,
+            chrome,
         }
     }
 
@@ -111,7 +133,7 @@ impl PagerView {
                 self.state.show_message(format!(
                     "Reloaded: {}  R:reload  q:{}",
                     if changed { "changed" } else { "unchanged" },
-                    self.exit_label
+                    self.chrome.exit.label()
                 ));
             }
             Err(error) => self.state.show_message(format!("Reload failed: {error:#}")),
@@ -119,6 +141,12 @@ impl PagerView {
     }
 
     pub(crate) fn handle(&mut self, event: InputEvent, size: PagerSize) -> PagerInputOutcome {
+        if self.chrome.exit == ViewerExit::Back
+            && matches!(self.mode, PagerMode::Normal)
+            && matches!(&event, InputEvent::Key(key) if key.modifiers.is_empty() && matches!(key.key, KeyCode::Char('h') | KeyCode::LeftArrow | KeyCode::ApplicationLeftArrow))
+        {
+            return PagerInputOutcome::Quit;
+        }
         handle_events(
             [event],
             &self.document,
@@ -134,13 +162,7 @@ impl PagerView {
     }
 
     pub(crate) fn render(&self, size: PagerSize) -> Result<()> {
-        render(
-            &self.viewport,
-            &self.state,
-            &self.mode,
-            size,
-            self.exit_label,
-        )
+        render(&self.viewport, &self.state, &self.mode, size, &self.chrome)
     }
 }
 
@@ -302,7 +324,7 @@ impl PagerState {
     }
 
     fn apply(&mut self, action: PagerAction, viewport: &PagerViewport, rows: usize) {
-        let page = rows.saturating_sub(1).max(1);
+        let page = rows.saturating_sub(2).max(1);
         let half_page = page.div_ceil(2);
         match action {
             PagerAction::Quit | PagerAction::Reload => {}
@@ -790,11 +812,14 @@ fn render(
     state: &PagerState,
     mode: &PagerMode,
     size: PagerSize,
-    exit_label: &str,
+    chrome: &ViewerChrome,
 ) -> Result<()> {
-    let body_rows = size.rows.saturating_sub(1);
+    let body_rows = size.rows.saturating_sub(2);
     let mut stdout = io::stdout().lock();
     stdout.write_all(CLEAR_SCREEN)?;
+    chrome
+        .theme
+        .write_header(&mut stdout, &chrome.title, size.cols)?;
 
     for (screen_row, row) in viewport
         .rows
@@ -803,33 +828,34 @@ fn render(
         .take(body_rows)
         .enumerate()
     {
-        write!(stdout, "\x1b[{};1H", screen_row + 1)?;
+        write!(stdout, "\x1b[{};1H", screen_row + 2)?;
         write_row(&mut stdout, row, state)?;
         stdout.write_all(RESET_STYLE)?;
     }
 
-    write!(stdout, "\x1b[{};1H", size.rows)?;
-    stdout.write_all(RESET_STYLE)?;
-    stdout.write_all(CLEAR_LINE)?;
-
     let end_line = (state.top_row + body_rows).min(viewport.row_count());
+    let exit_label = chrome.exit.label();
     let status = match mode {
         PagerMode::Normal => state.message.as_ref().map(|message| message.text.clone()).unwrap_or_else(|| format!(
-            "kat {}/{}  q:{exit_label}  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
+            "kat {}/{}  q:{exit_label}{}  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
             end_line,
-            viewport.row_count()
+            viewport.row_count(),
+            if chrome.exit == ViewerExit::Back { "  h/←:back" } else { "" }
         )),
         PagerMode::Search { query, .. } => format!("/{query}"),
     };
-    let status_row = kat::PreparedDocument::plain(&status)
-        .display_rows(size.cols)
-        .into_iter()
-        .next();
-    stdout.write_all(b"\x1b[7m")?;
-    if let Some(row) = status_row {
-        stdout.write_all(row.text().as_bytes())?;
-    }
-    stdout.write_all(RESET_STYLE)?;
+    let color = if state
+        .message
+        .as_ref()
+        .is_some_and(|message| message.text.starts_with("Reload failed"))
+    {
+        kat::DraculaColor::Red
+    } else {
+        kat::DraculaColor::Cyan
+    };
+    chrome
+        .theme
+        .write_bar(&mut stdout, size.rows, &status, size.cols, color)?;
     stdout.flush()?;
     Ok(())
 }
@@ -1137,7 +1163,7 @@ mod tests {
         let mut mode = PagerMode::Normal;
 
         handle_input(b"\x04", &document, &viewport, &mut state, &mut mode, size);
-        assert_eq!(state.top_row, 6);
+        assert_eq!(state.top_row, 5);
 
         handle_input(b"\x15", &document, &viewport, &mut state, &mut mode, size);
         assert_eq!(state.top_row, 0);

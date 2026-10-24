@@ -35,6 +35,8 @@ kat path/to/image.png
 
 目录浏览使用 Dracula 配色，默认显示 Nerd Font 文件图标；终端需支持对应字体，也可用 `--icons=never` 关闭图标。详见[目录浏览](docs/usage.md#目录浏览)。
 
+全文查看与目录浏览使用同一套界面样式。`l/→` 或 `Enter` 查看选中项，全文查看中 `h/←` 返回目录。安装 [shell 集成](docs/usage.md#在退出后切换-shell-目录)后，对目录按 `o` 可以退出 kat 并让 shell 进入该目录。
+
 ## 继续了解
 
 - [GitHub Actions 依赖锁定](docs/maintenance.md#github-actions-依赖)

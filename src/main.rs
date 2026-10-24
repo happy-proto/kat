@@ -19,7 +19,9 @@ use terminal_size::{Height, Width, terminal_size};
 
 mod browser;
 mod pager;
+mod shell_integration;
 mod terminal_image;
+mod ui_theme;
 
 shadow!(build);
 
@@ -120,6 +122,10 @@ fn try_main() -> Result<()> {
     let options = parse_cli_args(env::args_os().skip(1))?;
     if let Some(shell) = options.install_completion {
         print!("{}", install_completion(shell)?);
+        return Ok(());
+    }
+    if let Some(shell) = options.install_shell_integration {
+        print!("{}", shell_integration::install(shell)?);
         return Ok(());
     }
 
@@ -274,6 +280,8 @@ struct CliOptions {
     icons: IconMode,
     language: Option<String>,
     install_completion: Option<CompletionShell>,
+    install_shell_integration: Option<CompletionShell>,
+    cwd_file: Option<PathBuf>,
     paths: Vec<PathBuf>,
 }
 
@@ -342,6 +350,39 @@ struct ViewerDocument {
 }
 
 impl ViewerDocument {
+    fn chrome(&self, exit: pager::ViewerExit) -> pager::ViewerChrome {
+        let paths = self
+            .segments
+            .iter()
+            .filter_map(|segment| match segment {
+                ViewerSegment::Prepared {
+                    path: Some(path), ..
+                } => Some(path.to_string_lossy()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let mode = self
+            .segments
+            .iter()
+            .find_map(|segment| match segment {
+                ViewerSegment::Prepared { render_options, .. } => Some(render_options.color_mode()),
+                _ => None,
+            })
+            .unwrap_or(kat::ColorMode::NoColor);
+        pager::ViewerChrome {
+            title: format!(
+                "kat  {}",
+                if paths.is_empty() {
+                    "stdin".to_owned()
+                } else {
+                    paths.join("  ")
+                }
+            ),
+            theme: ui_theme::UiTheme::new(mode),
+            exit,
+        }
+    }
+
     fn render(&self, terminal_width: usize) -> pager::PagerSource {
         let mut builder = pager::PagerSourceBuilder::default();
         for (source_id, segment) in self.segments.iter().enumerate() {
@@ -552,6 +593,20 @@ struct CliArgs {
         value_name = "SHELL"
     )]
     install_completion: Option<CompletionShell>,
+    #[arg(
+        long,
+        value_enum,
+        group = "mode",
+        value_name = "SHELL",
+        help = "Install the shell wrapper for changing directory with o"
+    )]
+    install_shell_integration: Option<CompletionShell>,
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Write the chosen directory for the shell wrapper"
+    )]
+    cwd_file: Option<PathBuf>,
     #[arg(long)]
     language: Option<String>,
     #[arg(long, value_enum)]
@@ -777,7 +832,12 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         &mut cli_command()
             .try_get_matches_from_mut(std::iter::once(OsString::from("kat")).chain(args))?,
     )?;
-    if cli.install_completion.is_some() {
+    if cli.install_completion.is_some() || cli.install_shell_integration.is_some() {
+        let option_name = if cli.install_completion.is_some() {
+            "--install-completion"
+        } else {
+            "--install-shell-integration"
+        };
         if cli.language.is_some()
             || cli.debug_timing
             || cli.image_width.is_some()
@@ -786,11 +846,11 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
             || cli.image_background != ImageBackgroundArg::Terminal
         {
             bail!(
-                "--install-completion cannot be combined with --language, --debug-timing, or image display options"
+                "{option_name} cannot be combined with --language, --debug-timing, or image display options"
             );
         }
         if !cli.paths.is_empty() {
-            bail!("--install-completion does not take input paths");
+            bail!("{option_name} does not take input paths");
         }
     }
     let language = cli
@@ -840,6 +900,8 @@ fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> Result<CliOptions
         icons: cli.icons,
         language,
         install_completion: cli.install_completion,
+        install_shell_integration: cli.install_shell_integration,
+        cwd_file: cli.cwd_file,
         paths: cli.paths,
     })
 }
@@ -1322,10 +1384,13 @@ fn write_output(built_output: &mut BuiltOutput, options: &CliOptions) -> Result<
         && io::stdout().is_terminal()
         && let Some(viewer_document) = built_output.viewer_document.as_mut()
     {
-        pager::run(|terminal_width, reload| {
-            let changed = reload && viewer_document.reload(options)?;
-            Ok((viewer_document.render(terminal_width), changed))
-        })
+        pager::run(
+            viewer_document.chrome(pager::ViewerExit::Quit),
+            |terminal_width, reload| {
+                let changed = reload && viewer_document.reload(options)?;
+                Ok((viewer_document.render(terminal_width), changed))
+            },
+        )
     } else {
         write_output_direct(&built_output.output)
     }
@@ -1571,6 +1636,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: Some("fish".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("testdata/fixtures/fish/rich.fish")],
             }
         );
@@ -1598,6 +1665,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: Some("regex".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("pattern.re")],
             }
         );
@@ -1624,6 +1693,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("docs/architecture.md")],
             }
         );
@@ -1652,6 +1723,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: Some("markdown".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1676,6 +1749,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1702,6 +1777,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1728,6 +1805,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("notes.md")],
             }
         );
@@ -1781,6 +1860,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("image.tiff")],
             }
         );
@@ -1804,6 +1885,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![],
             }
         );
@@ -1830,6 +1913,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: Some(CompletionShell::Bash),
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![],
             }
         );
@@ -1887,6 +1972,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: None,
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![PathBuf::from("src/main.rs")],
             }
         );
@@ -1921,6 +2008,8 @@ mod tests {
                 icons: IconMode::Always,
                 language: Some("python".to_owned()),
                 install_completion: None,
+                install_shell_integration: None,
+                cwd_file: None,
                 paths: vec![],
             }
         );

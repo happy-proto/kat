@@ -47,6 +47,41 @@ fn command(cwd: &Path) -> Command {
 }
 
 #[test]
+fn fish_shell_integration_installation_is_repeatable_and_preserves_custom_functions() {
+    let fixture = Fixture::new();
+    for _ in 0..2 {
+        let output = command(&fixture.0)
+            .env("XDG_CONFIG_HOME", &fixture.0)
+            .args(["--install-shell-integration", "fish"])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    let function = fixture.0.join("fish/functions/kat.fish");
+    assert!(
+        fs::read_to_string(&function)
+            .unwrap()
+            .contains("command kat --cwd-file")
+    );
+    fs::write(&function, "function kat\n    echo custom\nend\n").unwrap();
+    let output = command(&fixture.0)
+        .env("XDG_CONFIG_HOME", &fixture.0)
+        .args(["--install-shell-integration", "fish"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        fs::read_to_string(function)
+            .unwrap()
+            .contains("echo custom")
+    );
+}
+
+#[test]
 fn directory_browsing_requires_a_terminal_and_a_single_directory() {
     let fixture = Fixture::new();
     fixture.write("file.txt", "file contents\n");
