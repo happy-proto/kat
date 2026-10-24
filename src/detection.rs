@@ -279,6 +279,7 @@ pub(crate) fn detect_document_kind(
 
     if let Some(kind) = detect_registry_languages(
         &[
+            RuntimeId::Csh,
             RuntimeId::Zsh,
             RuntimeId::Powershell,
             RuntimeId::Batch,

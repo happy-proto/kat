@@ -45,7 +45,7 @@ termwiz = { git = "https://github.com/DCjanus/wezterm.git", branch = "feat/upstr
 toml = "1.1.8"
 tree-sitter = "0.27.1"
 tree-sitter-highlight = "0.27.1"
-tree-sitter-kat-parsers = { git = "https://github.com/happy-proto/kat-parsers" }
+tree-sitter-kat-parsers = { git = "https://github.com/happy-proto/kat-parsers", branch = "feat/csh" }
 tree-sitter-language = "0.1.9"
 unicode-segmentation = "1.13.3"
 unicode-width = "0.2.2"

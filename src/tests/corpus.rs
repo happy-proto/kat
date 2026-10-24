@@ -43,6 +43,7 @@ const FIXTURE_DATA_AND_MARKUP_FAMILIES: &[&str] = &[
 ];
 
 const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
+    "csh",
     "ghostty",
     "pkl",
     "bash",
@@ -156,6 +157,16 @@ const FIXTURE_INFRA_AND_TEMPLATE_FAMILIES: &[&str] = &[
 ];
 
 const FIXTURE_CASES: &[FixtureCase] = &[
+    FixtureCase {
+        relative_path: "csh/activation.csh",
+        expect_highlight: true,
+        expected_fragments: &["setenv", "$VIRTUAL_ENV:t:q", "deactivate", "endif"],
+    },
+    FixtureCase {
+        relative_path: "csh/fences.md",
+        expect_highlight: true,
+        expected_fragments: &["foreach", "$file:q", "setenv"],
+    },
     FixtureCase {
         relative_path: "graph_easy/minimal.ge",
         expect_highlight: true,
@@ -1543,6 +1554,7 @@ const SHOWCASE_MARKUP_AND_CONFIG_FAMILIES: &[&str] = &[
 ];
 
 const SHOWCASE_SHELL_AND_TOOLING_FAMILIES: &[&str] = &[
+    "csh",
     "bash",
     "dockerfile",
     "fish",

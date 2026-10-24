@@ -22,6 +22,7 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
     Some(match head {
         "c" => "c",
         "cs" | "c#" | "csharp" => "csharp",
+        "csh" | "tcsh" => "csh",
         "cpp" | "cxx" | "cc" | "c++" | "cplusplus" => "cpp",
         "diff" | "patch" => "diff",
         "dot" | "graphviz" | "gv" => "dot",

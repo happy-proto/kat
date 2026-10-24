@@ -1049,6 +1049,29 @@ highlight_names = [
 ]
 
 [[grammar]]
+name = "csh"
+extensions = ["csh", "tcsh"]
+filenames = [".cshrc", ".tcshrc", ".login", ".logout", "csh.cshrc", "csh.login", "csh.logout"]
+filename_prefixes = []
+shebang_substrings = ["csh", "tcsh"]
+highlight_names = [
+  "comment",
+  "embedded",
+  "function",
+  "function.builtin",
+  "keyword.conditional",
+  "keyword.repeat",
+  "number",
+  "operator",
+  "punctuation.bracket",
+  "punctuation.delimiter",
+  "string",
+  "string.escape",
+  "string.regex",
+  "variable",
+]
+
+[[grammar]]
 name = "fish"
 extensions = ["fish"]
 filenames = ["config.fish", "fishfile", "fish_variables"]
