@@ -603,7 +603,7 @@ impl Browser {
             } else {
                 self.message.clone().unwrap_or_else(|| {
                     format!(
-                        "kat {}/{}  q:quit  hjkl/arrows:move  o/O:cd  /:filter  R:reload{}",
+                        "kat {}/{}{}  q:quit  hjkl/arrows:move  o/O:cd  /:filter  R:reload",
                         if self.filter.matches.is_empty() {
                             0
                         } else {

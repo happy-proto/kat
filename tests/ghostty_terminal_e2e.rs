@@ -264,6 +264,12 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
     session.wait_for_screen(100, 12, |frame| {
         frame.screen[11].contains("hjkl/arrows") && frame.screen[11].contains("/abc")
     })?;
+    session.resize(60, 12)?;
+    session.wait_for_screen(60, 12, |frame| {
+        frame.screen[11].starts_with("kat ") && frame.screen[11].contains("/abc [3/5]")
+    })?;
+    session.resize(100, 12)?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("/abc [3/5]"))?;
     fixture.write("abc-new.txt", "new matching file\n");
     session.write_input(b"R")?;
     session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("[4/6]"))?;
