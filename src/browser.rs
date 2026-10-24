@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 use termwiz::input::{InputEvent, InputParser, KeyCode, KeyEvent, Modifiers};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     CliOptions, ViewerDocument, ViewerSegment, content_fingerprint, pager,
@@ -14,10 +15,12 @@ use crate::{
     ui_theme::visible_text,
 };
 
+mod filter;
 mod style;
+use filter::FilenameFilter;
 use style::BrowserTheme;
 
-// Automatic previews must not read arbitrarily large files. Enter explicitly
+// Automatic previews must not read arbitrarily large files. Right/l explicitly
 // opens the complete file; special files are never read as documents.
 const PREVIEW_BYTES: u64 = 8 * 1024 * 1024;
 
@@ -92,17 +95,28 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
                 {
                     full_image = false;
                 }
+            } else if browser.filter.editing {
+                browser.edit_filter(event);
+                if !browser.preview_loaded {
+                    browser.load_preview(options, render_options, Some(PREVIEW_BYTES));
+                }
             } else if let InputEvent::Key(key) = event {
                 let Some(action) = Action::parse(&key) else {
                     continue;
                 };
                 browser.message = None;
                 match action {
+                    Action::Quit
+                        if key.key == KeyCode::Escape && !browser.filter.query.is_empty() =>
+                    {
+                        browser.filter.query.clear();
+                        browser.refilter(true);
+                    }
                     Action::Quit => return Ok(()),
                     Action::Down => browser.select(browser.selected.saturating_add(1)),
                     Action::Up => browser.select(browser.selected.saturating_sub(1)),
                     Action::First => browser.select(0),
-                    Action::Last => browser.select(browser.entries.len().saturating_sub(1)),
+                    Action::Last => browser.select(browser.filter.matches.len().saturating_sub(1)),
                     Action::PageDown => browser.select(
                         browser
                             .selected
@@ -114,22 +128,25 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
                             .saturating_sub(size.rows.saturating_sub(2).max(1)),
                     ),
                     Action::Parent => browser.parent(),
-                    Action::Open | Action::Enter => {
+                    Action::OpenCurrentDirectory => {
+                        let path = browser.directory.clone();
+                        if browser.open_shell_directory(&path, options) {
+                            return Ok(());
+                        }
+                    }
+                    Action::Filter => browser.filter.editing = true,
+                    Action::OpenDirectory | Action::EnterDirectory | Action::Navigate => {
                         if let Some(entry) = browser.current() {
                             if entry.directory {
                                 let path = entry.path.clone();
-                                if matches!(action, Action::Open) {
-                                    match options.cwd_file.as_ref() {
-                                        Some(output) => match fs::write(output, path.as_os_str().as_encoded_bytes()) {
-                                            Ok(()) => return Ok(()),
-                                            Err(error) => browser.message = Some(format!("Cannot open directory: {error}")),
-                                        },
-                                        None => browser.message = Some("Enable shell integration: kat --install-shell-integration <shell>".to_owned()),
+                                if matches!(action, Action::OpenDirectory) {
+                                    if browser.open_shell_directory(&path, options) {
+                                        return Ok(());
                                     }
                                 } else {
                                     browser.change_directory(&path, None);
                                 }
-                            } else {
+                            } else if matches!(action, Action::Navigate) {
                                 browser.load_preview(options, render_options, None);
                                 match std::mem::replace(&mut browser.preview, Preview::Empty) {
                                     Preview::Text(document) => {
@@ -157,7 +174,7 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
                 }
             }
             // Draw each state transition: later events from this same read must
-            // act on the new view, including Enter followed immediately by q.
+            // act on the new view, including l followed immediately by q.
             if let Some(reader) = reader.as_ref() {
                 reader.view.render(size)?;
             } else {
@@ -232,6 +249,7 @@ enum Preview {
 struct Browser {
     directory: PathBuf,
     entries: Vec<Entry>,
+    filter: FilenameFilter,
     selected: usize,
     top: usize,
     preview: Preview,
@@ -247,9 +265,11 @@ impl Browser {
         let entries = read_entries(&directory)?;
         let theme = BrowserTheme::new(kat::ColorMode::NoColor, icons);
         let preferred_list_width = theme.preferred_list_width(&entries);
+        let filter = FilenameFilter::new(&entries);
         Ok(Self {
             directory,
             entries,
+            filter,
             selected: 0,
             top: 0,
             preview: Preview::Empty,
@@ -261,18 +281,103 @@ impl Browser {
     }
 
     fn current(&self) -> Option<&Entry> {
-        self.entries.get(self.selected)
+        self.filter
+            .matches
+            .get(self.selected)
+            .map(|item| &self.entries[item.index])
     }
 
     fn select(&mut self, index: usize) {
-        let index = index.min(self.entries.len().saturating_sub(1));
+        let index = index.min(self.filter.matches.len().saturating_sub(1));
         if self.selected != index {
             self.selected = index;
             self.preview_loaded = false;
         }
     }
 
-    fn change_directory(&mut self, path: &Path, select: Option<&Path>) {
+    fn open_shell_directory(&mut self, path: &Path, options: &CliOptions) -> bool {
+        self.message = Some(match options.cwd_file.as_ref() {
+            Some(output) => match fs::write(output, path.as_os_str().as_encoded_bytes()) {
+                Ok(()) => return true,
+                Err(error) => format!("Cannot open directory: {error}"),
+            },
+            None => "Enable shell integration: kat --install-shell-integration <shell>".to_owned(),
+        });
+        false
+    }
+
+    fn refilter(&mut self, preserve_selection: bool) {
+        let previous = self.current().map(|entry| entry.path.clone());
+        self.filter.rebuild(&self.entries);
+        self.selected = self
+            .filter
+            .matches
+            .iter()
+            .position(|item| {
+                preserve_selection
+                    && previous
+                        .as_ref()
+                        .is_some_and(|path| self.entries[item.index].path == *path)
+            })
+            .unwrap_or(0);
+        self.top = 0;
+        if self.current().map(|entry| entry.path.as_path()) != previous.as_deref() {
+            self.preview_loaded = false;
+        }
+        self.message = None;
+    }
+
+    fn edit_filter(&mut self, event: InputEvent) {
+        match event {
+            InputEvent::Paste(text) => self
+                .filter
+                .query
+                .extend(text.chars().filter(|c| !c.is_control())),
+            InputEvent::Key(key) => match key.key {
+                KeyCode::Escape => {
+                    self.filter.editing = false;
+                    self.filter.query.clear();
+                    self.refilter(true);
+                    return;
+                }
+                KeyCode::Enter => {
+                    self.filter.editing = false;
+                    return;
+                }
+                KeyCode::DownArrow | KeyCode::ApplicationDownArrow => {
+                    self.select(self.selected.saturating_add(1));
+                    return;
+                }
+                KeyCode::UpArrow | KeyCode::ApplicationUpArrow => {
+                    self.select(self.selected.saturating_sub(1));
+                    return;
+                }
+                KeyCode::Backspace => {
+                    let end = self
+                        .filter
+                        .query
+                        .grapheme_indices(true)
+                        .next_back()
+                        .map_or(0, |(index, _)| index);
+                    self.filter.query.truncate(end);
+                }
+                KeyCode::Char('u' | 'U') if key.modifiers.contains(Modifiers::CTRL) => {
+                    self.filter.query.clear()
+                }
+                KeyCode::Char(c)
+                    if !c.is_control()
+                        && !key.modifiers.intersects(Modifiers::CTRL | Modifiers::ALT) =>
+                {
+                    self.filter.query.push(c)
+                }
+                _ => return,
+            },
+            _ => return,
+        }
+        self.refilter(false);
+    }
+
+    fn change_directory(&mut self, path: &Path, select: Option<&Path>) -> bool {
         match read_entries(path) {
             Ok(entries) => {
                 self.preferred_list_width = self.theme.preferred_list_width(&entries);
@@ -281,10 +386,17 @@ impl Browser {
                     .unwrap_or(0);
                 self.directory = path.to_path_buf();
                 self.entries = entries;
+                self.filter.query.clear();
+                self.filter.editing = false;
+                self.filter.rebuild(&self.entries);
                 self.top = 0;
                 self.preview_loaded = false;
+                true
             }
-            Err(error) => self.message = Some(format!("{error:#}")),
+            Err(error) => {
+                self.message = Some(format!("{error:#}"));
+                false
+            }
         }
     }
 
@@ -297,10 +409,22 @@ impl Browser {
     }
 
     fn refresh(&mut self) {
+        let query = self.filter.query.clone();
         let index = self.selected;
         let selected = self.current().map(|entry| entry.path.clone());
         let directory = self.directory.clone();
-        self.change_directory(&directory, selected.as_deref());
+        if !self.change_directory(&directory, selected.as_deref()) {
+            return;
+        }
+        self.filter.query = query;
+        self.refilter(false);
+        if let Some(index) = self.filter.matches.iter().position(|item| {
+            selected
+                .as_ref()
+                .is_some_and(|path| self.entries[item.index].path == *path)
+        }) {
+            self.select(index);
+        }
         if selected.is_some_and(|path| !self.entries.iter().any(|entry| entry.path == path)) {
             self.select(index);
         }
@@ -313,7 +437,14 @@ impl Browser {
         limit: Option<u64>,
     ) {
         self.preview = match self.current() {
-            None => Preview::Message("Empty directory".to_owned()),
+            None => Preview::Message(
+                if self.entries.is_empty() {
+                    "Empty directory"
+                } else {
+                    "No matching files"
+                }
+                .to_owned(),
+            ),
             Some(entry) => match prepare_preview(entry, options, render_options, limit) {
                 Ok(preview) => preview,
                 Err(error) => Preview::Message(format!("Cannot preview: {error:#}")),
@@ -372,20 +503,38 @@ impl Browser {
             if self.selected >= self.top + body {
                 self.top = self.selected + 1 - body;
             }
-            if self.entries.is_empty() {
+            if self.filter.matches.is_empty() {
                 write_plain(
                     &mut stdout,
                     2,
                     1,
-                    "(empty)",
+                    if self.entries.is_empty() {
+                        "(empty)"
+                    } else {
+                        "No matches"
+                    },
                     left,
                     self.theme.text_style(kat::DraculaColor::Comment),
                 )?;
             }
-            for (row, entry) in self.entries.iter().skip(self.top).take(body).enumerate() {
+            for (row, item) in self
+                .filter
+                .matches
+                .iter()
+                .skip(self.top)
+                .take(body)
+                .enumerate()
+            {
+                let entry = &self.entries[item.index];
                 let selected = self.top + row == self.selected;
-                self.theme
-                    .write_entry(&mut stdout, entry, (row + 2, 1), left, Some(selected))?;
+                self.theme.write_entry(
+                    &mut stdout,
+                    entry,
+                    (row + 2, 1),
+                    left,
+                    Some(selected),
+                    &item.ranges,
+                )?;
             }
             for row in 2..size.rows {
                 write!(
@@ -404,6 +553,7 @@ impl Browser {
                             (row + 2, left + 2),
                             right,
                             None,
+                            &[],
                         )?;
                     }
                 }
@@ -443,17 +593,36 @@ impl Browser {
                 }
                 Preview::Empty => {}
             }
-            let status = self.message.clone().unwrap_or_else(|| {
+            let status = if self.filter.editing {
                 format!(
-                    "kat {}/{}  q:quit  hjkl/arrows:move  o:open  Enter:view  R:reload",
-                    if self.entries.is_empty() {
-                        0
-                    } else {
-                        self.selected + 1
-                    },
+                    "/{}  [{}/{}]  Enter:confirm  Esc:clear",
+                    self.filter.query,
+                    self.filter.matches.len(),
                     self.entries.len()
                 )
-            });
+            } else {
+                self.message.clone().unwrap_or_else(|| {
+                    format!(
+                        "kat {}/{}  q:quit  hjkl/arrows:move  o/O:cd  /:filter  R:reload{}",
+                        if self.filter.matches.is_empty() {
+                            0
+                        } else {
+                            self.selected + 1
+                        },
+                        self.filter.matches.len(),
+                        if self.filter.query.is_empty() {
+                            String::new()
+                        } else {
+                            format!(
+                                "  /{} [{}/{}]",
+                                self.filter.query,
+                                self.filter.matches.len(),
+                                self.entries.len()
+                            )
+                        }
+                    )
+                })
+            };
             self.theme.write_bar(
                 &mut stdout,
                 size.rows,
@@ -548,7 +717,7 @@ fn prepare_preview(
         .read_to_end(&mut bytes)?;
     if limit.is_some_and(|limit| bytes.len() as u64 > limit) {
         return Ok(Preview::Message(format!(
-            "Large file ({} bytes). Press Enter to open.",
+            "Large file ({} bytes). Press l or Right to open.",
             metadata.len()
         )));
     }
@@ -617,8 +786,11 @@ enum Action {
     Down,
     Up,
     Parent,
-    Enter,
-    Open,
+    Navigate,
+    EnterDirectory,
+    OpenDirectory,
+    OpenCurrentDirectory,
+    Filter,
     First,
     Last,
     PageDown,
@@ -637,10 +809,12 @@ impl Action {
             KeyCode::Char('k') | KeyCode::UpArrow | KeyCode::ApplicationUpArrow => Self::Up,
             KeyCode::Char('h') | KeyCode::LeftArrow | KeyCode::ApplicationLeftArrow => Self::Parent,
             KeyCode::Char('l') | KeyCode::RightArrow | KeyCode::ApplicationRightArrow => {
-                Self::Enter
+                Self::Navigate
             }
-            KeyCode::Enter => Self::Enter,
-            KeyCode::Char('o') => Self::Open,
+            KeyCode::Enter => Self::EnterDirectory,
+            KeyCode::Char('o') => Self::OpenDirectory,
+            KeyCode::Char('O') => Self::OpenCurrentDirectory,
+            KeyCode::Char('/') => Self::Filter,
             KeyCode::Char('g') | KeyCode::Home => Self::First,
             KeyCode::Char('G') | KeyCode::End => Self::Last,
             KeyCode::PageDown => Self::PageDown,

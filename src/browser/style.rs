@@ -1,8 +1,9 @@
-use std::{io::Write, path::Path};
+use std::{io::Write, ops::Range, path::Path};
 
 use anstyle::Style;
 use anyhow::Result;
 use kat::{ColorMode, DraculaColor, PreparedDocument};
+use unicode_segmentation::UnicodeSegmentation;
 
 use super::Entry;
 use crate::{IconMode, ui_theme::UiTheme};
@@ -153,6 +154,7 @@ impl BrowserTheme {
         (y, x): (usize, usize),
         cols: usize,
         selection: Option<bool>,
+        matches: &[Range<usize>],
     ) -> Result<()> {
         let selected = selection == Some(true);
         let (text, icon_start, name_start) = self.entry_text(entry, selection);
@@ -173,19 +175,38 @@ impl BrowserTheme {
                 self.style(entry.icon.color, selected, entry.directory),
                 &text[icon_start..name_start]
             )?;
+            let name_style = self.style(
+                if entry.directory {
+                    DraculaColor::Purple
+                } else {
+                    DraculaColor::Foreground
+                },
+                selected,
+                entry.directory,
+            );
+            write!(stdout, "{name_style}")?;
+            let mut highlighted = false;
+            for (offset, grapheme) in text[name_start..].grapheme_indices(true) {
+                let matched = matches
+                    .iter()
+                    .any(|range| offset < range.end && offset + grapheme.len() > range.start);
+                if highlighted != matched {
+                    highlighted = matched;
+                    write!(
+                        stdout,
+                        "\x1b[0m{}",
+                        if matched {
+                            self.style(DraculaColor::Yellow, selected, true).underline()
+                        } else {
+                            name_style
+                        }
+                    )?;
+                }
+                stdout.write_all(grapheme.as_bytes())?;
+            }
             write!(
                 stdout,
-                "{}{}{}\x1b[0m",
-                self.style(
-                    if entry.directory {
-                        DraculaColor::Purple
-                    } else {
-                        DraculaColor::Foreground
-                    },
-                    selected,
-                    entry.directory
-                ),
-                &text[name_start..],
+                "\x1b[0m{name_style}{}\x1b[0m",
                 " ".repeat(cols.saturating_sub(row.display_width()))
             )?;
         }

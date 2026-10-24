@@ -73,14 +73,22 @@ impl Drop for BrowserFixture {
 fn browser_open_and_back_keys_share_fullscreen_dracula_chrome() -> TestResult {
     let fixture = BrowserFixture::new("open-and-back");
     fixture.write("file.txt", "first line\nhere is the search target\n");
+    fixture.write("other.txt", "other preview\n");
     for (open, back) in [
-        (b"o".as_slice(), b"h".as_slice()),
-        (b"l", b"\x1b[D"),
+        (b"l".as_slice(), b"h".as_slice()),
         (b"\x1b[C", b"q"),
-        (b"\r", b"h"),
+        (b"l", b"\x1b[D"),
     ] {
         let mut session = fixture.spawn(&["."], 100, 12)?;
         session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+        // Ignored open keys must leave us in the browser so j selects the next file.
+        session.write_input(b"o\rj")?;
+        session.wait_for_screen(100, 12, |frame| {
+            frame.screen_text().contains("hjkl/arrows")
+                && frame.screen[2].starts_with("> ")
+                && frame.screen[2].contains("other.txt")
+        })?;
+        session.write_input(b"k")?;
         session.write_input(open)?;
         let frame =
             session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("q:back"))?;
@@ -119,6 +127,7 @@ fn browser_open_and_back_keys_share_fullscreen_dracula_chrome() -> TestResult {
 fn shell_wrappers_change_directory_only_when_o_opens_a_directory() -> TestResult {
     let fixture = BrowserFixture::new("shell-cd");
     fixture.write("workers with spaces/read.txt", "inside workers\n");
+    fixture.write("z.txt", "last file\n");
     let temporary = fixture.0.join("z-temp");
     fs::create_dir_all(&temporary)?;
     let binary_dir = Path::new(env!("CARGO_BIN_EXE_kat")).parent().unwrap();
@@ -135,7 +144,7 @@ fn shell_wrappers_change_directory_only_when_o_opens_a_directory() -> TestResult
             );
             continue;
         }
-        for key in [b"o", b"q"] {
+        for key in [b"o".as_slice(), b"O", b"lO", b"GO", b"/missing\rO", b"q"] {
             let mut command = CommandBuilder::new(shell);
             let script = if shell == "fish" {
                 "source $argv[1]; kat $argv[2]; set -l kat_result $status; printf '\\nKAT_CWD=%s\\n' \"$PWD\"; exit $kat_result"
@@ -177,7 +186,7 @@ fn shell_wrappers_change_directory_only_when_o_opens_a_directory() -> TestResult
                 .wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
             session.write_input(key)?;
             let output = session.wait_success()?;
-            let expected = if key == b"o" {
+            let expected = if key == b"o" || key == b"lO" {
                 fixture.0.join("workers with spaces")
             } else {
                 fixture.0.clone()
@@ -199,6 +208,117 @@ fn shell_wrappers_change_directory_only_when_o_opens_a_directory() -> TestResult
             );
         }
     }
+    Ok(())
+}
+
+#[test]
+fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestResult {
+    let fixture = BrowserFixture::new("filename-filter");
+    fixture.write("abc.txt", "best match preview\n");
+    fixture.write("a_b_c.txt", "sparse match preview\n");
+    fixture.write("other.txt", "other preview\n");
+    fixture.write("dir-abc/inside.txt", "inside directory\n");
+    fixture.write("报告🦀.md", "unicode preview\n");
+    let mut session = fixture.spawn(&["--icons=never", "."], 100, 12)?;
+    session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
+    session.write_input(b"/abc")?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].starts_with("/abc") && frame.screen[11].contains("[3/5]")
+    })?;
+    assert!(
+        frame.screen[1].starts_with("> abc.txt"),
+        "best match must rank first: {}",
+        frame.screen_text()
+    );
+    assert!(!frame.screen_text().contains("other.txt"));
+    let sparse_row = frame
+        .screen
+        .iter()
+        .position(|line| line.contains("a_b_c.txt"))
+        .unwrap() as u32;
+    for (y, offsets) in [(1, [0, 1, 2]), (sparse_row, [0, 2, 4])] {
+        for offset in offsets {
+            assert_filename_match(&frame, 2 + offset, y)?;
+        }
+    }
+    let style = frame
+        .terminal
+        .grid_ref(Point::Active(PointCoordinate { x: 5, y: 1 }))?
+        .style()?;
+    assert_eq!(
+        style.underline,
+        Underline::None,
+        "unmatched extension must keep its normal style"
+    );
+    session.write_input(b"\x1b[B")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[2].starts_with("> dir-abc/") && frame.screen[11].starts_with("/abc")
+    })?;
+    session.write_input(b"\x1b[A")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("> abc.txt"))?;
+    session.write_input(b"\rl")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("best match preview") && frame.screen[11].contains("q:back")
+    })?;
+    session.write_input(b"h")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("hjkl/arrows") && frame.screen[11].contains("/abc")
+    })?;
+    fixture.write("abc-new.txt", "new matching file\n");
+    session.write_input(b"R")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("[4/6]"))?;
+    session.write_input(b"\x1b")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
+    })?;
+    session.write_input(b"/abc\r")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("/abc [4/6]"))?;
+    session.write_input(b"/\x15zzzz")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].starts_with("/zzzz") && frame.screen_text().contains("No matches")
+    })?;
+    session.write_input(b"\x7f\x7f\x7f\x7f")?;
+    session.wait_for_screen(100, 12, |frame| frame.screen[11].contains("[6/6]"))?;
+    session.write_input("报告🦀".as_bytes())?;
+    let frame = session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11]
+            .split_whitespace()
+            .collect::<String>()
+            .starts_with("/报告🦀[1/6]")
+    })?;
+    for x in [2, 4, 6] {
+        assert_filename_match(&frame, x, 1)?;
+    }
+    session.write_input(b"\x7f")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11]
+            .split_whitespace()
+            .collect::<String>()
+            .starts_with("/报告[1/6]")
+    })?;
+    session.write_input(b"\x1b")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[11].contains("hjkl/arrows") && frame.screen_text().contains("other.txt")
+    })?;
+    session.write_input(b"/dir\rl")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[1].starts_with("> inside.txt") && !frame.screen[11].contains("/dir")
+    })?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+fn assert_filename_match(frame: &RenderedTerminal, x: u16, y: u32) -> TestResult {
+    let style = frame
+        .terminal
+        .grid_ref(Point::Active(PointCoordinate { x, y }))?
+        .style()?;
+    let StyleColor::Rgb(color) = style.fg_color else {
+        panic!("expected colored filename match: {style:?}")
+    };
+    assert_eq!((color.r, color.g, color.b), (241, 250, 140));
+    assert_eq!(style.underline, Underline::Single);
     Ok(())
 }
 
@@ -225,7 +345,7 @@ fn browser_list_width_fits_names_and_preserves_preview_space() -> TestResult {
     fs::remove_file(long_file)?;
     session.write_input(b"R")?;
     session.wait_for_screen(120, 12, |frame| frame.divider_column(1).ok() == Some(16))?;
-    session.write_input(b"o")?;
+    session.write_input(b"l")?;
     let frame = session.wait_for_screen(120, 12, |frame| frame.screen_text().contains("q:back"))?;
     assert_eq!(frame.screen[1].trim_end(), "short preview");
     session.write_input(b"q")?;
@@ -376,7 +496,7 @@ fn browser_defaults_to_cwd_and_navigates_directories_with_both_key_sets() -> Tes
         assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("nested/"));
         assert!(frame.screen[1].contains("inside.txt"));
 
-        session.write_input(b"l")?;
+        session.write_input(b"\r")?;
         session.wait_for_screen(100, 12, |frame| frame.screen[1].contains("nested preview"))?;
         session.write_input(b"h")?;
         session.wait_for_screen(100, 12, |frame| {
@@ -428,7 +548,7 @@ fn browser_reader_searches_reloads_resizes_and_returns_without_losing_keys() -> 
     let file = fixture.write("read.txt", &source);
     let mut session = fixture.spawn(&["."], 100, 12)?;
     session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("hjkl/arrows"))?;
-    session.write_input(b"\r/line-035\r")?;
+    session.write_input(b"l/line-035\r")?;
     let frame =
         session.wait_for_screen(100, 12, |frame| frame.screen[1].starts_with("line-035"))?;
     assert!(frame.screen_text().contains("q:back"));
@@ -445,7 +565,7 @@ fn browser_reader_searches_reloads_resizes_and_returns_without_losing_keys() -> 
     })?;
     assert!(frame.screen[1].starts_with("> ") && frame.screen[1].contains("read.txt"));
     // All three keys may arrive in one read: open reader, return, exit browser.
-    session.write_input(b"\rqq")?;
+    session.write_input(b"lqq")?;
     let output = session.wait_success()?;
     assert_eq!(
         output
@@ -524,7 +644,7 @@ fn browser_handles_empty_binary_missing_large_and_special_entries() -> TestResul
         frame.screen_text().contains("before reload")
     })?;
     fs::remove_file(text)?;
-    session.write_input(b"\r")?;
+    session.write_input(b"l")?;
     session.wait_for_screen(100, 12, |frame| {
         frame.screen_text().contains("Cannot preview")
     })?;
@@ -554,7 +674,11 @@ fn browser_images_fall_back_to_information_and_return_from_fullscreen() -> TestR
     session.wait_for_screen(100, 12, |frame| {
         frame.screen_text().contains("image protocol")
     })?;
-    session.write_input(b"\r")?;
+    session.write_input(b"o\rj")?;
+    session.wait_for_screen(100, 12, |frame| {
+        frame.screen[2].starts_with("> ") && frame.screen[2].contains("b.txt")
+    })?;
+    session.write_input(b"kl")?;
     session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("q:back"))?;
     session.write_input(b"qj")?;
     session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("after image"))?;
@@ -615,7 +739,7 @@ fn browser_scrolls_the_list_and_keeps_its_position_after_reading() -> TestResult
     let frame =
         session.wait_for_screen(100, 8, |frame| frame.screen_text().contains("content-29"))?;
     assert!(frame.screen[6].starts_with("> ") && frame.screen[6].contains("29.txt"));
-    session.write_input(b"\rq")?;
+    session.write_input(b"lq")?;
     let frame = session.wait_for_screen(100, 8, |frame| {
         frame.screen_text().contains("hjkl/arrows")
             && frame.screen[6].starts_with("> ")
