@@ -1880,6 +1880,53 @@ fn coffeescript_analysis_styles_class_and_method_names() {
 }
 
 #[test]
+fn csh_aliases_highlight_activation_syntax_and_preserve_source() {
+    let theme = Theme::for_mode(ColorMode::TrueColor);
+    let source = read_file(&fixture_path("csh/activation.csh"));
+    let mut parser = Parser::new();
+    parser
+        .set_language(&runtime("csh").unwrap().language)
+        .unwrap();
+    let tree = parser.parse(&source, None).unwrap();
+    assert!(
+        !tree.root_node().has_error(),
+        "{}",
+        tree.root_node().to_sexp()
+    );
+    for alias in ["csh", "tcsh"] {
+        let rendered = highlight_named_language(alias, &source, &theme).unwrap();
+        assert_eq!(strip_ansi(&rendered), source);
+        assert!(
+            rendered.contains("\x1b[38;2;255;121;198mif"),
+            "{alias}: {rendered:?}"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;255;121;198mendif"),
+            "{alias}: {rendered:?}"
+        );
+        assert!(
+            rendered.contains("\x1b[38;2;80;250;123mdeactivate"),
+            "{alias}: {rendered:?}"
+        );
+    }
+}
+
+#[test]
+fn markdown_csh_and_tcsh_fences_share_csh_runtime() {
+    let path = fixture_path("csh/fences.md");
+    let source = read_file(&path);
+    let snapshot =
+        analysis_snapshot_for_path(&path, &source, &Theme::for_mode(ColorMode::TrueColor));
+    assert_eq!(
+        nested_runtime_names(&snapshot)
+            .into_iter()
+            .filter(|name| *name == "csh")
+            .count(),
+        2
+    );
+}
+
+#[test]
 fn jam_build_language_highlights_rules_variables_and_comments() {
     let theme = Theme::for_mode(ColorMode::TrueColor);
     let source = read_file(&fixture_path("jam/Jamfile"));

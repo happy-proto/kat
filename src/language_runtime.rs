@@ -273,6 +273,7 @@ const DOTENV_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/dotenv/queries/h
 const INI_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ini/queries/highlights.scm");
 const XML_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/xml/queries/highlights.scm");
 const JAM_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/jam/queries/highlights.scm");
+const CSH_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/csh/queries/highlights.scm");
 const MAKE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/make/queries/highlights.scm");
 const CMAKE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/cmake/queries/highlights.scm");
 const NINJA_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ninja/queries/highlights.scm");
@@ -586,6 +587,7 @@ language_catalog! {
     Ini = "ini" => (|| Language::from(INI_LANGUAGE), INI_HIGHLIGHTS_QUERY, "", ""),
     Xml = "xml" => (|| Language::from(XML_LANGUAGE), XML_HIGHLIGHTS_QUERY, "", ""),
     Jam = "jam" => (|| Language::from(tree_sitter_kat_parsers::JAM_LANGUAGE), JAM_HIGHLIGHTS_QUERY, "", ""),
+    Csh = "csh" => (|| Language::from(tree_sitter_kat_parsers::CSH_LANGUAGE), CSH_HIGHLIGHTS_QUERY, "", ""),
     Make = "make" => (|| Language::from(MAKE_LANGUAGE), MAKE_HIGHLIGHTS_QUERY, "", ""),
     Cmake = "cmake" => (|| Language::from(CMAKE_LANGUAGE), CMAKE_HIGHLIGHTS_QUERY, "", ""),
     Ninja = "ninja" => (|| Language::from(NINJA_LANGUAGE), NINJA_HIGHLIGHTS_QUERY, "", ""),
