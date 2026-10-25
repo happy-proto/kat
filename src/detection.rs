@@ -82,7 +82,11 @@ pub(crate) fn detect_document_kind(
         return Some(DocumentKind::plain(RuntimeId::AuthorizedKeys));
     }
 
-    if let Some(kind) = detect_registry_languages(&[RuntimeId::KnownHosts], source_path, source) {
+    if let Some(kind) = detect_registry_languages(
+        &[RuntimeId::Pgpass, RuntimeId::KnownHosts],
+        source_path,
+        source,
+    ) {
         return Some(kind);
     }
 

@@ -230,6 +230,12 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 这是 kat 的路径识别约定，不代表 OpenSSH 会自动加载该目录。[OpenSSH 的 `Include` 指令](https://man.openbsd.org/ssh_config.5#Include) 用于引入额外配置，例如在 `~/.ssh/config` 中写 `Include ~/.ssh/conf.d/*.conf`；目录名本身没有默认加载语义。kat 不读取或执行 `Include`，也不检查片段是否实际被引用。
 
+### PostgreSQL 密码文件（pgpass）
+
+`.pgpass` 与 Windows 使用的 `pgpass.conf` 按精确文件名进入独立 `pgpass` runtime。自定义 `PGPASSFILE` / `passfile` 文件名可用 `kat --language pgpass <文件>`；kat 不读取这些环境变量或连接配置来寻找密码文件，也不根据内容猜测这种格式。备份后缀、普通 `.conf` 和 stdin 不会因密码文件内容而自动识别。
+
+格式依据 [PostgreSQL 官方说明](https://www.postgresql.org/docs/18/libpq-pgpass.html)：每行 `hostname:port:database:username:password`，前四字段中的独立 `*` 是通配符，密码中的 `*` 是普通文本；字段内的冒号和反斜杠使用反斜杠转义。高亮区分五字段、通配符、分隔符、转义和行首 `#` 注释；字段内空格及 `#` 保留为数据，支持空字段、CRLF 和末行无换行。仅提供源码高亮，不执行连接匹配或权限检查；密码按字符串显示，不作脱敏。测试仅使用虚构凭据。
+
 ### SSH 主机公钥记录（known_hosts）
 
 `known_hosts` 与 `ssh_known_hosts` 按精确文件名进入独立 `known_hosts` runtime，因此相对路径 `.ssh/known_hosts`、绝对路径下的 `.ssh/known_hosts` 和 `/etc/ssh/ssh_known_hosts` 都能识别。普通 `config`、`known_hosts.bak` 与 stdin 不会因 SSH 主机公钥内容而进入这个 runtime；已有 `ssh_config`、`sshd_config`、`.ssh/config` 和 `authorized_keys` 识别保持独立。

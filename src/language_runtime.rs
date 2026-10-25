@@ -28,6 +28,7 @@ const SQL_SQLITE_HIGHLIGHTS_QUERY: &str = concat!(
     include_str!("../grammars/sql/queries/highlights-sqlite.scm")
 );
 const JSON_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/json/queries/highlights.scm");
+const PGPASS_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/pgpass/queries/highlights.scm");
 const QUERY_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/query/queries/highlights.scm");
 const IGNORE_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/ignore/queries/highlights.scm");
 const GIT_LINK_HIGHLIGHTS_QUERY: &str = include_str!("../grammars/git_link/queries/highlights.scm");
@@ -469,6 +470,7 @@ language_catalog! {
     AsciiDoc = "asciidoc" => (|| Language::from(ASCIIDOC_LANGUAGE), ASCIIDOC_HIGHLIGHTS_QUERY, "", ""),
     AuthorizedKeys = "authorized_keys" => (|| Language::from(AUTHORIZED_KEYS_LANGUAGE), AUTHORIZED_KEYS_HIGHLIGHTS_QUERY, "", ""),
     Ghostty = "ghostty" => (|| Language::from(tree_sitter_kat_parsers::GHOSTTY_LANGUAGE), include_str!("../grammars/ghostty/queries/highlights.scm"), "", ""),
+    Pgpass = "pgpass" => (|| Language::from(tree_sitter_kat_parsers::PGPASS_LANGUAGE), PGPASS_HIGHLIGHTS_QUERY, "", ""),
     KnownHosts = "known_hosts" => (|| Language::from(tree_sitter_kat_parsers::KNOWN_HOSTS_LANGUAGE), KNOWN_HOSTS_HIGHLIGHTS_QUERY, "", ""),
     Awk = "awk" => (|| Language::from(AWK_LANGUAGE), AWK_HIGHLIGHTS_QUERY, "", ""),
     Bash = "bash" => (|| Language::from(BASH_LANGUAGE), BASH_HIGHLIGHTS_QUERY, BASH_INJECTIONS_QUERY, ""),
