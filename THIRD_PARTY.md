@@ -1189,6 +1189,10 @@ These files may be modified locally as needed for integration into `kat`.
   License: Apache-2.0; license and notice are retained in `grammars/pkl/LICENSE` and `grammars/pkl/NOTICE`.
   Notes: the parser and scanner are provided by `tree-sitter-kat-parsers`, whose revision is pinned in `Cargo.lock`. The highlights query is adapted for kat capture priority, configuration keys, structural type/call roles, string interpolation, escapes, and all custom string delimiters. The locals query is unchanged. Markdown documentation, decoded Regex literals, and hk step commands are dispatched by kat's AST-based host resolver; no generated parser assets are copied into this repository.
 
+## PostgreSQL password file
+
+`grammars/pgpass/queries/highlights.scm` is authored for kat. The MIT parser is independently maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers), based on the [PostgreSQL 18 password-file specification](https://www.postgresql.org/docs/18/libpq-pgpass.html). No PostgreSQL source or third-party grammar/query is copied or adapted. Parser and generated assets remain in kat-parsers; the dependency revision is recorded in `Cargo.lock`.
+
 ## Jam build language
 
 `grammars/jam/queries/highlights.scm` is authored for kat. Its MIT parser is independently maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers), using the B2 language reference and `bfgroup/b2` revision `4ca043f11b3b6de25bb268d5d874d714344074d9` (`src/engine/jamgram.y`, `src/engine/scan.cpp`) as behavioral references. No third-party grammar, query or engine source is copied or adapted. The parser revision is locked in `Cargo.lock`. This supports the Jam build language, not the unrelated Jam programming language; actions remain raw command text.

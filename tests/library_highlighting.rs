@@ -3,6 +3,83 @@ use std::path::Path;
 use kat::{HighlightStyle, PreparedDocument, RenderOptions};
 
 #[test]
+fn pgpass_detection_uses_exact_filenames_without_content_guessing() {
+    let source = "localhost:5432:demo:reader:example-only\n";
+    for path in [
+        ".pgpass",
+        "/home/example/.pgpass",
+        "pgpass.conf",
+        "postgresql/pgpass.conf",
+    ] {
+        assert_eq!(
+            kat::detected_language_name(Some(Path::new(path)), source),
+            Some("pgpass"),
+            "{path}"
+        );
+    }
+    for path in [
+        ".pgpass.bak",
+        "pgpass.conf.bak",
+        "custom.passfile",
+        "example.pgpass",
+    ] {
+        assert_ne!(
+            kat::detected_language_name(Some(Path::new(path)), source),
+            Some("pgpass"),
+            "{path}"
+        );
+    }
+    assert_ne!(kat::detected_language_name(None, source), Some("pgpass"));
+}
+
+#[test]
+fn pgpass_highlights_fields_wildcards_escapes_and_literal_password_data() {
+    let source = include_str!("../testdata/fixtures/pgpass/.pgpass");
+    for (needle, expected) in [
+        ("# Synthetic", (98, 114, 164)),
+        ("localhost", (139, 233, 253)),
+        ("5432", (255, 184, 108)),
+        ("demo:", (139, 233, 253)),
+        ("reader:", (189, 147, 249)),
+        ("example-only", (241, 250, 140)),
+        ("*:*:replication", (255, 121, 198)),
+        ("# literal", (241, 250, 140)),
+        ("虚构口令", (241, 250, 140)),
+        ("\\:db8", (255, 121, 198)),
+        ("\\\\word", (255, 121, 198)),
+    ] {
+        assert_eq!(
+            style_at(source, needle, 0, ".pgpass").foreground,
+            expected,
+            "{needle}"
+        );
+    }
+    let password_star = source.find("*:*:*:*:*").unwrap() + 8;
+    let prepared = document(".pgpass", source);
+    assert_eq!(
+        prepared
+            .spans()
+            .iter()
+            .find(|span| span.range.contains(&password_star))
+            .unwrap()
+            .style
+            .foreground,
+        (241, 250, 140)
+    );
+    let explicit = PreparedDocument::named_language(
+        "pgpass",
+        source,
+        RenderOptions::with_colors((248, 248, 242), (40, 42, 54)),
+    )
+    .unwrap();
+    assert_eq!(explicit.spans(), prepared.spans());
+    assert_eq!(
+        document("postgresql/pgpass.conf", source).spans(),
+        prepared.spans()
+    );
+}
+
+#[test]
 fn tmtheme_files_detect_and_highlight_as_xml() {
     let source = include_str!("../testdata/fixtures/xml/theme.tmTheme");
     for path in ["theme.tmTheme", ".codex/themes/custom.tmTheme"] {

@@ -61,6 +61,7 @@ const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
     "git_log",
     "authorized_keys",
     "known_hosts",
+    "pgpass",
     "ssh_config",
     "gitattributes",
     "git_commit",
@@ -1051,6 +1052,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
             "@revoked",
             "|1|",
         ],
+    },
+    FixtureCase {
+        relative_path: "pgpass/.pgpass",
+        expect_highlight: true,
+        expected_fragments: &["localhost", "replication", "example-only", "虚构口令"],
     },
     FixtureCase {
         relative_path: "ssh_config/.ssh/config",
