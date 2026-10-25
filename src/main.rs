@@ -358,7 +358,7 @@ impl ViewerDocument {
             .filter_map(|segment| match segment {
                 ViewerSegment::Prepared {
                     path: Some(path), ..
-                } => Some(path.to_string_lossy()),
+                } => Some(ui_theme::display_path(path)),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -371,14 +371,11 @@ impl ViewerDocument {
             })
             .unwrap_or(kat::ColorMode::NoColor);
         pager::ViewerChrome {
-            title: format!(
-                "kat  {}",
-                if paths.is_empty() {
-                    "stdin".to_owned()
-                } else {
-                    paths.join("  ")
-                }
-            ),
+            title: if paths.is_empty() {
+                "stdin".to_owned()
+            } else {
+                paths.join("  ")
+            },
             theme: ui_theme::UiTheme::new(mode),
             exit,
         }
