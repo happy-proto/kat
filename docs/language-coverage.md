@@ -62,6 +62,12 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 ## 当前结论
 
+### Caddyfile
+
+- `Caddyfile`、`caddyfile`、`Caddyfile.*`、`caddyfile.*` 与 `*.caddyfile` 使用独立 `caddyfile` runtime；显式 `--language` 和 Markdown fence 接受 `caddyfile`、`caddy` 与 `Caddyfile`。自定义 `.conf` 文件需显式指定语言，不根据内容猜测；Caddy JSON 配置继续使用 JSON runtime。
+- 采用 [Caddy 官方组织的 grammar](https://github.com/caddyserver/tree-sitter-caddyfile)，覆盖全局选项、站点、snippet、命名路由、匹配器、嵌套指令、字符串、数字/时长、环境变量和占位符；CEL 表达式和以已知语言名结束的 heredoc 支持嵌套高亮。仅查看源码，不展开环境变量、加载 import 或验证 Caddy 模块语义；具体语法边界随锁定的上游 grammar。
+
+
 ### C shell / tcsh
 
 - `.csh`、`.tcsh`、`.cshrc`、`.tcshrc`、`.login`、`.logout` 与系统 `csh.cshrc` / `csh.login` / `csh.logout` 使用独立的 `csh` runtime；显式语言、Markdown fence 与 shebang 接受 `csh` / `tcsh`。无扩展名且无 shebang 的脚本不根据内容猜测。

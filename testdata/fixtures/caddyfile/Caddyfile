@@ -1,0 +1,29 @@
+# Synthetic Caddy configuration
+{
+    email admin@example.com
+}
+
+(common) {
+    encode zstd gzip
+    header X-Server "demo"
+}
+
+example.com, www.example.com {
+    import common
+    root * /srv/www
+    @api path /api/*
+    reverse_proxy @api localhost:3000 {
+        lb_try_duration 5s
+    }
+    @allowed expression `{http.request.method} == "GET"`
+    respond @allowed "hello\n" 200
+    header X-Host {host}
+    log {
+        output file {$LOG_FILE:/var/log/caddy/access.log}
+    }
+    respond /page <<HTML
+<!doctype html>
+<html><body>Hello</body></html>
+HTML
+    file_server
+}

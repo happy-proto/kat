@@ -470,6 +470,7 @@ language_catalog! {
     AsciiDoc = "asciidoc" => (|| Language::from(ASCIIDOC_LANGUAGE), ASCIIDOC_HIGHLIGHTS_QUERY, "", ""),
     AuthorizedKeys = "authorized_keys" => (|| Language::from(AUTHORIZED_KEYS_LANGUAGE), AUTHORIZED_KEYS_HIGHLIGHTS_QUERY, "", ""),
     Ghostty = "ghostty" => (|| Language::from(tree_sitter_kat_parsers::GHOSTTY_LANGUAGE), include_str!("../grammars/ghostty/queries/highlights.scm"), "", ""),
+    Caddyfile = "caddyfile" => (|| Language::from(tree_sitter_kat_parsers::CADDYFILE_LANGUAGE), include_str!("../grammars/caddyfile/queries/highlights.scm"), include_str!("../grammars/caddyfile/queries/injections.scm"), ""),
     Pgpass = "pgpass" => (|| Language::from(tree_sitter_kat_parsers::PGPASS_LANGUAGE), PGPASS_HIGHLIGHTS_QUERY, "", ""),
     KnownHosts = "known_hosts" => (|| Language::from(tree_sitter_kat_parsers::KNOWN_HOSTS_LANGUAGE), KNOWN_HOSTS_HIGHLIGHTS_QUERY, "", ""),
     Awk = "awk" => (|| Language::from(AWK_LANGUAGE), AWK_HIGHLIGHTS_QUERY, "", ""),
