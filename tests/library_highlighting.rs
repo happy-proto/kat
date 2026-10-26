@@ -3,6 +3,70 @@ use std::path::Path;
 use kat::{HighlightStyle, PreparedDocument, RenderOptions};
 
 #[test]
+fn caddyfile_detection_and_explicit_aliases() {
+    let source = include_str!("../testdata/fixtures/caddyfile/Caddyfile");
+    for path in [
+        "Caddyfile",
+        "/etc/caddy/Caddyfile",
+        "caddyfile",
+        "Caddyfile.dev",
+        "caddyfile.local",
+        "site.caddyfile",
+    ] {
+        assert_eq!(
+            kat::detected_language_name(Some(Path::new(path)), source),
+            Some("caddyfile"),
+            "{path}"
+        );
+    }
+    for path in ["caddy.conf", "site.conf", "CaddyfileLike"] {
+        assert_ne!(
+            kat::detected_language_name(Some(Path::new(path)), source),
+            Some("caddyfile"),
+            "{path}"
+        );
+    }
+    assert_ne!(kat::detected_language_name(None, source), Some("caddyfile"));
+    assert_eq!(
+        kat::detected_language_name(Some(Path::new("caddy.json")), "{}"),
+        Some("json")
+    );
+    for alias in ["caddyfile", "caddy", "Caddyfile"] {
+        let explicit = PreparedDocument::named_language(
+            alias,
+            source,
+            RenderOptions::with_colors((248, 248, 242), (40, 42, 54)),
+        )
+        .unwrap();
+        assert_eq!(
+            explicit.spans(),
+            document("Caddyfile", source).spans(),
+            "{alias}"
+        );
+    }
+}
+
+#[test]
+fn caddyfile_highlights_configuration_tokens() {
+    let source = include_str!("../testdata/fixtures/caddyfile/Caddyfile");
+    for (needle, expected) in [
+        ("# Synthetic", (98, 114, 164)),
+        ("reverse_proxy", (255, 121, 198)),
+        ("example.com,", (241, 250, 140)),
+        ("5s", (255, 184, 108)),
+        ("\\n\" 200", (255, 121, 198)),
+        ("200", (255, 184, 108)),
+        ("{$LOG_FILE", (189, 147, 249)),
+    ] {
+        assert_eq!(
+            style_at(source, needle, 0, "Caddyfile").foreground,
+            expected,
+            "{needle}"
+        );
+    }
+}
+
+#[test]
 fn pgpass_detection_uses_exact_filenames_without_content_guessing() {
     let source = "localhost:5432:demo:reader:example-only\n";
     for path in [

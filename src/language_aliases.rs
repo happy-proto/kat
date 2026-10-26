@@ -20,6 +20,7 @@ pub(crate) fn normalize_language_name(name: &str) -> Option<&str> {
     }
 
     Some(match head {
+        "caddy" | "Caddyfile" => "caddyfile",
         "c" => "c",
         "cs" | "c#" | "csharp" => "csharp",
         "csh" | "tcsh" => "csh",

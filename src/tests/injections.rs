@@ -1,6 +1,36 @@
 use super::*;
 
 #[test]
+fn caddyfile_injects_cel_and_tagged_heredocs() {
+    let source = include_str!("../../testdata/fixtures/caddyfile/Caddyfile");
+    let analysis = analysis_snapshot_for_path(
+        Path::new("Caddyfile"),
+        source,
+        &Theme::for_mode(ColorMode::TrueColor),
+    );
+    find_nested_region(&analysis, "cel", "@allowed expression", source);
+    find_nested_region(&analysis, "html", "<html>", source);
+}
+
+#[test]
+fn markdown_caddyfile_fences_reuse_configuration_and_nested_runtimes() {
+    for alias in ["caddyfile", "caddy", "Caddyfile"] {
+        let source = format!(
+            "```{alias}\n{}\n```\n",
+            include_str!("../../testdata/fixtures/caddyfile/Caddyfile")
+        );
+        let analysis = analysis_snapshot_for_path(
+            Path::new("README.md"),
+            &source,
+            &Theme::for_mode(ColorMode::TrueColor),
+        );
+        find_nested_region(&analysis, "caddyfile", "reverse_proxy", &source);
+        find_nested_region(&analysis, "cel", "@allowed expression", &source);
+        find_nested_region(&analysis, "html", "<html>", &source);
+    }
+}
+
+#[test]
 fn just_injections_highlight_nested_languages() {
     let theme = Theme::for_mode(ColorMode::TrueColor);
     let path = fixture_path("just/injections.just");

@@ -62,6 +62,7 @@ const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
     "authorized_keys",
     "known_hosts",
     "pgpass",
+    "caddyfile",
     "ssh_config",
     "gitattributes",
     "git_commit",
@@ -1052,6 +1053,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
             "@revoked",
             "|1|",
         ],
+    },
+    FixtureCase {
+        relative_path: "caddyfile/Caddyfile",
+        expect_highlight: true,
+        expected_fragments: &["example.com", "reverse_proxy", "LOG_FILE", "file_server"],
     },
     FixtureCase {
         relative_path: "pgpass/.pgpass",

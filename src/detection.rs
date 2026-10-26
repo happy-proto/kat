@@ -103,6 +103,7 @@ pub(crate) fn detect_document_kind(
             RuntimeId::Awk,
             RuntimeId::Bibtex,
             RuntimeId::Cabal,
+            RuntimeId::Caddyfile,
             RuntimeId::Cfml,
             RuntimeId::Clojure,
             RuntimeId::CmakeCache,

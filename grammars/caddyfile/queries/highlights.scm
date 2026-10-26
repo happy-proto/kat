@@ -1,0 +1,27 @@
+(comment) @comment
+(environment_variable) @variable.builtin
+(placeholder) @variable.builtin
+(site_address) @string.special
+(network_address) @string.special
+(ip_address_or_cidr) @string.special
+(path) @string.special
+(snippet_name) @function
+(named_route_identifier) @function
+(directive_name) @keyword
+(matcher_name) @label
+(matcher_directive_name) @function.builtin
+(matcher) @string.special
+(argument) @string
+(interpreted_string_literal) @string
+(raw_string_literal) @string
+(heredoc) @string
+(cel_expression) @string
+(escape_sequence) @string.escape
+(duration_literal) @number
+(int_literal) @number
+(status_code_fallback) @number
+["{" "}"] @punctuation.bracket
+"@" @punctuation.special
+"<<" @punctuation.delimiter
+(heredoc_start) @label
+(heredoc_end) @label

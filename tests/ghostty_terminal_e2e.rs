@@ -876,6 +876,27 @@ fn kat_renders_public_key_comments_and_base64_suffixes_consistently() -> TestRes
 }
 
 #[test]
+fn kat_auto_detects_caddyfile_and_renders_configuration() -> TestResult {
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/caddyfile/Caddyfile");
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        120,
+        40,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(120, 40, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+    rendered.assert_text_style("reverse_proxy", (255, 121, 198), false)?;
+    rendered.assert_text_style("5s", (255, 184, 108), false)?;
+    rendered.assert_text_style("# Synthetic Caddy configuration", (98, 114, 164), true)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
 fn kat_auto_detects_known_hosts_and_renders_revocation_warning() -> TestResult {
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/known_hosts/known_hosts");
