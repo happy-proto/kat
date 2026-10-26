@@ -1302,6 +1302,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         expected_fragments: &["DOCTYPE", "plist", "Kat &amp; Code", "#F8F8F2", "fontStyle"],
     },
     FixtureCase {
+        relative_path: "xml/releases.atom",
+        expect_highlight: true,
+        expected_fragments: &["feed", "entry", "type=\"html\"", "&lt;p&gt;", "&amp;amp;"],
+    },
+    FixtureCase {
         relative_path: "jam/Jamfile",
         expect_highlight: true,
         expected_fragments: &["rule", "linking", "$(properties)", "ws2_32", "generate"],

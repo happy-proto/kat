@@ -745,7 +745,7 @@ Upstream projects:
   Source: [tree-sitter-grammars/tree-sitter-xml](https://github.com/tree-sitter-grammars/tree-sitter-xml)
   Revision: `5000ae8f22d11fbe93939b05c1e37cf21117162d`
   License: MIT
-  Notes: repository-local copy of the upstream XML highlights query. Parser code is supplied by `tree-sitter-kat-parsers`. TextMate `.tmTheme` files reuse this XML integration without grammar or query changes; the theme fixture is repository-authored.
+  Notes: repository-local copy of the upstream XML highlights query. Parser code is supplied by `tree-sitter-kat-parsers`. TextMate `.tmTheme`, Atom `.atom`, and RSS `.rss` files reuse this XML integration without grammar or query changes; the theme and Atom fixtures are repository-authored.
 
 - `grammars/make/queries/highlights.scm`
   Source: [tree-sitter-grammars/tree-sitter-make](https://github.com/tree-sitter-grammars/tree-sitter-make)

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+  <title>Example releases</title>
+  <id>urn:example:releases</id>
+  <updated>2026-01-01T00:00:00Z</updated>
+  <entry>
+    <title>Version 1.0</title>
+    <id>urn:example:release:1.0</id>
+    <updated>2026-01-01T00:00:00Z</updated>
+    <link href="https://example.com/releases/1.0"/>
+    <content type="html">&lt;p&gt;Hello &amp;amp; welcome&lt;/p&gt;</content>
+  </entry>
+</feed>

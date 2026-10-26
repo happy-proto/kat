@@ -144,6 +144,38 @@ fn pgpass_highlights_fields_wildcards_escapes_and_literal_password_data() {
 }
 
 #[test]
+fn atom_files_detect_and_highlight_as_xml() {
+    let source = include_str!("../testdata/fixtures/xml/releases.atom");
+    let xml = document("releases.xml", source);
+    assert!(!xml.spans().is_empty());
+    for path in ["releases.atom", "feeds/releases.atom", "releases.rss"] {
+        assert_eq!(
+            kat::detected_language_name(Some(Path::new(path)), source),
+            Some("xml"),
+            "{path}"
+        );
+        assert_eq!(document(path, source).spans(), xml.spans(), "{path}");
+    }
+    for (needle, offset, expected) in [
+        ("<feed", 1, (255, 121, 198)),
+        ("xmlns=", 0, (248, 248, 242)),
+        ("\"http://www.w3.org/2005/Atom\"", 1, (241, 250, 140)),
+        ("<entry>", 1, (255, 121, 198)),
+        ("&lt;", 0, (189, 147, 249)),
+    ] {
+        assert_eq!(
+            style_at(source, needle, offset, "releases.atom").foreground,
+            expected,
+            "{needle}"
+        );
+    }
+    assert_ne!(
+        kat::detected_language_name(Some(Path::new("releases.atom.bak")), source),
+        Some("xml")
+    );
+}
+
+#[test]
 fn tmtheme_files_detect_and_highlight_as_xml() {
     let source = include_str!("../testdata/fixtures/xml/theme.tmTheme");
     for path in ["theme.tmTheme", ".codex/themes/custom.tmTheme"] {
