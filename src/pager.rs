@@ -324,7 +324,7 @@ impl PagerState {
     }
 
     fn apply(&mut self, action: PagerAction, viewport: &PagerViewport, rows: usize) {
-        let page = rows.saturating_sub(2).max(1);
+        let page = rows.saturating_sub(1).max(1);
         let half_page = page.div_ceil(2);
         match action {
             PagerAction::Quit | PagerAction::Reload => {}
@@ -814,12 +814,9 @@ fn render(
     size: PagerSize,
     chrome: &ViewerChrome,
 ) -> Result<()> {
-    let body_rows = size.rows.saturating_sub(2);
+    let body_rows = size.rows.saturating_sub(1);
     let mut stdout = io::stdout().lock();
     stdout.write_all(CLEAR_SCREEN)?;
-    chrome
-        .theme
-        .write_header(&mut stdout, &chrome.title, size.cols)?;
 
     for (screen_row, row) in viewport
         .rows
@@ -828,7 +825,7 @@ fn render(
         .take(body_rows)
         .enumerate()
     {
-        write!(stdout, "\x1b[{};1H", screen_row + 2)?;
+        write!(stdout, "\x1b[{};1H", screen_row + 1)?;
         write_row(&mut stdout, row, state)?;
         stdout.write_all(RESET_STYLE)?;
     }
@@ -837,7 +834,7 @@ fn render(
     let exit_label = chrome.exit.label();
     let status = match mode {
         PagerMode::Normal => state.message.as_ref().map(|message| message.text.clone()).unwrap_or_else(|| format!(
-            "kat {}/{}  q:{exit_label}{}  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
+            "{}/{}  q:{exit_label}{}  R:reload  /:search  n/N:next  j/k:row  PgUp/PgDn:page  ^D/^U:half",
             end_line,
             viewport.row_count(),
             if chrome.exit == ViewerExit::Back { "  h/←:back" } else { "" }
@@ -853,9 +850,13 @@ fn render(
     } else {
         kat::DraculaColor::Cyan
     };
-    chrome
-        .theme
-        .write_bar(&mut stdout, size.rows, &status, size.cols, color)?;
+    chrome.theme.write_status(
+        &mut stdout,
+        (size.rows, size.cols),
+        &chrome.title,
+        &status,
+        color,
+    )?;
     stdout.flush()?;
     Ok(())
 }
@@ -1163,7 +1164,7 @@ mod tests {
         let mut mode = PagerMode::Normal;
 
         handle_input(b"\x04", &document, &viewport, &mut state, &mut mode, size);
-        assert_eq!(state.top_row, 5);
+        assert_eq!(state.top_row, 6);
 
         handle_input(b"\x15", &document, &viewport, &mut state, &mut mode, size);
         assert_eq!(state.top_row, 0);

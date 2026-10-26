@@ -71,15 +71,6 @@ pub(super) struct BrowserTheme {
 }
 
 impl BrowserTheme {
-    pub(super) fn write_header(
-        &self,
-        stdout: &mut impl Write,
-        title: &str,
-        cols: usize,
-    ) -> Result<()> {
-        self.ui.write_header(stdout, title, cols)
-    }
-
     pub(super) fn new(mode: ColorMode, icons: IconMode) -> Self {
         Self {
             ui: UiTheme::new(mode),
@@ -136,15 +127,15 @@ impl BrowserTheme {
         (text, icon_start, name_start)
     }
 
-    pub(super) fn write_bar(
+    pub(super) fn write_status(
         &self,
         stdout: &mut impl Write,
-        y: usize,
+        size: (usize, usize),
+        path: &str,
         text: &str,
-        cols: usize,
         color: DraculaColor,
     ) -> Result<()> {
-        self.ui.write_bar(stdout, y, text, cols, color)
+        self.ui.write_status(stdout, size, path, text, color)
     }
 
     pub(super) fn write_entry(

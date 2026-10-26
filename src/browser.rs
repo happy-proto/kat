@@ -120,12 +120,12 @@ pub(crate) fn run(path: &Path, options: &CliOptions) -> Result<()> {
                     Action::PageDown => browser.select(
                         browser
                             .selected
-                            .saturating_add(size.rows.saturating_sub(2).max(1)),
+                            .saturating_add(size.rows.saturating_sub(1).max(1)),
                     ),
                     Action::PageUp => browser.select(
                         browser
                             .selected
-                            .saturating_sub(size.rows.saturating_sub(2).max(1)),
+                            .saturating_sub(size.rows.saturating_sub(1).max(1)),
                     ),
                     Action::Parent => browser.parent(),
                     Action::OpenCurrentDirectory => {
@@ -460,23 +460,22 @@ impl Browser {
         stdout.write_all(b"\x1b[0m\x1b[H\x1b[2J")?;
         if full_image {
             let title = match &self.preview {
-                Preview::Image { path, .. } => format!("kat  {}", path.display()),
-                _ => "kat".to_owned(),
+                Preview::Image { path, .. } => crate::ui_theme::display_path(path),
+                _ => String::new(),
             };
-            self.theme.write_header(&mut stdout, &title, size.cols)?;
             self.render_image(
                 &mut stdout,
                 size.cols,
-                size.rows.saturating_sub(2),
-                2,
+                size.rows.saturating_sub(1),
+                1,
                 1,
                 options,
             )?;
-            self.theme.write_bar(
+            self.theme.write_status(
                 &mut stdout,
-                size.rows,
+                (size.rows, size.cols),
+                &title,
                 "q:back  h/←:back  Enter:back",
-                size.cols,
                 kat::DraculaColor::Cyan,
             )?;
         } else if size.cols < 20 || size.rows < 3 {
@@ -491,12 +490,7 @@ impl Browser {
         } else {
             let left = self.preferred_list_width.min((size.cols / 3).max(1));
             let right = size.cols - left - 1;
-            let body = size.rows - 2;
-            self.theme.write_header(
-                &mut stdout,
-                &format!("kat  {}", self.directory.to_string_lossy()),
-                size.cols,
-            )?;
+            let body = size.rows - 1;
             if self.selected < self.top {
                 self.top = self.selected;
             }
@@ -506,7 +500,7 @@ impl Browser {
             if self.filter.matches.is_empty() {
                 write_plain(
                     &mut stdout,
-                    2,
+                    1,
                     1,
                     if self.entries.is_empty() {
                         "(empty)"
@@ -530,13 +524,13 @@ impl Browser {
                 self.theme.write_entry(
                     &mut stdout,
                     entry,
-                    (row + 2, 1),
+                    (row + 1, 1),
                     left,
                     Some(selected),
                     &item.ranges,
                 )?;
             }
-            for row in 2..size.rows {
+            for row in 1..size.rows {
                 write!(
                     stdout,
                     "\x1b[{row};{}H{}│\x1b[0m",
@@ -550,7 +544,7 @@ impl Browser {
                         self.theme.write_entry(
                             &mut stdout,
                             entry,
-                            (row + 2, left + 2),
+                            (row + 1, left + 2),
                             right,
                             None,
                             &[],
@@ -562,7 +556,7 @@ impl Browser {
                     // wrap the highlighted output a second time.
                     for (row, line) in document.render(right).encoded_rows().take(body).enumerate()
                     {
-                        write!(stdout, "\x1b[{};{}H{}\x1b[0m", row + 2, left + 2, line)?;
+                        write!(stdout, "\x1b[{};{}H{}\x1b[0m", row + 1, left + 2, line)?;
                     }
                 }
                 Preview::Message(message) => {
@@ -581,7 +575,7 @@ impl Browser {
                         write!(
                             stdout,
                             "\x1b[{};{}H{}{}\x1b[0m",
-                            row + 2,
+                            row + 1,
                             left + 2,
                             self.theme.text_style(color),
                             line.text()
@@ -589,7 +583,7 @@ impl Browser {
                     }
                 }
                 Preview::Image { .. } => {
-                    self.render_image(&mut stdout, right, body, 2, left + 2, options)?
+                    self.render_image(&mut stdout, right, body, 1, left + 2, options)?
                 }
                 Preview::Empty => {}
             }
@@ -603,7 +597,7 @@ impl Browser {
             } else {
                 self.message.clone().unwrap_or_else(|| {
                     format!(
-                        "kat {}/{}{}  q:quit  hjkl/arrows:move  o/O:cd  /:filter  R:reload",
+                        "{}/{}{}  q:quit  hjkl/arrows:move  o/O:cd  /:filter  R:reload",
                         if self.filter.matches.is_empty() {
                             0
                         } else {
@@ -623,11 +617,11 @@ impl Browser {
                     )
                 })
             };
-            self.theme.write_bar(
+            self.theme.write_status(
                 &mut stdout,
-                size.rows,
+                (size.rows, size.cols),
+                &crate::ui_theme::display_path(&self.directory),
                 &status,
-                size.cols,
                 if self.message.is_some() {
                     kat::DraculaColor::Red
                 } else {
