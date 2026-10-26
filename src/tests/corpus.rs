@@ -62,6 +62,7 @@ const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
     "authorized_keys",
     "known_hosts",
     "pgpass",
+    "caddyfile",
     "ssh_config",
     "gitattributes",
     "git_commit",
@@ -1054,6 +1055,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         ],
     },
     FixtureCase {
+        relative_path: "caddyfile/Caddyfile",
+        expect_highlight: true,
+        expected_fragments: &["example.com", "reverse_proxy", "LOG_FILE", "file_server"],
+    },
+    FixtureCase {
         relative_path: "pgpass/.pgpass",
         expect_highlight: true,
         expected_fragments: &["localhost", "replication", "example-only", "虚构口令"],
@@ -1294,6 +1300,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         relative_path: "xml/theme.tmTheme",
         expect_highlight: true,
         expected_fragments: &["DOCTYPE", "plist", "Kat &amp; Code", "#F8F8F2", "fontStyle"],
+    },
+    FixtureCase {
+        relative_path: "xml/releases.atom",
+        expect_highlight: true,
+        expected_fragments: &["feed", "entry", "type=\"html\"", "&lt;p&gt;", "&amp;amp;"],
     },
     FixtureCase {
         relative_path: "jam/Jamfile",

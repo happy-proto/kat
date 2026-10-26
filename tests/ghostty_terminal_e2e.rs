@@ -157,16 +157,14 @@ fn browser_open_and_back_keys_share_fullscreen_dracula_chrome() -> TestResult {
             session.wait_for_screen(100, 12, |frame| frame.screen_text().contains("q:back"))?;
         assert!(frame.screen[11].contains("file.txt"));
         assert_eq!(frame.screen[0].trim_end(), "first line");
-        for y in [11] {
-            let style = frame
-                .terminal
-                .grid_ref(Point::Active(PointCoordinate { x: 0, y }))?
-                .style()?;
-            let StyleColor::Rgb(bg) = style.bg_color else {
-                panic!("expected unified surface")
-            };
-            assert_eq!((bg.r, bg.g, bg.b), (68, 71, 90));
-        }
+        let style = frame
+            .terminal
+            .grid_ref(Point::Active(PointCoordinate { x: 0, y: 11 }))?
+            .style()?;
+        let StyleColor::Rgb(bg) = style.bg_color else {
+            panic!("expected unified surface")
+        };
+        assert_eq!((bg.r, bg.g, bg.b), (68, 71, 90));
         session.write_input(b"/h")?;
         session.wait_for_screen(100, 12, |frame| frame.screen.last().unwrap().contains("/h"))?;
         session.write_input(b"\x1b")?;
@@ -930,6 +928,27 @@ fn kat_renders_public_key_comments_and_base64_suffixes_consistently() -> TestRes
     rendered.assert_text_style("ssh-ed25519", (139, 233, 253), false)?;
     rendered.assert_text_style("dcjanusmacbook-pro tailnet", (98, 114, 164), true)?;
     rendered.assert_text_style("AAAAC3NzaC1lZDI1NTE5AAAAIExample/8", (189, 147, 249), false)?;
+    session.write_input(b"q")?;
+    session.wait_success()?;
+    Ok(())
+}
+
+#[test]
+fn kat_auto_detects_caddyfile_and_renders_configuration() -> TestResult {
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/fixtures/caddyfile/Caddyfile");
+    let mut session = KatPtySession::spawn(
+        &[fixture.to_str().unwrap()],
+        120,
+        40,
+        &[("COLORTERM", "truecolor")],
+    )?;
+    let rendered = session.wait_for_screen(120, 40, |rendered| {
+        rendered.screen_text().contains("q:quit")
+    })?;
+    rendered.assert_text_style("reverse_proxy", (255, 121, 198), false)?;
+    rendered.assert_text_style("5s", (255, 184, 108), false)?;
+    rendered.assert_text_style("# Synthetic Caddy configuration", (98, 114, 164), true)?;
     session.write_input(b"q")?;
     session.wait_success()?;
     Ok(())

@@ -52,4 +52,10 @@ run_case 99 'pkg/foo/build.zig.zon:1:1: error: hash mismatch' 42 1 '' build
 run_case 99 "$network" 42 1 '' version
 run_case 99 'src/main.zig:1:1: error: NameServerFailure' 42 1 '' build
 run_case 1 'pkg/foo/build.zig.zon:1:1: error: unable to download file: ConnectionTimedOut' 0 2 '2' build 'argument with spaces'
+http_closing='pkg/translate_c/build.zig.zon:12:20: error: invalid HTTP response: HttpConnectionClosing'
+run_case 2 "$http_closing" 0 3 $'2\n4' build
+run_case 99 "$http_closing" 42 4 $'2\n4\n8' build
+run_case 99 "$http_closing" 42 1 '' version
+run_case 99 'src/main.zig:1:1: error: invalid HTTP response: HttpConnectionClosing' 42 1 '' build
+run_case 99 'src/main.zig:1:1: error: invalid HTTP response: InvalidContentLength' 42 1 '' build
 echo 'Zig download retry tests passed'

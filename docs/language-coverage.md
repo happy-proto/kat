@@ -62,6 +62,12 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 ## 当前结论
 
+### Caddyfile
+
+- `Caddyfile`、`caddyfile`、`Caddyfile.*`、`caddyfile.*` 与 `*.caddyfile` 使用独立 `caddyfile` runtime；显式 `--language` 和 Markdown fence 接受 `caddyfile`、`caddy` 与 `Caddyfile`。自定义 `.conf` 文件需显式指定语言，不根据内容猜测；Caddy JSON 配置继续使用 JSON runtime。
+- 采用 [Caddy 官方组织的 grammar](https://github.com/caddyserver/tree-sitter-caddyfile)，覆盖全局选项、站点、snippet、命名路由、匹配器、嵌套指令、字符串、数字/时长、环境变量和占位符；CEL 表达式和以已知语言名结束的 heredoc 支持嵌套高亮。仅查看源码，不展开环境变量、加载 import 或验证 Caddy 模块语义；具体语法边界随锁定的上游 grammar。
+
+
 ### C shell / tcsh
 
 - `.csh`、`.tcsh`、`.cshrc`、`.tcshrc`、`.login`、`.logout` 与系统 `csh.cshrc` / `csh.login` / `csh.logout` 使用独立的 `csh` runtime；显式语言、Markdown fence 与 shebang 接受 `csh` / `tcsh`。无扩展名且无 shebang 的脚本不根据内容猜测。
@@ -111,6 +117,7 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 - `Python`、`HTML`、`CSS`、`JavaScript` 这一轮已经补齐了一批此前明显缺失的语义 capture，并新增 fixture / showcase / 专门测试锁住回归。
 - `TypeScript` / `TSX`、`Vue`、`Svelte`、`DotENV`、`INI`、`XML`、`Makefile`、`CMake`、`Ninja`、`Jinja`、`Twig`、`ERB` 这一轮也已全部接入，且都补上了最小 fixture，避免只是 detector 占位。
 - TextMate `.tmTheme` 主题文件按 XML 自动识别，复用 XML runtime 高亮 plist 的声明、标签、属性、注释和实体；主题中的 scope 与颜色值按普通 XML 文本显示，不应用文件中定义的配色。
+- Atom `.atom` 与 RSS `.rss` 文件按 XML 自动识别，复用 XML runtime 高亮声明、标签、属性和实体。Atom `content type="html"` 中的转义 HTML 当前按 XML 实体与文本高亮，不解码为嵌套 HTML。
 - 模板宿主已经补齐到统一模型：`ERB` / `EEx` / `JSP` / `ASP` / `ADP` 共享同一套 `<% ... %>` AST，`Jinja` / `Twig` 则保留各自模板 AST；它们的宿主内容都会按复合后缀分发到 `HTML` / `XML` / `YAML` / `SQL` / `CSS` / `JavaScript` / `CoffeeScript` runtime，并通过共享的完整文档 projection 以合法占位符替代输出 expression，不再把离散 content 片段直接拼接后交给宿主 parser。Jinja 的 7 种宿主 profile 现在都有真实 fixture，并在 `testdata/showcase/jinja/` 下提供对应的人工展示样例；HTML showcase 还同时覆盖 `<script>` / `<style>` 的递归注入。
 - `ActionScript`、`Ada`、`AppleScript`、`Assembly (.s/.S)`、`AsciiDoc`、`Authorized Keys`、`AWK`、`BibTeX` 这一轮也都补上了独立 runtime、fixture 和 detector；其中 `Ada` 直接走公开 crate，另外这批过去仍留在主仓库里的 vendored parser 也已经外置到 `kat-parsers` bundle，主仓库只保留 kat 侧 query / detector 资产。`ASP` 也补齐了此前缺失的 `.asa` 入口。
 - age ASCII armor（`age --armor` / `age -a` 输出）已复用 `pem` runtime：按匹配的 `AGE ENCRYPTED FILE` BEGIN / END 边界进行内容检测，支持 `.age`、无扩展名文件和 stdin；高亮封装边界、label 与带 `=` padding 的 Base64 正文。默认二进制 age、内部 header 解码、密钥和 recipient 文件暂未支持。

@@ -2472,7 +2472,7 @@ highlight_names = [
 
 [[grammar]]
 name = "xml"
-extensions = ["xml", "xsd", "xslt", "tld", "dtml", "rng", "rss", "opml", "svg", "xaml", "csproj", "vbproj", "props", "targets", "tmTheme"]
+extensions = ["xml", "xsd", "xslt", "tld", "dtml", "rng", "rss", "atom", "opml", "svg", "xaml", "csproj", "vbproj", "props", "targets", "tmTheme"]
 filenames = []
 shebang_substrings = []
 highlight_names = [
@@ -3433,3 +3433,11 @@ highlight_names = [
   "operator", "punctuation.bracket", "punctuation.delimiter", "string",
   "string.escape", "type", "variable", "variable.parameter",
 ]
+
+[[grammar]]
+name = "caddyfile"
+extensions = ["caddyfile"]
+filenames = ["Caddyfile", "caddyfile"]
+filename_prefixes = ["Caddyfile.", "caddyfile."]
+shebang_substrings = []
+highlight_names = ["comment", "function", "function.builtin", "keyword", "label", "number", "punctuation.bracket", "punctuation.delimiter", "punctuation.special", "string", "string.escape", "string.special", "variable.builtin"]
