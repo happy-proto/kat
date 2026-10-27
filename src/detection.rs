@@ -560,7 +560,7 @@ pub(crate) fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
 
     matches!(
         components.as_slice(),
-        [.., ".ssh", "config"] | [.., "ssh", "sshd_config"]
+        [.., ".ssh", "config"] | [.., ".ssh", "1Password", "config"] | [.., "ssh", "sshd_config"]
     ) || matches!(
         components.as_slice(),
         [.., ".ssh", "conf.d", _] if path.extension().is_some_and(|extension| extension == "conf")
