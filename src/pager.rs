@@ -7,7 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::ui_theme::UiTheme;
+use crate::ui_theme::{StatusLeft, UiTheme};
 use anyhow::{Context, Result};
 #[cfg(unix)]
 use signal_hook::{consts::signal::SIGWINCH, flag};
@@ -839,7 +839,7 @@ fn render(
             viewport.row_count(),
             if chrome.exit == ViewerExit::Back { "  h/←:back" } else { "" }
         )),
-        PagerMode::Search { query, .. } => format!("/{query}"),
+        PagerMode::Search { .. } => "Enter:search  Esc:cancel".to_owned(),
     };
     let color = if state
         .message
@@ -853,7 +853,10 @@ fn render(
     chrome.theme.write_status(
         &mut stdout,
         (size.rows, size.cols),
-        &chrome.title,
+        match mode {
+            PagerMode::Normal => StatusLeft::Path(&chrome.title),
+            PagerMode::Search { query, .. } => StatusLeft::Input(query),
+        },
         &status,
         color,
     )?;

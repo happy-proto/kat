@@ -6,7 +6,10 @@ use kat::{ColorMode, DraculaColor, PreparedDocument};
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::Entry;
-use crate::{IconMode, ui_theme::UiTheme};
+use crate::{
+    IconMode,
+    ui_theme::{StatusLeft, UiTheme},
+};
 
 #[derive(Clone, Copy)]
 pub(super) struct EntryIcon {
@@ -131,11 +134,11 @@ impl BrowserTheme {
         &self,
         stdout: &mut impl Write,
         size: (usize, usize),
-        path: &str,
+        left: StatusLeft<'_>,
         text: &str,
         color: DraculaColor,
     ) -> Result<()> {
-        self.ui.write_status(stdout, size, path, text, color)
+        self.ui.write_status(stdout, size, left, text, color)
     }
 
     pub(super) fn write_entry(

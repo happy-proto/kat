@@ -300,6 +300,11 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
         frame.screen[11].contains("/abc") && frame.screen[11].contains("[3/5]")
     })?;
     assert!(
+        frame.screen[11].starts_with("/abc  "),
+        "{}",
+        frame.screen_text()
+    );
+    assert!(
         frame.screen[0].starts_with("> abc.txt"),
         "best match must rank first: {}",
         frame.screen_text()
@@ -332,7 +337,9 @@ fn browser_filters_filenames_with_fzf_ranking_and_highlights_matches() -> TestRe
     session.wait_for_screen(100, 12, |frame| frame.screen[0].starts_with("> abc.txt"))?;
     session.write_input(b"\r")?;
     session.wait_for_screen(100, 12, |frame| {
-        frame.screen[11].contains("hjkl/arrows") && frame.screen[11].contains("/abc [3/5]")
+        frame.screen[11].contains("hjkl/arrows")
+            && frame.screen[11].contains("/abc [3/5]")
+            && !frame.screen[11].starts_with("/abc")
     })?;
     session.write_input(b"jj")?;
     session.wait_for_screen(100, 12, |frame| frame.screen[2].starts_with("> a_b_c.txt"))?;
@@ -1582,12 +1589,29 @@ fn kat_builtin_pager_supports_plain_text_search() -> TestResult {
         rendered.screen_text().contains("SEARCH-LINE-01")
     })?;
 
-    session.write_input(b"/SEARCH-HIT\r")?;
+    session.write_input(b"/")?;
+    let empty = session.wait_for_screen(COLS, ROWS, |frame| {
+        frame.screen[usize::from(ROWS - 1)].contains("Enter:search")
+    })?;
+    assert!(empty.screen[usize::from(ROWS - 1)].starts_with("/  "));
+    session.write_input(b"\x1b")?;
+    session.wait_for_screen(COLS, ROWS, |frame| {
+        let status = &frame.screen[usize::from(ROWS - 1)];
+        status.contains("q:quit") && !status.starts_with("/  ")
+    })?;
+
+    session.write_input(b"/SEARCH-HIT")?;
+    let editing = session.wait_for_screen(COLS, ROWS, |frame| {
+        frame.screen[usize::from(ROWS - 1)].contains("/SEARCH-HIT")
+    })?;
+    assert!(editing.screen[usize::from(ROWS - 1)].starts_with("/SEARCH-HIT  "));
+    session.write_input(b"\r")?;
     let rendered = session.wait_for_screen(COLS, ROWS, |rendered| {
         rendered.screen_text().contains("SEARCH-HIT visible target")
     })?;
     rendered.assert_screen_contains("SEARCH-HIT visible target");
     rendered.assert_search_highlight_style("SEARCH-HIT", Underline::Single)?;
+    assert!(!rendered.screen[usize::from(ROWS - 1)].starts_with("/SEARCH-HIT"));
 
     session.write_input(b"q")?;
     session.wait_success()?;
@@ -2393,12 +2417,8 @@ fn wide_search_status_does_not_wrap_or_scroll_the_body() -> TestResult {
     );
     assert_eq!(rendered.screen[15].trim_end(), "line-015");
     assert_eq!(
-        rendered.screen[16]
-            .split_once("  ")
-            .unwrap()
-            .1
-            .replace(' ', ""),
-        format!("/{}", "中".repeat(9))
+        rendered.screen[16].replace(' ', ""),
+        format!("/{}", "中".repeat(19))
     );
     session.write_input(b"\x03")?;
     session.wait_success()?;

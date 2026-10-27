@@ -11,17 +11,27 @@ pub(crate) struct UiTheme {
     mode: ColorMode,
 }
 
+pub(crate) enum StatusLeft<'a> {
+    Path(&'a str),
+    Input(&'a str),
+}
+
 impl UiTheme {
     pub(crate) fn write_status(
         &self,
         stdout: &mut impl Write,
         (y, cols): (usize, usize),
-        path: &str,
+        left: StatusLeft<'_>,
         status: &str,
         color: DraculaColor,
     ) -> Result<()> {
-        let path = visible_text(path).replace('\n', "\\n");
         let status = visible_text(status).replace('\n', "\\n");
+        let path = match left {
+            StatusLeft::Path(path) => visible_text(path).replace('\n', "\\n"),
+            StatusLeft::Input(query) => {
+                return self.write_input_status(stdout, (y, cols), query, &status, color);
+            }
+        };
         // Keep the path and the start of the status (position, query or error)
         // visible. Lower-priority key hints are clipped on narrow terminals.
         let status = prefix(&status, cols.saturating_sub(2) / 2);
@@ -54,6 +64,35 @@ impl UiTheme {
             " ".repeat(padding),
             self.style(color, true, false),
             status
+        )?;
+        Ok(())
+    }
+
+    fn write_input_status(
+        &self,
+        stdout: &mut impl Write,
+        (y, cols): (usize, usize),
+        query: &str,
+        status: &str,
+        color: DraculaColor,
+    ) -> Result<()> {
+        let query = visible_text(query).replace('\n', "\\n");
+        // Input takes priority over hints, including the tail currently being typed.
+        let available = cols.saturating_sub(1 + text_width(&query) + 2);
+        let status = prefix(status, available.min(cols.saturating_sub(2) / 2));
+        let status_width = text_width(&status);
+        let gap = if status_width == 0 { 0 } else { 2 };
+        let input = search_input(&query, cols.saturating_sub(status_width + gap));
+        let padding = cols.saturating_sub(text_width(&input) + status_width);
+        write!(
+            stdout,
+            "\x1b[{y};1H\x1b[0m{}{}{}{}{}{}\x1b[0m",
+            self.style(DraculaColor::Cyan, true, false),
+            input,
+            self.style(DraculaColor::Foreground, true, false),
+            " ".repeat(padding),
+            self.style(color, true, false),
+            status,
         )?;
         Ok(())
     }
@@ -117,6 +156,22 @@ fn prefix(text: &str, width: usize) -> String {
         .display_rows(width)
         .first()
         .map_or_else(String::new, |row| row.text().to_owned())
+}
+
+fn search_input(query: &str, width: usize) -> String {
+    if width == 0 {
+        return String::new();
+    }
+    let mut start = query.len();
+    let mut used = 1; // Keep the search prompt even when the query is clipped.
+    for (index, grapheme) in query.grapheme_indices(true).rev() {
+        used += text_width(grapheme);
+        if used > width {
+            break;
+        }
+        start = index;
+    }
+    format!("/{}", &query[start..])
 }
 
 /// A directory name and its original separator. Only transformed names change color.
@@ -279,6 +334,25 @@ pub(crate) fn visible_text(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn search_input_preserves_prompt_and_query_tail_at_grapheme_boundaries() {
+        for (query, width, expected) in [
+            ("", 0, ""),
+            ("", 1, "/"),
+            ("path/to/needle", 30, "/path/to/needle"),
+            ("path/to/needle", 7, "/needle"),
+            ("中文", 4, "/文"),
+            ("中文", 2, "/"),
+            ("abc👩‍💻", 3, "/👩‍💻"),
+            ("abc👩‍💻", 2, "/"),
+            ("abc e\u{301}", 2, "/e\u{301}"),
+        ] {
+            let input = search_input(query, width);
+            assert_eq!(input, expected, "query {query:?}, width {width}");
+            assert!(text_width(&input) <= width);
+        }
+    }
 
     fn shown(parts: &[PathPart]) -> String {
         parts
