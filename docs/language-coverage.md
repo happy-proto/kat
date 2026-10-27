@@ -233,7 +233,7 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 ### SSH 配置片段
 
-除 `ssh_config`、`sshd_config` 与 `.ssh/config` 外，直接位于 `.ssh/conf.d/` 下的 `*.conf` 也按 `ssh_config` 高亮；在该目录内执行 `kat example.conf` 同样支持。其它目录的 `.conf`、备份文件和无扩展名文件不会因这条规则进入 SSH runtime。
+除 `ssh_config`、`sshd_config` 与 `.ssh/config` 外，`.ssh/` 直接目录及所有子孙目录中的 `*.conf` 都按 `ssh_config` 高亮，例如 `.ssh/example.conf`、`.ssh/conf.d/example.conf` 和 `.ssh/work/team/prod.conf`；在这些目录内执行 `kat example.conf` 同样支持。`.ssh/` 目录树之外的 `.conf`、备份文件和无扩展名文件不会因这条规则进入 SSH runtime。
 
 这是 kat 的路径识别约定，不代表 OpenSSH 会自动加载该目录。[OpenSSH 的 `Include` 指令](https://man.openbsd.org/ssh_config.5#Include) 用于引入额外配置，例如在 `~/.ssh/config` 中写 `Include ~/.ssh/conf.d/*.conf`；目录名本身没有默认加载语义。kat 不读取或执行 `Include`，也不检查片段是否实际被引用。
 

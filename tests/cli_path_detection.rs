@@ -292,25 +292,34 @@ fn onepassword_ssh_config_is_detected_only_at_its_known_path() {
 }
 
 #[test]
-fn ssh_conf_d_fragments_are_detected_only_in_the_ssh_directory() {
+fn ssh_conf_fragments_are_detected_at_any_depth_in_the_ssh_directory() {
     let fixture = Fixture::new();
-    let path = fixture.write(
+    for name in [
+        ".ssh/example.conf",
         ".ssh/conf.d/example.conf",
-        "Host example\n    HostName example.com\n",
-    );
-    for snapshot in [
-        analysis(&fixture.0, &[path.to_str().unwrap()]),
-        analysis(path.parent().unwrap(), &["example.conf"]),
+        ".ssh/other/example.conf",
+        ".ssh/work/team/prod/example.conf",
     ] {
-        assert_eq!(
-            snapshot["detected_document_kind"]["runtime_name"],
-            "ssh_config"
-        );
+        let path = fixture.write(name, "Host example\n    HostName example.com\n");
+        for snapshot in [
+            analysis(&fixture.0, &[path.to_str().unwrap()]),
+            analysis(&fixture.0, &[name]),
+            analysis(path.parent().unwrap(), &["example.conf"]),
+        ] {
+            assert_eq!(
+                snapshot["detected_document_kind"]["runtime_name"], "ssh_config",
+                "{name}"
+            );
+        }
     }
     for name in [
         "conf.d/example.conf",
-        ".ssh/other/example.conf",
+        "other/example.conf",
+        ".ssh-backup/example.conf",
+        ".ssh/example.conf.bak",
         ".ssh/conf.d/example.conf.bak",
+        ".ssh/work/team/prod/example.conf.bak",
+        ".ssh/work/team/prod/README",
         ".ssh/conf.d/README",
     ] {
         let path = fixture.write(name, "Host example\n");

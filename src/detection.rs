@@ -561,13 +561,18 @@ pub(crate) fn is_ssh_config_path(source_path: Option<&Path>) -> bool {
     matches!(
         components.as_slice(),
         [.., ".ssh", "config"] | [.., ".ssh", "1Password", "config"] | [.., "ssh", "sshd_config"]
-    ) || matches!(
-        components.as_slice(),
-        [.., ".ssh", "conf.d", _] if path.extension().is_some_and(|extension| extension == "conf")
-    ) || matches!(
-        path.file_name().and_then(|name| name.to_str()),
-        Some("sshd_config")
-    )
+    ) || (path
+        .extension()
+        .is_some_and(|extension| extension == "conf")
+        && path.parent().is_some_and(|parent| {
+            parent
+                .ancestors()
+                .any(|dir| dir.file_name().is_some_and(|name| name == ".ssh"))
+        }))
+        || matches!(
+            path.file_name().and_then(|name| name.to_str()),
+            Some("sshd_config")
+        )
 }
 
 pub(crate) fn is_sls_path(source_path: Option<&Path>) -> bool {
