@@ -12,7 +12,7 @@ use crate::{
     CliOptions, ViewerDocument, ViewerSegment, content_fingerprint, pager,
     pager::{PagerInputOutcome, PagerSize, PagerView, TerminalSession},
     terminal_image,
-    ui_theme::visible_text,
+    ui_theme::{StatusLeft, visible_text},
 };
 
 mod filter;
@@ -474,7 +474,7 @@ impl Browser {
             self.theme.write_status(
                 &mut stdout,
                 (size.rows, size.cols),
-                &title,
+                StatusLeft::Path(&title),
                 "q:back  h/←:back  Enter:back",
                 kat::DraculaColor::Cyan,
             )?;
@@ -589,8 +589,7 @@ impl Browser {
             }
             let status = if self.filter.editing {
                 format!(
-                    "/{}  [{}/{}]  Enter:confirm  Esc:clear",
-                    self.filter.query,
+                    "[{}/{}]  Enter:confirm  Esc:clear",
                     self.filter.matches.len(),
                     self.entries.len()
                 )
@@ -617,10 +616,15 @@ impl Browser {
                     )
                 })
             };
+            let path = crate::ui_theme::display_path(&self.directory);
             self.theme.write_status(
                 &mut stdout,
                 (size.rows, size.cols),
-                &crate::ui_theme::display_path(&self.directory),
+                if self.filter.editing {
+                    StatusLeft::Input(&self.filter.query)
+                } else {
+                    StatusLeft::Path(&path)
+                },
                 &status,
                 if self.message.is_some() {
                     kat::DraculaColor::Red
