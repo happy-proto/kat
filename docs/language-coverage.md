@@ -237,6 +237,8 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 这是 kat 的路径识别约定，不代表 OpenSSH 会自动加载该目录。[OpenSSH 的 `Include` 指令](https://man.openbsd.org/ssh_config.5#Include) 用于引入额外配置，例如在 `~/.ssh/config` 中写 `Include ~/.ssh/conf.d/*.conf`；目录名本身没有默认加载语义。kat 不读取或执行 `Include`，也不检查片段是否实际被引用。
 
+[1Password SSH Bookmarks](https://www.1password.dev/ssh/bookmarks#ssh-bookmarks-config-file) 自动生成的 `.ssh/1Password/config` 同样使用标准 SSH 配置格式，按精确路径后缀复用 `ssh_config` runtime；绝对路径和在该目录内执行 `kat config` 均支持。其它位置的 `1Password/config`、备份文件及其子目录中的 `config` 不会因这条规则进入 SSH runtime。
+
 ### PostgreSQL 密码文件（pgpass）
 
 `.pgpass` 与 Windows 使用的 `pgpass.conf` 按精确文件名进入独立 `pgpass` runtime。自定义 `PGPASSFILE` / `passfile` 文件名可用 `kat --language pgpass <文件>`；kat 不读取这些环境变量或连接配置来寻找密码文件，也不根据内容猜测这种格式。备份后缀、普通 `.conf` 和 stdin 不会因密码文件内容而自动识别。

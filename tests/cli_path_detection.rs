@@ -261,6 +261,37 @@ fn symlink_uses_the_requested_path_for_detection() {
 }
 
 #[test]
+fn onepassword_ssh_config_is_detected_only_at_its_known_path() {
+    let fixture = Fixture::new();
+    let source = "# Generated SSH configuration\nMatch Host example.com\n    IdentityFile ~/.ssh/1Password/example.pub\n    IdentitiesOnly yes\nMatch all\n";
+    let path = fixture.write(".ssh/1Password/config", source);
+    for snapshot in [
+        analysis(&fixture.0, &[path.to_str().unwrap()]),
+        analysis(&fixture.0, &[".ssh/1Password/config"]),
+        analysis(path.parent().unwrap(), &["config"]),
+    ] {
+        assert_eq!(
+            snapshot["detected_document_kind"]["runtime_name"],
+            "ssh_config"
+        );
+        assert!(!snapshot["spans"].as_array().unwrap().is_empty());
+    }
+    for name in [
+        "1Password/config",
+        ".ssh/other/config",
+        ".ssh/1Password/config.bak",
+        ".ssh/1Password/nested/config",
+    ] {
+        let path = fixture.write(name, source);
+        assert_ne!(
+            analysis(&fixture.0, &[path.to_str().unwrap()])["detected_document_kind"]["runtime_name"],
+            "ssh_config",
+            "{name}"
+        );
+    }
+}
+
+#[test]
 fn ssh_conf_d_fragments_are_detected_only_in_the_ssh_directory() {
     let fixture = Fixture::new();
     let path = fixture.write(
