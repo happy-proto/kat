@@ -2857,7 +2857,7 @@ highlight_names = [
 [[grammar]]
 name = "ssh_config"
 extensions = []
-# Directory-specific config paths (including .ssh/1Password/config) are matched
+# Directory-specific config paths (including .ssh/**/*.conf and .ssh/1Password/config) are matched
 # by is_ssh_config_path in src/detection.rs, not as global filenames here.
 filenames = ["ssh_config", "sshd_config"]
 filename_prefixes = []
