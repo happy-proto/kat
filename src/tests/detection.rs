@@ -1636,3 +1636,27 @@ fn csh_files_and_interpreters_use_their_own_runtime() {
         Some(RuntimeId::Csh)
     );
 }
+
+#[test]
+fn hosts_files_are_detected_by_exact_filename() {
+    let source = "127.0.0.1 localhost loopback # local\n::1 localhost\n";
+    for path in [
+        "hosts",
+        "/etc/hosts",
+        "/private/etc/hosts",
+        "Windows/System32/drivers/etc/hosts",
+    ] {
+        assert_eq!(
+            detected_runtime(Some(Path::new(path)), source).map(RuntimeId::name),
+            Some("hosts"),
+            "{path}",
+        );
+    }
+    for path in [
+        None,
+        Some(Path::new("hosts.bak")),
+        Some(Path::new("notes.txt")),
+    ] {
+        assert_eq!(detected_runtime(path, source), None, "{path:?}");
+    }
+}

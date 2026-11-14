@@ -83,7 +83,7 @@ pub(crate) fn detect_document_kind(
     }
 
     if let Some(kind) = detect_registry_languages(
-        &[RuntimeId::Pgpass, RuntimeId::KnownHosts],
+        &[RuntimeId::Hosts, RuntimeId::Pgpass, RuntimeId::KnownHosts],
         source_path,
         source,
     ) {

@@ -60,6 +60,7 @@ const FIXTURE_SHELL_AND_CONFIG_FAMILIES: &[&str] = &[
     "git_mailmap",
     "git_log",
     "authorized_keys",
+    "hosts",
     "known_hosts",
     "pgpass",
     "caddyfile",
@@ -1042,6 +1043,11 @@ const FIXTURE_CASES: &[FixtureCase] = &[
         relative_path: "ghostty/config.ghostty",
         expect_highlight: true,
         expected_fragments: &["font-family", "font-size", "keybind", "# literal"],
+    },
+    FixtureCase {
+        relative_path: "hosts/hosts",
+        expect_highlight: true,
+        expected_fragments: &["127.0.0.1", "::1", "localhost", "tracker.example"],
     },
     FixtureCase {
         relative_path: "known_hosts/known_hosts",

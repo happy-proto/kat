@@ -2003,3 +2003,30 @@ fn jam_upstream_regressions_preserve_syntax_text_and_styles() {
         );
     }
 }
+
+#[test]
+fn hosts_highlights_addresses_names_and_comments() {
+    let theme = Theme::for_mode(ColorMode::TrueColor);
+    let source = "  127.0.0.1\tlocalhost loopback# disabled.example\r\n::ffff:192.0.2.10 mapped.example\r\n::1 localhost";
+    let rendered = highlight_named_language("hosts", source, &theme).unwrap();
+    assert_eq!(
+        strip_ansi(&rendered),
+        "  127.0.0.1     localhost loopback# disabled.example\n::ffff:192.0.2.10 mapped.example\n::1 localhost",
+    );
+    for address in ["127.0.0.1", "::ffff:192.0.2.10", "::1"] {
+        assert!(
+            rendered.contains(&format!("\x1b[38;2;189;147;249m{address}")),
+            "address {address}: {rendered:?}"
+        );
+    }
+    for hostname in ["localhost", "loopback", "mapped.example"] {
+        assert!(
+            rendered.contains(&format!("\x1b[38;2;139;233;253m{hostname}")),
+            "hostname {hostname}: {rendered:?}"
+        );
+    }
+    assert!(
+        rendered.contains("\x1b[38;2;98;114;164m# disabled.example"),
+        "{rendered:?}"
+    );
+}

@@ -245,6 +245,10 @@ CLI 文件输入在检测前会按当前工作目录补全相对路径，因此�
 
 格式依据 [PostgreSQL 官方说明](https://www.postgresql.org/docs/18/libpq-pgpass.html)：每行 `hostname:port:database:username:password`，前四字段中的独立 `*` 是通配符，密码中的 `*` 是普通文本；字段内的冒号和反斜杠使用反斜杠转义。高亮区分五字段、通配符、分隔符、转义和行首 `#` 注释；字段内空格及 `#` 保留为数据，支持空字段、CRLF 和末行无换行。仅提供源码高亮，不执行连接匹配或权限检查；密码按字符串显示，不作脱敏。测试仅使用虚构凭据。
 
+### Hosts 主机名映射
+
+`hosts` 按精确文件名进入独立 `hosts` runtime，覆盖 `/etc/hosts`、macOS 的 `/private/etc/hosts` 和 Windows 路径下同名文件。支持 IPv4、IPv6（含 IPv4-mapped 写法）、规范主机名、多个别名、空行、空格 / Tab、整行与行尾 `#` 注释、CRLF 和末行无换行。地址、主机名 / 别名和注释分别高亮；这是格式高亮，不执行 IP 合法性验证或名称解析。`hosts.bak`、普通文本和 stdin 不做内容猜测；可用 `--language hosts` 显式指定。它与 SSH 的 `known_hosts` runtime 相互独立。
+
 ### SSH 主机公钥记录（known_hosts）
 
 `known_hosts` 与 `ssh_known_hosts` 按精确文件名进入独立 `known_hosts` runtime，因此相对路径 `.ssh/known_hosts`、绝对路径下的 `.ssh/known_hosts` 和 `/etc/ssh/ssh_known_hosts` 都能识别。普通 `config`、`known_hosts.bak` 与 stdin 不会因 SSH 主机公钥内容而进入这个 runtime；已有 `ssh_config`、`sshd_config`、`.ssh/config` 和 `authorized_keys` 识别保持独立。
@@ -300,7 +304,6 @@ mise 配置已通过 TOML 的 `mise_config` profile 支持任务脚本嵌套高�
 - `group`：`group`
 - `Haskell`：`hs`
 - `Highlight non-printables`：`show-nonprintable`
-- `Hosts File`：`hosts`
 - `HTTP Request and Response`：`http`
 - `Idris`：`idr`
 - `jsonnet`：`jsonnet`、`libsonnet`、`libjsonnet`
