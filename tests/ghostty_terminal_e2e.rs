@@ -2333,9 +2333,9 @@ fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> 
                                     .trim_end()
                         })
                 })?;
-                for i in 0..body {
+                for (i, line) in rendered.screen.iter().take(body).enumerate() {
                     assert_eq!(
-                        rendered.screen[i].trim_end(),
+                        line.trim_end(),
                         rows.get(top + i)
                             .map(String::as_str)
                             .unwrap_or("")
