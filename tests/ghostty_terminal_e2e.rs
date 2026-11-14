@@ -817,7 +817,11 @@ fn browser_kitty_images_are_positioned_in_the_preview_and_cleaned_up() -> TestRe
     })?;
     session.write_input(b"q")?;
     let raw = session.wait_success()?;
-    assert!(raw.ends_with(b"\x1b[0m\x1b[?25h\x1b[?1049l"));
+    assert!(
+        raw.ends_with(b"\x1b[0m\x1b[?25h\x1b[?1049l"),
+        "PTY output: {:?}",
+        String::from_utf8_lossy(&raw),
+    );
     assert!(String::from_utf8_lossy(&raw).contains("a=d,d=I,i=4931924"));
     Ok(())
 }
@@ -2221,7 +2225,9 @@ impl KatPtySession {
 
     fn wait_success(mut self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let status = self.child.wait()?;
-        drop(self.writer);
+        // Keep the writer alive until the reader reaches EOF: portable-pty's
+        // writer destructor injects a newline and EOT, which can be echoed
+        // after the child restores the terminal and pollute captured output.
         // The child has exited, but its final PTY bytes may still be in transit.
         // Drain until the reader closes the channel rather than treating a
         // short scheduling pause as end-of-output.
@@ -2333,9 +2339,9 @@ fn colored_long_json_uses_the_same_rows_for_painting_navigation_and_resize() -> 
                                     .trim_end()
                         })
                 })?;
-                for i in 0..body {
+                for (i, line) in rendered.screen.iter().take(body).enumerate() {
                     assert_eq!(
-                        rendered.screen[i].trim_end(),
+                        line.trim_end(),
                         rows.get(top + i)
                             .map(String::as_str)
                             .unwrap_or("")

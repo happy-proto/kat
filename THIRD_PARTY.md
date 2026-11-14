@@ -1208,3 +1208,7 @@ These files may be modified locally as needed for integration into `kat`.
 ## Directory browser icons
 
 Directory browser icons use [rust-devicons](https://github.com/alexpasmantier/rust-devicons) through the `devicons` crate (Apache-2.0); the exact version is recorded in `Cargo.lock`. No font files or upstream source tables are vendored. kat adds folder and unknown-file fallback glyphs, associates Cargo manifests with the Rust icon, and maps upstream icon colors onto its shared Dracula palette. Update the dependency with Cargo to refresh file associations.
+
+## Hosts
+
+`grammars/hosts/queries/highlights.scm` is authored for kat. The MIT parser is independently maintained in [kat-parsers](https://github.com/happy-proto/kat-parsers), based on the [hosts(5) file format](https://man7.org/linux/man-pages/man5/hosts.5.html). No third-party grammar or query is copied or adapted. Parser and generated assets remain in kat-parsers; the dependency revision is recorded in `Cargo.lock`.

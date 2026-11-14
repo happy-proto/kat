@@ -1,0 +1,6 @@
+# Synthetic local host mappings
+127.0.0.1 localhost loopback # IPv4 loopback
+::1 localhost ip6-localhost
+2001:db8::10 server.example server
+::ffff:192.0.2.10 mapped.example
+0.0.0.0 ads.example tracker.example

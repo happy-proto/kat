@@ -457,6 +457,14 @@ shebang_substrings = []
 highlight_names = ["comment", "operator", "property", "string"]
 
 [[grammar]]
+name = "hosts"
+extensions = []
+filenames = ["hosts"]
+filename_prefixes = []
+shebang_substrings = []
+highlight_names = ["comment", "constant", "string.special.key"]
+
+[[grammar]]
 name = "pgpass"
 extensions = []
 filenames = [".pgpass", "pgpass.conf"]
